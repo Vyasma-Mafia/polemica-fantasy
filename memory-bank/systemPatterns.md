@@ -43,6 +43,7 @@ Controller → Service → Repository → PostgreSQL
 - `@telegram-apps/sdk-react` для интеграции с Telegram
 - TanStack Query для server state management
 - Компонентный подход (React)
+- **Карточки пользователя:** URL для картинки — `playerPhotoUrl ?? imageUrl` (хелпер `polemica-fantasy-webapp/src/lib/cardImage.ts`, `cardDisplayImageUrl`). Рамка по редкости — CSS-модификаторы `*--common` | `*--rare` | `*--epic` | `*--legendary` на контейнерах карточек (коллекция, сборка команды, история фэнтези, модалка в истории).
 
 ### Admin Panel
 - Ant Design как UI framework

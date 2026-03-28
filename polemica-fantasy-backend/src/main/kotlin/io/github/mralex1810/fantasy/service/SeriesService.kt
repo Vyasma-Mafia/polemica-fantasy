@@ -46,7 +46,7 @@ class SeriesService(
                 teamDeadline = request.teamDeadline,
             ),
         )
-        return s.toDto()
+        return s.toDto(emptyList())
     }
 
     @Transactional
@@ -88,7 +88,8 @@ class SeriesService(
                 request.namePrefix?.let { s.namePrefix = it.trim().takeIf { x -> x.isNotEmpty() } }
             }
         }
-        return seriesRepository.save(s).toDto()
+        val saved = seriesRepository.save(s)
+        return saved.toDto(tournamentPlayerIdsForSeries(saved.id!!))
     }
 
     private fun validatedSeriesFields(
@@ -132,11 +133,12 @@ class SeriesService(
                 )
         }
         seriesPlayerRepository.deleteAllBySeries_Id(seriesId)
+        seriesPlayerRepository.flush()
         ids.forEach { tpId ->
             val tp = tournamentPlayerRepository.findById(tpId).get()
             seriesPlayerRepository.save(SeriesPlayer(series = series, tournamentPlayer = tp))
         }
-        return seriesRepository.findById(seriesId).get().toDto()
+        return seriesRepository.findById(seriesId).get().toDto(tournamentPlayerIdsForSeries(seriesId))
     }
 
     @Transactional(readOnly = true)
@@ -144,7 +146,16 @@ class SeriesService(
         if (!tournamentRepository.existsById(tournamentId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
         }
-        return seriesRepository.findAllByTournament_IdOrderByIdAsc(tournamentId).map { it.toDto() }
+        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdAsc(tournamentId)
+        val sidList = seriesList.map { it.id!! }
+        if (sidList.isEmpty()) return emptyList()
+        val bySeriesId = seriesPlayerRepository.findAllBySeries_IdIn(sidList).groupBy { sp ->
+            sp.series!!.id!!
+        }
+        return seriesList.map { s ->
+            val tpIds = bySeriesId[s.id]?.map { it.tournamentPlayer!!.id!! }?.sorted() ?: emptyList()
+            s.toDto(tpIds)
+        }
     }
 
     @Transactional(readOnly = true)
@@ -152,7 +163,7 @@ class SeriesService(
         val s = seriesRepository.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
         }
-        return s.toDto()
+        return s.toDto(tournamentPlayerIdsForSeries(id))
     }
 
     fun syncGames(seriesId: Long) {
@@ -163,7 +174,10 @@ class SeriesService(
         scoringService.calculateScores(seriesId)
     }
 
-    private fun Series.toDto() = SeriesDto(
+    private fun tournamentPlayerIdsForSeries(seriesId: Long): List<Long> =
+        seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId).map { it.tournamentPlayer!!.id!! }
+
+    private fun Series.toDto(tournamentPlayerIds: List<Long>) = SeriesDto(
         id = id!!,
         tournamentId = tournament!!.id!!,
         name = name,
@@ -173,5 +187,6 @@ class SeriesService(
         status = status,
         startsAt = startsAt,
         teamDeadline = teamDeadline,
+        tournamentPlayerIds = tournamentPlayerIds,
     )
 }

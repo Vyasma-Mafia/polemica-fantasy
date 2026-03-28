@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param
 interface SeriesPlayerRepository : JpaRepository<SeriesPlayer, Long> {
     fun findAllBySeries_Id(seriesId: Long): List<SeriesPlayer>
 
+    fun findAllBySeries_IdIn(seriesIds: Collection<Long>): List<SeriesPlayer>
+
     @Query(
         """
         SELECT sp FROM SeriesPlayer sp

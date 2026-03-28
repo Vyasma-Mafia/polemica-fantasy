@@ -50,6 +50,8 @@ export interface SeriesDto {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  /** tournament_player.id assigned to this series */
+  tournamentPlayerIds: number[]
 }
 
 export interface CardTemplateAchievementDto {

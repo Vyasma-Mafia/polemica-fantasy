@@ -47,6 +47,8 @@ data class SeriesDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    /** `tournament_player.id` for players assigned to this series */
+    val tournamentPlayerIds: List<Long>,
 )
 
 data class CardTemplateAchievementDto(

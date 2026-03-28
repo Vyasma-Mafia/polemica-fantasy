@@ -71,6 +71,7 @@ export function SeriesDetailPage() {
       startsAt: dayjs(s.startsAt),
       teamDeadline: dayjs(s.teamDeadline),
     })
+    setSelectedPlayerIds(s.tournamentPlayerIds ?? [])
   }, [q.data, form])
 
   const updateMut = useMutation({
@@ -207,9 +208,7 @@ export function SeriesDetailPage() {
 
       <Typography.Title level={4}>Assign players</Typography.Title>
       <Typography.Paragraph type="secondary">
-        Choose tournament players for this series. The admin API does not expose
-        current assignment in a read model; pick players and submit to replace
-        the roster.
+        Tournament players in this series. Save replaces the full roster with your selection.
       </Typography.Paragraph>
       <Space direction="vertical" style={{ width: '100%', maxWidth: 560 }}>
         <Select

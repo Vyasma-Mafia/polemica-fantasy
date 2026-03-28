@@ -20,7 +20,7 @@
 
 ## Следующие шаги
 1. По желанию: **A2** доп. методы в polemica-library (оптимизация списка игр игрока) — не блокер
-2. Опционально: admin read API для текущего состава серии (сейчас assign через `POST` без GET списка участников серии)
+2. ~~Опционально: admin read API для состава серии~~ — сделано: `SeriesDto.tournamentPlayerIds`; в `assignPlayers` после `deleteAllBySeries_Id` вызывается `flush()`, чтобы не было конфликта UNIQUE при повторной вставке
 3. Опционально: серверный агрегат лидерборда по турниру (сейчас TMA суммирует по сериям на клиенте)
 
 ## Открытые вопросы
@@ -28,7 +28,7 @@
 - Формула базовых очков игрока (award vs GamePointsService) — нужно уточнить
 
 ## Недавно сделано (TMA UX)
-- **Карточки в TMA:** изображение карточки — `playerPhotoUrl` с запасным вариантом `imageUrl` (`lib/cardImage.ts`); обводка по редкости на коллекции/сборке команды и в истории фэнтези (в т.ч. модалка деталей).
+- **Карточки в TMA:** см. [`systemPatterns.md`](systemPatterns.md) (раздел Telegram Mini App) и [`DESIGN.md`](../DESIGN.md) §3.1.1 — фото игрока / арт шаблона, рамка по редкости; задокументировано в Memory Bank и DESIGN.
 - **Webapp:** тёмная тема (DM Sans + Fraunces), хаб турнира, выбор серии («дни»), лидерборд турнира (вкладки «Общий» + серии, агрегация на клиенте), правила, история фэнтези (`GET /me/fantasy-teams`), коллекция с фильтрами и табами редкости, обновлённые Team / Series / Leaderboard страниц.
 - **User API:** `GET /api/v1/tournaments/{id}/participants` — ростер турнира для страницы участников (`UserTournamentService` + `TournamentController`).
 

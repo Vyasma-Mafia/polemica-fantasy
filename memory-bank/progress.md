@@ -29,6 +29,7 @@
 - [x] Контроллеры: `TournamentAdminController`, `SeriesAdminController`, `CardAdminController`; DTO + Jakarta Validation; `GlobalExceptionHandler`
 - [x] Тесты: вероятности паков, интеграционные сценарии (Basic Auth, give-cards)
 - [x] Read API для админки (A6): `GET .../tournaments/{tournamentId}/series`, `GET .../series/{id}`, `GET .../card-packs` (+ опциональный `tournamentId`); `CardPackRepository` list methods; интеграционный тест в `AdminApiIntegrationTest`
+- [x] `SeriesDto` включает `tournamentPlayerIds` (состав серии для админки); `assignPlayers`: `flush()` после bulk-delete, иначе UNIQUE `(series_id, tournament_player_id)` при сохранении
 
 ### Backend (Agent A4 — Scoring + Game Sync)
 - [x] `PolemicaProperties`, `PolemicaConfig` — bean `PolemicaClient` (`PolemicaClientImpl` + `Jackson2ObjectMapperBuilder`)
@@ -52,7 +53,7 @@
 - [x] Проект `polemica-fantasy-webapp/` (Vite + React 19 + TS)
 - [x] `@telegram-apps/sdk` + `InitDataProvider` (`retrieveRawInitData`, опционально `VITE_DEV_INIT_DATA`)
 - [x] Страницы: турниры, хаб турнира, выбор серии, турнирный лидерборд (Общий + по сериям), правила, история фэнтези, участники, серия, сборка команды, лидерборд серии, коллекция (`?tournamentId`)
-- [x] UI: тёмная тема, градиентные CTA, карточки по редкости, `PageHeader` / бейджи статусов
+- [x] UI: тёмная тема, градиентные CTA, карточки по редкости (фото игрока с fallback на арт шаблона, цветная рамка по редкости в коллекции/команде/истории фэнтези), `PageHeader` / бейджи статусов
 - [x] TanStack Query, React Router, proxy `/api` в `vite.config.ts`
 
 ### Frontend (Admin)

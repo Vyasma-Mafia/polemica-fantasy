@@ -74,6 +74,11 @@ S3-совместимое хранилище используется для ф�
 - Фронтенды получают URL изображений из API и загружают их напрямую из S3 (публичный доступ на чтение)
 - S3-провайдер не фиксирован: AWS S3, MinIO (для dev), Yandex Object Storage, и т.д. — используется стандартный AWS SDK
 
+**TMA (`polemica-fantasy-webapp`) — отображение карточки пользователя:**
+
+- Основное изображение — фото fantasy-игрока (`playerPhotoUrl` в ответе `GET /me/cards`, источник — `FantasyPlayer.photo_url`). Если фото нет, показывается арт шаблона (`imageUrl` → `CardTemplate.image_url`).
+- Рамка карточки в UI стилизуется по редкости (`COMMON` / `RARE` / `EPIC` / `LEGENDARY`): коллекция, сборка команды, история фэнтези (включая модалку деталей). На бэкенде контракт не менялся — поля уже отдаёт `UserCardItemDto`.
+
 ### 3.2 Module Structure
 
 ```
@@ -364,7 +369,7 @@ Authentication: Telegram `initData` in `Authorization` header, validated via HMA
 | GET | `/series/{id}` | Series details: players, games, status |
 | GET | `/series/{id}/leaderboard` | Fantasy team rankings |
 | GET | `/me` | Current user profile |
-| GET | `/me/cards` | User's card collection (filters: optional `tournamentId` — карты игроков, участвующих в этом турнире; `rarity`). В ответе у карточки указывается `fantasyPlayerId`. |
+| GET | `/me/cards` | User's card collection (filters: optional `tournamentId` — карты игроков, участвующих в этом турнире; `rarity`). В ответе по каждой карточке: `fantasyPlayerId`, `rarity`, `imageUrl` (арт шаблона), `playerPhotoUrl` (фото игрока), ник, достижения и др. — см. `UserCardItemDto`. |
 | GET | `/me/fantasy-teams` | All user's fantasy teams |
 | GET | `/me/fantasy-teams/{seriesId}` | Fantasy team for specific series |
 | POST | `/series/{id}/fantasy-team` | Submit fantasy team (body: 3 `user_card_id`). Каждая карточка должна относиться к игроку из состава серии (тот же `FantasyPlayer`, что у `SeriesPlayer`). |

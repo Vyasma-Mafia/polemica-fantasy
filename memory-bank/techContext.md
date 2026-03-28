@@ -26,6 +26,7 @@
 | @telegram-apps/sdk-react / @telegram-apps/sdk | `retrieveRawInitData`, `InitDataProvider` + опционально `VITE_DEV_INIT_DATA` |
 | TanStack Query 5 | Server state |
 | React Router 7 | Routing |
+| `lib/cardImage.ts` | Единое правило URL картинки карточки: `playerPhotoUrl ?? imageUrl` |
 
 ## Frontend Stack (Admin)
 
