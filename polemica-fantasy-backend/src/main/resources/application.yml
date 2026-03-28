@@ -40,7 +40,7 @@ telegram:
 
 polemica:
   api:
-    base-url: https://polemicagame.com
+    base-url: https://app.polemicagame.com
     # Reserved for future library support; profile games use default host in polemica-library
     profile-site-base-url: ${POLEMICA_PROFILE_SITE_BASE_URL:https://polemicagame.com}
     username: ${POLEMICA_USERNAME:}
