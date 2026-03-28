@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.dto.user.response.UserSeriesDetailDto
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
+import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -39,7 +40,7 @@ class UserSeriesService(
         val games = seriesGameRepository.findAllBySeries_Id(seriesId).map { g ->
             SeriesGameEntryDto(
                 polemicaGameId = g.polemicaGameId,
-                gameName = g.gameName,
+                gameName = formatGameDisplayName(g),
                 scored = g.scored,
             )
         }
@@ -76,5 +77,27 @@ class UserSeriesService(
                 ),
             )
         }
+    }
+
+    /**
+     * If sync stored an empty name as "(no name)", show "стол N, игра K" from cached Polemica JSON (`table`, `num`).
+     */
+    private fun formatGameDisplayName(g: SeriesGame): String {
+        val stored = g.gameName.trim()
+        if (stored.isNotEmpty() && stored != "(no name)") return stored
+        val node = g.gameDataCache
+        if (node != null && !node.isNull) {
+            val numNode = node.path("num")
+            val tableNode = node.path("table")
+            val num = if (numNode.isMissingNode || numNode.isNull) null else numNode.asInt()
+            val table = if (tableNode.isMissingNode || tableNode.isNull) null else tableNode.asInt()
+            if (num != null || table != null) {
+                val parts = mutableListOf<String>()
+                if (table != null) parts.add("стол $table")
+                if (num != null) parts.add("игра $num")
+                return parts.joinToString(", ")
+            }
+        }
+        return if (stored == "(no name)") "Игра #${g.polemicaGameId}" else stored.ifEmpty { "Игра #${g.polemicaGameId}" }
     }
 }

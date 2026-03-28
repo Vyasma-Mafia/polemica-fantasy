@@ -7,6 +7,11 @@ import org.springframework.data.repository.query.Param
 
 interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
 
+    /**
+     * Teams with cards/templates for scoring. Does not JOIN FETCH template achievements: Hibernate
+     * forbids multiple bag FETCH joins (`FantasyTeam.cards` + `CardTemplate.achievements`).
+     * Achievements load lazily in the same transaction; `CardTemplate.achievements` is `@BatchSize`.
+     */
     @Query(
         """
         SELECT DISTINCT ft FROM FantasyTeam ft
@@ -14,7 +19,6 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
         JOIN FETCH c.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
-        LEFT JOIN FETCH ct.achievements
         WHERE ft.series.id = :seriesId
         """,
     )

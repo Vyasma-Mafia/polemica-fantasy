@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import org.hibernate.annotations.BatchSize
 
 @Entity
 @Table(name = "card_template")
@@ -35,6 +36,7 @@ class CardTemplate(
     var description: String? = null,
 
     @OneToMany(mappedBy = "cardTemplate")
+    @BatchSize(size = 32)
     var achievements: MutableList<CardTemplateAchievement> = mutableListOf(),
 
     @OneToMany(mappedBy = "cardTemplate")
