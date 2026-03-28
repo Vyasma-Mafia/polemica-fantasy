@@ -7,7 +7,7 @@
 #
 # Cosign keyless signing uses OIDC; requires id-token: write.
 
-name: Docker publish
+name: Docker publish + deploy
 
 on:
   push:
