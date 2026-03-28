@@ -10,7 +10,7 @@ Backend — единый Spring Boot сервис с двумя группами
 - `polemica-fantasy-webapp` — Telegram Mini App для пользователей
 - `polemica-fantasy-admin` — веб-админка
 
-**Продакшен (VPS):** как быстро пересобрать бэкенд (Docker), выложить `dist` TMA и админки, обновить `.env` — в [`techContext.md`](techContext.md), раздел «Быстрое обновление на VPS после правок».
+**Продакшен (VPS):** на сервере **`~/polemica-fantasy`** — git-репозиторий (clone ветки `master`); выкладка правок: **`git pull`** → Docker Compose → при необходимости сборка SPA и выкладка в `/var/www/...`. Детали и rsync с локальной машины — [`techContext.md`](techContext.md), разделы «Deployment (VPS…)» и «Быстрое обновление на VPS после правок».
 
 ## Паттерны бэкенда
 
@@ -73,7 +73,7 @@ io.github.mralex1810.fantasy
 - **`TournamentKind`**: `STANDALONE` | `POLEMICA_COMPETITION` (колонка `tournament.kind`, NOT NULL).
 - При **`POLEMICA_COMPETITION`**: `tournament.polemica_competition_id` обязателен (UNIQUE среди не-NULL). Серии хранят `game_num_from` / `game_num_to` (inclusive по `num` из API); `DefaultGameSyncService` вызывает `getGamesFromCompetition` + `getGameFromCompetition`.
 - При **`STANDALONE`**: прежняя логика — пересечение профильных матчей участников серии + префикс названия; `series.game_num_*` NULL.
-- Смена `kind` / `polemica_competition_id` при существующих сериях у турнира — **409 CONFLICT**.
+- Смена `kind` / `polemica_competition_id` при существующих сериях у турнира — **409 CONFLICT** (проверка по *фактическому* изменению после merge полей запроса с сущностью, а не по «поле присутствует в JSON» — иначе админка не могла менять статус/имя, отправляя те же kind и polemicaCompetitionId).
 
 ## Модель игроков и карточек
 
@@ -95,5 +95,5 @@ io.github.mralex1810.fantasy
 | MinIO для dev | S3-совместимый, запускается в Docker, не нужен реальный AWS для разработки |
 | Multi-stage Dockerfile | Отделяет сборку от runtime; минимальный production image |
 | GHCR + cosign | Стандартный подход для GitHub-проектов; подпись для безопасности |
-| SSH deploy | Простота: git pull + docker compose up -d; достаточно для single server |
+| SSH deploy | На VPS: **git pull** в `~/polemica-fantasy` + `docker compose -f docker-compose.prod.yml up -d --build`; SPA — `npm run build` на сервере и `rsync` в nginx root; приватный репо — clone/pull по **SSH**, не HTTPS |
 | Глобальный `fantasy_player` + `card_template` → FK на него | Одна карточка реального игрока переиспользуется между турнирами; ростер турнира/серии остаётся явным через `tournament_player` / `series_player` |

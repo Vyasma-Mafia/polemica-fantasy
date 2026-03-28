@@ -55,11 +55,19 @@ class TournamentService(
     fun updateTournament(id: Long, request: UpdateTournamentRequest): TournamentDto {
         val t = tournamentRepository.findById(id).orElseThrow { notFound("Tournament", id) }
         val hasSeries = seriesRepository.countByTournament_Id(id) > 0
-        if (hasSeries && (request.kind != null || request.polemicaCompetitionId != null)) {
-            throw ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Cannot change kind or polemicaCompetitionId when tournament has series",
-            )
+        if (hasSeries) {
+            val newKind = request.kind ?: t.kind
+            val newPolemicaCompetitionId = when (newKind) {
+                TournamentKind.STANDALONE -> null
+                TournamentKind.POLEMICA_COMPETITION ->
+                    request.polemicaCompetitionId ?: t.polemicaCompetitionId
+            }
+            if (newKind != t.kind || newPolemicaCompetitionId != t.polemicaCompetitionId) {
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot change kind or polemicaCompetitionId when tournament has series",
+                )
+            }
         }
         request.name?.let { t.name = it.trim() }
         request.description?.let { t.description = it.trim().takeIf { s -> s.isNotEmpty() } }
