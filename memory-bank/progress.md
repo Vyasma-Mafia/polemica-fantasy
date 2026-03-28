@@ -11,6 +11,7 @@
 - [x] Docker Compose (PostgreSQL 16 + MinIO + backend), корневой `docker-compose.yml`, `.env.example`
 - [x] Multi-stage `polemica-fantasy-backend/Dockerfile`, `.dockerignore`
 - [x] CI: `.github/workflows/docker-publish.yml` (ветка **`master`**, GHCR, cosign keyless с `continue-on-error`, ручной deploy по SSH)
+- [x] CI: `.github/workflows/deploy-vps.yml` — push в **`master`** или **workflow_dispatch** → SSH на VPS: `git pull`, сборка webapp/admin, `docker compose -f docker-compose.prod.yml up -d --build`, `sudo rsync` в `/var/www/fantasy.maftourbot.ru` и `/var/www/admin.fantasy.maftourbot.ru` (секреты `SSH_HOST`, `SSH_USER`, `SSH_KEY`, опционально `DEPLOY_PATH`)
 
 ### Backend (Agent A1 — Foundation)
 - [x] Spring Boot 3.4.2, Spring Data JPA, Flyway, Security, Actuator + Prometheus (management порт 8081)

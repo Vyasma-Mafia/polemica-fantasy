@@ -49,7 +49,7 @@
 | Docker Compose | Dev: PostgreSQL 16 + MinIO + backend; Prod: `docker-compose.prod.yml` — PostgreSQL + backend only; S3 = Yandex (`S3_ENDPOINT=https://storage.yandexcloud.net`, `S3_REGION=ru-central1`, bucket из `.env`, пароль статического ключа как в overlay) |
 | S3 (`software.amazon.awssdk:s3` + BOM 2.29.x) | Хранение фотографий игроков и артворков карточек |
 | MinIO | S3-совместимый storage для локальной разработки |
-| GitHub Actions | CI/CD: build image → push to GHCR → deploy via SSH |
+| GitHub Actions | CI/CD: `docker-publish.yml` — build image → GHCR; `deploy-vps.yml` — push в `master` → SSH на VPS (git pull, npm build SPA, `docker-compose.prod.yml`, rsync в `/var/www`) |
 | GHCR | GitHub Container Registry для Docker images |
 | cosign | Подпись Docker images (Sigstore) |
 | Prometheus + Actuator | Мониторинг (опционально, management port 8081) |
