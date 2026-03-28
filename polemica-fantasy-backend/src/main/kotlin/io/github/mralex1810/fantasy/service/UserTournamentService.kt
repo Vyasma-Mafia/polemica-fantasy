@@ -1,11 +1,13 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserSeriesSummaryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDto
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -16,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException
 class UserTournamentService(
     private val tournamentRepository: TournamentRepository,
     private val seriesRepository: SeriesRepository,
+    private val tournamentPlayerRepository: TournamentPlayerRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -50,6 +53,21 @@ class UserTournamentService(
             createdAt = t.createdAt,
             series = seriesList,
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun listParticipants(tournamentId: Long): List<SeriesPlayerEntryDto> {
+        if (!tournamentRepository.existsById(tournamentId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
+        }
+        return tournamentPlayerRepository.findAllByTournament_IdOrderById(tournamentId).map { tp ->
+            val fp = tp.fantasyPlayer!!
+            SeriesPlayerEntryDto(
+                tournamentPlayerId = tp.id!!,
+                nickname = fp.nickname,
+                photoUrl = fp.photoUrl,
+            )
+        }
     }
 
     private fun Tournament.toUserDto() = UserTournamentDto(

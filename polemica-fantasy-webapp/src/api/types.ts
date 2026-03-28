@@ -37,6 +37,13 @@ export interface UserTournamentDetail extends UserTournament {
   series: UserSeriesSummary[]
 }
 
+/** Tournament roster / series players share this shape in the API. */
+export interface SeriesPlayerEntry {
+  tournamentPlayerId: number
+  nickname: string
+  photoUrl: string | null
+}
+
 export interface UserSeriesDetail {
   id: number
   tournamentId: number
@@ -47,7 +54,7 @@ export interface UserSeriesDetail {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
-  players: { tournamentPlayerId: number; nickname: string; photoUrl: string | null }[]
+  players: SeriesPlayerEntry[]
   games: { polemicaGameId: number; gameName: string; scored: boolean }[]
 }
 

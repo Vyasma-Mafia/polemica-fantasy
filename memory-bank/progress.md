@@ -4,12 +4,13 @@
 
 ### Инфраструктура
 - [x] **VPS:** `fantasy.maftourbot.ru` — TMA; `admin.fantasy.maftourbot.ru` — админ SPA; Docker Compose prod (`docker-compose.prod.yml`), nginx + Let’s Encrypt; см. [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf), [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf)
+- [x] **VPS — репозиторий:** `~/polemica-fantasy` на `mafia@51.250.18.236` — **git** (ветка `master`, remote по SSH), не «голая» копия без `.git`; обновление кода прежде всего **`git pull`**, не только rsync
 - [x] Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 — скелет проекта
 - [x] Дизайн-документ (`DESIGN.md`) — актуализирован под глобальных игроков и карточки (Fantasy Player, §4 / API / S3)
 - [x] Memory Bank инициализирован
 - [x] Docker Compose (PostgreSQL 16 + MinIO + backend), корневой `docker-compose.yml`, `.env.example`
 - [x] Multi-stage `polemica-fantasy-backend/Dockerfile`, `.dockerignore`
-- [x] CI: `.github/workflows/docker-publish.yml` (GHCR, cosign keyless с `continue-on-error`, ручной deploy по SSH)
+- [x] CI: `.github/workflows/docker-publish.yml` (ветка **`master`**, GHCR, cosign keyless с `continue-on-error`, ручной deploy по SSH)
 
 ### Backend (Agent A1 — Foundation)
 - [x] Spring Boot 3.4.2, Spring Data JPA, Flyway, Security, Actuator + Prometheus (management порт 8081)
@@ -43,14 +44,15 @@
 ### Backend (Agent A5 — User API + Telegram)
 - [x] `TelegramProperties`, `TelegramInitDataValidator` (HMAC по доке Telegram Web Apps), `TelegramAuthentication` / principal `TelegramUser`
 - [x] `UserService` (профиль + `getOrCreateAndUpdateProfile`), рефактор `CardService` на `UserService`
-- [x] User endpoints по DESIGN §6.1: турниры (ACTIVE), турнир + серии, серия (игроки, игры), лидерборд, `/me`, `/me/cards`, fantasy team CRUD
+- [x] User endpoints по DESIGN §6.1: турниры (ACTIVE), турнир + серии, серия (игроки, игры), лидерборд, `/me`, `/me/cards`, fantasy team CRUD; дополнительно `GET /tournaments/{id}/participants` (ростер турнира для TMA)
 - [x] Репозитории: `UserCardRepository` фильтры, `FantasyTeamRepository` + leaderboard, `FantasyTeamCardRepository`, `SeriesRepository` / `SeriesPlayerRepository` доп. запросы
 - [x] Тесты: `TelegramInitDataValidatorTest`, `UserApiIntegrationTest` (401 без заголовка, 200 `/me` с подписанным initData)
 
 ### Frontend (TMA)
 - [x] Проект `polemica-fantasy-webapp/` (Vite + React 19 + TS)
 - [x] `@telegram-apps/sdk` + `InitDataProvider` (`retrieveRawInitData`, опционально `VITE_DEV_INIT_DATA`)
-- [x] Страницы: турниры, турнир → серии, серия, коллекция, сборка команды, лидерборд
+- [x] Страницы: турниры, хаб турнира, выбор серии, турнирный лидерборд (Общий + по сериям), правила, история фэнтези, участники, серия, сборка команды, лидерборд серии, коллекция (`?tournamentId`)
+- [x] UI: тёмная тема, градиентные CTA, карточки по редкости, `PageHeader` / бейджи статусов
 - [x] TanStack Query, React Router, proxy `/api` в `vite.config.ts`
 
 ### Frontend (Admin)

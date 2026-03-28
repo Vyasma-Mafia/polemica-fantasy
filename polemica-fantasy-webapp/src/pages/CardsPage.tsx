@@ -1,15 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { Rarity, UserCardItem } from '../api/types'
+import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
-
-const RARITIES: Rarity[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY']
+import { RARITY_UI, rarityClass } from '../lib/rarity'
 
 export function CardsPage() {
   const initData = useInitData()
-  const [tournamentId, setTournamentId] = useState<string>('')
+  const [searchParams] = useSearchParams()
+  const tournamentFromQuery = searchParams.get('tournamentId') ?? ''
+  const backTo = tournamentFromQuery ? `/tournaments/${tournamentFromQuery}` : '/'
+
+  const [tournamentId, setTournamentId] = useState(tournamentFromQuery)
+  useEffect(() => {
+    setTournamentId(tournamentFromQuery)
+  }, [tournamentFromQuery])
   const [rarity, setRarity] = useState<Rarity | ''>('')
+  const [playerFilter, setPlayerFilter] = useState('')
 
   const params = useMemo(() => {
     const sp = new URLSearchParams()
@@ -25,44 +34,91 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
-  if (!initData) return <p className="muted">Нужен initData.</p>
+  const players = useMemo(() => {
+    const names = new Set<string>()
+    for (const c of q.data ?? []) names.add(c.playerNickname)
+    return [...names].sort()
+  }, [q.data])
+
+  const filtered = useMemo(() => {
+    const list = q.data ?? []
+    if (!playerFilter.trim()) return list
+    return list.filter((c) => c.playerNickname.toLowerCase().includes(playerFilter.trim().toLowerCase()))
+  }, [q.data, playerFilter])
+
+  if (!initData) return <p className="pf-muted">Нужен initData.</p>
 
   return (
-    <div>
-      <h1>Коллекция</h1>
-      <div className="filters">
-        <label>
-          Турнир ID{' '}
+    <div className="pf-page">
+      <PageHeader title="Моя коллекция" backTo={backTo} backLabel={tournamentFromQuery ? 'К турниру' : 'Турниры'} />
+
+      <div className="pf-filters">
+        <label className="pf-field">
+          <span className="pf-field__label">Турнир ID</span>
           <input
+            className="pf-input"
             value={tournamentId}
             onChange={(e) => setTournamentId(e.target.value)}
-            placeholder="все"
+            placeholder="все карты"
+            inputMode="numeric"
           />
         </label>
-        <label>
-          Редкость{' '}
-          <select value={rarity} onChange={(e) => setRarity((e.target.value || '') as Rarity | '')}>
-            <option value="">все</option>
-            {RARITIES.map((r) => (
-              <option key={r} value={r}>
-                {r}
+        <label className="pf-field">
+          <span className="pf-field__label">Игрок</span>
+          <select
+            className="pf-input"
+            value={playerFilter}
+            onChange={(e) => setPlayerFilter(e.target.value)}
+          >
+            <option value="">Все</option>
+            {players.map((n) => (
+              <option key={n} value={n}>
+                {n}
               </option>
             ))}
           </select>
         </label>
       </div>
-      {q.isLoading && <p>Загрузка…</p>}
-      {q.isError && <p className="err">{(q.error as Error).message}</p>}
-      <ul className="cards-grid">
-        {(q.data ?? []).map((c) => (
-          <li key={c.id} className="card-mini">
-            {c.imageUrl ? <img src={c.imageUrl} alt="" /> : <div className="ph">{c.rarity}</div>}
-            <div>
-              <strong>{c.playerNickname}</strong>
-              <div className="muted">
-                #{c.id} · {c.rarity}
+
+      <div className="pf-rarity-tabs">
+        {RARITY_UI.map((tab) => (
+          <button
+            key={tab.label}
+            type="button"
+            className={`pf-rarity-tab ${rarity === tab.value ? 'pf-rarity-tab--active' : ''}`}
+            onClick={() => setRarity(tab.value)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {q.isLoading && <p className="pf-muted">Загрузка…</p>}
+      {q.isError && <p className="pf-err">{(q.error as Error).message}</p>}
+
+      <ul className="pf-collection-grid">
+        {filtered.map((c) => (
+          <li key={c.id} className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`}>
+            <div className="pf-collection-card__frame">
+              {c.imageUrl ? (
+                <img src={c.imageUrl} alt="" className="pf-collection-card__img" />
+              ) : (
+                <div className="pf-collection-card__ph">{c.rarity}</div>
+              )}
+              <div className="pf-collection-card__cap">
+                <span className="pf-collection-card__name">{c.playerNickname}</span>
+                <span className="pf-collection-card__rarity">{c.rarity}</span>
               </div>
             </div>
+            {c.achievements.length > 0 && (
+              <ul className="pf-collection-card__ach">
+                {c.achievements.slice(0, 3).map((a) => (
+                  <li key={a.achievementType}>
+                    {a.achievementType}: +{a.bonusPoints}
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
       </ul>

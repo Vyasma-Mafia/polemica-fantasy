@@ -56,6 +56,7 @@
 
 ## Deployment (VPS fantasy.maftourbot.ru)
 
+- **Репозиторий на сервере:** `~/polemica-fantasy` — **git clone** ветки **`master`**, remote `git@github.com:Vyasma-Mafia/polemica-fantasy.git`. У пользователя `mafia` на ВМ настроен SSH-доступ к GitHub; **HTTPS `git clone`/`pull` с сервера не подходит** для этого репо (приватный доступ). Секреты только в **`~/polemica-fantasy/.env`** (файл не в git; при переустановке каталога — сохранить `.env` вручную и вернуть после `git clone`).
 - **Compose:** `docker compose -f docker-compose.prod.yml up -d --build` в `~/polemica-fantasy` на VPS (`51.250.18.236`). Отдельный файл от dev: MinIO без портов на хост, PostgreSQL и API только на `127.0.0.1` (`15433`, `18080`, `18081` management/Actuator).
 - **Nginx:** `server_name fantasy.maftourbot.ru` — TMA в `/var/www/fantasy.maftourbot.ru`, [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf). **Админка:** `https://admin.fantasy.maftourbot.ru` — статика `/var/www/admin.fantasy.maftourbot.ru`, тот же `proxy_pass` для `/api/`, [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf). HTTPS — certbot.
 - **Webapp:** на VPS установлен **Node.js 22.x** (NodeSource); `npm ci && npm run build` в `polemica-fantasy-webapp/` проходит на сервере. Статику по-прежнему можно выкладывать через `rsync` `dist/` → `/var/www/fantasy.maftourbot.ru/`.
@@ -63,14 +64,24 @@
 
 ## Быстрое обновление на VPS после правок
 
-Ориентиры: хост **`mafia@51.250.18.236`**, каталог на сервере **`~/polemica-fantasy`**, ключ SSH **`~/personal/mafia/id_rsa`**. Все команды с локальной машины — из **корня репозитория** `polemica-fantasy/`, если не указано иное.
+Ориентиры: хост **`mafia@51.250.18.236`**, каталог на сервере **`~/polemica-fantasy`**, ключ SSH **`~/personal/mafia/id_rsa`**. Сначала изменения **пушатся в GitHub** с локальной машины, затем на ВМ.
+
+**Типовой цикл (репозиторий уже клонирован на сервере):**
+
+```bash
+ssh -i ~/personal/mafia/id_rsa mafia@51.250.18.236
+cd ~/polemica-fantasy && git pull origin master
+docker compose -f docker-compose.prod.yml up -d --build fantasy-backend
+```
+
+При изменениях только во **frontend** — после `git pull` на сервере: `npm ci && npm run build` в `polemica-fantasy-webapp/` и/или `polemica-fantasy-admin/`, затем `sudo rsync` в соответствующие каталоги `/var/www/...` (см. ниже).
 
 ### Бэкенд (`polemica-fantasy-backend/`)
 
-1. Доставить код на сервер (любой способ):
-   - **rsync** (без git):  
+1. Доставить код на сервер:
+   - **основной способ:** **`git pull origin master`** в `~/polemica-fantasy` на ВМ (после push в GitHub).
+   - **запасной (без git на сервере):** **rsync** с локальной машины:  
      `rsync -avz --delete --exclude build --exclude .gradle -e "ssh -i ~/personal/mafia/id_rsa" polemica-fantasy-backend/ mafia@51.250.18.236:~/polemica-fantasy/polemica-fantasy-backend/`
-   - или **`git pull`** на сервере в `~/polemica-fantasy`, если репозиторий там клонирован и запушены изменения.
 2. Пересобрать и перезапустить **только API** (остальные контейнеры не трогаются):  
    `ssh -i ~/personal/mafia/id_rsa mafia@51.250.18.236 'cd ~/polemica-fantasy && docker compose -f docker-compose.prod.yml up -d --build fantasy-backend'`
 3. Только **изменения `.env`** (без пересборки образа):  
@@ -112,8 +123,8 @@
 Паттерн взят из проекта `overlay` (`~/personal/mafia/overlay`):
 - Multi-stage Dockerfile: dependency caching → build → minimal runtime image
 - Docker Compose с healthcheck на PostgreSQL
-- CI: push to main → build + push to GHCR + cosign
-- Deploy: manual workflow_dispatch → SSH → git pull + docker compose pull + up -d
+- CI: push to **`master`** → build + push to GHCR + cosign
+- Deploy на VPS: вручную — `git pull` + `docker compose … up -d --build` (образ бэкенда собирается на сервере из `docker-compose.prod.yml`); либо GitHub Actions **workflow_dispatch** → SSH → `git pull` + `docker compose pull` + `up -d` (если compose на сервере переведён на образы из GHCR)
 - Secrets через .env файл (не в git)
 - S3-провайдер для prod: Yandex Object Storage (endpoint: storage.yandexcloud.net, region: ru-central1)
 

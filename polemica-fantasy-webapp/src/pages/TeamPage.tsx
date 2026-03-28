@@ -3,7 +3,9 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet, apiSend, ApiError } from '../api/client'
 import type { FantasyTeamDto, UserCardItem, UserSeriesDetail } from '../api/types'
+import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
+import { rarityClass } from '../lib/rarity'
 
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
@@ -61,6 +63,7 @@ export function TeamPage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
+      void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
     },
   })
 
@@ -69,55 +72,89 @@ export function TeamPage() {
     return Date.now() > new Date(seriesQ.data.teamDeadline).getTime()
   }, [seriesQ.data])
 
-  if (!initData) return <p className="muted">Нужен initData.</p>
-  if (seriesQ.isLoading) return <p>Загрузка…</p>
-  if (seriesQ.isError) return <p className="err">{(seriesQ.error as Error).message}</p>
+  const cardById = useMemo(() => {
+    const m = new Map<number, UserCardItem>()
+    for (const c of cardsQ.data ?? []) m.set(c.id, c)
+    return m
+  }, [cardsQ.data])
+
+  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (seriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
+  if (seriesQ.isError) return <p className="pf-err">{(seriesQ.error as Error).message}</p>
 
   const s = seriesQ.data!
   const cards = cardsQ.data ?? []
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
+  const back = `/tournaments/${s.tournamentId}/series`
 
   return (
-    <div>
-      <p>
-        <Link to={`/series/${sid}`}>← Серия</Link>
-      </p>
-      <h1>Команда: {s.name}</h1>
-      {deadlinePassed && <p className="err">Дедлайн сбора команды прошёл.</p>}
+    <div className="pf-page">
+      <PageHeader title="Сборка команды" subtitle={s.name} backTo={back} />
+
+      {deadlinePassed && <p className="pf-err">Дедлайн сбора команды прошёл.</p>}
       {teamQ.isSuccess && teamQ.data && (
-        <p className="muted">
-          Уже отправлено ({teamQ.data.slots.length} карт). Можно обновить до дедлайна.
+        <p className="pf-muted">
+          Команда отправлена ({teamQ.data.slots.length} карт). Можно обновить до дедлайна.
         </p>
       )}
-      {teamQ.isSuccess && !teamQ.data && <p className="muted">Команда ещё не собрана.</p>}
-      <p>Выберите ровно 3 карты (порядок = слоты 1–3):</p>
-      <ol className="picked">
-        {selected.map((id) => (
-          <li key={id}>{id}</li>
-        ))}
+      {teamQ.isSuccess && !teamQ.data && <p className="pf-muted">Выберите три карты для серии.</p>}
+
+      <p className="pf-instruction">Выберите ровно 3 карты (порядок — слоты 1–3)</p>
+
+      <ol className="pf-picked-slots">
+        {[0, 1, 2].map((i) => {
+          const id = selected[i]
+          const c = id != null ? cardById.get(id) : undefined
+          return (
+            <li key={i} className="pf-picked-slots__slot">
+              <span className="pf-picked-slots__num">{i + 1}</span>
+              {c ? (
+                <div className={`pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}>
+                  {c.imageUrl ? <img src={c.imageUrl} alt="" /> : <div className="pf-mini-card__ph" />}
+                  <span>{c.playerNickname}</span>
+                </div>
+              ) : (
+                <span className="pf-muted">—</span>
+              )}
+            </li>
+          )
+        })}
       </ol>
-      <ul className="cards-grid">
+
+      <ul className="pf-team-grid">
         {cards.map((c) => (
           <li key={c.id}>
             <button
               type="button"
-              className={selected.includes(c.id) ? 'picked-btn' : ''}
+              className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}`}
               onClick={() => toggle(c.id)}
               disabled={deadlinePassed}
             >
-              {c.playerNickname} · {c.rarity} · #{c.id}
+              {c.imageUrl ? (
+                <img src={c.imageUrl} alt="" className="pf-team-card__img" />
+              ) : (
+                <div className="pf-team-card__ph">{c.rarity}</div>
+              )}
+              <span className="pf-team-card__name">{c.playerNickname}</span>
+              <span className="pf-team-card__meta">{c.rarity}</span>
             </button>
           </li>
         ))}
       </ul>
+
       <button
         type="button"
+        className="pf-btn pf-btn--primary pf-btn--block"
         disabled={selected.length !== 3 || deadlinePassed || submit.isPending}
         onClick={() => submit.mutate()}
       >
         {teamQ.isSuccess && teamQ.data ? 'Обновить команду' : 'Отправить команду'}
       </button>
-      {errMsg && <p className="err">{errMsg}</p>}
+      {errMsg && <p className="pf-err">{errMsg}</p>}
+
+      <p className="pf-footer-link">
+        <Link to={`/series/${sid}`}>Обзор серии</Link>
+      </p>
     </div>
   )
 }

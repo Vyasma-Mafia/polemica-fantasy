@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.controller.user
 
+import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDto
 import io.github.mralex1810.fantasy.service.UserTournamentService
@@ -19,4 +20,7 @@ class TournamentController(
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): UserTournamentDetailDto = userTournamentService.getTournament(id)
+
+    @GetMapping("/{id}/participants")
+    fun participants(@PathVariable id: Long): List<SeriesPlayerEntryDto> = userTournamentService.listParticipants(id)
 }

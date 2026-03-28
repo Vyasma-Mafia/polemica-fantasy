@@ -360,6 +360,7 @@ Authentication: Telegram `initData` in `Authorization` header, validated via HMA
 |--------|------|-------------|
 | GET | `/tournaments` | List active tournaments (в ответе: `kind`, `polemicaCompetitionId` при необходимости) |
 | GET | `/tournaments/{id}` | Tournament with series list (те же поля турнира) |
+| GET | `/tournaments/{id}/participants` | Ростер турнира: список `SeriesPlayerEntry` (ник, фото, `tournamentPlayerId`) |
 | GET | `/series/{id}` | Series details: players, games, status |
 | GET | `/series/{id}/leaderboard` | Fantasy team rankings |
 | GET | `/me` | Current user profile |
