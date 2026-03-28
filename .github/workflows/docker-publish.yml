@@ -11,7 +11,7 @@ name: Docker publish + deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "polemica-fantasy-backend/**"
       - ".github/workflows/docker-publish.yml"
@@ -49,7 +49,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Build and push
         id: push
