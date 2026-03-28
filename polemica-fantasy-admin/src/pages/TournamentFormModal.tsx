@@ -1,7 +1,5 @@
-import { Button, Form, Input, Select } from 'antd'
-import { useQuery } from '@tanstack/react-query'
+import { Button, Form, Input, InputNumber, Select } from 'antd'
 import { useEffect } from 'react'
-import { listPolemicaCompetitions } from '../api/polemica'
 import type { TournamentKind, TournamentStatus } from '../api/types'
 
 interface Values {
@@ -26,12 +24,6 @@ export function TournamentFormModal({
   const [form] = Form.useForm<Values>()
 
   const kind = Form.useWatch('kind', form)
-
-  const { data: competitions } = useQuery({
-    queryKey: ['admin', 'polemica', 'competitions'],
-    queryFn: listPolemicaCompetitions,
-    enabled: kind === 'POLEMICA_COMPETITION',
-  })
 
   useEffect(() => {
     form.setFieldsValue({
@@ -85,18 +77,23 @@ export function TournamentFormModal({
       {kind === 'POLEMICA_COMPETITION' && (
         <Form.Item
           name="polemicaCompetitionId"
-          label="Polemica competition"
-          rules={[{ required: true, message: 'Select a competition' }]}
+          label="Polemica competition ID"
+          extra="Numeric competition id from Polemica (no list fetch required)."
+          rules={[
+            { required: true, message: 'Enter a competition id' },
+            {
+              type: 'number',
+              min: 1,
+              message: 'Id must be a positive integer',
+            },
+          ]}
         >
-          <Select
-            showSearch
-            optionFilterProp="label"
-            placeholder="Select competition"
-            loading={!competitions}
-            options={competitions?.map((c) => ({
-              value: c.id,
-              label: `${c.id} — ${c.name}`,
-            }))}
+          <InputNumber
+            style={{ width: '100%' }}
+            min={1}
+            precision={0}
+            placeholder="e.g. 5045"
+            controls={false}
           />
         </Form.Item>
       )}
