@@ -28,6 +28,7 @@
 - Формула базовых очков игрока (award vs GamePointsService) — нужно уточнить
 
 ## Недавно сделано (TMA UX)
+- **Карточки в TMA:** изображение карточки — `playerPhotoUrl` с запасным вариантом `imageUrl` (`lib/cardImage.ts`); обводка по редкости на коллекции/сборке команды и в истории фэнтези (в т.ч. модалка деталей).
 - **Webapp:** тёмная тема (DM Sans + Fraunces), хаб турнира, выбор серии («дни»), лидерборд турнира (вкладки «Общий» + серии, агрегация на клиенте), правила, история фэнтези (`GET /me/fantasy-teams`), коллекция с фильтрами и табами редкости, обновлённые Team / Series / Leaderboard страниц.
 - **User API:** `GET /api/v1/tournaments/{id}/participants` — ростер турнира для страницы участников (`UserTournamentService` + `TournamentController`).
 

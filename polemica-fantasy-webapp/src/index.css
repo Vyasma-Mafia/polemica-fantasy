@@ -1054,6 +1054,22 @@ a {
   border: 2px solid var(--pf-border);
 }
 
+.pf-fantasy-card--common {
+  border-color: #78716c;
+}
+.pf-fantasy-card--rare {
+  border-color: #94a3b8;
+  box-shadow: 0 0 12px rgba(148, 163, 184, 0.15);
+}
+.pf-fantasy-card--epic {
+  border-color: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+.pf-fantasy-card--legendary {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
 .pf-fantasy-card__img {
   width: 100%;
   aspect-ratio: 3/4;
@@ -1128,10 +1144,31 @@ a {
   cursor: pointer;
 }
 
+.pf-modal__img-frame {
+  border-radius: var(--pf-radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 2px solid var(--pf-border);
+}
+
+.pf-modal__img-frame--common {
+  border-color: #78716c;
+}
+.pf-modal__img-frame--rare {
+  border-color: #94a3b8;
+}
+.pf-modal__img-frame--epic {
+  border-color: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+.pf-modal__img-frame--legendary {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
 .pf-modal__img {
   width: 100%;
-  border-radius: var(--pf-radius-sm);
-  margin-bottom: 10px;
+  display: block;
 }
 
 .pf-modal__title {

@@ -5,6 +5,7 @@ import { apiGet, apiSend, ApiError } from '../api/client'
 import type { FantasyTeamDto, UserCardItem, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
+import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 
 export function TeamPage() {
@@ -105,12 +106,13 @@ export function TeamPage() {
         {[0, 1, 2].map((i) => {
           const id = selected[i]
           const c = id != null ? cardById.get(id) : undefined
+          const pickedSrc = c ? cardDisplayImageUrl(c) : null
           return (
             <li key={i} className="pf-picked-slots__slot">
               <span className="pf-picked-slots__num">{i + 1}</span>
               {c ? (
                 <div className={`pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}>
-                  {c.imageUrl ? <img src={c.imageUrl} alt="" /> : <div className="pf-mini-card__ph" />}
+                  {pickedSrc ? <img src={pickedSrc} alt="" /> : <div className="pf-mini-card__ph" />}
                   <span>{c.playerNickname}</span>
                 </div>
               ) : (
@@ -122,7 +124,9 @@ export function TeamPage() {
       </ol>
 
       <ul className="pf-team-grid">
-        {cards.map((c) => (
+        {cards.map((c) => {
+          const imgSrc = cardDisplayImageUrl(c)
+          return (
           <li key={c.id}>
             <button
               type="button"
@@ -130,8 +134,8 @@ export function TeamPage() {
               onClick={() => toggle(c.id)}
               disabled={deadlinePassed}
             >
-              {c.imageUrl ? (
-                <img src={c.imageUrl} alt="" className="pf-team-card__img" />
+              {imgSrc ? (
+                <img src={imgSrc} alt="" className="pf-team-card__img" />
               ) : (
                 <div className="pf-team-card__ph">{c.rarity}</div>
               )}
@@ -139,7 +143,8 @@ export function TeamPage() {
               <span className="pf-team-card__meta">{c.rarity}</span>
             </button>
           </li>
-        ))}
+          )
+        })}
       </ul>
 
       <button

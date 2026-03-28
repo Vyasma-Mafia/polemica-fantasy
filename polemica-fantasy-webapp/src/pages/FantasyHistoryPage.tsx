@@ -5,6 +5,7 @@ import { apiGet } from '../api/client'
 import type { FantasyTeamDto, UserCardItem, UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
+import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 
 export function FantasyHistoryPage() {
@@ -54,6 +55,7 @@ export function FantasyHistoryPage() {
   const back = `/tournaments/${t.id}`
 
   const detailCard = detailCardId != null ? cardById.get(detailCardId) : undefined
+  const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
 
   return (
     <div className="pf-page">
@@ -83,6 +85,7 @@ export function FantasyHistoryPage() {
                   <div className="pf-carousel" role="list">
                     {team.slots.map((slot) => {
                       const card = cardById.get(slot.userCardId)
+                      const imgSrc = card ? cardDisplayImageUrl(card) : null
                       return (
                         <button
                           key={slot.slot}
@@ -91,8 +94,8 @@ export function FantasyHistoryPage() {
                           onClick={() => setDetailCardId(slot.userCardId)}
                           role="listitem"
                         >
-                          {card?.imageUrl ? (
-                            <img src={card.imageUrl} alt="" className="pf-fantasy-card__img" />
+                          {imgSrc ? (
+                            <img src={imgSrc} alt="" className="pf-fantasy-card__img" />
                           ) : (
                             <div className="pf-fantasy-card__ph">{card?.rarity ?? '—'}</div>
                           )}
@@ -128,7 +131,11 @@ export function FantasyHistoryPage() {
             <button type="button" className="pf-modal__close" onClick={() => setDetailCardId(null)}>
               ×
             </button>
-            {detailCard.imageUrl && <img src={detailCard.imageUrl} alt="" className="pf-modal__img" />}
+            {detailImgSrc && detailCard && (
+              <div className={`pf-modal__img-frame pf-modal__img-frame--${rarityClass(detailCard.rarity)}`}>
+                <img src={detailImgSrc} alt="" className="pf-modal__img" />
+              </div>
+            )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
             <ul className="pf-modal__ach">

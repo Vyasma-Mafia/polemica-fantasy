@@ -5,6 +5,7 @@ import { apiGet } from '../api/client'
 import type { Rarity, UserCardItem } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
+import { cardDisplayImageUrl } from '../lib/cardImage'
 import { RARITY_UI, rarityClass } from '../lib/rarity'
 
 export function CardsPage() {
@@ -97,11 +98,13 @@ export function CardsPage() {
       {q.isError && <p className="pf-err">{(q.error as Error).message}</p>}
 
       <ul className="pf-collection-grid">
-        {filtered.map((c) => (
+        {filtered.map((c) => {
+          const imgSrc = cardDisplayImageUrl(c)
+          return (
           <li key={c.id} className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`}>
             <div className="pf-collection-card__frame">
-              {c.imageUrl ? (
-                <img src={c.imageUrl} alt="" className="pf-collection-card__img" />
+              {imgSrc ? (
+                <img src={imgSrc} alt="" className="pf-collection-card__img" />
               ) : (
                 <div className="pf-collection-card__ph">{c.rarity}</div>
               )}
@@ -120,7 +123,8 @@ export function CardsPage() {
               </ul>
             )}
           </li>
-        ))}
+          )
+        })}
       </ul>
     </div>
   )
