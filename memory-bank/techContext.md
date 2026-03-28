@@ -45,7 +45,7 @@
 | Технология | Назначение |
 |------------|------------|
 | Docker | Multi-stage build (gradle:jdk21 → eclipse-temurin:21-jdk-jammy) |
-| Docker Compose | Dev: PostgreSQL 16 + MinIO + backend; Prod: PostgreSQL + backend (S3 = Yandex Object Storage) |
+| Docker Compose | Dev: PostgreSQL 16 + MinIO + backend; Prod: `docker-compose.prod.yml` — PostgreSQL + backend only; S3 = Yandex (`S3_ENDPOINT=https://storage.yandexcloud.net`, `S3_REGION=ru-central1`, bucket из `.env`, пароль статического ключа как в overlay) |
 | S3 (`software.amazon.awssdk:s3` + BOM 2.29.x) | Хранение фотографий игроков и артворков карточек |
 | MinIO | S3-совместимый storage для локальной разработки |
 | GitHub Actions | CI/CD: build image → push to GHCR → deploy via SSH |
