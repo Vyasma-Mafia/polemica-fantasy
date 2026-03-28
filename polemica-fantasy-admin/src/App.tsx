@@ -1,0 +1,27 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { ProtectedLayout } from './layout/ProtectedLayout'
+import { CardPacksPage } from './pages/CardPacksPage'
+import { CardTemplatesPage } from './pages/CardTemplatesPage'
+import { LoginPage } from './pages/LoginPage'
+import { SeriesDetailPage } from './pages/SeriesDetailPage'
+import { TournamentDetailPage } from './pages/TournamentDetailPage'
+import { TournamentsPage } from './pages/TournamentsPage'
+import { UserToolsPage } from './pages/UserToolsPage'
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<ProtectedLayout />}>
+        <Route index element={<Navigate to="tournaments" replace />} />
+        <Route path="tournaments" element={<TournamentsPage />} />
+        <Route path="tournaments/:id" element={<TournamentDetailPage />} />
+        <Route path="series/:id" element={<SeriesDetailPage />} />
+        <Route path="card-templates" element={<CardTemplatesPage />} />
+        <Route path="card-packs" element={<CardPacksPage />} />
+        <Route path="user-tools" element={<UserToolsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}

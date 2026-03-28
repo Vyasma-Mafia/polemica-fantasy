@@ -1,0 +1,96 @@
+# Build multi-stage Docker image, push to GHCR, optional cosign sign.
+# Manual deploy: workflow_dispatch runs SSH on the server (configure secrets).
+#
+# Secrets for deploy:
+#   SSH_HOST, SSH_USER, SSH_KEY — SSH access
+#   DEPLOY_PATH — remote directory with docker-compose and .env (optional; can hardcode in script)
+#
+# Cosign keyless signing uses OIDC; requires id-token: write.
+
+name: Docker publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "polemica-fantasy-backend/**"
+      - ".github/workflows/docker-publish.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  IMAGE_NAME: polemica-fantasy-backend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./polemica-fantasy-backend
+          file: ./polemica-fantasy-backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      # Keyless signing via GitHub OIDC (requires id-token: write). Safe to ignore failure until OIDC is configured.
+      - name: Sign image with cosign
+        continue-on-error: true
+        run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}"
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then
+              echo "Set repository secret DEPLOY_PATH to the server directory with docker-compose."
+              exit 1
+            fi
+            cd "$DEPLOY_PATH"
+            git pull
+            docker compose pull
+            docker compose up -d

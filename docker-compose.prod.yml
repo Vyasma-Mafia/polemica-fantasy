@@ -1,0 +1,69 @@
+# Production/VPS: MinIO only inside Docker network; DB and API on localhost for nginx.
+# Usage from repo root:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Nginx proxies to http://127.0.0.1:${BACKEND_HTTP_PORT:-18080}
+
+services:
+  fantasy-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fantasy
+      POSTGRES_USER: ${DB_USER:-fantasy}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fantasy}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-15433}:5432"
+    volumes:
+      - fantasy-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fantasy}"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - fantasy-minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  fantasy-backend:
+    build: ./polemica-fantasy-backend
+    ports:
+      - "127.0.0.1:${BACKEND_HTTP_PORT:-18080}:8080"
+      - "127.0.0.1:${BACKEND_MANAGEMENT_PORT:-18081}:8081"
+    environment:
+      DATABASE_URL: jdbc:postgresql://fantasy-db:5432/fantasy
+      DATABASE_USER: ${DB_USER:-fantasy}
+      DATABASE_PASSWORD: ${DB_PASSWORD:-fantasy}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: polemica-fantasy-images
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      POLEMICA_USERNAME: ${POLEMICA_USERNAME:-}
+      POLEMICA_PASSWORD: ${POLEMICA_PASSWORD:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-defaultPassword123}
+    depends_on:
+      fantasy-db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  fantasy-postgres-data:
+  fantasy-minio-data:

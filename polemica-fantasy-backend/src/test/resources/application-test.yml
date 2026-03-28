@@ -1,0 +1,25 @@
+spring:
+  flyway:
+    enabled: true
+
+s3:
+  endpoint: http://127.0.0.1:9000
+  region: us-east-1
+  bucket: test-bucket
+  access-key: test
+  secret-key: test
+  ensure-bucket-on-startup: false
+
+telegram:
+  bot:
+    token: test-token
+
+polemica:
+  api:
+    username: ""
+    password: ""
+
+app:
+  admin:
+    username: admin
+    password: test-admin-secret
