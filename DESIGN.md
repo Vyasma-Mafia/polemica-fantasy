@@ -15,16 +15,18 @@ Polemica Fantasy — сервис для создания фэнтези-ком�
 | Термин | Описание |
 |--------|----------|
 | **Tournament** | Собственная сущность сервиса. Объединяет игроков и серии. Имеет **`kind`** (`STANDALONE` или `POLEMICA_COMPETITION`). Турниры без привязки к Полемике — это `STANDALONE` (режим по умолчанию для существующих данных). |
-| **TournamentKind** | `STANDALONE` — игры серии подбираются по истории участников и префиксу названия (`name_prefix`), как в исходном дизайне. `POLEMICA_COMPETITION` — турнир привязан к соревнованию Polemica: на турнире хранится `polemica_competition_id`; все серии этого турнира задают только **диапазон номеров игр** (`game_num_from` … `game_num_to`, inclusive по полю `num` в API соревнования). **Внутри одного турнира все серии одного типа** (нельзя смешивать prefix-серии и competition-серии). |
-| **Series** | Набор игр внутри турнира. При `STANDALONE`: обязателен `name_prefix` для матчинга названий игр. При `POLEMICA_COMPETITION`: префикс не используется для sync (может быть пустым/NULL); обязательны `game_num_from` и `game_num_to`. |
+| **TournamentKind** | `STANDALONE` — игры серии подбираются по истории участников и префиксу названия (`name_prefix`). `POLEMICA_COMPETITION` — турнир привязан к соревнованию Polemica: на турнире хранится `polemica_competition_id`; все серии этого турнира задают **диапазон номеров игр** (`game_num_from` … `game_num_to`). **Внутри одного турнира все серии одного типа.** |
+| **Series** | Набор игр внутри турнира. При `STANDALONE`: обязателен `name_prefix`. При `POLEMICA_COMPETITION`: обязательны `game_num_from` и `game_num_to`. |
 | **Game** | Конкретная игра из Полемики (`PolemicaGame`), привязанная к серии. |
 | **Fantasy Player** | Глобальный игрок сервиса: один на каждый `polemica_user_id` (ник, фото). Создаётся или подставляется при добавлении игрока в турнир. Не привязан к одному турниру. |
 | **Tournament Player** | Участие конкретного fantasy player в ростере конкретного турнира (связь турнир ↔ игрок). |
-| **Card Template** | Определение карточки: привязка к **fantasy player** (не к турниру) + уровень редкости + набор достижений с бонусными очками. Один и тот же шаблон может использоваться в разных турнирах, если игрок включён в состав серии. |
+| **Card Template** | Определение карточки: привязка к **fantasy player** (не к турниру) + уровень редкости + набор достижений. Один и тот же шаблон может использоваться в разных турнирах, если игрок включён в серию. Шаблоны могут создаваться как вручную (через админку), так и автоматически при открытии auto-gen пака (с переиспользованием при совпадении игрок + редкость + набор ачивок). |
 | **User Card** | Конкретный экземпляр карточки, принадлежащий пользователю. У одного пользователя может быть несколько одинаковых карточек. |
-| **Card Pack** | Набор для рандомного получения карточек с настраиваемым распределением по редкостям. |
+| **Card Pack** | Набор для получения карточек. Может быть **legacy** (выбирает из существующих шаблонов) или **auto-generated** (генерирует шаблоны на лету из пула игроков). Задаёт точное количество карт каждой редкости. Может иметь стоимость в фантиках для покупки через магазин. |
 | **Fantasy Team** | Команда из 3 карточек, выставленная пользователем на серию. |
-| **Achievement** | Тип игрового события, за которое карточка получает бонусные очки (найденный шериф, проверка чёрного и т.д.). |
+| **Achievement** | Системная сущность (справочник) — тип игрового события с метаданными: системный бонус, тип повторяемости (`ONCE_PER_GAME` / `MULTIPLE_PER_GAME`), допустимые роли (`applicableRoles`), флаг возможности появления на случайных картах (`canAppearOnRandomCards`). |
+| **Фантики** | Внутриигровая валюта. Стартовый баланс — 1000. Используется для покупки паков в магазине. Начисляется админом. Все операции с балансом логируются в `fantiki_transaction`. |
+| **Store** | Магазин паков в TMA. Пользователь видит доступные паки с ценами и покупает их за фантики. |
 | **TMA** | Telegram Mini App — пользовательский интерфейс внутри Telegram. |
 
 ---
@@ -111,7 +113,7 @@ polemica-fantasy/
 │       │   │       └── admin/       # Admin endpoints
 │       │   └── resources/
 │       │       ├── application.yml
-│       │       └── db/migration/    # Flyway V*.sql
+│       │       └── db/migration/    # Flyway V1–V9
 │       └── test/
 ├── polemica-fantasy-webapp/         # User-facing TMA (React + TS)
 │   ├── package.json
@@ -142,21 +144,36 @@ CardTemplate (*)                 │
     │ (*)     │ (1)              │
     ▼         ▼                  ▼
 CardTemplateAchievement    Series (*)
-                                │
+    │                           │
+    │ (*:1)                     ▼
+    ▼                      SeriesGame
+Achievement (1)                 │
+    │                           │ (1)
+    │ (*)                       ▼
+    ▼               FantasyTeamCardGameScore (*)
+AchievementApplicableRole       │
+                                │ (*)
                                 ▼
-                           SeriesGame
+                   FantasyTeamCardGameAchievement
 
-TelegramUser (1) ──── (*) UserCard ──── (*) FantasyTeamCard
+TelegramUser (1) ──── (*) UserCard ──── (*) FantasyTeamCard (*) ── FantasyTeamCardGameScore
     │                                          │
     │ (1)                                      │ (*)
-    ▼                                          ▼
-FantasyTeam (*) ──────────────── (1) FantasyTeam
-                                     (series_id)
+    │                                          ▼
+    │                              FantasyTeam (series_id)
+    │
+    ├──── (*) FantikiTransaction
+    └──── fantiki (balance)
 
 CardPack (1) ──── (*) CardPackRarityConfig
+    │
+    ├──── (*) CardPackPlayer ──── (1) FantasyPlayer
+    │
+    ├──── auto_generated, price_fantiki, use_all_tournament_players
+    └──── (1) Tournament
 ```
 
-**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию допускает только карточки игроков, которые назначены на эту серию (тот же `FantasyPlayer`, что и у соответствующего `SeriesPlayer`). Все серии одного турнира соответствуют одному `TournamentKind` родителя.
+**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию допускает только карточки игроков, которые назначены на эту серию (тот же `FantasyPlayer`, что и у соответствующего `SeriesPlayer`). Все серии одного турнира соответствуют одному `TournamentKind` родителя. Achievement — справочник; `CardTemplateAchievement.bonus_points` nullable (NULL = системный из `Achievement`, иначе override).
 
 ### 4.2 Core Entities
 
@@ -167,6 +184,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | telegram_id | BIGINT | Unique, Telegram user ID |
 | username | VARCHAR | Telegram username |
 | first_name | VARCHAR | Display name |
+| fantiki | BIGINT | Баланс внутриигровой валюты (NOT NULL, DEFAULT 1000) |
 | created_at | TIMESTAMP | Registration time |
 
 #### Tournament
@@ -236,13 +254,30 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | image_url | VARCHAR | Card artwork URL |
 | description | TEXT | Flavor text |
 
+#### Achievement
+| Field | Type | Description |
+|-------|------|-------------|
+| id | VARCHAR(64) | PK (ключ: `SHERIFF_FOUND_BLACK`, `WON_GAME`, …) |
+| name | VARCHAR | Отображаемое имя |
+| description | TEXT | Описание |
+| bonus_points | DOUBLE | Системный бонус за срабатывание (NOT NULL, DEFAULT 1) |
+| occurrence_type | VARCHAR(32) | `ONCE_PER_GAME` / `MULTIPLE_PER_GAME` |
+| can_appear_on_random_cards | BOOLEAN | Может ли выпасть на автосгенерированной карте (DEFAULT false) |
+
+#### AchievementApplicableRole
+| Field | Type | Description |
+|-------|------|-------------|
+| achievement_id | VARCHAR(64) | FK → Achievement, часть composite PK |
+| role | VARCHAR(32) | `DON`, `MAFIA`, `PEACE`, `SHERIFF` |
+| | | PK = (achievement_id, role) |
+
 #### CardTemplateAchievement
 | Field | Type | Description |
 |-------|------|-------------|
 | id | BIGSERIAL | PK |
 | card_template_id | BIGINT | FK → CardTemplate |
-| achievement_type | VARCHAR | Achievement enum key |
-| bonus_points | DOUBLE | Points awarded when achievement triggers |
+| achievement_id | VARCHAR(64) | FK → Achievement |
+| bonus_points | DOUBLE | **Nullable.** NULL = системный `Achievement.bonus_points`; если задан — override |
 
 #### UserCard
 | Field | Type | Description |
@@ -252,15 +287,37 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | card_template_id | BIGINT | FK → CardTemplate |
 | acquired_at | TIMESTAMP | When the card was given to user |
 
+#### FantikiTransaction
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGSERIAL | PK |
+| telegram_user_id | BIGINT | FK → TelegramUser |
+| amount | BIGINT | Положительный = начисление, отрицательный = списание |
+| reason | VARCHAR(64) | `INITIAL`, `ADMIN_GRANT`, `PACK_PURCHASE` |
+| created_at | TIMESTAMP | NOT NULL DEFAULT NOW() |
+
 #### CardPack
 | Field | Type | Description |
 |-------|------|-------------|
 | id | BIGSERIAL | PK |
 | name | VARCHAR | Pack display name |
-| tournament_id | BIGINT | FK → Tournament (контекст выдачи/каталога; не ограничивает пул шаблонов при открытии) |
-| active | BOOLEAN | Available for opening |
+| tournament_id | BIGINT | FK → Tournament (контекст: пул игроков при auto-gen) |
+| active | BOOLEAN | Available for opening / purchase |
+| auto_generated | BOOLEAN | Автогенерация карт при открытии (NOT NULL, DEFAULT false) |
+| price_fantiki | BIGINT | Стоимость в фантиках (NOT NULL, DEFAULT 0; 0 = выдаётся только через админку) |
+| use_all_tournament_players | BOOLEAN | При auto-gen: использовать всех игроков турнира как пул (NOT NULL, DEFAULT false) |
 
-При открытии пака шаблоны выбираются по редкости из **глобального** набора всех `CardTemplate` (не только игроков текущего турнира).
+**Legacy-пак** (`auto_generated = false`): при открытии шаблоны выбираются по редкости из **глобального** набора `CardTemplate`.
+
+**Auto-gen пак** (`auto_generated = true`): при открытии карточки генерируются на лету из пула игроков. COMMON — без ачивок; RARE — 1 случайная (`canAppearOnRandomCards = true`); EPIC — 2 случайных различных; LEGENDARY — не участвует. Если найден существующий `CardTemplate` с идентичным набором (игрок + редкость + ачивки) — переиспользуется; иначе создаётся новый. При генерации `applicableRoles` **не** фильтруется — проверка роли только при скоринге.
+
+#### CardPackPlayer
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGSERIAL | PK |
+| card_pack_id | BIGINT | FK → CardPack (ON DELETE CASCADE) |
+| fantasy_player_id | BIGINT | FK → FantasyPlayer |
+| | | UNIQUE (card_pack_id, fantasy_player_id) |
 
 #### CardPackRarityConfig
 | Field | Type | Description |
@@ -268,8 +325,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | id | BIGSERIAL | PK |
 | card_pack_id | BIGINT | FK → CardPack |
 | rarity | VARCHAR | Rarity level |
-| probability | DOUBLE | 0.0–1.0, sum must equal 1.0 |
-| cards_count | INT | How many cards of this rarity in one pack opening |
+| cards_count | INT | Точное количество карт этой редкости в одном открытии |
 
 #### FantasyTeam
 | Field | Type | Description |
@@ -288,15 +344,45 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | fantasy_team_id | BIGINT | FK → FantasyTeam |
 | user_card_id | BIGINT | FK → UserCard |
 | slot | INT | 1, 2, or 3 |
-| score | DOUBLE | Calculated score, nullable until scored |
+| score | DOUBLE | Суммарные очки по всем играм серии, nullable until scored |
+
+#### FantasyTeamCardGameScore
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGSERIAL | PK |
+| fantasy_team_card_id | BIGINT | FK → FantasyTeamCard (ON DELETE CASCADE) |
+| series_game_id | BIGINT | FK → SeriesGame |
+| base_points | DOUBLE | Базовые очки игрока в этой игре |
+| achievement_bonus | DOUBLE | Суммарный бонус за все сработавшие достижения |
+| rarity_modifier | DOUBLE | Множитель редкости карточки |
+| total_score | DOUBLE | `(base_points + achievement_bonus) × rarity_modifier` |
+| | | UNIQUE (fantasy_team_card_id, series_game_id) |
+
+#### FantasyTeamCardGameAchievement
+| Field | Type | Description |
+|-------|------|-------------|
+| id | BIGSERIAL | PK |
+| card_game_score_id | BIGINT | FK → FantasyTeamCardGameScore (ON DELETE CASCADE) |
+| achievement_id | VARCHAR(64) | FK → Achievement |
+| bonus_points | DOUBLE | Бонус за конкретное сработавшее достижение |
+| | | UNIQUE (card_game_score_id, achievement_id) |
 
 ---
 
 ## 5. Achievement System
 
-Достижения извлекаются из модели `PolemicaGame`. Для каждого игрока в игре анализируются события.
+Достижения — **системный справочник** (таблица `achievement`). Каждое достижение хранит метаданные: бонус, тип повторяемости, допустимые роли, флаг доступности для автогенерации карт. Детекция происходит при скоринге — для каждого игрока в каждой игре анализируются события из `PolemicaGame`.
 
-### 5.1 Available Game Data for Achievement Detection
+### 5.1 Achievement Properties
+
+| Свойство | Описание |
+|----------|----------|
+| `bonus_points` | Системный бонус (default 1). Может быть переопределён на уровне `CardTemplateAchievement.bonus_points` (nullable override). |
+| `occurrence_type` | `ONCE_PER_GAME` — засчитывается максимум 1 раз за игру. `MULTIPLE_PER_GAME` — сколько раз сработало, столько раз начисляется. |
+| `applicable_roles` | Список ролей (`DON`, `MAFIA`, `PEACE`, `SHERIFF`), на которых достижение может сработать. Пустой список = достижение не применяется ни к кому. Проверяется **только при скоринге**, не при генерации карт. |
+| `can_appear_on_random_cards` | Может ли попасть на автосгенерированную карточку (RARE/EPIC) при открытии auto-gen пака. |
+
+### 5.2 Available Game Data for Achievement Detection
 
 Из `polemica-library` доступны:
 
@@ -315,31 +401,41 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | `bonuses` | Бонусы игры |
 | `GameUtils.*` | Утилиты: getKilled, getSheriff, getDon, playersOnTable и др. |
 
-### 5.2 Planned Achievement Types (preliminary, final list TBD)
+### 5.3 Achievement Types
 
-| Achievement Key | Description | Detection Logic |
-|-----------------|-------------|-----------------|
-| `SHERIFF_FOUND_BLACK` | Шериф проверил чёрного | `checks` where checker=SHERIFF, target role is MAFIA/DON |
-| `DON_FOUND_SHERIFF` | Дон нашёл шерифа | `checks` where checker=DON, target role is SHERIFF |
-| `FIRST_NIGHT_SURVIVED` | Пережил первую ночь | Player not in `getKilled()` for night 1 |
-| `WON_GAME` | Команда игрока победила | `result` matches player's team (red/black) |
-| `BEST_MOVE` | Получил лучший ход | `players[].award > 0` |
-| `SURVIVED_TILL_END` | Дожил до конца игры | Player in `playersOnTable()` at game end |
-| `VOTED_OUT_BLACK` | Голосовал за вылет чёрного | `getFinalVotes()` where voted for black player who was expelled |
-| `CORRECT_GUESS` | Угадал 3 мафии | `guess` matches actual roles |
-| `NO_FOULS` | Сыграл без фолов | `fouls.isEmpty() && techs.isEmpty()` |
+| Achievement Key | Description | Detection Logic | Default Random |
+|-----------------|-------------|-----------------|----------------|
+| `SHERIFF_FOUND_BLACK` | Шериф проверил чёрного | `checks` where checker=SHERIFF, target role is MAFIA/DON | No |
+| `DON_FOUND_SHERIFF` | Дон нашёл шерифа | `checks` where checker=DON, target role is SHERIFF | No |
+| `FIRST_NIGHT_SURVIVED` | Пережил первую ночь | Player not in `getKilled()` for night 1 | No |
+| `WON_GAME` | Команда игрока победила | `result` matches player's team (red/black) | **Yes** |
+| `BEST_MOVE` | Получил лучший ход | `players[].award > 0` | **Yes** |
+| `SURVIVED_TILL_END` | Дожил до конца игры | Player in `playersOnTable()` at game end | **Yes** |
+| `VOTED_OUT_BLACK` | Голосовал за вылет чёрного | `getFinalVotes()` where voted for black player who was expelled | No |
+| `CORRECT_GUESS` | Угадал 3 мафии | `guess` matches actual roles | No |
+| `NO_FOULS` | Сыграл без фолов | `fouls.isEmpty() && techs.isEmpty()` | No |
 
-### 5.3 Score Calculation Formula
+По умолчанию все 9 достижений seed-ятся с `bonus_points = 1`, `occurrence_type = ONCE_PER_GAME`, `applicable_roles` = все 4 роли. `can_appear_on_random_cards = true` выставлен для `WON_GAME`, `BEST_MOVE`, `SURVIVED_TILL_END` (миграция V9).
+
+### 5.4 Score Calculation Formula
 
 For each card in a fantasy team, per game in the series:
 
 ```
-card_game_score = player_base_points + Σ(achievement_bonus)
+card_game_score = (player_base_points + Σ(achievement_bonus)) × rarity_modifier
 ```
 
 Where:
-- `player_base_points` = `players[position].award` or points from `GamePointsService` (игрок в игре определяется по `polemica_user_id` из `FantasyPlayer` шаблона карточки)
-- `achievement_bonus` = `CardTemplateAchievement.bonus_points` for each triggered achievement
+- `player_base_points` = `players[position].award` (игрок в игре определяется по `polemica_user_id` из `FantasyPlayer` шаблона карточки)
+- `achievement_bonus` = `CardTemplateAchievement.bonus_points ?? Achievement.bonus_points` for each triggered achievement (с учётом `occurrence_type` и `applicable_roles`)
+- `rarity_modifier` = модификатор редкости карточки:
+
+| Rarity | Modifier |
+|--------|----------|
+| COMMON | 1.00 |
+| RARE | 1.10 |
+| EPIC | 1.15 |
+| LEGENDARY | 1.25 |
 
 Total card score across series:
 ```
@@ -351,6 +447,16 @@ Fantasy team total:
 team_total = Σ(card_total) for all 3 cards
 ```
 
+### 5.5 Score Storage
+
+При скоринге сохраняется полная детализация:
+- `FantasyTeamCard.score` = `card_total`
+- `FantasyTeamCardGameScore` — per-game breakdown (base_points, achievement_bonus, rarity_modifier, total_score)
+- `FantasyTeamCardGameAchievement` — какие конкретно достижения сработали в каждой игре с бонусом каждого
+- `FantasyTeam.total_score` = `team_total`
+
+Перед повторным расчётом старые per-game записи очищаются (CASCADE).
+
 ---
 
 ## 6. API Design
@@ -361,19 +467,34 @@ Base path: `/api/v1`
 
 Authentication: Telegram `initData` in `Authorization` header, validated via HMAC-SHA256 with bot token.
 
+**Profile & Collection:**
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/tournaments` | List active tournaments (в ответе: `kind`, `polemicaCompetitionId` при необходимости) |
-| GET | `/tournaments/{id}` | Tournament with series list (те же поля турнира) |
-| GET | `/tournaments/{id}/participants` | Ростер турнира: список `SeriesPlayerEntry` (ник, фото, `tournamentPlayerId`) |
-| GET | `/series/{id}` | Series details: players, games, status |
-| GET | `/series/{id}/leaderboard` | Fantasy team rankings |
-| GET | `/me` | Current user profile |
-| GET | `/me/cards` | User's card collection (filters: optional `tournamentId` — карты игроков, участвующих в этом турнире; `rarity`). В ответе по каждой карточке: `fantasyPlayerId`, `rarity`, `imageUrl` (арт шаблона), `playerPhotoUrl` (фото игрока), ник, достижения и др. — см. `UserCardItemDto`. |
+| GET | `/me` | Current user profile (включает `fantiki` — текущий баланс) |
+| GET | `/me/cards` | User's card collection (filters: optional `tournamentId`, `rarity`). В ответе: `fantasyPlayerId`, `rarity`, `imageUrl`, `playerPhotoUrl`, ник, достижения (с названием из справочника). |
 | GET | `/me/fantasy-teams` | All user's fantasy teams |
 | GET | `/me/fantasy-teams/{seriesId}` | Fantasy team for specific series |
-| POST | `/series/{id}/fantasy-team` | Submit fantasy team (body: 3 `user_card_id`). Каждая карточка должна относиться к игроку из состава серии (тот же `FantasyPlayer`, что у `SeriesPlayer`). |
-| PUT | `/series/{id}/fantasy-team` | Edit fantasy team (before deadline); те же правила по составу серии |
+| GET | `/me/fantasy-teams/{seriesId}/details` | Полная per-game детализация: по каждой карте → по каждой игре → base/achievements/modifier/total |
+
+**Tournaments & Series:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/tournaments` | List active tournaments |
+| GET | `/tournaments/{id}` | Tournament with series list |
+| GET | `/tournaments/{id}/participants` | Ростер турнира |
+| GET | `/series/{id}` | Series details: players, games, status |
+| GET | `/series/{id}/leaderboard` | Fantasy team rankings |
+| POST | `/series/{id}/fantasy-team` | Submit fantasy team (body: 3 `user_card_id`) |
+| PUT | `/series/{id}/fantasy-team` | Edit fantasy team (before deadline) |
+
+**Store (магазин паков):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/store/packs` | Список доступных паков (active, с ценой и раскладкой по редкостям) |
+| POST | `/store/packs/{id}/buy` | Покупка пака: проверка баланса → списание фантиков → открытие → список выпавших карт (для анимации) |
 
 ### 6.2 Admin API
 
@@ -405,19 +526,35 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 | GET | `/polemica/competitions/{id}` | Деталь соревнования Polemica |
 | POST | `/series/{id}/calculate-scores` | Trigger scoring |
 
+**Achievement Management:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/achievements` | Список всех достижений из справочника |
+| PUT | `/achievements/{id}` | Обновить достижение (bonus_points, occurrence_type, applicable_roles, can_appear_on_random_cards) |
+
 **Card Management:**
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/card-templates` | Create card template (body: `fantasyPlayerId`, rarity, …) |
 | PUT | `/card-templates/{id}` | Update card template |
-| GET | `/card-templates` | List templates: опционально `tournamentId` (шаблоны игроков, заявленных в этом турнире), `fantasyPlayerId`, `rarity` |
-| POST | `/card-templates/{id}/achievements` | Add achievement to card template |
+| GET | `/card-templates` | List templates: опционально `tournamentId`, `fantasyPlayerId`, `rarity` |
+| POST | `/card-templates/{id}/achievements` | Add achievement to card template (achievement_id + optional bonus_points override) |
 | POST | `/card-templates/{id}/image` | Upload card artwork (multipart) → S3 |
-| POST | `/card-packs` | Create card pack |
+| POST | `/card-packs` | Create card pack (body: name, tournamentId, active, autoGenerated, priceFantiki, useAllTournamentPlayers, rarityConfigs, playerIds) |
 | PUT | `/card-packs/{id}` | Update pack configuration |
+| GET | `/card-packs` | List packs (optional `tournamentId`) |
+| GET | `/card-packs/{id}` | Pack details (с player pool) |
+| PUT | `/card-packs/{id}/players` | Обновить пул игроков для auto-gen пака |
 | POST | `/users/{telegramUserId}/give-cards` | Give specific cards to user |
-| POST | `/users/{telegramUserId}/open-pack/{packId}` | Open pack → случайные карты по редкостям из **глобального** пула шаблонов |
+| POST | `/users/{telegramUserId}/open-pack/{packId}` | Open pack → карты (legacy: из глобального пула; auto-gen: на лету) |
+
+**User Management (Fantiki):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/users/{telegramUserId}/give-fantiki` | Начислить фантики (body: `{ amount }`) |
 
 ---
 
@@ -474,135 +611,30 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 
 ---
 
-## 10. Agent Work Split
+## 10. Implementation History
 
-Реализация разделена на 6 агентов. Каждый получает изолированный scope с чёткими входами и выходами.
+### Phase 1 (V1): Core System
 
-### Agent A1: Foundation
+Реализация выполнена 6 агентами (A1–A6):
 
-**Scope:** скелет бэкенда, инфраструктура, схема БД.
+- **A1 (Foundation):** Gradle, Spring Boot, Flyway V1–V4, JPA entities, S3, Docker, CI/CD
+- **A2 (polemica-library):** поле `name` в `PolemicaGame`, `getPlayerGames`
+- **A3 (Admin Backend):** Tournament/Series/Card admin API, CardPackService, Basic Auth
+- **A4 (Scoring + Game Sync):** PolemicaIntegrationService, GameSyncService, AchievementDetector (9 штук), ScoringService
+- **A5 (User Backend + TMA):** TelegramAuthFilter, User API, TMA (React + TS + TanStack Query)
+- **A6 (Admin Frontend):** Ant Design admin panel
 
-**Deliverables:**
-- `build.gradle.kts` — Spring Boot 3.x, Spring Data JPA, Flyway, Security, Jackson, AWS S3 SDK, polemica-library, Actuator/Prometheus
-- `application.yml` — полная конфигурация (см. Section 12.5)
-- `Dockerfile` — multi-stage build (см. Section 12.1)
-- `docker-compose.yml` — PostgreSQL 16 + MinIO + backend (см. Section 12.2)
-- `.env.example` — шаблон переменных окружения
-- `.github/workflows/docker-publish.yml` — CI/CD pipeline (см. Section 12.3)
-- Flyway-миграции: `V1__initial_schema.sql` (базовая схема), далее инкрементальные (`V2__series_game_unique.sql`, `V3__fantasy_player_global_cards.sql` — глобальные игроки и привязка карточек к `fantasy_player`)
-- JPA entities для всех таблиц
-- Базовые Enum-классы (Rarity, TournamentStatus, SeriesStatus, AchievementType)
-- S3 конфигурация и `ImageStorageService` (upload/delete)
-- `FantasyApplication.kt` — main class
+### Phase 2 (V2): Economy & Enhanced Scoring
 
-**Outputs:** рабочий проект, который собирается в Docker image, запускается через `docker compose up`, подключается к PostgreSQL и MinIO, применяет миграции.
+Реализация выполнена 7 агентами (B1–B7):
 
-**Dependencies:** нет (стартует первым).
-
----
-
-### Agent A2: polemica-library Updates
-
-**Scope:** изменения в отдельном репозитории `~/personal/mafia/polemica-library`.
-
-**Deliverables:**
-- Добавить поле `name: String?` в `PolemicaGame`
-- Добавить метод `getPlayerGames(userId: Long)` в `PolemicaClient` / `PolemicaClientImpl`
-- Тесты на новые методы
-- Bump version
-
-**Dependencies:** нет (параллельно с A1).
-
----
-
-### Agent A3: Admin Backend
-
-**Scope:** все административные эндпоинты и бизнес-логика.
-
-**Deliverables:**
-- Admin auth filter (Basic Auth)
-- Controllers: `TournamentAdminController`, `SeriesAdminController`, `CardAdminController`
-- Services: `TournamentService`, `SeriesService`, `CardService`, `CardPackService`
-- Repositories для всех admin-managed entities
-- DTO-классы для request/response
-- Validation (Jakarta Validation)
-
-**Dependencies:** A1 (entities, DB schema).
-
----
-
-### Agent A4: Scoring Engine + Game Sync
-
-**Scope:** интеграция с Полемикой, синхронизация игр, расчёт очков.
-
-**Deliverables:**
-- `PolemicaIntegrationService` — обёртка над polemica-library client
-- `GameSyncService` — поиск игр по истории игроков + name_prefix, кэширование
-- `AchievementDetector` — анализ PolemicaGame, определение сработавших достижений
-- `ScoringService` — расчёт очков карточек и команд
-- Unit-тесты на detection и scoring logic
-
-**Dependencies:** A1 (entities), A2 (новые методы polemica-library).
-
----
-
-### Agent A5: User Backend + TMA Frontend
-
-**Scope:** пользовательский API и Telegram Mini App.
-
-**Deliverables (Backend):**
-- `TelegramAuthFilter` — валидация initData
-- `UserController`, `TournamentController`, `FantasyTeamController`
-- `UserService`, `FantasyTeamService`
-- Leaderboard query
-
-**Deliverables (Frontend — `polemica-fantasy-webapp/`):**
-- Vite + React + TS проект
-- `@telegram-apps/sdk-react` интеграция
-- Страницы: список турниров, серия (игроки, статус), коллекция карточек, сборка команды, лидерборд
-- API client (fetch / TanStack Query)
-
-**Dependencies:** A1 (entities), A4 (scoring для отображения результатов).
-
----
-
-### Agent A6: Admin Frontend
-
-**Scope:** веб-админка.
-
-**Deliverables (`polemica-fantasy-admin/`):**
-- Vite + React + TS + Ant Design проект
-- Страницы: управление турнирами, сериями, игроками, карточками, паками
-- Кнопки действий: sync games, calculate scores, give cards, open pack
-- API client
-
-**Dependencies:** A3 (admin API contract).
-
----
-
-### Execution Graph
-
-```
-     A1 (Foundation)          A2 (polemica-library)
-      │                        │
-      ├───────────┬────────────┤
-      │           │            │
-      ▼           ▼            │
-  A3 (Admin    A5 (User       │
-   Backend)    Backend+TMA)   │
-      │           │            │
-      │           │            ▼
-      │           │◄──── A4 (Scoring)
-      │           │
-      ▼           ▼
-  A6 (Admin
-   Frontend)
-```
-
-Параллельные пары:
-- **A1 ‖ A2** — разные репозитории, полностью независимы
-- **A3 ‖ A4** — разные пакеты, не пересекаются по файлам (после A1)
-- **A5 ‖ A6** — разные модули (после зависимостей)
+- **B1 (Schema V2):** Flyway V5–V9, новые entities (Achievement, FantikiTransaction, CardPackPlayer, FantasyTeamCardGameScore, FantasyTeamCardGameAchievement), `Rarity.scoreModifier`, удалён `AchievementType` enum
+- **B2 (Achievement Refactor + Scoring V2):** справочник достижений, `applicableRoles` + `occurrenceType` при скоринге, формула с `rarity_modifier`, per-game breakdown
+- **B3 (Фантики + Store):** баланс пользователя, `fantiki_transaction`, `UserStoreService`, Store API (`GET /store/packs`, `POST /store/packs/{id}/buy`), admin `give-fantiki`
+- **B4 (Auto-gen Packs):** генерация карт при открытии, пул игроков, переиспользование шаблонов, валидация LEGENDARY
+- **B5 (Admin Frontend V2):** страница достижений, паки V2 (auto-gen, цена, пул игроков), начисление фантиков
+- **B6 (TMA Frontend V2):** баланс фантиков в хедере, магазин паков, per-game детализация очков
+- **B7 (Pack Opening Animation):** анимация открытия пака (glow по редкости, flip, particles)
 
 ---
 
