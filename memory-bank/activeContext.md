@@ -33,5 +33,8 @@
 ## Блокеры
 - Нет критичных блокеров
 
+## Недавние правки UI (админка)
+- **Series → Assign players:** у `Select` включён поиск (`showSearch`) и фильтрация опций по подстроке (без учёта регистра), чтобы быстро находить игрока по нику в длинном списке.
+
 ## Недавние правки интеграции
 - **polemica-library 1.8.2:** исправлен sync games — ответ `get-games` иногда отдаёт `mmr` объектом; в DTO добавлен `ProfileGameMmrDeserializer`. Сборка бэкенда: `../polemica-library` → `./gradlew publishToMavenLocal`, затем fantasy-backend подтянет 1.8.2 из `mavenLocal()` до публикации в Central.

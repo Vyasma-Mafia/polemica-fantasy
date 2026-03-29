@@ -214,13 +214,19 @@ export function SeriesDetailPage() {
         <Select
           mode="multiple"
           allowClear
-          placeholder="Tournament players"
+          showSearch
+          placeholder="Tournament players — type to filter by nickname"
           style={{ width: '100%' }}
           loading={tq.isLoading}
           options={players.map((p) => ({
             value: p.id,
             label: `${p.nickname} (id ${p.id}, polemica ${p.polemicaUserId})`,
           }))}
+          filterOption={(input, option) =>
+            String(option?.label ?? '')
+              .toLowerCase()
+              .includes(input.trim().toLowerCase())
+          }
           value={selectedPlayerIds}
           onChange={setSelectedPlayerIds}
         />
