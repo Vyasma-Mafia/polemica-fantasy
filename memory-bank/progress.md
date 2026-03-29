@@ -37,7 +37,7 @@
 - [x] `PolemicaIntegrationService` — пагинация `getProfileGames`, `getMatch`, JSON в `JsonNode`
 - [x] `DefaultGameSyncService` — игроки серии → профильные match id → `getMatch` → фильтр по `namePrefix` → upsert `SeriesGame`, без кредов Polemica → HTTP 400
 - [x] `AchievementDetector` + 9 компонентов + `AchievementDetectorRegistry` (**V2:** идентификаторы — строки `achievement.id`, не enum)
-- [x] `DefaultScoringService` — очки по формуле DESIGN §5.3, `FantasyTeamRepository.findAllWithCardsForScoring`
+- [x] `DefaultScoringService` — очки по формуле DESIGN §5.3, `FantasyTeamRepository.findAllWithCardsForScoring`; базовые очки из `GamePointsService` (polemica-library), префетч по `polemica_game_id` при расчёте серии
 - [x] Flyway `V2__series_game_unique.sql`
 - [x] Flyway `V4__tournament_kind_competition.sql` — `tournament.kind`, `tournament.polemica_competition_id`, `series.game_num_from` / `game_num_to`, `series.name_prefix` nullable
 - [x] `TournamentKind`, ветвление `DefaultGameSyncService` (STANDALONE vs POLEMICA_COMPETITION); `PolemicaIntegrationService` — competitions + `getGamesFromCompetition` / `getGameFromCompetition`; `PolemicaAdminController` — read-only список/деталь Competition
