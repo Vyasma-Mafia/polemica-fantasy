@@ -8,29 +8,27 @@ import kotlin.test.assertNotNull
 class AchievementDetectorRegistryTest {
 
     private val achievementIds = listOf(
-        "SHERIFF_FOUND_BLACK",
-        "DON_FOUND_SHERIFF",
-        "FIRST_NIGHT_SURVIVED",
-        "WON_GAME",
-        "BEST_MOVE",
-        "SURVIVED_TILL_END",
-        "VOTED_OUT_BLACK",
-        "CORRECT_GUESS",
-        "NO_FOULS",
+        "sniper",
+        "winThreeToThree",
+        "findSheriff",
+        "voteForBlack",
+        "strongCity",
+        "firstKickedFullGuess",
+        "votingOnlyForBlack",
+        "winWithoutCritic",
     )
 
     @Test
     fun `registry covers all achievement ids`() {
         val detectors: List<AchievementDetector> = listOf(
-            SheriffFoundBlackDetector(),
-            DonFoundSheriffDetector(),
-            FirstNightSurvivedDetector(),
-            WonGameDetector(),
-            BestMoveDetector(),
-            SurvivedTillEndDetector(),
-            VotedOutBlackDetector(),
-            CorrectGuessDetector(),
-            NoFoulsDetector(),
+            SniperAchievementDetector(),
+            WinThreeToThreeAchievementDetector(),
+            FindSheriffAchievementDetector(),
+            VoteForBlackAchievementDetector(),
+            StrongCityAchievementDetector(),
+            FirstKickedFullGuessAchievementDetector(),
+            VotingOnlyForBlackAchievementDetector(),
+            WinWithoutCriticAchievementDetector(),
         )
         val achievementRepository = Mockito.mock(AchievementRepository::class.java)
         val registry = AchievementDetectorRegistry(detectors, achievementRepository)

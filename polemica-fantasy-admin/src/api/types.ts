@@ -8,7 +8,7 @@ export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 
 export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
 
-/** `achievement.id` from the backend catalog (seed keys). */
+/** `achievement.id` from the backend catalog (Flyway V10: sniper, voteForBlack, …). */
 export type AchievementId = string
 
 export interface AchievementAdminDto {

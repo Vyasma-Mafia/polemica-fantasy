@@ -36,12 +36,12 @@
 - [x] `PolemicaProperties`, `PolemicaConfig` — bean `PolemicaClient` (`PolemicaClientImpl` + `Jackson2ObjectMapperBuilder`)
 - [x] `PolemicaIntegrationService` — пагинация `getProfileGames`, `getMatch`, JSON в `JsonNode`
 - [x] `DefaultGameSyncService` — игроки серии → профильные match id → `getMatch` → фильтр по `namePrefix` → upsert `SeriesGame`, без кредов Polemica → HTTP 400
-- [x] `AchievementDetector` + 9 компонентов + `AchievementDetectorRegistry` (**V2:** идентификаторы — строки `achievement.id`, не enum)
+- [x] `AchievementDetector` + 8 компонентов (логика как в polemica-achievement-service: `sniper`, `winThreeToThree`, …) + `AchievementDetectorRegistry` (**V2:** идентификаторы — строки `achievement.id`, не enum)
 - [x] `DefaultScoringService` — очки по формуле DESIGN §5.3, `FantasyTeamRepository.findAllWithCardsForScoring`; базовые очки из `GamePointsService` (polemica-library), префетч по `polemica_game_id` при расчёте серии
 - [x] Flyway `V2__series_game_unique.sql`
 - [x] Flyway `V4__tournament_kind_competition.sql` — `tournament.kind`, `tournament.polemica_competition_id`, `series.game_num_from` / `game_num_to`, `series.name_prefix` nullable
 - [x] `TournamentKind`, ветвление `DefaultGameSyncService` (STANDALONE vs POLEMICA_COMPETITION); `PolemicaIntegrationService` — competitions + `getGamesFromCompetition` / `getGameFromCompetition`; `PolemicaAdminController` — read-only список/деталь Competition
-- [x] Тесты: `AchievementDetectorRegistryTest`, `WonGameDetectorTest`; admin integration — sync без кредов → 400
+- [x] Тесты: `AchievementDetectorRegistryTest`; admin integration — sync без кредов → 400
 
 ### Backend (Agent A5 — User API + Telegram)
 - [x] `TelegramProperties`, `TelegramInitDataValidator` (HMAC по доке Telegram Web Apps), `TelegramAuthentication` / principal `TelegramUser`
@@ -78,6 +78,7 @@
 - [x] Flyway `V6__achievement_system.sql` — `achievement`, `achievement_applicable_role`, seed 9 достижений, `card_template_achievement` → FK `achievement_id`, `bonus_points` nullable
 - [x] Flyway `V7__auto_packs.sql` — колонки `card_pack` (auto_generated, price_fantiki, use_all_tournament_players), `card_pack_player`, drop `card_pack_rarity_config.probability`
 - [x] Flyway `V8__game_score_details.sql` — `fantasy_team_card_game_score`, `fantasy_team_card_game_achievement`
+- [x] Flyway `V10__replace_achievement_catalog.sql` — замена справочника достижений (8 шт., `voteForBlack` = `MULTIPLE_PER_GAME`; очистка `fantasy_team_card_game_achievement` и `card_template_achievement` перед вставкой)
 - [x] JPA: `Achievement`, `AchievementApplicableRole`, `FantikiTransaction`, `CardPackPlayer`, `FantasyTeamCardGameScore`, `FantasyTeamCardGameAchievement`; обновлены `TelegramUser`, `CardTemplateAchievement`, `CardPack`, `CardPackRarityConfig`, `FantasyTeamCard`; репозитории для новых сущностей
 - [x] Admin/TMA типы и UI под `achievementId` / `achievementName` и паки без `probability`
 
@@ -85,8 +86,7 @@
 - [ ] Отдельный `getPlayerGames` / фильтрация на сервере — сейчас используется пагинация `getProfileGames` из артефакта 1.8.2
 
 ## Известные проблемы
-- Детекторы сложных достижений (`VOTED_OUT_BLACK`, `CORRECT_GUESS`) зависят от полноты модели `PolemicaGame`; при необходимости уточнить по реальным логам API
-- Точный список достижений не определён (в БД заложены типы из DESIGN §5.2)
+- Детекторы достижений зависят от полноты модели `PolemicaGame` (голосования, кики, лучший ход); при расхождениях с Полемикой уточнять по реальным логам API
 
 ## Технический долг
 - TMA SDK: npm предупреждает о deprecated пакетах `@telegram-apps/*` в пользу `@tma.js/*` — миграция по желанию

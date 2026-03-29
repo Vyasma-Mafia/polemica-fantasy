@@ -29,7 +29,7 @@ Controller → Service → Repository → PostgreSQL
 ### Key Patterns
 - **DTO separation:** entity-классы не выходят за пределы service layer; контроллеры работают с DTO
 - **JSONB caching:** полные данные игр из Полемики кэшируются в PostgreSQL JSONB для оффлайн-скоринга
-- **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `detect(game, player)`; справочник достижений — таблица `achievement` (V2)
+- **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `matchCount(game, player)`; справочник — таблица `achievement` (каталог после Flyway V10: `sniper`, `voteForBlack`, …)
 - **Manual trigger scoring:** расчёт очков запускается вручную через админку (не real-time)
 
 ### Security
