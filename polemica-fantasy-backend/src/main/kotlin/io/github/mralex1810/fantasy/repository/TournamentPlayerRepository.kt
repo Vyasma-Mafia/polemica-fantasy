@@ -9,4 +9,6 @@ interface TournamentPlayerRepository : JpaRepository<TournamentPlayer, Long> {
     fun existsByTournament_IdAndFantasyPlayer_Id(tournamentId: Long, fantasyPlayerId: Long): Boolean
 
     fun findAllByTournament_IdOrderById(tournamentId: Long): List<TournamentPlayer>
+
+    fun countByTournament_Id(tournamentId: Long): Long
 }

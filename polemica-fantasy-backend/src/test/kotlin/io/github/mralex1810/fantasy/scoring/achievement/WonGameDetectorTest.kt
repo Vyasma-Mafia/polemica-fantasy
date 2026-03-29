@@ -8,8 +8,7 @@ import com.github.mafia.vyasma.polemica.library.model.game.Position
 import com.github.mafia.vyasma.polemica.library.model.game.Role
 import java.time.LocalDateTime
 import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 class WonGameDetectorTest {
 
@@ -19,14 +18,14 @@ class WonGameDetectorTest {
     fun `peace wins when red wins`() {
         val game = minimalGame(result = PolemicaGameResult.RED_WIN)
         val peace = game.players!!.first { it.role == Role.PEACE }
-        assertTrue(detector.detect(game, peace))
+        assertEquals(1, detector.matchCount(game, peace))
     }
 
     @Test
     fun `mafia loses when red wins`() {
         val game = minimalGame(result = PolemicaGameResult.RED_WIN)
         val maf = game.players!!.first { it.role == Role.MAFIA }
-        assertFalse(detector.detect(game, maf))
+        assertEquals(0, detector.matchCount(game, maf))
     }
 
     private fun minimalGame(result: PolemicaGameResult): PolemicaGame {

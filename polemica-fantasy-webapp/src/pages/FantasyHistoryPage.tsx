@@ -2,11 +2,70 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
-import type { FantasyTeamDto, UserCardItem, UserTournamentDetail } from '../api/types'
+import type {
+  CardGameBreakdown,
+  FantasyTeamDetailSlot,
+  FantasyTeamDto,
+  FantasyTeamSeriesDetails,
+  UserCardItem,
+  UserTournamentDetail,
+} from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
+
+function highlightMaxes(columns: FantasyTeamDetailSlot[], gameCount: number) {
+  const nC = columns.length
+  const rowMax = new Array(gameCount).fill(Number.NEGATIVE_INFINITY)
+  const colMax = new Array(nC).fill(Number.NEGATIVE_INFINITY)
+  for (let gi = 0; gi < gameCount; gi++) {
+    for (let ci = 0; ci < nC; ci++) {
+      const v = columns[ci].cells[gi]?.totalScore
+      if (v != null && Number.isFinite(v)) {
+        if (v > rowMax[gi]) rowMax[gi] = v
+        if (v > colMax[ci]) colMax[ci] = v
+      }
+    }
+  }
+  return { rowMax, colMax }
+}
+
+function BreakdownBlock({ b }: { b: CardGameBreakdown }) {
+  const base = b.basePoints
+  const ach = b.achievementBonus
+  const mod = b.rarityModifier
+  const total = b.totalScore
+  return (
+    <div className="pf-score-breakdown">
+      <div className="pf-score-breakdown__row">
+        <span>База</span>
+        <strong>{base != null ? base.toFixed(2) : '—'}</strong>
+      </div>
+      <div className="pf-score-breakdown__row">
+        <span>Достижения</span>
+        <strong>{ach != null ? ach.toFixed(2) : '—'}</strong>
+      </div>
+      {b.achievements.length > 0 && (
+        <ul className="pf-modal__ach" style={{ marginTop: 6 }}>
+          {b.achievements.map((a) => (
+            <li key={`${a.achievementId}-${a.bonusPoints}`}>
+              {a.achievementName}: +{a.bonusPoints.toFixed(2)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="pf-score-breakdown__row">
+        <span>× редкость</span>
+        <strong>{mod != null ? mod.toFixed(2) : '—'}</strong>
+      </div>
+      <div className="pf-score-breakdown__row">
+        <span>Итого</span>
+        <strong>{total != null ? total.toFixed(2) : '—'}</strong>
+      </div>
+    </div>
+  )
+}
 
 export function FantasyHistoryPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
@@ -14,6 +73,8 @@ export function FantasyHistoryPage() {
   const initData = useInitData()
   const [openId, setOpenId] = useState<number | null>(null)
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
+  const [detailSeriesId, setDetailSeriesId] = useState<number | null>(null)
+  const [expandedCell, setExpandedCell] = useState<{ gameIndex: number; colIndex: number } | null>(null)
 
   const tq = useQuery({
     queryKey: ['tournament', id, initData],
@@ -33,6 +94,18 @@ export function FantasyHistoryPage() {
     enabled: !!initData,
   })
 
+  const detailsQ = useQuery({
+    queryKey: ['fantasy-team-details', openId, initData],
+    queryFn: () => apiGet<FantasyTeamSeriesDetails>(`/api/v1/me/fantasy-teams/${openId}/details`, initData),
+    enabled: !!initData && openId != null,
+  })
+
+  const detailsModalQ = useQuery({
+    queryKey: ['fantasy-team-details', detailSeriesId, initData],
+    queryFn: () => apiGet<FantasyTeamSeriesDetails>(`/api/v1/me/fantasy-teams/${detailSeriesId}/details`, initData),
+    enabled: !!initData && detailSeriesId != null && detailCardId != null,
+  })
+
   const teamsInTournament = useMemo(() => {
     const teams = teamsQ.data ?? []
     return teams.filter((t) => t.tournamentId === id)
@@ -46,6 +119,12 @@ export function FantasyHistoryPage() {
 
   const seriesName = (sid: number) => tq.data?.series.find((s) => s.id === sid)?.name ?? `Серия #${sid}`
 
+  const matrixHighlights = useMemo(() => {
+    const d = detailsQ.data
+    if (!d || d.games.length === 0 || d.columns.length === 0) return null
+    return highlightMaxes(d.columns, d.games.length)
+  }, [detailsQ.data])
+
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
   if (tq.isLoading || teamsQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (tq.isError) return <p className="pf-err">{(tq.error as Error).message}</p>
@@ -57,6 +136,11 @@ export function FantasyHistoryPage() {
   const detailCard = detailCardId != null ? cardById.get(detailCardId) : undefined
   const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
 
+  const modalColumn =
+    detailCardId != null && detailsModalQ.data
+      ? detailsModalQ.data.columns.find((c) => c.userCardId === detailCardId)
+      : undefined
+
   return (
     <div className="pf-page">
       <PageHeader title="История фэнтези" subtitle={t.name} backTo={back} />
@@ -65,12 +149,17 @@ export function FantasyHistoryPage() {
         {teamsInTournament.map((team) => {
           const open = openId === team.seriesId
           const total = team.totalScore
+          const d = open ? detailsQ.data : undefined
+          const showMatrix = open && d && d.games.length > 0
           return (
             <div key={team.seriesId} className="pf-acc">
               <button
                 type="button"
                 className="pf-acc__head"
-                onClick={() => setOpenId(open ? null : team.seriesId)}
+                onClick={() => {
+                  setOpenId(open ? null : team.seriesId)
+                  setExpandedCell(null)
+                }}
                 aria-expanded={open}
               >
                 <span>{seriesName(team.seriesId)}</span>
@@ -82,6 +171,78 @@ export function FantasyHistoryPage() {
                     <span className="pf-history-points__label">Всего очков</span>
                     <span className="pf-history-points__value">{total != null ? total.toFixed(2) : '—'}</span>
                   </div>
+
+                  {detailsQ.isLoading && <p className="pf-muted">Загрузка детализации…</p>}
+                  {detailsQ.isError && <p className="pf-err">{(detailsQ.error as Error).message}</p>}
+
+                  {showMatrix && d && matrixHighlights && (
+                    <div className="pf-score-matrix-wrap">
+                      <table className="pf-score-matrix">
+                        <thead>
+                          <tr>
+                            <th className="pf-score-matrix__corner">Игра</th>
+                            {d.columns.map((col) => {
+                              const card = cardById.get(col.userCardId)
+                              return (
+                                <th key={col.slot} className="pf-score-matrix__head-card">
+                                  {card?.playerNickname ?? `Слот ${col.slot}`}
+                                </th>
+                              )
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {d.games.map((g, gi) => (
+                            <tr key={g.seriesGameId}>
+                              <th scope="row" className="pf-score-matrix__game">
+                                {g.gameName}
+                                {!g.scored && <span className="pf-score-matrix__cell-hint"> (не засчитана)</span>}
+                              </th>
+                              {d.columns.map((col, ci) => {
+                                const cell = col.cells[gi]
+                                const v = cell?.totalScore
+                                const isBest =
+                                  v != null &&
+                                  Number.isFinite(v) &&
+                                  (v === matrixHighlights.rowMax[gi] || v === matrixHighlights.colMax[ci]) &&
+                                  matrixHighlights.rowMax[gi] > Number.NEGATIVE_INFINITY
+                                const exp =
+                                  expandedCell?.gameIndex === gi && expandedCell?.colIndex === ci && cell != null
+                                return (
+                                  <td key={col.slot} className="pf-score-matrix__cell-wrap" style={{ padding: 0 }}>
+                                    <button
+                                      type="button"
+                                      className={`pf-score-matrix__cell ${isBest ? 'pf-score-matrix__cell--best' : ''}`}
+                                      onClick={() => {
+                                        if (!cell) return
+                                        setExpandedCell(exp ? null : { gameIndex: gi, colIndex: ci })
+                                      }}
+                                      disabled={!cell}
+                                    >
+                                      <span className="pf-score-matrix__cell-inner">
+                                        {v != null ? v.toFixed(2) : '—'}
+                                      </span>
+                                      {cell && (
+                                        <span className="pf-score-matrix__cell-hint">
+                                          {expandedCell?.gameIndex === gi && expandedCell?.colIndex === ci ? '▼' : '▶'}
+                                        </span>
+                                      )}
+                                    </button>
+                                    {exp && cell && (
+                                      <div style={{ padding: 8 }}>
+                                        <BreakdownBlock b={cell} />
+                                      </div>
+                                    )}
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
                   <div className="pf-carousel" role="list">
                     {team.slots.map((slot) => {
                       const card = cardById.get(slot.userCardId)
@@ -91,7 +252,10 @@ export function FantasyHistoryPage() {
                           key={slot.slot}
                           type="button"
                           className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card?.rarity)}`}
-                          onClick={() => setDetailCardId(slot.userCardId)}
+                          onClick={() => {
+                            setDetailSeriesId(team.seriesId)
+                            setDetailCardId(slot.userCardId)
+                          }}
                           role="listitem"
                         >
                           {imgSrc ? (
@@ -125,10 +289,20 @@ export function FantasyHistoryPage() {
           role="dialog"
           aria-modal
           aria-label="Карточка"
-          onClick={() => setDetailCardId(null)}
+          onClick={() => {
+            setDetailCardId(null)
+            setDetailSeriesId(null)
+          }}
         >
           <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="pf-modal__close" onClick={() => setDetailCardId(null)}>
+            <button
+              type="button"
+              className="pf-modal__close"
+              onClick={() => {
+                setDetailCardId(null)
+                setDetailSeriesId(null)
+              }}
+            >
               ×
             </button>
             {detailImgSrc && detailCard && (
@@ -140,11 +314,46 @@ export function FantasyHistoryPage() {
             <p className="pf-muted">{detailCard.rarity}</p>
             <ul className="pf-modal__ach">
               {detailCard.achievements.map((a) => (
-                <li key={a.achievementType}>
-                  {a.achievementType}: +{a.bonusPoints}
+                <li key={a.achievementId}>
+                  {a.achievementName}: +{a.bonusPoints}
                 </li>
               ))}
             </ul>
+
+            {detailsModalQ.isLoading && <p className="pf-muted">Загрузка по играм…</p>}
+            {detailsModalQ.isError && <p className="pf-err">{(detailsModalQ.error as Error).message}</p>}
+            {modalColumn && detailsModalQ.data && detailsModalQ.data.games.length > 0 && (
+              <div className="pf-modal__per-game">
+                <h4>По играм серии</h4>
+                <ul className="pf-modal__ach" style={{ listStyle: 'none', paddingLeft: 0 }}>
+                  {detailsModalQ.data.games.map((g, gi) => {
+                    const cell = modalColumn.cells[gi]
+                    return (
+                      <li
+                        key={g.seriesGameId}
+                        style={{ marginBottom: 10, borderBottom: '1px solid var(--pf-border)', paddingBottom: 8 }}
+                      >
+                        <strong>{g.gameName}</strong>
+                        {!g.scored && <span className="pf-muted"> — не засчитана</span>}
+                        {cell ? (
+                          <>
+                            <div style={{ marginTop: 6 }}>
+                              <span className="pf-muted">Очки: </span>
+                              <strong>{cell.totalScore != null ? cell.totalScore.toFixed(2) : '—'}</strong>
+                            </div>
+                            <BreakdownBlock b={cell} />
+                          </>
+                        ) : (
+                          <p className="pf-muted" style={{ marginTop: 4 }}>
+                            Нет данных
+                          </p>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}

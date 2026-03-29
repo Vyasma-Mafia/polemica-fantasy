@@ -41,4 +41,10 @@ class UserController(
         @AuthenticationPrincipal user: TelegramUser,
         @PathVariable seriesId: Long,
     ) = userFantasyTeamService.getTeamForSeries(user, seriesId)
+
+    @GetMapping("/me/fantasy-teams/{seriesId}/details")
+    fun fantasyTeamDetailsForSeries(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable seriesId: Long,
+    ) = userFantasyTeamService.getTeamDetailsForSeries(user, seriesId)
 }

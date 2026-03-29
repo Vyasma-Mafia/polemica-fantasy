@@ -9,6 +9,57 @@ export interface UserProfile {
   username: string | null
   firstName: string | null
   createdAt: string
+  fantiki: number
+}
+
+export interface StorePackRaritySlot {
+  rarity: Rarity
+  cardsCount: number
+}
+
+export interface StorePackItem {
+  id: number
+  name: string
+  priceFantiki: number
+  rarityLayout: StorePackRaritySlot[]
+}
+
+export interface BuyPackResponse {
+  fantiki: number
+  cards: UserCardItem[]
+}
+
+export interface FantasyTeamSeriesGameInfo {
+  seriesGameId: number
+  polemicaGameId: number
+  gameName: string
+  scored: boolean
+}
+
+export interface AchievementInGame {
+  achievementId: string
+  achievementName: string
+  bonusPoints: number
+}
+
+export interface CardGameBreakdown {
+  basePoints: number | null
+  achievementBonus: number | null
+  rarityModifier: number | null
+  totalScore: number | null
+  achievements: AchievementInGame[]
+}
+
+export interface FantasyTeamDetailSlot {
+  slot: number
+  userCardId: number
+  cells: (CardGameBreakdown | null)[]
+}
+
+export interface FantasyTeamSeriesDetails {
+  seriesId: number
+  games: FantasyTeamSeriesGameInfo[]
+  columns: FantasyTeamDetailSlot[]
 }
 
 export interface UserTournament {
@@ -74,7 +125,7 @@ export interface UserCardItem {
   description: string | null
   playerNickname: string
   playerPhotoUrl: string | null
-  achievements: { achievementType: string; bonusPoints: number }[]
+  achievements: { achievementId: string; achievementName: string; bonusPoints: number }[]
 }
 
 export interface FantasyTeamDto {

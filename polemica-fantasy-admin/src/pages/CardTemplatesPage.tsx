@@ -21,8 +21,9 @@ import {
   updateCardTemplate,
   uploadCardImage,
 } from '../api/cards'
+import { listAchievements } from '../api/achievements'
 import { listTournaments } from '../api/tournaments'
-import type { AchievementType, Rarity } from '../api/types'
+import type { Rarity } from '../api/types'
 
 export function CardTemplatesPage() {
   const { message } = App.useApp()
@@ -37,6 +38,11 @@ export function CardTemplatesPage() {
   const tq = useQuery({
     queryKey: ['admin', 'tournaments'],
     queryFn: listTournaments,
+  })
+
+  const achievementsQ = useQuery({
+    queryKey: ['admin', 'achievements'],
+    queryFn: listAchievements,
   })
 
   const cq = useQuery({
@@ -77,15 +83,8 @@ export function CardTemplatesPage() {
   })
 
   const achMut = useMutation({
-    mutationFn: ({
-      id,
-      achievementType,
-      bonusPoints,
-    }: {
-      id: number
-      achievementType: AchievementType
-      bonusPoints: number
-    }) => addCardTemplateAchievement(id, { achievementType, bonusPoints }),
+    mutationFn: ({ id, achievementId }: { id: number; achievementId: string }) =>
+      addCardTemplateAchievement(id, { achievementId }),
     onSuccess: () => {
       message.success('Achievement added')
       setAchOpen(null)
@@ -107,17 +106,11 @@ export function CardTemplatesPage() {
   const editing = cq.data?.find((c) => c.id === editId)
   const achRow = cq.data?.find((c) => c.id === achOpen)
 
-  const achievementOptions: { value: AchievementType; label: string }[] = [
-    'SHERIFF_FOUND_BLACK',
-    'DON_FOUND_SHERIFF',
-    'FIRST_NIGHT_SURVIVED',
-    'WON_GAME',
-    'BEST_MOVE',
-    'SURVIVED_TILL_END',
-    'VOTED_OUT_BLACK',
-    'CORRECT_GUESS',
-    'NO_FOULS',
-  ].map((v) => ({ value: v as AchievementType, label: v }))
+  const achievementOptions =
+    achievementsQ.data?.map((a) => ({
+      value: a.id,
+      label: `${a.name} (${a.id})`,
+    })) ?? []
 
   return (
     <div>
@@ -181,7 +174,12 @@ export function CardTemplatesPage() {
           {
             title: 'Achievements',
             dataIndex: 'achievements',
-            render: (a: { achievementType: string }[]) => a?.length ?? 0,
+            render: (a: { achievementName: string }[]) =>
+              a?.length ? (
+                <span>{a.map((x) => x.achievementName).join(', ')}</span>
+              ) : (
+                '—'
+              ),
           },
           {
             title: 'Actions',
@@ -308,23 +306,21 @@ export function CardTemplatesPage() {
         {achRow && (
           <Form
             layout="vertical"
-            onFinish={(v: { achievementType: AchievementType; bonusPoints: number }) =>
-              achMut.mutate({ id: achRow.id, ...v })
+            onFinish={(v: { achievementId: string }) =>
+              achMut.mutate({ id: achRow.id, achievementId: v.achievementId })
             }
           >
             <Form.Item
-              name="achievementType"
-              label="Type"
+              name="achievementId"
+              label="Achievement"
               rules={[{ required: true }]}
             >
-              <Select showSearch options={achievementOptions} />
-            </Form.Item>
-            <Form.Item
-              name="bonusPoints"
-              label="Bonus points"
-              rules={[{ required: true }]}
-            >
-              <InputNumber step={0.1} style={{ width: '100%' }} />
+              <Select
+                showSearch
+                loading={achievementsQ.isLoading}
+                options={achievementOptions}
+                placeholder="From catalog (bonus from catalog)"
+              />
             </Form.Item>
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={achMut.isPending}>

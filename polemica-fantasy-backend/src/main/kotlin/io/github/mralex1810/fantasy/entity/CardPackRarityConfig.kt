@@ -27,9 +27,6 @@ class CardPackRarityConfig(
     @Column(nullable = false, length = 32)
     var rarity: Rarity = Rarity.COMMON,
 
-    @Column(nullable = false)
-    var probability: Double = 0.0,
-
     @Column(name = "cards_count", nullable = false)
     var cardsCount: Int = 0,
 )

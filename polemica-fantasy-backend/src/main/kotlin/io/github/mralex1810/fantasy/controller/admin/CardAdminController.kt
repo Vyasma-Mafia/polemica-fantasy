@@ -4,6 +4,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.AddCardTemplateAchievement
 import io.github.mralex1810.fantasy.dto.admin.request.CreateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateCardTemplateRequest
 import io.github.mralex1810.fantasy.dto.admin.request.GiveCardsRequest
+import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardPackPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardTemplateRequest
 import io.github.mralex1810.fantasy.dto.admin.response.CardPackDto
@@ -36,6 +37,9 @@ class CardAdminController(
     @GetMapping("/card-packs")
     fun listCardPacks(@RequestParam(required = false) tournamentId: Long?): List<CardPackDto> =
         cardPackService.listPacks(tournamentId)
+
+    @GetMapping("/card-packs/{id}")
+    fun getCardPack(@PathVariable id: Long): CardPackDto = cardPackService.getPack(id)
 
     @PostMapping("/card-templates")
     fun createCardTemplate(@Valid @RequestBody body: CreateCardTemplateRequest): CardTemplateDto =
@@ -75,6 +79,12 @@ class CardAdminController(
         @PathVariable id: Long,
         @Valid @RequestBody body: UpdateCardPackRequest,
     ): CardPackDto = cardPackService.updatePack(id, body)
+
+    @PutMapping("/card-packs/{id}/players")
+    fun updateCardPackPlayers(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: UpdateCardPackPlayersRequest,
+    ): CardPackDto = cardPackService.replacePackPlayers(id, body.playerIds)
 
     @PostMapping("/users/{telegramUserId}/give-cards")
     fun giveCards(

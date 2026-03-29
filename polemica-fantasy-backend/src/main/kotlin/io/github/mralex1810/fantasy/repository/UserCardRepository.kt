@@ -13,7 +13,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
-        LEFT JOIN FETCH ct.achievements
+        LEFT JOIN FETCH ct.achievements ach
+        LEFT JOIN FETCH ach.achievement
         WHERE uc.telegramUser.id = :telegramUserId
         AND (:tournamentId IS NULL OR EXISTS (
             SELECT 1 FROM TournamentPlayer tp
@@ -34,7 +35,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
-        LEFT JOIN FETCH ct.achievements
+        LEFT JOIN FETCH ct.achievements ach
+        LEFT JOIN FETCH ach.achievement
         WHERE uc.telegramUser.id = :telegramUserId AND uc.id IN :ids
         """,
     )

@@ -3,12 +3,14 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { giveCards, listCardTemplates, openPack } from '../api/cards'
 import { listCardPacks } from '../api/packs'
+import { giveFantiki } from '../api/users'
 
 export function UserToolsPage() {
   const { message } = App.useApp()
   const [telegramUserId, setTelegramUserId] = useState<number | undefined>()
   const [packId, setPackId] = useState<number | undefined>()
   const [templateIds, setTemplateIds] = useState<number[]>([])
+  const [fantikiAmount, setFantikiAmount] = useState<number | undefined>()
 
   const templatesQ = useQuery({
     queryKey: ['admin', 'card-templates', 'all'],
@@ -30,6 +32,15 @@ export function UserToolsPage() {
     }) => giveCards(uid, { cardTemplateIds: ids }),
     onSuccess: (rows) => {
       message.success(`Issued ${rows.length} card(s)`)
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const fantikiMut = useMutation({
+    mutationFn: ({ uid, amount }: { uid: number; amount: number }) =>
+      giveFantiki(uid, amount),
+    onSuccess: (profile) => {
+      message.success(`Balance: ${profile.fantiki} fantiki`)
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -64,6 +75,31 @@ export function UserToolsPage() {
             onChange={(v) => setTelegramUserId(v ?? undefined)}
           />
         </Form.Item>
+
+        <Typography.Title level={5}>Fantiki</Typography.Title>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          Grant currency to the user (same Telegram user id as below).
+        </Typography.Paragraph>
+        <Space wrap style={{ marginBottom: 24 }}>
+          <InputNumber
+            min={1}
+            placeholder="Amount"
+            style={{ width: 160 }}
+            value={fantikiAmount}
+            onChange={(v) => setFantikiAmount(v ?? undefined)}
+          />
+          <Button
+            type="primary"
+            loading={fantikiMut.isPending}
+            disabled={telegramUserId == null || fantikiAmount == null || fantikiAmount < 1}
+            onClick={() => {
+              if (telegramUserId == null || fantikiAmount == null) return
+              fantikiMut.mutate({ uid: telegramUserId, amount: fantikiAmount })
+            }}
+          >
+            Grant fantiki
+          </Button>
+        </Space>
 
         <Typography.Title level={5}>Give cards</Typography.Title>
         <Select

@@ -29,4 +29,6 @@ interface CardTemplateRepository : JpaRepository<CardTemplate, Long> {
     ): List<CardTemplate>
 
     fun findAllByRarity(rarity: Rarity): List<CardTemplate>
+
+    fun findAllByFantasyPlayer_IdAndRarity(fantasyPlayerId: Long, rarity: Rarity): List<CardTemplate>
 }

@@ -6,7 +6,7 @@ import type { Rarity, UserCardItem } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { RARITY_UI, rarityClass } from '../lib/rarity'
+import { RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
 export function CardsPage() {
   const initData = useInitData()
@@ -110,14 +110,19 @@ export function CardsPage() {
               )}
               <div className="pf-collection-card__cap">
                 <span className="pf-collection-card__name">{c.playerNickname}</span>
-                <span className="pf-collection-card__rarity">{c.rarity}</span>
+                <span className="pf-collection-card__rarity">
+                  {c.rarity}{' '}
+                  <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                    {rarityScoreModifierLabel(c.rarity)}
+                  </span>
+                </span>
               </div>
             </div>
             {c.achievements.length > 0 && (
               <ul className="pf-collection-card__ach">
                 {c.achievements.slice(0, 3).map((a) => (
-                  <li key={a.achievementType}>
-                    {a.achievementType}: +{a.bonusPoints}
+                  <li key={a.achievementId}>
+                    {a.achievementName}: +{a.bonusPoints}
                   </li>
                 ))}
               </ul>

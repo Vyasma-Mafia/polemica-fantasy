@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { FantikiBalance } from './components/FantikiBalance'
 import { InitDataProvider } from './context/InitDataContext'
 import { CardsPage } from './pages/CardsPage'
 import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
@@ -9,6 +10,7 @@ import { LeaderboardPage } from './pages/LeaderboardPage'
 import { ParticipantsPage } from './pages/ParticipantsPage'
 import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
+import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
 import { TournamentPage } from './pages/TournamentPage'
@@ -26,12 +28,21 @@ function Shell() {
         <NavLink to="/" className="top__brand">
           Polemica Fantasy
         </NavLink>
-        <nav className="nav">
-          <NavLink to="/" end>
-            Турниры
-          </NavLink>
-          <NavLink to="/cards">Коллекция</NavLink>
-        </nav>
+        <div className="top__trailing">
+          <nav className="nav">
+            <NavLink to="/" end>
+              Турниры
+            </NavLink>
+            <NavLink to="/cards">Коллекция</NavLink>
+            <NavLink to="/store" className="nav__store">
+              <span className="nav__store-icon" aria-hidden>
+                🛒
+              </span>
+              Магазин
+            </NavLink>
+          </nav>
+          <FantikiBalance />
+        </div>
       </header>
       <main className="main">
         <Routes>
@@ -46,6 +57,7 @@ function Shell() {
           <Route path="/series/:seriesId/team" element={<TeamPage />} />
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/store" element={<StorePage />} />
         </Routes>
       </main>
     </div>

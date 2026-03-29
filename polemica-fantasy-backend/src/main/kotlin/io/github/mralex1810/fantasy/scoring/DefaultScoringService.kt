@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
+import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameAchievement
+import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -35,6 +37,7 @@ class DefaultScoringService(
         for (team in teams) {
             var teamTotal = 0.0
             for (card in team.cards) {
+                card.gameScores.clear()
                 val score = scoreCardForSeries(games, card)
                 card.score = score
                 teamTotal += score
@@ -54,7 +57,8 @@ class DefaultScoringService(
         val userCard = fantasyCard.userCard!!
         val template = userCard.cardTemplate!!
         val polemicaUserId = template.fantasyPlayer!!.polemicaUserId
-        val achievements = template.achievements
+        val templateAchievements = template.achievements
+        val rarityModifier = template.rarity.scoreModifier
 
         var total = 0.0
         for (sg in games) {
@@ -62,14 +66,47 @@ class DefaultScoringService(
             val polemicaGame = objectMapper.treeToValue(node, PolemicaGame::class.java)
             val player = findPlayer(polemicaGame, polemicaUserId) ?: continue
 
-            var gamePoints = player.award ?: 0.0
-            for (a in achievements) {
-                val det = achievementRegistry.detector(a.achievementType)
-                if (det?.detect(polemicaGame, player) == true) {
-                    gamePoints += a.bonusPoints
-                }
+            val basePoints = player.award ?: 0.0
+            val bonusByAchievementId = LinkedHashMap<String, Double>()
+
+            for (cta in templateAchievements) {
+                val ach = cta.achievement ?: continue
+                if (!isRoleApplicable(ach, player)) continue
+                val det = achievementRegistry.detector(ach.id) ?: continue
+                val raw = det.matchCount(polemicaGame, player)
+                val applied = appliedOccurrences(raw, ach.occurrenceType)
+                if (applied <= 0) continue
+                val effectiveBonus = cta.bonusPoints ?: ach.bonusPoints
+                val contribution = effectiveBonus * applied
+                bonusByAchievementId.merge(ach.id, contribution) { a, b -> a + b }
             }
-            total += gamePoints
+
+            val achievementBonus = bonusByAchievementId.values.sum()
+            val gameTotal = cardGameTotalScore(basePoints, achievementBonus, rarityModifier)
+            total += gameTotal
+
+            val gameScoreRow = FantasyTeamCardGameScore().apply {
+                fantasyTeamCard = fantasyCard
+                seriesGame = sg
+                this.basePoints = basePoints
+                this.achievementBonus = achievementBonus
+                this.rarityModifier = rarityModifier
+                totalScore = gameTotal
+            }
+            for ((achievementId, bonusPoints) in bonusByAchievementId) {
+                val achEntity = templateAchievements
+                    .mapNotNull { it.achievement }
+                    .firstOrNull { it.id == achievementId }
+                    ?: continue
+                gameScoreRow.achievements.add(
+                    FantasyTeamCardGameAchievement().apply {
+                        gameScore = gameScoreRow
+                        achievement = achEntity
+                        this.bonusPoints = bonusPoints
+                    },
+                )
+            }
+            fantasyCard.gameScores.add(gameScoreRow)
         }
         return total
     }

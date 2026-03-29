@@ -10,6 +10,10 @@ const menuItems = [
     key: '/card-templates',
     label: <Link to="/card-templates">Card templates</Link>,
   },
+  {
+    key: '/achievements',
+    label: <Link to="/achievements">Achievements</Link>,
+  },
   { key: '/card-packs', label: <Link to="/card-packs">Card packs</Link> },
   { key: '/user-tools', label: <Link to="/user-tools">User tools</Link> },
 ]

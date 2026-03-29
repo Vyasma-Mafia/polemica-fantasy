@@ -1,6 +1,5 @@
 package io.github.mralex1810.fantasy.dto.user.response
 
-import io.github.mralex1810.fantasy.entity.AchievementType
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
@@ -13,6 +12,7 @@ data class UserProfileDto(
     val username: String?,
     val firstName: String?,
     val createdAt: Instant,
+    val fantiki: Long,
 )
 
 data class UserTournamentDto(
@@ -87,7 +87,8 @@ data class LeaderboardEntryDto(
 )
 
 data class CardAchievementBriefDto(
-    val achievementType: AchievementType,
+    val achievementId: String,
+    val achievementName: String,
     val bonusPoints: Double,
 )
 
@@ -116,4 +117,55 @@ data class FantasyTeamDto(
     val totalScore: Double?,
     val submittedAt: Instant,
     val slots: List<FantasyTeamSlotDto>,
+)
+
+data class StorePackRaritySlotDto(
+    val rarity: Rarity,
+    val cardsCount: Int,
+)
+
+data class StorePackItemDto(
+    val id: Long,
+    val name: String,
+    val priceFantiki: Long,
+    val rarityLayout: List<StorePackRaritySlotDto>,
+)
+
+data class BuyPackResponseDto(
+    val fantiki: Long,
+    val cards: List<UserCardItemDto>,
+)
+
+data class FantasyTeamSeriesGameInfoDto(
+    val seriesGameId: Long,
+    val polemicaGameId: Long,
+    val gameName: String,
+    val scored: Boolean,
+)
+
+data class AchievementInGameDto(
+    val achievementId: String,
+    val achievementName: String,
+    val bonusPoints: Double,
+)
+
+data class CardGameBreakdownDto(
+    val basePoints: Double?,
+    val achievementBonus: Double?,
+    val rarityModifier: Double?,
+    val totalScore: Double?,
+    val achievements: List<AchievementInGameDto>,
+)
+
+data class FantasyTeamDetailSlotDto(
+    val slot: Int,
+    val userCardId: Long,
+    /** Same order as [FantasyTeamSeriesDetailsDto.games]. */
+    val cells: List<CardGameBreakdownDto?>,
+)
+
+data class FantasyTeamSeriesDetailsDto(
+    val seriesId: Long,
+    val games: List<FantasyTeamSeriesGameInfoDto>,
+    val columns: List<FantasyTeamDetailSlotDto>,
 )

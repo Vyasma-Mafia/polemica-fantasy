@@ -2,8 +2,6 @@ package io.github.mralex1810.fantasy.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -23,10 +21,10 @@ class CardTemplateAchievement(
     @JoinColumn(name = "card_template_id", nullable = false)
     var cardTemplate: CardTemplate? = null,
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "achievement_type", nullable = false, length = 64)
-    var achievementType: AchievementType = AchievementType.WON_GAME,
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "achievement_id", nullable = false)
+    var achievement: Achievement? = null,
 
-    @Column(name = "bonus_points", nullable = false)
-    var bonusPoints: Double = 0.0,
+    @Column(name = "bonus_points", nullable = true)
+    var bonusPoints: Double? = null,
 )

@@ -12,7 +12,7 @@ import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.CardTemplateAchievement
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
-import io.github.mralex1810.fantasy.repository.CardPackRepository
+import io.github.mralex1810.fantasy.repository.AchievementRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
@@ -23,20 +23,18 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
-import java.util.Random
 
 @Service
 class CardService(
     private val cardTemplateRepository: CardTemplateRepository,
+    private val achievementRepository: AchievementRepository,
     private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
-    private val cardPackRepository: CardPackRepository,
     private val userCardRepository: UserCardRepository,
     private val userService: UserService,
     private val imageStorageService: ImageStorageService,
+    private val cardPackService: CardPackService,
 ) {
-
-    private val random = Random()
 
     @Transactional
     fun createTemplate(request: CreateCardTemplateRequest): CardTemplateDto {
@@ -72,10 +70,13 @@ class CardService(
         val ct = cardTemplateRepository.findById(cardTemplateId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Card template $cardTemplateId not found")
         }
+        val achievement = achievementRepository.findById(request.achievementId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Achievement ${request.achievementId} not found")
+        }
         cardTemplateAchievementRepository.save(
             CardTemplateAchievement(
                 cardTemplate = ct,
-                achievementType = request.achievementType,
+                achievement = achievement,
                 bonusPoints = request.bonusPoints,
             ),
         )
@@ -123,46 +124,17 @@ class CardService(
      * @param telegramUserId Telegram platform user id (not internal DB id).
      */
     @Transactional
-    fun openPack(telegramUserId: Long, packId: Long): OpenPackResultDto {
-        val user = userService.getOrCreateAndUpdateProfile(telegramUserId, null, null)
-        val pack = cardPackRepository.findById(packId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Card pack $packId not found")
-        }
-        if (!pack.active) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card pack is not active")
-        }
-        val now = Instant.now()
-        val drawn = mutableListOf<UserCard>()
-        pack.rarityConfigs.forEach { cfg ->
-            repeat(cfg.cardsCount) {
-                val candidates = cardTemplateRepository.findAllByRarity(cfg.rarity)
-                if (candidates.isEmpty()) {
-                    throw ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "No card templates for rarity ${cfg.rarity}",
-                    )
-                }
-                val template = candidates[random.nextInt(candidates.size)]
-                drawn.add(
-                    userCardRepository.save(
-                        UserCard(
-                            telegramUser = user,
-                            cardTemplate = template,
-                            acquiredAt = now,
-                        ),
-                    ),
-                )
-            }
-        }
-        return OpenPackResultDto(userCards = drawn.map { it.toDto() })
-    }
+    fun openPack(telegramUserId: Long, packId: Long): OpenPackResultDto =
+        cardPackService.openPack(telegramUserId, packId)
 
     private fun CardTemplate.toDto(): CardTemplateDto {
         val ach = achievements.map { a ->
+            val def = a.achievement!!
             CardTemplateAchievementDto(
                 id = a.id!!,
-                achievementType = a.achievementType,
-                bonusPoints = a.bonusPoints,
+                achievementId = def.id,
+                achievementName = def.name,
+                bonusPoints = a.bonusPoints ?: def.bonusPoints,
             )
         }
         return CardTemplateDto(

@@ -1,4 +1,4 @@
-import type { AchievementType, Rarity } from './types'
+import type { Rarity } from './types'
 
 export interface CreateCardTemplateRequest {
   fantasyPlayerId: number
@@ -12,8 +12,8 @@ export interface UpdateCardTemplateRequest {
 }
 
 export interface AddCardTemplateAchievementRequest {
-  achievementType: AchievementType
-  bonusPoints: number
+  achievementId: string
+  bonusPoints?: number | null
 }
 
 export interface GiveCardsRequest {

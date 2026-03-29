@@ -28,8 +28,14 @@ class TelegramUser(
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 
+    @Column(name = "fantiki", nullable = false)
+    var fantiki: Long = 1000L,
+
     @OneToMany(mappedBy = "telegramUser")
     var userCards: MutableList<UserCard> = mutableListOf(),
+
+    @OneToMany(mappedBy = "telegramUser")
+    var fantikiTransactions: MutableList<FantikiTransaction> = mutableListOf(),
 
     @OneToMany(mappedBy = "telegramUser")
     var fantasyTeams: MutableList<FantasyTeam> = mutableListOf(),

@@ -1,13 +1,21 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.request.SubmitFantasyTeamRequest
+import io.github.mralex1810.fantasy.dto.user.response.AchievementInGameDto
+import io.github.mralex1810.fantasy.dto.user.response.CardGameBreakdownDto
+import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamDetailSlotDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamDto
+import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSeriesDetailsDto
+import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSeriesGameInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSlotDto
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
+import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
@@ -20,10 +28,12 @@ import java.time.Instant
 @Service
 class UserFantasyTeamService(
     private val seriesRepository: SeriesRepository,
+    private val seriesGameRepository: SeriesGameRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val userCardRepository: UserCardRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
+    private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -37,6 +47,58 @@ class UserFantasyTeamService(
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return team.toDto()
+    }
+
+    @Transactional(readOnly = true)
+    fun getTeamDetailsForSeries(user: TelegramUser, seriesId: Long): FantasyTeamSeriesDetailsDto {
+        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
+        val seriesGames = seriesGameRepository.findAllBySeries_Id(seriesId)
+            .sortedWith(compareBy({ it.polemicaGameId }, { it.id }))
+        val games = seriesGames.map { sg ->
+            FantasyTeamSeriesGameInfoDto(
+                seriesGameId = sg.id!!,
+                polemicaGameId = sg.polemicaGameId,
+                gameName = sg.gameName,
+                scored = sg.scored,
+            )
+        }
+        val scores = fantasyTeamCardGameScoreRepository.findAllByFantasyTeamId(team.id!!)
+        val scoreByCardAndGame = scores.associateBy {
+            Pair(it.fantasyTeamCard!!.id!!, it.seriesGame!!.id!!)
+        }
+        val columns = team.cards.sortedBy { it.slot }.map { ftc ->
+            val cells = seriesGames.map { sg ->
+                scoreByCardAndGame[Pair(ftc.id!!, sg.id!!)]?.toBreakdownDto()
+            }
+            FantasyTeamDetailSlotDto(
+                slot = ftc.slot,
+                userCardId = ftc.userCard!!.id!!,
+                cells = cells,
+            )
+        }
+        return FantasyTeamSeriesDetailsDto(
+            seriesId = seriesId,
+            games = games,
+            columns = columns,
+        )
+    }
+
+    private fun FantasyTeamCardGameScore.toBreakdownDto(): CardGameBreakdownDto {
+        val ach = achievements.map { a ->
+            AchievementInGameDto(
+                achievementId = a.achievement!!.id,
+                achievementName = a.achievement!!.name,
+                bonusPoints = a.bonusPoints,
+            )
+        }
+        return CardGameBreakdownDto(
+            basePoints = basePoints,
+            achievementBonus = achievementBonus,
+            rarityModifier = rarityModifier,
+            totalScore = totalScore,
+            achievements = ach,
+        )
     }
 
     @Transactional
