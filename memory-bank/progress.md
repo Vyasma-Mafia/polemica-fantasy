@@ -21,7 +21,7 @@
 - [x] JPA entities + enum-классы (`Rarity` с `scoreModifier`, `TournamentStatus`, `SeriesStatus`, …); **V2 (B1):** enum `AchievementType` заменён справочником `Achievement` + `card_template_achievement.achievement_id` FK
 - [x] `application.yml` по DESIGN §12.5 + профиль `dev`, опция `s3.ensure-bucket-on-startup`
 - [x] Три `SecurityFilterChain` @Order(1–3): admin Basic Auth; user `/api/v1/**` без `/api/v1/admin/**` — `TelegramAuthFilter` + authenticated; остальное — `permitAll`
-- [x] Зависимость `polemica-library:1.8.1` (Maven Central + `mavenLocal()`)
+- [x] Зависимость `polemica-library:1.8.2` (Maven Central + `mavenLocal()`); `ProfileGameRow.mmr` — десериализация числа или вложенного объекта (публичный профиль)
 - [x] Интеграционный тест контекста: Testcontainers PostgreSQL 16
 
 ### Backend (Agent A3 — Admin API)
@@ -82,7 +82,7 @@
 - [x] Admin/TMA типы и UI под `achievementId` / `achievementName` и паки без `probability`
 
 ### polemica-library (опционально, не блокер)
-- [ ] Отдельный `getPlayerGames` / фильтрация на сервере — сейчас используется пагинация `getProfileGames` из артефакта 1.8.1
+- [ ] Отдельный `getPlayerGames` / фильтрация на сервере — сейчас используется пагинация `getProfileGames` из артефакта 1.8.2
 
 ## Известные проблемы
 - Детекторы сложных достижений (`VOTED_OUT_BLACK`, `CORRECT_GUESS`) зависят от полноты модели `PolemicaGame`; при необходимости уточнить по реальным логам API

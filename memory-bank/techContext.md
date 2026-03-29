@@ -14,7 +14,9 @@
 | Spring Security | via Spring Boot | Auth (TMA + Admin) |
 | Jackson | via Spring Boot | JSON serialization |
 | PostgreSQL | 16+ | Primary database |
-| polemica-library | 1.8.1 | Polemica API client (`io.github.mralex1810:polemica-library`); `getProfileGames`, `getMatch`, игры турниров/клубов; в `build.gradle.kts` также `mavenLocal()` |
+| polemica-library | 1.8.2 | Polemica API client (`io.github.mralex1810:polemica-library`); `getProfileGames`, `getMatch`, игры турниров/клубов; в `build.gradle.kts` также `mavenLocal()` |
+
+**Исходники библиотеки (локальная разработка):** `../polemica-library/src/main/kotlin` относительно корня `polemica-fantasy` — репозиторий [polemica-library](https://github.com/Vyasma-Mafia/polemica-library) клонируется рядом или по symlink.
 
 ## Frontend Stack (User — TMA)
 
@@ -166,7 +168,7 @@ Admin API (прокси к Polemica для UI): `GET /api/v1/admin/polemica/comp
 
 Бэкенд (`polemica-fantasy-backend/`):
 - Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 + Spring Boot 3.4.2
-- JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.1
+- JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.2
 - `src/main`: `FantasyApplication`, `config/` (S3, Security, `TelegramProperties`, AdminProperties, `PolemicaProperties`, `PolemicaConfig`), `auth/` (`TelegramInitDataValidator`, `TelegramAuthFilter`, `TelegramAuthentication`, `UserApiRequestMatcher`), `entity/` (в т.ч. `TournamentKind`, `FantasyPlayer`, `TournamentPlayer`, `CardTemplate`), `repository/`, `service/` (в т.ч. `UserService`, `UserTournamentService`, `UserSeriesService`, `UserCardCollectionService`, `UserFantasyTeamService`), `controller/user/*`, `controller/admin/*` (в т.ч. `PolemicaAdminController`), `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `resources/application.yml`, Flyway: `V1` … `V4__tournament_kind_competition.sql`
 - `src/test`: Testcontainers PostgreSQL 16; `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackServiceProbabilityTest`, `FantasyApplicationTests`, achievement unit tests
 - Docker: multi-stage `Dockerfile`, артефакт `build/libs/app.jar` (bootJar)
