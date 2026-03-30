@@ -115,6 +115,15 @@ export function PackOpening({ cards, packName, onDismiss }: PackOpeningProps) {
                     <div className="pf-pack-open__summary-card-ph">{c.rarity}</div>
                   )}
                   <span className="pf-pack-open__summary-card-name">{c.playerNickname}</span>
+                  {c.achievements.length > 0 ? (
+                    <ul className="pf-pack-open__summary-card-ach">
+                      {c.achievements.map((a) => (
+                        <li key={a.achievementId}>
+                          {a.achievementName}: +{a.bonusPoints}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </li>
               )
             })}
@@ -154,7 +163,18 @@ function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
         ) : (
           <div className="pf-pack-open__card-ph">{card.rarity}</div>
         )}
-        <span className="pf-pack-open__card-name">{card.playerNickname}</span>
+        <div className="pf-pack-open__card-cap">
+          <span className="pf-pack-open__card-name">{card.playerNickname}</span>
+          {card.achievements.length > 0 ? (
+            <ul className="pf-pack-open__card-ach">
+              {card.achievements.map((a) => (
+                <li key={a.achievementId}>
+                  {a.achievementName}: +{a.bonusPoints}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       </div>
     </>
   )
