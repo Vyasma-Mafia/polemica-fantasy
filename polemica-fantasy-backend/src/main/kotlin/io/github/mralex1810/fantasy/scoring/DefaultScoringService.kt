@@ -44,6 +44,7 @@ class DefaultScoringService(
             var teamTotal = 0.0
             for (card in team.cards) {
                 card.gameScores.clear()
+                fantasyTeamRepository.flush()
                 val score = scoreCardForSeries(games, card, pointsByTablePositionByGameId)
                 card.score = score
                 teamTotal += score
