@@ -120,6 +120,21 @@ data class FantasyTeamDto(
     val slots: List<FantasyTeamSlotDto>,
 )
 
+data class PublicFantasyTeamSlotDto(
+    val slot: Int,
+    val score: Double?,
+    val card: UserCardItemDto,
+)
+
+data class PublicFantasyTeamDto(
+    val owner: UserPublicDto,
+    val seriesId: Long,
+    val tournamentId: Long,
+    val totalScore: Double?,
+    val submittedAt: Instant,
+    val slots: List<PublicFantasyTeamSlotDto>,
+)
+
 data class StorePackRaritySlotDto(
     val rarity: Rarity,
     val cardsCount: Int,

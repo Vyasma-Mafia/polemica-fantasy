@@ -1,7 +1,9 @@
 package io.github.mralex1810.fantasy.controller.user
 
 import io.github.mralex1810.fantasy.dto.user.request.SubmitFantasyTeamRequest
+import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSeriesDetailsDto
 import io.github.mralex1810.fantasy.dto.user.response.LeaderboardEntryDto
+import io.github.mralex1810.fantasy.dto.user.response.PublicFantasyTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.UserSeriesDetailDto
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.service.UserFantasyTeamService
@@ -28,6 +30,20 @@ class SeriesController(
 
     @GetMapping("/{id}/leaderboard")
     fun leaderboard(@PathVariable id: Long): List<LeaderboardEntryDto> = userSeriesService.getLeaderboard(id)
+
+    @GetMapping("/{id}/users/{telegramId}/fantasy-team")
+    fun getPublicFantasyTeam(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable id: Long,
+        @PathVariable telegramId: Long,
+    ): PublicFantasyTeamDto = userFantasyTeamService.getPublicTeamForSeries(id, telegramId)
+
+    @GetMapping("/{id}/users/{telegramId}/fantasy-team/details")
+    fun getPublicFantasyTeamDetails(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable id: Long,
+        @PathVariable telegramId: Long,
+    ): FantasyTeamSeriesDetailsDto = userFantasyTeamService.getPublicTeamDetailsForSeries(id, telegramId)
 
     @PostMapping("/{id}/fantasy-team")
     fun createFantasyTeam(

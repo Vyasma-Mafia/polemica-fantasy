@@ -93,13 +93,18 @@ export function TournamentLeaderboardPage() {
       {tab !== 'general' && (
         <ul className="pf-lb-list">
           {activeBoard.map((r) => (
-            <li key={r.rank + '-' + r.user.telegramId} className="pf-lb-row">
-              <span className="pf-lb-rank">#{r.rank}</span>
-              <span className="pf-lb-name">{r.user.firstName ?? r.user.username ?? r.user.telegramId}</span>
-              <span className="pf-lb-score">
-                {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
-                <span className="pf-lb-score-label">очков</span>
-              </span>
+            <li key={r.rank + '-' + r.user.telegramId}>
+              <Link
+                to={`/series/${tab}/leaderboard/player/${r.user.telegramId}`}
+                className="pf-lb-row pf-lb-row--link"
+              >
+                <span className="pf-lb-rank">#{r.rank}</span>
+                <span className="pf-lb-name">{r.user.firstName ?? r.user.username ?? r.user.telegramId}</span>
+                <span className="pf-lb-score">
+                  {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
+                  <span className="pf-lb-score-label">очков</span>
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

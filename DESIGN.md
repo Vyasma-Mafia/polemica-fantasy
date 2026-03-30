@@ -486,6 +486,8 @@ Authentication: Telegram `initData` in `Authorization` header, validated via HMA
 | GET | `/tournaments/{id}/participants` | Ростер турнира |
 | GET | `/series/{id}` | Series details: players, games, status |
 | GET | `/series/{id}/leaderboard` | Fantasy team rankings |
+| GET | `/series/{id}/users/{telegramId}/fantasy-team` | Чужая команда в серии: владелец (`UserPublicDto`), слоты с полной карточкой (`UserCardItemDto`) и очком по слоту |
+| GET | `/series/{id}/users/{telegramId}/fantasy-team/details` | Как `GET /me/fantasy-teams/{seriesId}/details`, но для команды пользователя с данным `telegramId` |
 | POST | `/series/{id}/fantasy-team` | Submit fantasy team (body: 3 `user_card_id`) |
 | PUT | `/series/{id}/fantasy-team` | Edit fantasy team (before deadline) |
 

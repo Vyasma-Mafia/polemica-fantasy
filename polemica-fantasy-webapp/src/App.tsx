@@ -7,6 +7,7 @@ import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
 import { FantasyRulesPage } from './pages/FantasyRulesPage'
 import { HomePage } from './pages/HomePage'
 import { LeaderboardPage } from './pages/LeaderboardPage'
+import { LeaderboardPlayerTeamPage } from './pages/LeaderboardPlayerTeamPage'
 import { ParticipantsPage } from './pages/ParticipantsPage'
 import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
@@ -56,6 +57,7 @@ function Shell() {
           <Route path="/series/:seriesId" element={<SeriesPage />} />
           <Route path="/series/:seriesId/team" element={<TeamPage />} />
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/store" element={<StorePage />} />
         </Routes>

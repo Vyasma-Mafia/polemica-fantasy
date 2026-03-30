@@ -110,10 +110,33 @@ export interface UserSeriesDetail {
   games: { polemicaGameId: number; gameName: string; scored: boolean }[]
 }
 
+/** Public profile snippet (лидерборд, чужая команда). */
+export interface UserPublic {
+  telegramId: number
+  username: string | null
+  firstName: string | null
+}
+
 export interface LeaderboardEntry {
   rank: number
   totalScore: number | null
-  user: { telegramId: number; username: string | null; firstName: string | null }
+  user: UserPublic
+}
+
+/** Ответ GET /api/v1/series/{seriesId}/users/{telegramId}/fantasy-team */
+export interface PublicFantasyTeamSlot {
+  slot: number
+  score: number | null
+  card: UserCardItem
+}
+
+export interface PublicFantasyTeam {
+  owner: UserPublic
+  seriesId: number
+  tournamentId: number
+  totalScore: number | null
+  submittedAt: string
+  slots: PublicFantasyTeamSlot[]
 }
 
 export interface UserCardItem {

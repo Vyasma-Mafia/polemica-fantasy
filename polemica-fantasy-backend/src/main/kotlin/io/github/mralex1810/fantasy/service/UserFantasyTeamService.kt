@@ -8,16 +8,21 @@ import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSeriesDetailsDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSeriesGameInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamSlotDto
+import io.github.mralex1810.fantasy.dto.user.response.PublicFantasyTeamDto
+import io.github.mralex1810.fantasy.dto.user.response.PublicFantasyTeamSlotDto
+import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -31,6 +36,8 @@ class UserFantasyTeamService(
     private val seriesGameRepository: SeriesGameRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val userCardRepository: UserCardRepository,
+    private val telegramUserRepository: TelegramUserRepository,
+    private val cardTemplateRepository: CardTemplateRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
@@ -53,6 +60,60 @@ class UserFantasyTeamService(
     fun getTeamDetailsForSeries(user: TelegramUser, seriesId: Long): FantasyTeamSeriesDetailsDto {
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
+        return buildTeamSeriesDetails(team, seriesId)
+    }
+
+    @Transactional(readOnly = true)
+    fun getPublicTeamForSeries(seriesId: Long, ownerTelegramId: Long): PublicFantasyTeamDto {
+        if (!seriesRepository.existsById(seriesId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
+        val templateIds = team.cards.map { it.userCard!!.cardTemplate!!.id!! }
+        val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds)
+            .associateBy { it.id!! }
+        val ownerDto = UserPublicDto(
+            telegramId = owner.telegramId,
+            username = owner.username,
+            firstName = owner.firstName,
+        )
+        val s = team.series!!
+        val slots = team.cards.sortedBy { it.slot }.map { ftc ->
+            val uc = ftc.userCard!!
+            val tid = uc.cardTemplate!!.id!!
+            val template = templatesById[tid] ?: uc.cardTemplate!!
+            PublicFantasyTeamSlotDto(
+                slot = ftc.slot,
+                score = ftc.score,
+                card = uc.toUserCardItemDto(template),
+            )
+        }
+        return PublicFantasyTeamDto(
+            owner = ownerDto,
+            seriesId = s.id!!,
+            tournamentId = s.tournament!!.id!!,
+            totalScore = team.totalScore,
+            submittedAt = team.submittedAt,
+            slots = slots,
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getPublicTeamDetailsForSeries(seriesId: Long, ownerTelegramId: Long): FantasyTeamSeriesDetailsDto {
+        if (!seriesRepository.existsById(seriesId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
+        return buildTeamSeriesDetails(team, seriesId)
+    }
+
+    private fun buildTeamSeriesDetails(team: FantasyTeam, seriesId: Long): FantasyTeamSeriesDetailsDto {
         val seriesGames = seriesGameRepository.findAllBySeries_Id(seriesId)
             .sortedWith(compareBy({ it.polemicaGameId }, { it.id }))
         val games = seriesGames.map { sg ->
@@ -127,7 +188,9 @@ class UserFantasyTeamService(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         val series = team.series!!
         assertDeadline(series.teamDeadline)
-        fantasyTeamCardRepository.deleteAllByFantasyTeam_Id(team.id!!)
+        val existingCards = fantasyTeamCardRepository.findAllByFantasyTeam_Id(team.id!!)
+        fantasyTeamCardRepository.deleteAll(existingCards)
+        fantasyTeamCardRepository.flush()
         team.cards.clear()
         team.submittedAt = Instant.now()
         team.totalScore = null

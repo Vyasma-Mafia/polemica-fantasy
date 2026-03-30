@@ -642,6 +642,21 @@ a {
   font-size: 0.92rem;
 }
 
+a.pf-lb-row--link {
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+a.pf-lb-row--link:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+a.pf-lb-row--link:focus-visible {
+  outline: 2px solid var(--pf-gold-dim);
+  outline-offset: -2px;
+}
+
 .pf-lb-rank {
   font-family: var(--pf-display);
   font-size: 1.15rem;
