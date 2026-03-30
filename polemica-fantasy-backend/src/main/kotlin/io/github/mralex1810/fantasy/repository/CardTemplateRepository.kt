@@ -31,4 +31,15 @@ interface CardTemplateRepository : JpaRepository<CardTemplate, Long> {
     fun findAllByRarity(rarity: Rarity): List<CardTemplate>
 
     fun findAllByFantasyPlayer_IdAndRarity(fantasyPlayerId: Long, rarity: Rarity): List<CardTemplate>
+
+    @Query(
+        """
+        SELECT DISTINCT ct FROM CardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH ct.achievements ach
+        LEFT JOIN FETCH ach.achievement
+        WHERE ct.id IN :ids
+        """,
+    )
+    fun findAllByIdWithAchievementsLoaded(@Param("ids") ids: Collection<Long>): List<CardTemplate>
 }

@@ -146,7 +146,12 @@ function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
   const particleCount = rarity === 'LEGENDARY' ? 14 : rarity === 'EPIC' ? 10 : 0
 
   const inner = (
-    <>
+    <div className="pf-pack-open__card-inner">
+      {img ? (
+        <img src={img} alt="" className="pf-pack-open__card-img" />
+      ) : (
+        <div className="pf-pack-open__card-ph">{card.rarity}</div>
+      )}
       {particleCount > 0 ? (
         <span className="pf-pack-open__particles" aria-hidden>
           {Array.from({ length: particleCount }).map((_, i) => (
@@ -158,22 +163,15 @@ function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
           ))}
         </span>
       ) : null}
-      <div className="pf-pack-open__card-inner">
-        {img ? (
-          <img src={img} alt="" className="pf-pack-open__card-img" />
-        ) : (
-          <div className="pf-pack-open__card-ph">{card.rarity}</div>
-        )}
-        <div className="pf-pack-open__card-cap">
-          <span className="pf-pack-open__card-name">{card.playerNickname}</span>
-          <span className="pf-pack-open__card-rarity">
-            {card.rarity}{' '}
-            <span className="pf-rarity-mod">{rarityScoreModifierLabel(card.rarity)}</span>
-          </span>
-          <CardAchievementChips achievements={card.achievements} />
-        </div>
+      <div className="pf-pack-open__card-cap">
+        <span className="pf-pack-open__card-name">{card.playerNickname}</span>
+        <span className="pf-pack-open__card-rarity">
+          {card.rarity}{' '}
+          <span className="pf-rarity-mod">{rarityScoreModifierLabel(card.rarity)}</span>
+        </span>
+        <CardAchievementChips achievements={card.achievements} />
       </div>
-    </>
+    </div>
   )
 
   return (

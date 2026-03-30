@@ -38,6 +38,7 @@
 
 ## Недавние правки TMA (карты и коллекция)
 - **Карты:** общая палитра редкости — common матовый серый (`--pf-card-common`), rare ледяной cyan с лёгким свечением (`--pf-card-rare`); достижения в виде чипов на оверлее фото (`CardAchievementChips`) на коллекции, сборке команды, раскрытии пака и сводке пака; увеличены шрифты в подписи к карте.
+- **Покупка пака:** ответ `POST …/store/packs/{id}/buy` мапится в `UserCardItemDto` через шаблоны из `CardTemplateRepository.findAllByIdWithAchievementsLoaded`, чтобы список достижений не терялся при сборке DTO; на экране раскрытия частицы EPIC/LEGENDARY под текстом (`z-index` у `pf-pack-open__card-cap` выше, чем у `pf-pack-open__particles`).
 
 ## Недавние правки TMA (сборка команды на серию)
 - **`GET /api/v1/me/cards`:** опциональный `seriesId` — только карты игроков из `series_player` (как при валидации fantasy-team); неизвестная серия → 404.
