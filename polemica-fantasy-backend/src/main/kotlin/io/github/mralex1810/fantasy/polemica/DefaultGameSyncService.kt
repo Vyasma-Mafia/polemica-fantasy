@@ -60,10 +60,13 @@ class DefaultGameSyncService(
         val players = seriesPlayerRepository.findAllBySeries_Id(seriesId)
         if (players.isEmpty()) return
 
-        val matchIds = LinkedHashSet<Long>()
-        for (sp in players) {
+        val idSets = players.map { sp ->
             val uid = sp.tournamentPlayer!!.fantasyPlayer!!.polemicaUserId
-            integration.fetchRecentProfileRowsForSync(uid).forEach { matchIds.add(it.id) }
+            integration.fetchRecentProfileRowsForSync(uid).map { it.id }.toSet()
+        }
+        val matchIds = LinkedHashSet(idSets.first())
+        for (i in 1 until idSets.size) {
+            matchIds.retainAll(idSets[i])
         }
 
         val loaded = mutableMapOf<Long, PolemicaGame>()
