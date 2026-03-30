@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.util.AopTestUtils
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
@@ -49,11 +50,12 @@ class CardPackFindOrCreateTemplateIntegrationTest {
 
         val method = findOrCreateCardTemplateMethod()
         method.isAccessible = true
+        val target = AopTestUtils.getUltimateTargetObject(cardPackService) as CardPackService
 
         @Suppress("UNCHECKED_CAST")
-        val first = method.invoke(cardPackService, fp, Rarity.RARE, listOf(ach)) as CardTemplate
+        val first = method.invoke(target, fp, Rarity.RARE, listOf(ach)) as CardTemplate
         @Suppress("UNCHECKED_CAST")
-        val second = method.invoke(cardPackService, fp, Rarity.RARE, listOf(ach)) as CardTemplate
+        val second = method.invoke(target, fp, Rarity.RARE, listOf(ach)) as CardTemplate
 
         assertEquals(first.id, second.id)
         assertEquals(
@@ -77,17 +79,18 @@ class CardPackFindOrCreateTemplateIntegrationTest {
 
         val method = findOrCreateCardTemplateMethod()
         method.isAccessible = true
+        val target = AopTestUtils.getUltimateTargetObject(cardPackService) as CardPackService
 
         @Suppress("UNCHECKED_CAST")
         val first = method.invoke(
-            cardPackService,
+            target,
             fp,
             Rarity.EPIC,
             listOf(a, b),
         ) as CardTemplate
         @Suppress("UNCHECKED_CAST")
         val second = method.invoke(
-            cardPackService,
+            target,
             fp,
             Rarity.EPIC,
             listOf(b, a),

@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.polemica
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.mafia.vyasma.polemica.library.client.PolemicaClient
+import com.github.mafia.vyasma.polemica.library.client.PolemicaClient.ProfileGameRow
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import io.github.mralex1810.fantasy.dto.admin.response.PolemicaCompetitionDetailDto
 import io.github.mralex1810.fantasy.dto.admin.response.PolemicaCompetitionSummaryDto
@@ -25,8 +26,16 @@ class PolemicaIntegrationService(
         return chunk.rows
     }
 
+    /** First page of public profile games (newest first). Used for achievement frequency statistics. */
+    fun fetchProfileGamesFirstPageForStatistics(userId: Long): List<ProfileGameRow> {
+        val chunk = polemicaClient.getProfileGames(userId, PROFILE_STATS_PAGE, PROFILE_STATS_PAGE_SIZE)
+        return chunk.rows
+    }
+
     private companion object {
         private const val PROFILE_SYNC_PAGE_SIZE = 500L
+        private const val PROFILE_STATS_PAGE = 1L
+        private const val PROFILE_STATS_PAGE_SIZE = 100L
     }
 
     fun loadMatch(matchId: Long): PolemicaGame =

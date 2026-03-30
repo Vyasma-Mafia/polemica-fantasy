@@ -25,7 +25,11 @@
 ## Следующие шаги
 1. Опционально: серверный агрегат лидерборда по турниру (сейчас TMA суммирует на клиенте)
 2. Опционально: доп. методы в polemica-library (оптимизация `getPlayerGames`)
-3. Опционально: подкрутить бонусы по достижениям через админку (базово в V10 всё = 1)
+3. Этап 2 баланса достижений: по отчёту этапа 1 и prior ролей 6/2/1/1 задать формулу `bonus_points` (отдельная задача)
+
+## Статистика достижений (этап 1 баланса)
+- **POST** `/api/v1/admin/achievement-statistics/collect` (Basic Auth) — для каждого `fantasy_player` первая страница профиля Polemica (100 игр), дедуп `match_id`, `getMatch`, прогон тех же `AchievementDetector` + `isRoleApplicable`, что в скоринге; ответ — агрегаты по каждому `achievement.id` (`applicableSlots`, `sumRawMatchCount`, `slotsWithPositiveRaw`, `sumAppliedOccurrences`), метаданные и до 100 ошибок загрузки матча.
+- `PolemicaIntegrationService.fetchProfileGamesFirstPageForStatistics` — page=1, limit=100.
 
 ## Открытые вопросы
 - Финальная настройка бонусов достижений (через админку)
