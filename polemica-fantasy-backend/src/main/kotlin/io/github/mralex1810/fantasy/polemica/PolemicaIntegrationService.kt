@@ -26,7 +26,7 @@ class PolemicaIntegrationService(
     }
 
     private companion object {
-        private const val PROFILE_SYNC_PAGE_SIZE = 50L
+        private const val PROFILE_SYNC_PAGE_SIZE = 500L
     }
 
     fun loadMatch(matchId: Long): PolemicaGame =
