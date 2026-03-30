@@ -49,3 +49,4 @@
 ## Недавние правки интеграции
 - **polemica-library 1.8.2:** исправлен sync games — ответ `get-games` иногда отдаёт `mmr` объектом; в DTO добавлен `ProfileGameMmrDeserializer`. Сборка бэкенда: `../polemica-library` → `./gradlew publishToMavenLocal`, затем fantasy-backend подтянет 1.8.2 из `mavenLocal()` до публикации в Central.
 - **polemica-library (локально):** `Invalid enum value: 0` при `GET /v1/matches/{id}` — в JSON голосов встречается `candidate: 0` (не место за столом 1–10). Исправление: `PolemicaVote.candidate` как `Position?`, десериализация `0` → `null`, доработка `GameUtils` (игнор таких строк в подсчётах). После правки — снова `publishToMavenLocal` / bump версии библиотеки.
+- **polemica-library:** `MissingKotlinParameterException` на `referee` — в части ответов API поле отсутствует или `null`. Исправление: `PolemicaGame.referee` → `PolemicaUser?`.
