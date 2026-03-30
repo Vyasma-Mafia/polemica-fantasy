@@ -271,7 +271,7 @@ class CardPackService(
         val wantedIds = achievements.map { it.id }.toSet()
         val candidates = cardTemplateRepository.findAllByFantasyPlayer_IdAndRarity(fantasyPlayer.id!!, rarity)
         val existing = candidates.find { ct ->
-            val ids = ct.achievements.map { it.achievement!!.id }.toSet()
+            val ids = cardTemplateAchievementRepository.findAchievementIdsByCardTemplateId(ct.id!!).toSet()
             ids == wantedIds
         }
         if (existing != null) {
@@ -284,13 +284,13 @@ class CardPackService(
             ),
         )
         achievements.forEach { a ->
-            cardTemplateAchievementRepository.save(
-                CardTemplateAchievement(
-                    cardTemplate = saved,
-                    achievement = a,
-                    bonusPoints = null,
-                ),
+            val row = CardTemplateAchievement(
+                cardTemplate = saved,
+                achievement = a,
+                bonusPoints = null,
             )
+            cardTemplateAchievementRepository.save(row)
+            saved.achievements.add(row)
         }
         return cardTemplateRepository.findById(saved.id!!).orElseThrow()
     }

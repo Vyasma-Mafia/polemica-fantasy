@@ -22,13 +22,15 @@ fun UserCard.toUserCardItemDto(templateOverride: CardTemplate? = null): UserCard
         description = ct.description,
         playerNickname = fp.nickname,
         playerPhotoUrl = fp.photoUrl,
-        achievements = ct.achievements.map { a ->
-            val def = a.achievement!!
-            CardAchievementBriefDto(
-                achievementId = def.id,
-                achievementName = def.name,
-                bonusPoints = a.bonusPoints ?: def.bonusPoints,
-            )
-        },
+        achievements = ct.achievements
+            .distinctBy { it.achievement!!.id }
+            .map { a ->
+                val def = a.achievement!!
+                CardAchievementBriefDto(
+                    achievementId = def.id,
+                    achievementName = def.name,
+                    bonusPoints = a.bonusPoints ?: def.bonusPoints,
+                )
+            },
     )
 }

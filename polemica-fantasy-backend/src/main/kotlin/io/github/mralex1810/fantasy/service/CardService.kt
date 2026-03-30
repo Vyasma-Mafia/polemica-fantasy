@@ -73,6 +73,12 @@ class CardService(
         val achievement = achievementRepository.findById(request.achievementId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Achievement ${request.achievementId} not found")
         }
+        if (cardTemplateAchievementRepository.existsByCardTemplate_IdAndAchievement_Id(cardTemplateId, request.achievementId)) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Achievement ${request.achievementId} is already linked to card template $cardTemplateId",
+            )
+        }
         cardTemplateAchievementRepository.save(
             CardTemplateAchievement(
                 cardTemplate = ct,

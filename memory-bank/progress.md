@@ -2,6 +2,9 @@
 
 ## Что реализовано
 
+### Исправления (после релиза V2)
+- [x] **Дубликаты достижений на автокартах:** `CardPackService.findOrCreateCardTemplate` сравнивает набор `achievement_id` через запрос к БД (не через in-memory `ct.achievements`); после сохранения `CardTemplateAchievement` строка добавляется в `saved.achievements`; в `UserCardItemMapping` дедуп по `achievementId` для выдачи; Flyway `V12` — удаление дублей в `card_template_achievement` + уникальный индекс `(card_template_id, achievement_id)`; админка `addAchievement` — отказ с `409 CONFLICT` при повторной привязке
+
 ### Инфраструктура
 - [x] **VPS:** `fantasy.maftourbot.ru` — TMA; `admin.fantasy.maftourbot.ru` — админ SPA; Docker Compose prod (`docker-compose.prod.yml`), nginx + Let’s Encrypt; см. [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf), [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf)
 - [x] **VPS — репозиторий:** `~/polemica-fantasy` на `mafia@51.250.18.236` — **git** (ветка `master`, remote по SSH), не «голая» копия без `.git`; обновление кода прежде всего **`git pull`**, не только rsync
