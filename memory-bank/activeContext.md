@@ -1,7 +1,7 @@
 # Active Context
 
 ## Текущий фокус
-**V2 полностью реализована.** Все 6 концептуальных изменений внедрены (агенты B1–B7). `DESIGN.md` обновлён под актуальное состояние кода. Спецификация: [`CHANGES-V2.md`](../CHANGES-V2.md); план: [`PLAN-V2.md`](../PLAN-V2.md).
+**V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), экран `/economy`, сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
 
 **Деплой:** TMA `https://fantasy.maftourbot.ru`, админка `https://admin.fantasy.maftourbot.ru`, бэкенд в Docker (`docker-compose.prod.yml`). На сервере **`~/polemica-fantasy`** — **git clone** ветки **`master`** (`git@github.com:Vyasma-Mafia/polemica-fantasy.git`, SSH).
 
@@ -17,7 +17,7 @@
 - Карточки привязаны к `fantasy_player` (глобальный), не к турниру
 - Achievement — справочник (не enum); бонус: `CardTemplateAchievement.bonusPoints ?? Achievement.bonusPoints`
 - Паки: `probability` убрана, только `cards_count`; auto-gen: `applicableRoles` не фильтруется при генерации (только при скоринге)
-- Язык бэкенда: Kotlin; Flyway V1–V11
+- Язык бэкенда: Kotlin; Flyway V1–V13 (`V13__economy_contracts`)
 - Скоринг: `(base + Σachievement) × rarity_modifier`, per-game breakdown хранится в БД; **базовые очки** — `GamePointsService.fetchPlayerStats(polemicaGameId)` (публичная страница `/match/{id}`, поле `points` по позиции за столом), не `PolemicaPlayer.award`
 - S3: AWS SDK Java v2, MinIO в dev
 - Образ backend: GHCR; на VPS — `docker compose -f docker-compose.prod.yml up -d --build`

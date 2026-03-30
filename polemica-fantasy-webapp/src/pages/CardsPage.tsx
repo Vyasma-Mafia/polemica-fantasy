@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
+import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type { Rarity, UserCardItem } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
@@ -9,8 +10,16 @@ import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
+type LifecycleFilter = 'all' | 'active' | 'expired'
+
+function maxUsesForCard(c: UserCardItem, usesPerRarity: Record<Rarity, number> | undefined): number {
+  if (!usesPerRarity) return Math.max(c.usesRemaining, 1)
+  return usesPerRarity[c.rarity] ?? c.usesRemaining
+}
+
 export function CardsPage() {
   const initData = useInitData()
+  const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const tournamentFromQuery = searchParams.get('tournamentId') ?? ''
   const backTo = tournamentFromQuery ? `/tournaments/${tournamentFromQuery}` : '/'
@@ -21,6 +30,8 @@ export function CardsPage() {
   }, [tournamentFromQuery])
   const [rarity, setRarity] = useState<Rarity | ''>('')
   const [playerFilter, setPlayerFilter] = useState('')
+  const [lifeFilter, setLifeFilter] = useState<LifecycleFilter>('all')
+  const [sortUses, setSortUses] = useState<'none' | 'asc' | 'desc'>('none')
 
   const params = useMemo(() => {
     const sp = new URLSearchParams()
@@ -36,6 +47,14 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
+  const economyQ = useQuery({
+    queryKey: ['economy-info', initData],
+    queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+
+  const usesPerRarity = economyQ.data?.usesPerRarity
+
   const players = useMemo(() => {
     const names = new Set<string>()
     for (const c of q.data ?? []) names.add(c.playerNickname)
@@ -43,16 +62,49 @@ export function CardsPage() {
   }, [q.data])
 
   const filtered = useMemo(() => {
-    const list = q.data ?? []
-    if (!playerFilter.trim()) return list
-    return list.filter((c) => c.playerNickname.toLowerCase().includes(playerFilter.trim().toLowerCase()))
-  }, [q.data, playerFilter])
+    let list = q.data ?? []
+    if (playerFilter.trim()) {
+      list = list.filter((c) =>
+        c.playerNickname.toLowerCase().includes(playerFilter.trim().toLowerCase()),
+      )
+    }
+    if (lifeFilter === 'active') list = list.filter((c) => c.usesRemaining > 0)
+    if (lifeFilter === 'expired') list = list.filter((c) => c.usesRemaining <= 0)
+    if (sortUses === 'asc') {
+      list = [...list].sort((a, b) => a.usesRemaining - b.usesRemaining)
+    } else if (sortUses === 'desc') {
+      list = [...list].sort((a, b) => b.usesRemaining - a.usesRemaining)
+    }
+    return list
+  }, [q.data, playerFilter, lifeFilter, sortUses])
+
+  const recycleMut = useMutation({
+    mutationFn: (cardId: number) => recycleUserCard(initData!, cardId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      void qc.invalidateQueries({ queryKey: ['me'] })
+    },
+    onError: (e: Error) => window.alert(e.message),
+  })
+
+  const renewMut = useMutation({
+    mutationFn: (cardId: number) => renewUserCard(initData!, cardId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      void qc.invalidateQueries({ queryKey: ['me'] })
+    },
+    onError: (e: Error) => window.alert(e.message),
+  })
 
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
 
   return (
     <div className="pf-page">
       <PageHeader title="Моя коллекция" backTo={backTo} backLabel={tournamentFromQuery ? 'К турниру' : 'Турниры'} />
+
+      <p className="pf-footer-link" style={{ marginBottom: 12 }}>
+        <Link to="/economy">Правила экономики и награды</Link>
+      </p>
 
       <div className="pf-filters">
         <label className="pf-field">
@@ -80,6 +132,30 @@ export function CardsPage() {
             ))}
           </select>
         </label>
+        <label className="pf-field">
+          <span className="pf-field__label">Статус</span>
+          <select
+            className="pf-input"
+            value={lifeFilter}
+            onChange={(e) => setLifeFilter(e.target.value as LifecycleFilter)}
+          >
+            <option value="all">Все</option>
+            <option value="active">Активные</option>
+            <option value="expired">Истёкшие</option>
+          </select>
+        </label>
+        <label className="pf-field">
+          <span className="pf-field__label">Сортировка по использованиям</span>
+          <select
+            className="pf-input"
+            value={sortUses}
+            onChange={(e) => setSortUses(e.target.value as 'none' | 'asc' | 'desc')}
+          >
+            <option value="none">Нет</option>
+            <option value="asc">Меньше сначала</option>
+            <option value="desc">Больше сначала</option>
+          </select>
+        </label>
       </div>
 
       <div className="pf-rarity-tabs">
@@ -101,26 +177,80 @@ export function CardsPage() {
       <ul className="pf-collection-grid">
         {filtered.map((c) => {
           const imgSrc = cardDisplayImageUrl(c)
+          const maxU = maxUsesForCard(c, usesPerRarity)
+          const expired = c.usesRemaining <= 0
           return (
-          <li key={c.id} className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`}>
-            <div className="pf-collection-card__frame">
-              {imgSrc ? (
-                <img src={imgSrc} alt="" className="pf-collection-card__img" />
-              ) : (
-                <div className="pf-collection-card__ph">{c.rarity}</div>
-              )}
-              <div className="pf-collection-card__cap">
-                <span className="pf-collection-card__name">{c.playerNickname}</span>
-                <span className="pf-collection-card__rarity">
-                  {c.rarity}{' '}
-                  <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
-                    {rarityScoreModifierLabel(c.rarity)}
-                  </span>
+            <li
+              key={c.id}
+              className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${
+                expired ? ' pf-collection-card--expired' : ''
+              }`}
+            >
+              <div className="pf-collection-card__frame">
+                {imgSrc ? (
+                  <img src={imgSrc} alt="" className="pf-collection-card__img" />
+                ) : (
+                  <div className="pf-collection-card__ph">{c.rarity}</div>
+                )}
+                <span className="pf-uses-badge" title="Осталось использований">
+                  ⚡{c.usesRemaining}/{maxU}
                 </span>
-                <CardAchievementChips achievements={c.achievements} max={4} />
+                {expired && <span className="pf-expired-badge">Истекла</span>}
+                <div className="pf-collection-card__cap">
+                  <span className="pf-collection-card__name">{c.playerNickname}</span>
+                  <span className="pf-collection-card__rarity">
+                    {c.rarity}{' '}
+                    <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                      {rarityScoreModifierLabel(c.rarity)}
+                    </span>
+                  </span>
+                  <CardAchievementChips achievements={c.achievements} max={4} />
+                  <div className="pf-card-actions">
+                    {!expired && (
+                      <button
+                        type="button"
+                        className="pf-btn pf-btn--small"
+                        disabled={recycleMut.isPending}
+                        onClick={() => {
+                          const recycleVal = economyQ.data?.recycleValues[c.rarity]
+                          if (
+                            !window.confirm(
+                              recycleVal != null
+                                ? `Переработать карту? Вы получите ${recycleVal}₣. Карта будет уничтожена.`
+                                : 'Переработать карту? Карта будет уничтожена.',
+                            )
+                          ) {
+                            return
+                          }
+                          recycleMut.mutate(c.id)
+                        }}
+                      >
+                        Переработать
+                      </button>
+                    )}
+                    {expired && economyQ.data && (
+                      <button
+                        type="button"
+                        className="pf-btn pf-btn--small pf-btn--primary"
+                        disabled={renewMut.isPending || c.timesRenewed >= economyQ.data.maxRenewals}
+                        title={
+                          c.timesRenewed >= economyQ.data.maxRenewals
+                            ? 'Лимит продлений'
+                            : undefined
+                        }
+                        onClick={() => {
+                          const cost = economyQ.data!.renewalCosts[c.rarity]
+                          if (!window.confirm(`Продлить контракт за ${cost}₣?`)) return
+                          renewMut.mutate(c.id)
+                        }}
+                      >
+                        Продлить ({economyQ.data.renewalCosts[c.rarity]}₣)
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </li>
+            </li>
           )
         })}
       </ul>

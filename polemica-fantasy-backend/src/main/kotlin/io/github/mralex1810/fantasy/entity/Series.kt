@@ -47,6 +47,9 @@ class Series(
     @Column(name = "team_deadline", nullable = false)
     var teamDeadline: Instant = Instant.now(),
 
+    @Column(name = "finalized", nullable = false)
+    var finalized: Boolean = false,
+
     @OneToMany(mappedBy = "series")
     var seriesPlayers: MutableList<SeriesPlayer> = mutableListOf(),
 

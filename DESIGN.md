@@ -8,6 +8,8 @@ Polemica Fantasy — сервис для создания фэнтези-ком�
 
 Данные об играх и игроках поступают из внешнего API **Polemica** через библиотеку `polemica-library`.
 
+**Экономика V3:** карточки имеют ограниченное число использований (контракт); одно использование списывается при **финализации серии** администратором (после скоринга). Игроки перерабатывают ненужные карты и продлевают истёкшие за фантики; награды за места в лидерборде серии начисляются при финализации. Числовые параметры задаются таблицей `economy_config` и редактируются в админке. Подробности — §2, §4.1–4.2, §6, §10 Phase 3.
+
 ---
 
 ## 2. Glossary
@@ -28,6 +30,11 @@ Polemica Fantasy — сервис для создания фэнтези-ком�
 | **Фантики** | Внутриигровая валюта. Стартовый баланс — 1000. Используется для покупки паков в магазине. Начисляется админом. Все операции с балансом логируются в `fantiki_transaction`. |
 | **Store** | Магазин паков в TMA. Пользователь видит доступные паки с ценами и покупает их за фантики. |
 | **TMA** | Telegram Mini App — пользовательский интерфейс внутри Telegram. |
+| **Card Contract** | Лимит использований карточки: одно использование = карта участвовала в команде на серию, по которой админ выполнил **finalize** (тогда списывается один `uses_remaining`). Дефолтное число uses при выдаче карты задаётся редкостью через `economy_config` (`card.uses.*`); на экземпляре — поля `uses_remaining`, `times_renewed`. |
+| **Recycle (переработка)** | Удаление карточки у пользователя с начислением фантиков (`CARD_RECYCLE`). Нельзя, если карта в команде серии с `finalized = false`. |
+| **Renewal (продление)** | Оплата фантиков за восстановление `uses_remaining` для истёкшей карты (`CARD_RENEWAL`), с ограничением `renewal.max_times` из `economy_config`. |
+| **Finalize (финализация серии)** | Админ-операция после скоринга: декремент `uses_remaining` у всех карт в командах серии, начисление наград лидерборда (`SERIES_REWARD`), установка `series.finalized = true`. Необратима. |
+| **Economy Config** | Таблица key–value `economy_config` — параметры экономики (uses, recycle, renewal, награды серии). Редактируется только через админку (обновление существующих ключей); кэш на бэкенде инвалидируется при сохранении. |
 
 ---
 
@@ -79,7 +86,7 @@ S3-совместимое хранилище используется для ф�
 **TMA (`polemica-fantasy-webapp`) — отображение карточки пользователя:**
 
 - Основное изображение — фото fantasy-игрока (`playerPhotoUrl` в ответе `GET /me/cards`, источник — `FantasyPlayer.photo_url`). Если фото нет, показывается арт шаблона (`imageUrl` → `CardTemplate.image_url`).
-- Рамка карточки в UI стилизуется по редкости (`COMMON` / `RARE` / `EPIC` / `LEGENDARY`): коллекция, сборка команды, история фэнтези (включая модалку деталей). На бэкенде контракт не менялся — поля уже отдаёт `UserCardItemDto`.
+- Рамка карточки в UI стилизуется по редкости (`COMMON` / `RARE` / `EPIC` / `LEGENDARY`): коллекция, сборка команды, история фэнтези (включая модалку деталей). `UserCardItemDto` включает контракт карточки: `usesRemaining`, `timesRenewed` (V3).
 
 ### 3.2 Module Structure
 
@@ -113,7 +120,7 @@ polemica-fantasy/
 │       │   │       └── admin/       # Admin endpoints
 │       │   └── resources/
 │       │       ├── application.yml
-│       │       └── db/migration/    # Flyway V1–V9
+│       │       └── db/migration/    # Flyway V1–V13
 │       └── test/
 ├── polemica-fantasy-webapp/         # User-facing TMA (React + TS)
 │   ├── package.json
@@ -157,13 +164,16 @@ AchievementApplicableRole       │
                    FantasyTeamCardGameAchievement
 
 TelegramUser (1) ──── (*) UserCard ──── (*) FantasyTeamCard (*) ── FantasyTeamCardGameScore
-    │                                          │
-    │ (1)                                      │ (*)
-    │                                          ▼
-    │                              FantasyTeam (series_id)
-    │
-    ├──── (*) FantikiTransaction
+    │                     │ uses_remaining, times_renewed              │
+    │ (1)                 │                                            │ (*)
+    │                     ▼                                            ▼
+    │           CardTemplate ──────────────────────────── FantasyTeam (series_id)
+    │                                                         │
+    │                                                         └── series.finalized (V3)
+    ├──── (*) FantikiTransaction (reason: + SERIES_REWARD, CARD_RECYCLE, CARD_RENEWAL)
     └──── fantiki (balance)
+
+EconomyConfig                           # key-value, V3 (card uses, recycle, renewal, series rewards)
 
 CardPack (1) ──── (*) CardPackRarityConfig
     │
@@ -173,7 +183,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
     └──── (1) Tournament
 ```
 
-**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию допускает только карточки игроков, которые назначены на эту серию (тот же `FantasyPlayer`, что и у соответствующего `SeriesPlayer`). Все серии одного турнира соответствуют одному `TournamentKind` родителя. Achievement — справочник; `CardTemplateAchievement.bonus_points` nullable (NULL = системный из `Achievement`, иначе override).
+**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию допускает только карточки игроков, которые назначены на эту серию (тот же `FantasyPlayer`, что и у соответствующего `SeriesPlayer`); **V3:** в команду нельзя поставить карту с `uses_remaining ≤ 0`. Все серии одного турнира соответствуют одному `TournamentKind` родителя. Achievement — справочник; `CardTemplateAchievement.bonus_points` nullable (NULL = системный из `Achievement`, иначе override). **V3:** списание одного «использования» контракта и награды за серию происходят при **финализации** серии (`series.finalized`), а не при каждой отдельной игре.
 
 ### 4.2 Core Entities
 
@@ -226,6 +236,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | status | VARCHAR | UPCOMING / ACTIVE / SCORING / FINISHED |
 | starts_at | TIMESTAMP | When series starts |
 | team_deadline | TIMESTAMP | Deadline for submitting/editing fantasy teams |
+| finalized | BOOLEAN | Финализация серии: `true` после админ-операции «finalize» (списание uses и награды лидерборда). NOT NULL DEFAULT false (V3) |
 
 #### SeriesPlayer
 | Field | Type | Description |
@@ -286,6 +297,17 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | telegram_user_id | BIGINT | FK → TelegramUser |
 | card_template_id | BIGINT | FK → CardTemplate |
 | acquired_at | TIMESTAMP | When the card was given to user |
+| uses_remaining | INT | Остаток использований контракта (одно использование = одна серия в команде). NOT NULL (V3) |
+| times_renewed | INT | Сколько раз продлевали карту. NOT NULL DEFAULT 0 (V3) |
+
+#### EconomyConfig (V3)
+| Field | Type | Description |
+|-------|------|-------------|
+| key | VARCHAR(64) | PK, например `card.uses.COMMON`, `recycle.value.RARE`, `series.reward.1`, `renewal.max_times` |
+| value | VARCHAR(256) | Строковое значение (числа для экономики) |
+| description | TEXT | Человекочитаемое описание для админки |
+
+Сиды задают дефолты (uses по редкостям, recycle/renewal, награды за 1–3 / top10 / participation). Создание новых ключей через API не поддерживается — только обновление существующих.
 
 #### FantikiTransaction
 | Field | Type | Description |
@@ -293,7 +315,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | id | BIGSERIAL | PK |
 | telegram_user_id | BIGINT | FK → TelegramUser |
 | amount | BIGINT | Положительный = начисление, отрицательный = списание |
-| reason | VARCHAR(64) | `INITIAL`, `ADMIN_GRANT`, `PACK_PURCHASE` |
+| reason | VARCHAR(64) | `INITIAL`, `ADMIN_GRANT`, `PACK_PURCHASE`, `SERIES_REWARD`, `CARD_RECYCLE`, `CARD_RENEWAL` (V3) |
 | created_at | TIMESTAMP | NOT NULL DEFAULT NOW() |
 
 #### CardPack
@@ -472,7 +494,10 @@ Authentication: Telegram `initData` in `Authorization` header, validated via HMA
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/me` | Current user profile (включает `fantiki` — текущий баланс) |
-| GET | `/me/cards` | User's card collection (filters: optional `tournamentId`, `rarity`). В ответе: `fantasyPlayerId`, `rarity`, `imageUrl`, `playerPhotoUrl`, ник, достижения (с названием из справочника). |
+| GET | `/me/cards` | User's card collection (filters: optional `tournamentId`, `seriesId`, `rarity`). В ответе: `fantasyPlayerId`, `rarity`, `imageUrl`, `playerPhotoUrl`, ник, достижения; **`usesRemaining`**, **`timesRenewed`** (V3). Истёкшие карты не скрываются — клиент помечает по `usesRemaining`. |
+| GET | `/me/economy-info` | Агрегат параметров экономики для UI: uses по редкостям, recycle/renewal, max renewals, таблица наград серии (V3) |
+| POST | `/me/cards/{id}/recycle` | Переработать карту → фантики, карта удаляется (V3) |
+| POST | `/me/cards/{id}/renew` | Продлить контракт истёкшей карты за фантики (V3) |
 | GET | `/me/fantasy-teams` | All user's fantasy teams |
 | GET | `/me/fantasy-teams/{seriesId}` | Fantasy team for specific series |
 | GET | `/me/fantasy-teams/{seriesId}/details` | Полная per-game детализация: по каждой карте → по каждой игре → base/achievements/modifier/total |
@@ -521,12 +546,23 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/tournaments/{id}/series` | Create series (поля зависят от `kind` турнира: prefix или `gameNumFrom`/`gameNumTo`) |
+| GET | `/tournaments/{id}/series` | Список серий турнира; в каждой записи — **`finalized`** (V3) |
+| GET | `/series/{id}` | Детали серии для админки (в т.ч. **`finalized`**, состав игроков) (V3) |
 | PUT | `/series/{id}` | Update series (name, prefix или num-диапазон, deadline, status) |
 | POST | `/series/{id}/players` | Assign players to series |
 | POST | `/series/{id}/sync-games` | STANDALONE: игры по профилю + prefix; POLEMICA_COMPETITION: игры соревнования по диапазону `num` |
 | GET | `/polemica/competitions` | Список соревнований Polemica (read-only, для выбора ID в админке) |
 | GET | `/polemica/competitions/{id}` | Деталь соревнования Polemica |
 | POST | `/series/{id}/calculate-scores` | Trigger scoring |
+| POST | `/series/{id}/finalize` | Финализация серии: декремент `uses_remaining` у карт в командах, награды по лидерборду, `finalized = true` (V3) |
+
+**Economy config (V3):**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/economy-config` | Все строки `economy_config` |
+| PUT | `/economy-config/{key}` | Обновить значение по ключу (`{ "value": "..." }`, валидация — целое число) |
+| PUT | `/economy-config` | Bulk-обновление: `{ "items": [ { "key", "value" }, ... ] }` |
 
 **Achievement Management:**
 
@@ -557,6 +593,12 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/users/{telegramUserId}/give-fantiki` | Начислить фантики (body: `{ amount }`) |
+
+### 6.3 Порядок операций по серии (V3)
+
+1. Игры синхронизируются (`POST .../sync-games`), при необходимости считаются очки (`POST .../calculate-scores`). Повторный расчёт допускается, пока серия не финализирована.
+2. **`POST .../series/{id}/finalize`** — отдельный шаг: для каждой карты в каждой команде серии уменьшается `uses_remaining` (минимум 0); участникам команд начисляются фантики по позиции в лидерборде (тот же порядок, что и `GET /series/{id}/leaderboard`); у серии выставляется `finalized = true`.
+3. Повторный вызов finalize для той же серии отклоняется (`400`). Пока `finalized = false`, нельзя переработать карту, если она стоит в команде этой серии.
 
 ---
 
@@ -637,6 +679,16 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 - **B5 (Admin Frontend V2):** страница достижений, паки V2 (auto-gen, цена, пул игроков), начисление фантиков
 - **B6 (TMA Frontend V2):** баланс фантиков в хедере, магазин паков, per-game детализация очков
 - **B7 (Pack Opening Animation):** анимация открытия пака (glow по редкости, flip, particles)
+
+### Phase 3 (V3): Card contracts & closed-loop economy
+
+Реализация по [`PLAN-V3.md`](PLAN-V3.md) (последовательные блоки C1–C5):
+
+- **C1 (Schema + entities):** Flyway `V13__economy_contracts`, поля `user_card.uses_remaining` / `times_renewed`, `series.finalized`, таблица `economy_config` + сиды; enum-причины фантиков для recycle/renewal/series reward; DTO `UserCardItem` с контрактом.
+- **C2 (Backend lifecycle):** `EconomyConfigService`, `CardLifecycleService` (recycle/renew), `SeriesFinalizationService`; выдача карт с uses из конфига; проверка uses при `POST/PUT` fantasy-team; user/admin API см. §6.1–6.2.
+- **C3 (Economy admin API):** CRUD-обновление `economy_config`, инвалидация кэша.
+- **C4 (Admin SPA):** страница `/economy`, кнопка финализации серии, признак `finalized` в списке/деталке серии.
+- **C5 (TMA):** бейджи использований, коллекция (фильтры/переработка/продление), экран экономики, сборка команды с блокировкой истёкших карт.
 
 ---
 

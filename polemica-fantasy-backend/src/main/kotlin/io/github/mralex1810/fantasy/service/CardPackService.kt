@@ -46,6 +46,7 @@ class CardPackService(
     private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
     private val userCardRepository: UserCardRepository,
     private val userService: UserService,
+    private val economyConfigService: EconomyConfigService,
 ) {
 
     private val random = Random()
@@ -214,6 +215,8 @@ class CardPackService(
                             telegramUser = user,
                             cardTemplate = template,
                             acquiredAt = now,
+                            usesRemaining = economyConfigService.getUsesForRarity(cfg.rarity),
+                            timesRenewed = 0,
                         ),
                     ),
                 )

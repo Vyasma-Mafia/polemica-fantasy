@@ -150,6 +150,32 @@ export interface UserCardItem {
   playerNickname: string
   playerPhotoUrl: string | null
   achievements: { achievementId: string; achievementName: string; bonusPoints: number }[]
+  usesRemaining: number
+  timesRenewed: number
+}
+
+export interface RewardTier {
+  label: string
+  fantiki: number
+}
+
+export interface EconomyInfo {
+  usesPerRarity: Record<Rarity, number>
+  recycleValues: Record<Rarity, number>
+  renewalCosts: Record<Rarity, number>
+  maxRenewals: number
+  seriesRewards: RewardTier[]
+}
+
+export interface RecycleResult {
+  fantikiEarned: number
+  newBalance: number
+}
+
+export interface RenewResult {
+  cost: number
+  newBalance: number
+  newUsesRemaining: number
 }
 
 export interface FantasyTeamDto {

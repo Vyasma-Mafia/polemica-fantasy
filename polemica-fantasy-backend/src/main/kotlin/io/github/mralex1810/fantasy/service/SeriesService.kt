@@ -187,6 +187,7 @@ class SeriesService(
         status = status,
         startsAt = startsAt,
         teamDeadline = teamDeadline,
+        finalized = finalized,
         tournamentPlayerIds = tournamentPlayerIds,
     )
 }

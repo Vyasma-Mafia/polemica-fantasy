@@ -104,6 +104,8 @@ data class UserCardItemDto(
     val playerNickname: String,
     val playerPhotoUrl: String?,
     val achievements: List<CardAchievementBriefDto>,
+    val usesRemaining: Int,
+    val timesRenewed: Int,
 )
 
 data class FantasyTeamSlotDto(

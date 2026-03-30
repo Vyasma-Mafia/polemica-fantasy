@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet, apiSend, ApiError } from '../api/client'
+import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
@@ -36,6 +37,12 @@ export function TeamPage() {
         initData,
       ),
     enabled: !!initData && Number.isFinite(sid) && !!seriesQ.data?.tournamentId,
+  })
+
+  const economyQ = useQuery({
+    queryKey: ['economy-info', initData],
+    queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
   })
 
   const teamQ = useQuery({
@@ -107,6 +114,8 @@ export function TeamPage() {
     for (const c of cardsQ.data ?? []) m.set(c.id, c)
     return m
   }, [cardsQ.data])
+
+  const usesPerRarity = economyQ.data?.usesPerRarity
 
   const displayCards = useMemo(() => {
     let list = [...(cardsQ.data ?? [])]
@@ -202,13 +211,17 @@ export function TeamPage() {
       <ul className="pf-team-grid">
         {displayCards.map((c) => {
           const imgSrc = cardDisplayImageUrl(c)
+          const maxU = usesPerRarity?.[c.rarity] ?? Math.max(c.usesRemaining, 1)
+          const dead = c.usesRemaining <= 0
+          const lastUse = c.usesRemaining === 1
           return (
             <li key={c.id}>
               <button
                 type="button"
-                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}`}
-                onClick={() => toggle(c.id)}
-                disabled={deadlinePassed}
+                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}${dead ? ' pf-team-card--dead' : ''}`}
+                onClick={() => !dead && toggle(c.id)}
+                disabled={deadlinePassed || dead}
+                title={dead ? 'Контракт истёк — продлите в коллекции' : undefined}
               >
                 <div className="pf-team-card__media">
                   {imgSrc ? (
@@ -216,12 +229,17 @@ export function TeamPage() {
                   ) : (
                     <div className="pf-team-card__ph">{c.rarity}</div>
                   )}
+                  <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
+                  {dead && <span className="pf-team-dead-label">Истекла</span>}
                   <div className="pf-team-card__cap">
                     <span className="pf-team-card__name">{c.playerNickname}</span>
                     <span className="pf-team-card__meta">
                       {c.rarity}{' '}
                       <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
                     </span>
+                    {lastUse && (
+                      <span className="pf-last-use-warn">Последнее использование!</span>
+                    )}
                     <CardAchievementChips achievements={c.achievements} max={3} className="pf-card-ach-chips--tight" />
                   </div>
                 </div>

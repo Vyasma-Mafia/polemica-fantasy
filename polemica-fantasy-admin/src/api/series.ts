@@ -3,7 +3,7 @@ import type {
   CreateSeriesRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
-import type { SeriesDto } from './types'
+import type { SeriesDto, SeriesFinalizationResultDto } from './types'
 import { apiJson, apiVoid } from './client'
 
 export type {
@@ -49,4 +49,8 @@ export function syncGames(id: number) {
 
 export function calculateScores(id: number) {
   return apiVoid(`/v1/admin/series/${id}/calculate-scores`, { method: 'POST' })
+}
+
+export function finalizeSeries(id: number) {
+  return apiJson<SeriesFinalizationResultDto>(`/v1/admin/series/${id}/finalize`, { method: 'POST' })
 }

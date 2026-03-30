@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param
 
 interface UserCardRepository : JpaRepository<UserCard, Long> {
 
+    fun findByIdAndTelegramUser_Id(id: Long, telegramUserId: Long): UserCard?
+
     @Query(
         """
         SELECT DISTINCT uc FROM UserCard uc

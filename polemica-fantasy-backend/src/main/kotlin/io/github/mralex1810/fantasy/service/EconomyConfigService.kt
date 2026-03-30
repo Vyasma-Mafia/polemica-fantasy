@@ -1,0 +1,85 @@
+package io.github.mralex1810.fantasy.service
+
+import io.github.mralex1810.fantasy.dto.user.response.EconomyInfoDto
+import io.github.mralex1810.fantasy.dto.user.response.RewardTierDto
+import io.github.mralex1810.fantasy.entity.Rarity
+import io.github.mralex1810.fantasy.repository.EconomyConfigRepository
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
+import java.util.concurrent.ConcurrentHashMap
+
+@Service
+class EconomyConfigService(
+    private val economyConfigRepository: EconomyConfigRepository,
+) {
+    private val cache = ConcurrentHashMap<String, String>()
+
+    fun invalidateCache() {
+        cache.clear()
+    }
+
+    private fun ensureLoaded() {
+        if (cache.isNotEmpty()) return
+        synchronized(this) {
+            if (cache.isNotEmpty()) return
+            val rows = economyConfigRepository.findAll()
+            if (rows.isEmpty()) {
+                throw IllegalStateException("economy_config table is empty")
+            }
+            rows.forEach { cache[it.key] = it.value }
+        }
+    }
+
+    private fun raw(key: String): String {
+        ensureLoaded()
+        return cache[key]
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Economy config key not found: $key")
+    }
+
+    fun getInt(key: String): Int = raw(key).toInt()
+
+    fun getLong(key: String): Long = raw(key).toLong()
+
+    fun getUsesForRarity(rarity: Rarity): Int = getInt("card.uses.$rarity")
+
+    fun getRecycleValue(rarity: Rarity): Long = getLong("recycle.value.$rarity")
+
+    fun getRenewalCost(rarity: Rarity): Long = getLong("renewal.cost.$rarity")
+
+    fun getMaxRenewals(): Int = getInt("renewal.max_times")
+
+    /**
+     * @param position 1-based rank on the series leaderboard (same order as [io.github.mralex1810.fantasy.repository.FantasyTeamRepository.findLeaderboardForSeries]).
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun getSeriesReward(position: Int, totalParticipants: Int): Long {
+        return when {
+            position <= 1 -> getLong("series.reward.1")
+            position == 2 -> getLong("series.reward.2")
+            position == 3 -> getLong("series.reward.3")
+            position in 4..10 -> getLong("series.reward.top10")
+            else -> getLong("series.reward.participation")
+        }
+    }
+
+    fun buildEconomyInfo(): EconomyInfoDto {
+        val uses = Rarity.entries.associateWith { getUsesForRarity(it) }
+        val recycle = Rarity.entries.associateWith { getRecycleValue(it) }
+        val renewal = Rarity.entries.associateWith { getRenewalCost(it) }
+        val tiers = listOf(
+            RewardTierDto("1 место", getLong("series.reward.1")),
+            RewardTierDto("2 место", getLong("series.reward.2")),
+            RewardTierDto("3 место", getLong("series.reward.3")),
+            RewardTierDto("4–10 место", getLong("series.reward.top10")),
+            RewardTierDto("Участие (11+)", getLong("series.reward.participation")),
+        )
+        return EconomyInfoDto(
+            usesPerRarity = uses,
+            recycleValues = recycle,
+            renewalCosts = renewal,
+            maxRenewals = getMaxRenewals(),
+            seriesRewards = tiers,
+        )
+    }
+}

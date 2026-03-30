@@ -47,6 +47,7 @@ data class SeriesDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    val finalized: Boolean,
     /** `tournament_player.id` for players assigned to this series */
     val tournamentPlayerIds: List<Long>,
 )
@@ -105,6 +106,12 @@ data class UserCardDto(
 
 data class OpenPackResultDto(
     val userCards: List<UserCardDto>,
+)
+
+data class EconomyConfigItemDto(
+    val key: String,
+    val value: String,
+    val description: String?,
 )
 
 data class ApiErrorBody(

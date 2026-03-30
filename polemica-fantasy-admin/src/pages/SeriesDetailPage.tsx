@@ -19,6 +19,7 @@ import { getTournament } from '../api/tournaments'
 import {
   assignSeriesPlayers,
   calculateScores,
+  finalizeSeries,
   getSeries,
   syncGames,
   updateSeries,
@@ -105,6 +106,17 @@ export function SeriesDetailPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const finalizeMut = useMutation({
+    mutationFn: () => finalizeSeries(seriesId),
+    onSuccess: (res) => {
+      message.success(
+        `Finalized: rewards ${res.rewardsDistributed}, cards updated ${res.cardsDecremented}`,
+      )
+      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
   if (!Number.isFinite(seriesId)) {
     return <Typography.Text type="danger">Invalid series id</Typography.Text>
   }
@@ -118,6 +130,7 @@ export function SeriesDetailPage() {
         {s ? (
           <>
             {s.name} <Tag>{s.status}</Tag>
+            {s.finalized && <Tag color="blue">Finalized</Tag>}
           </>
         ) : (
           '…'
@@ -265,6 +278,23 @@ export function SeriesDetailPage() {
           loading={scoreMut.isPending}
         >
           Calculate scores
+        </Button>
+        <Button
+          danger
+          disabled={!!q.data?.finalized}
+          onClick={() =>
+            Modal.confirm({
+              title: 'Finalize series?',
+              content:
+                'Card uses will be decremented and leaderboard rewards paid. This cannot be undone.',
+              okText: 'Finalize',
+              okButtonProps: { danger: true },
+              onOk: () => finalizeMut.mutate(),
+            })
+          }
+          loading={finalizeMut.isPending}
+        >
+          Finalize series
         </Button>
       </Space>
     </div>

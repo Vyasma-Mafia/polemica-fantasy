@@ -34,6 +34,7 @@ class CardService(
     private val userService: UserService,
     private val imageStorageService: ImageStorageService,
     private val cardPackService: CardPackService,
+    private val economyConfigService: EconomyConfigService,
 ) {
 
     @Transactional
@@ -121,6 +122,8 @@ class CardService(
                     telegramUser = user,
                     cardTemplate = template,
                     acquiredAt = now,
+                    usesRemaining = economyConfigService.getUsesForRarity(template.rarity),
+                    timesRenewed = 0,
                 ),
             ).toDto()
         }

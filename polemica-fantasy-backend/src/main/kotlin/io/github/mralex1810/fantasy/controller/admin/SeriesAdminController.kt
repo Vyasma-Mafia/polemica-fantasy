@@ -3,7 +3,9 @@ package io.github.mralex1810.fantasy.controller.admin
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
+import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.service.SeriesFinalizationService
 import io.github.mralex1810.fantasy.service.SeriesService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/admin")
 class SeriesAdminController(
     private val seriesService: SeriesService,
+    private val seriesFinalizationService: SeriesFinalizationService,
 ) {
 
     @GetMapping("/tournaments/{tournamentId}/series")
@@ -54,4 +57,8 @@ class SeriesAdminController(
     fun calculateScores(@PathVariable id: Long) {
         seriesService.calculateScores(id)
     }
+
+    @PostMapping("/series/{id}/finalize")
+    fun finalizeSeries(@PathVariable id: Long): SeriesFinalizationResultDto =
+        seriesFinalizationService.finalizeSeries(id)
 }

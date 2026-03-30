@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { SeriesDetailPage } from './pages/SeriesDetailPage'
 import { TournamentDetailPage } from './pages/TournamentDetailPage'
 import { TournamentsPage } from './pages/TournamentsPage'
+import { EconomyPage } from './pages/EconomyPage'
 import { UserToolsPage } from './pages/UserToolsPage'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="achievements" element={<AchievementsPage />} />
         <Route path="card-packs" element={<CardPacksPage />} />
         <Route path="user-tools" element={<UserToolsPage />} />
+        <Route path="economy" element={<EconomyPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

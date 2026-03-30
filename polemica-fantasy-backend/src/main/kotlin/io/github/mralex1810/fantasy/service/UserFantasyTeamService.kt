@@ -227,6 +227,9 @@ class UserFantasyTeamService(
         }
         userCardIds.forEachIndexed { index, ucId ->
             val uc = byId[ucId]!!
+            if (uc.usesRemaining <= 0) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card $ucId has no remaining uses")
+            }
             val fantasyPlayerId = uc.cardTemplate!!.fantasyPlayer!!.id!!
             if (!seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, fantasyPlayerId)) {
                 throw ResponseStatusException(

@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { FantikiBalance } from './components/FantikiBalance'
 import { InitDataProvider } from './context/InitDataContext'
 import { CardsPage } from './pages/CardsPage'
+import { EconomyInfoPage } from './pages/EconomyInfoPage'
 import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
 import { FantasyRulesPage } from './pages/FantasyRulesPage'
 import { HomePage } from './pages/HomePage'
@@ -35,6 +36,7 @@ function Shell() {
               Турниры
             </NavLink>
             <NavLink to="/cards">Коллекция</NavLink>
+            <NavLink to="/economy">Экономика</NavLink>
             <NavLink to="/store" className="nav__store">
               <span className="nav__store-icon" aria-hidden>
                 🛒
@@ -59,6 +61,7 @@ function Shell() {
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/economy" element={<EconomyInfoPage />} />
           <Route path="/store" element={<StorePage />} />
         </Routes>
       </main>

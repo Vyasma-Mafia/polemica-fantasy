@@ -32,5 +32,7 @@ fun UserCard.toUserCardItemDto(templateOverride: CardTemplate? = null): UserCard
                     bonusPoints = a.bonusPoints ?: def.bonusPoints,
                 )
             },
+        usesRemaining = usesRemaining,
+        timesRenewed = timesRenewed,
     )
 }

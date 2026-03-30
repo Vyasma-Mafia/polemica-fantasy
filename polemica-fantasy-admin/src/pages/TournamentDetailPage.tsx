@@ -234,6 +234,12 @@ export function TournamentDetailPage() {
             render: (s: string) => <Tag>{s}</Tag>,
           },
           {
+            title: 'Finalized',
+            dataIndex: 'finalized',
+            width: 100,
+            render: (v: boolean) => (v ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
+          },
+          {
             title: 'Starts',
             dataIndex: 'startsAt',
             render: (x: string) => new Date(x).toLocaleString(),

@@ -30,6 +30,12 @@ class UserCard(
     @Column(name = "acquired_at", nullable = false)
     var acquiredAt: Instant = Instant.now(),
 
+    @Column(name = "uses_remaining", nullable = false)
+    var usesRemaining: Int = 0,
+
+    @Column(name = "times_renewed", nullable = false)
+    var timesRenewed: Int = 0,
+
     @OneToMany(mappedBy = "userCard")
     var fantasyTeamCards: MutableList<FantasyTeamCard> = mutableListOf(),
 )

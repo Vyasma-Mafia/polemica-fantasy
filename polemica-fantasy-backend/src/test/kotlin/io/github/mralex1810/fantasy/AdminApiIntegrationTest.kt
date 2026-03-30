@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
@@ -234,6 +235,31 @@ class AdminApiIntegrationTest {
 
     @Test
     @Order(7)
+    fun `economy config get put and reject invalid value`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(get("/api/v1/admin/economy-config").header("Authorization", auth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].key").exists())
+        mockMvc.perform(
+            put("/api/v1/admin/economy-config/card.uses.COMMON")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"value":"2"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.key").value("card.uses.COMMON"))
+            .andExpect(jsonPath("$.value").value("2"))
+        mockMvc.perform(
+            put("/api/v1/admin/economy-config/card.uses.COMMON")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"value":"not-a-number"}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(8)
     fun `admin give fantiki rejects non positive amount`() {
         val auth = basicAuth("admin", "test-admin-secret")
         mockMvc.perform(

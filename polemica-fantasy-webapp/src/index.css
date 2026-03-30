@@ -827,6 +827,48 @@ a.pf-lb-row--link:focus-visible {
   box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);
 }
 
+.pf-team-card--dead {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.pf-team-uses {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+.pf-team-dead-label {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(127, 29, 29, 0.92);
+  color: #fecaca;
+}
+
+.pf-last-use-warn {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fde68a;
+}
+
 .pf-team-card__img {
   width: 100%;
   aspect-ratio: 3/4;
@@ -1056,6 +1098,85 @@ a.pf-lb-row--link:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.82);
+}
+
+.pf-uses-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pf-expired-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(127, 29, 29, 0.9);
+  color: #fecaca;
+}
+
+.pf-collection-card--expired .pf-collection-card__img,
+.pf-collection-card--expired .pf-collection-card__ph {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+}
+
+.pf-card-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pf-btn--small {
+  font-size: 0.72rem;
+  padding: 6px 10px;
+}
+
+.pf-err--inline {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+}
+
+.pf-economy__section {
+  margin-bottom: 1.5rem;
+}
+
+.pf-economy__h {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.pf-economy__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.pf-economy__table th,
+.pf-economy__table td {
+  border: 1px solid var(--pf-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.pf-economy__list {
+  margin: 0;
+  padding-left: 1.2rem;
 }
 
 .pf-rarity-mod {

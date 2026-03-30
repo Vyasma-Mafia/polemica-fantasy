@@ -63,8 +63,28 @@ export interface SeriesDto {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  finalized: boolean
   /** tournament_player.id assigned to this series */
   tournamentPlayerIds: number[]
+}
+
+export interface EconomyConfigItemDto {
+  key: string
+  value: string
+  description: string | null
+}
+
+export interface UpdateEconomyConfigRequest {
+  value: string
+}
+
+export interface BulkUpdateEconomyConfigRequest {
+  items: { key: string; value: string }[]
+}
+
+export interface SeriesFinalizationResultDto {
+  rewardsDistributed: number
+  cardsDecremented: number
 }
 
 export interface CardTemplateAchievementDto {
