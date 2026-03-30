@@ -17,19 +17,16 @@ class PolemicaIntegrationService(
 ) {
 
     /**
-     * All profile game rows for a Polemica user (paginated public API).
+     * Up to [PROFILE_SYNC_PAGE_SIZE] most recent profile games (page 1 of the public profile API, single request).
+     * Used for STANDALONE sync to avoid timeouts when a player has a very long history.
      */
-    fun fetchAllProfileRows(userId: Long): List<PolemicaClient.ProfileGameRow> {
-        val out = mutableListOf<PolemicaClient.ProfileGameRow>()
-        var page = 1L
-        val pageSize = 100L
-        while (true) {
-            val chunk = polemicaClient.getProfileGames(userId, page, pageSize)
-            out.addAll(chunk.rows)
-            if (chunk.rows.isEmpty() || out.size >= chunk.totalCount) break
-            page++
-        }
-        return out
+    fun fetchRecentProfileRowsForSync(userId: Long): List<PolemicaClient.ProfileGameRow> {
+        val chunk = polemicaClient.getProfileGames(userId, 1, PROFILE_SYNC_PAGE_SIZE)
+        return chunk.rows
+    }
+
+    private companion object {
+        private const val PROFILE_SYNC_PAGE_SIZE = 300L
     }
 
     fun loadMatch(matchId: Long): PolemicaGame =
