@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { Rarity, UserCardItem } from '../api/types'
+import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -116,17 +117,9 @@ export function CardsPage() {
                     {rarityScoreModifierLabel(c.rarity)}
                   </span>
                 </span>
+                <CardAchievementChips achievements={c.achievements} max={4} />
               </div>
             </div>
-            {c.achievements.length > 0 && (
-              <ul className="pf-collection-card__ach">
-                {c.achievements.slice(0, 3).map((a) => (
-                  <li key={a.achievementId}>
-                    {a.achievementName}: +{a.bonusPoints}
-                  </li>
-                ))}
-              </ul>
-            )}
           </li>
           )
         })}

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { rarityClass } from '../lib/rarity'
+import { CardAchievementChips } from './CardAchievementChips'
+import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
 const PACK_PHASE_MS = 1200
-const CARD_STAGGER_MS = 700
+const CARD_STAGGER_MS = 1050
 
 type Phase = 'pack' | 'reveal' | 'summary'
 
@@ -109,21 +110,21 @@ export function PackOpening({ cards, packName, onDismiss }: PackOpeningProps) {
               const rc = rarityClass(c.rarity)
               return (
                 <li key={c.id} className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc}`}>
-                  {img ? (
-                    <img src={img} alt="" className="pf-pack-open__summary-card-img" />
-                  ) : (
-                    <div className="pf-pack-open__summary-card-ph">{c.rarity}</div>
-                  )}
-                  <span className="pf-pack-open__summary-card-name">{c.playerNickname}</span>
-                  {c.achievements.length > 0 ? (
-                    <ul className="pf-pack-open__summary-card-ach">
-                      {c.achievements.map((a) => (
-                        <li key={a.achievementId}>
-                          {a.achievementName}: +{a.bonusPoints}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  <div className="pf-pack-open__summary-card-frame">
+                    {img ? (
+                      <img src={img} alt="" className="pf-pack-open__summary-card-img" />
+                    ) : (
+                      <div className="pf-pack-open__summary-card-ph">{c.rarity}</div>
+                    )}
+                    <div className="pf-pack-open__summary-card-cap">
+                      <span className="pf-pack-open__summary-card-name">{c.playerNickname}</span>
+                      <span className="pf-pack-open__summary-card-rarity">
+                        {c.rarity}{' '}
+                        <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
+                      </span>
+                      <CardAchievementChips achievements={c.achievements} className="pf-card-ach-chips--compact" />
+                    </div>
+                  </div>
                 </li>
               )
             })}
@@ -165,15 +166,11 @@ function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
         )}
         <div className="pf-pack-open__card-cap">
           <span className="pf-pack-open__card-name">{card.playerNickname}</span>
-          {card.achievements.length > 0 ? (
-            <ul className="pf-pack-open__card-ach">
-              {card.achievements.map((a) => (
-                <li key={a.achievementId}>
-                  {a.achievementName}: +{a.bonusPoints}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <span className="pf-pack-open__card-rarity">
+            {card.rarity}{' '}
+            <span className="pf-rarity-mod">{rarityScoreModifierLabel(card.rarity)}</span>
+          </span>
+          <CardAchievementChips achievements={card.achievements} />
         </div>
       </div>
     </>

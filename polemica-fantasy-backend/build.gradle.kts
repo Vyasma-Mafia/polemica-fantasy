@@ -32,7 +32,7 @@ dependencies {
     implementation(platform("software.amazon.awssdk:bom:2.29.34"))
     implementation("software.amazon.awssdk:s3")
 
-    implementation("io.github.mralex1810:polemica-library:1.8.3")
+    implementation("io.github.mralex1810:polemica-library:1.8.4")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 

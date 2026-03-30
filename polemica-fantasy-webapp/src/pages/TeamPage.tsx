@@ -6,7 +6,8 @@ import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { compareRarityDesc, RARITY_UI, rarityClass } from '../lib/rarity'
+import { CardAchievementChips } from '../components/CardAchievementChips'
+import { compareRarityDesc, RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
 function cardsQueryString(tournamentId: number, seriesId: number) {
   const sp = new URLSearchParams()
@@ -209,13 +210,21 @@ export function TeamPage() {
                 onClick={() => toggle(c.id)}
                 disabled={deadlinePassed}
               >
-                {imgSrc ? (
-                  <img src={imgSrc} alt="" className="pf-team-card__img" />
-                ) : (
-                  <div className="pf-team-card__ph">{c.rarity}</div>
-                )}
-                <span className="pf-team-card__name">{c.playerNickname}</span>
-                <span className="pf-team-card__meta">{c.rarity}</span>
+                <div className="pf-team-card__media">
+                  {imgSrc ? (
+                    <img src={imgSrc} alt="" className="pf-team-card__img" />
+                  ) : (
+                    <div className="pf-team-card__ph">{c.rarity}</div>
+                  )}
+                  <div className="pf-team-card__cap">
+                    <span className="pf-team-card__name">{c.playerNickname}</span>
+                    <span className="pf-team-card__meta">
+                      {c.rarity}{' '}
+                      <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
+                    </span>
+                    <CardAchievementChips achievements={c.achievements} max={3} className="pf-card-ach-chips--tight" />
+                  </div>
+                </div>
               </button>
             </li>
           )
