@@ -79,6 +79,7 @@
 - [x] Flyway `V7__auto_packs.sql` — колонки `card_pack` (auto_generated, price_fantiki, use_all_tournament_players), `card_pack_player`, drop `card_pack_rarity_config.probability`
 - [x] Flyway `V8__game_score_details.sql` — `fantasy_team_card_game_score`, `fantasy_team_card_game_achievement`
 - [x] Flyway `V10__replace_achievement_catalog.sql` — замена справочника достижений (8 шт., `voteForBlack` = `MULTIPLE_PER_GAME`; очистка `fantasy_team_card_game_achievement` и `card_template_achievement` перед вставкой)
+- [x] Flyway `V11__achievement_all_random_cards.sql` — `UPDATE achievement SET can_appear_on_random_cards = TRUE` для всего каталога
 - [x] JPA: `Achievement`, `AchievementApplicableRole`, `FantikiTransaction`, `CardPackPlayer`, `FantasyTeamCardGameScore`, `FantasyTeamCardGameAchievement`; обновлены `TelegramUser`, `CardTemplateAchievement`, `CardPack`, `CardPackRarityConfig`, `FantasyTeamCard`; репозитории для новых сущностей
 - [x] Admin/TMA типы и UI под `achievementId` / `achievementName` и паки без `probability`
 
