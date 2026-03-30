@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet, apiSend, ApiError } from '../api/client'
-import type { FantasyTeamDto, UserCardItem, UserSeriesDetail } from '../api/types'
+import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { rarityClass } from '../lib/rarity'
+import { compareRarityDesc, RARITY_UI, rarityClass } from '../lib/rarity'
+
+function cardsQueryString(tournamentId: number, seriesId: number) {
+  const sp = new URLSearchParams()
+  sp.set('tournamentId', String(tournamentId))
+  sp.set('seriesId', String(seriesId))
+  return sp.toString()
+}
 
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
@@ -21,13 +28,13 @@ export function TeamPage() {
   })
 
   const cardsQ = useQuery({
-    queryKey: ['cards', 'team', seriesQ.data?.tournamentId, initData],
+    queryKey: ['cards', 'team', sid, seriesQ.data?.tournamentId, initData],
     queryFn: () =>
       apiGet<UserCardItem[]>(
-        `/api/v1/me/cards?tournamentId=${seriesQ.data!.tournamentId}`,
+        `/api/v1/me/cards?${cardsQueryString(seriesQ.data!.tournamentId, sid)}`,
         initData,
       ),
-    enabled: !!initData && !!seriesQ.data?.tournamentId,
+    enabled: !!initData && Number.isFinite(sid) && !!seriesQ.data?.tournamentId,
   })
 
   const teamQ = useQuery({
@@ -45,6 +52,26 @@ export function TeamPage() {
   })
 
   const [selected, setSelected] = useState<number[]>([])
+  const [rarityFilter, setRarityFilter] = useState<Rarity | ''>('')
+  const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
+
+  useEffect(() => {
+    setSelected([])
+    setRarityFilter('')
+    setPlayerFantasyId('')
+  }, [sid])
+
+  useEffect(() => {
+    if (!teamQ.isSuccess) return
+    if (teamQ.data?.slots?.length) {
+      setSelected(
+        [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
+      )
+    } else {
+      setSelected([])
+    }
+  }, [teamQ.isSuccess, teamQ.data])
+
   const toggle = (id: number) => {
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
@@ -62,7 +89,8 @@ export function TeamPage() {
       }
       return apiSend<FantasyTeamDto>('POST', `/api/v1/series/${sid}/fantasy-team`, initData, body)
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, initData], data)
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
       void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
     },
@@ -79,12 +107,19 @@ export function TeamPage() {
     return m
   }, [cardsQ.data])
 
+  const displayCards = useMemo(() => {
+    let list = [...(cardsQ.data ?? [])]
+    if (rarityFilter) list = list.filter((c) => c.rarity === rarityFilter)
+    if (playerFantasyId !== '') list = list.filter((c) => c.fantasyPlayerId === playerFantasyId)
+    list.sort((a, b) => compareRarityDesc(a.rarity, b.rarity) || b.id - a.id)
+    return list
+  }, [cardsQ.data, rarityFilter, playerFantasyId])
+
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
   if (seriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (seriesQ.isError) return <p className="pf-err">{(seriesQ.error as Error).message}</p>
 
   const s = seriesQ.data!
-  const cards = cardsQ.data ?? []
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
   const back = `/tournaments/${s.tournamentId}/series`
 
@@ -123,26 +158,66 @@ export function TeamPage() {
         })}
       </ol>
 
+      <div className="pf-filters">
+        <label className="pf-field">
+          <span className="pf-field__label">Игрок серии</span>
+          <select
+            className="pf-input"
+            value={playerFantasyId === '' ? '' : String(playerFantasyId)}
+            onChange={(e) => {
+              const v = e.target.value
+              setPlayerFantasyId(v === '' ? '' : Number(v))
+            }}
+          >
+            <option value="">Все</option>
+            {s.players
+              .slice()
+              .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ru'))
+              .map((p) => (
+                <option key={p.fantasyPlayerId} value={String(p.fantasyPlayerId)}>
+                  {p.nickname}
+                </option>
+              ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="pf-rarity-tabs">
+        {RARITY_UI.map((tab) => (
+          <button
+            key={tab.label}
+            type="button"
+            className={`pf-rarity-tab ${rarityFilter === tab.value ? 'pf-rarity-tab--active' : ''}`}
+            onClick={() => setRarityFilter(tab.value)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {cardsQ.isLoading && <p className="pf-muted">Загрузка карт…</p>}
+      {cardsQ.isError && <p className="pf-err">{(cardsQ.error as Error).message}</p>}
+
       <ul className="pf-team-grid">
-        {cards.map((c) => {
+        {displayCards.map((c) => {
           const imgSrc = cardDisplayImageUrl(c)
           return (
-          <li key={c.id}>
-            <button
-              type="button"
-              className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}`}
-              onClick={() => toggle(c.id)}
-              disabled={deadlinePassed}
-            >
-              {imgSrc ? (
-                <img src={imgSrc} alt="" className="pf-team-card__img" />
-              ) : (
-                <div className="pf-team-card__ph">{c.rarity}</div>
-              )}
-              <span className="pf-team-card__name">{c.playerNickname}</span>
-              <span className="pf-team-card__meta">{c.rarity}</span>
-            </button>
-          </li>
+            <li key={c.id}>
+              <button
+                type="button"
+                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}`}
+                onClick={() => toggle(c.id)}
+                disabled={deadlinePassed}
+              >
+                {imgSrc ? (
+                  <img src={imgSrc} alt="" className="pf-team-card__img" />
+                ) : (
+                  <div className="pf-team-card__ph">{c.rarity}</div>
+                )}
+                <span className="pf-team-card__name">{c.playerNickname}</span>
+                <span className="pf-team-card__meta">{c.rarity}</span>
+              </button>
+            </li>
           )
         })}
       </ul>

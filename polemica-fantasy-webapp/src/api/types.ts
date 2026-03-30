@@ -91,6 +91,7 @@ export interface UserTournamentDetail extends UserTournament {
 /** Tournament roster / series players share this shape in the API. */
 export interface SeriesPlayerEntry {
   tournamentPlayerId: number
+  fantasyPlayerId: number
   nickname: string
   photoUrl: string | null
 }

@@ -20,6 +20,10 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
             SELECT 1 FROM TournamentPlayer tp
             WHERE tp.fantasyPlayer.id = fp.id AND tp.tournament.id = :tournamentId
         ))
+        AND (:seriesId IS NULL OR EXISTS (
+            SELECT 1 FROM SeriesPlayer sp
+            WHERE sp.series.id = :seriesId AND sp.tournamentPlayer.fantasyPlayer.id = fp.id
+        ))
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         ORDER BY uc.acquiredAt DESC
         """,
@@ -27,6 +31,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
     fun findAllForUserFiltered(
         @Param("telegramUserId") telegramUserId: Long,
         @Param("tournamentId") tournamentId: Long?,
+        @Param("seriesId") seriesId: Long?,
         @Param("rarity") rarity: Rarity?,
     ): List<UserCard>
 

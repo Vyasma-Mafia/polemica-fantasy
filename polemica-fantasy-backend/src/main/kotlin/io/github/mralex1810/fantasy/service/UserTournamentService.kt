@@ -64,6 +64,7 @@ class UserTournamentService(
             val fp = tp.fantasyPlayer!!
             SeriesPlayerEntryDto(
                 tournamentPlayerId = tp.id!!,
+                fantasyPlayerId = fp.id!!,
                 nickname = fp.nickname,
                 photoUrl = fp.photoUrl,
             )

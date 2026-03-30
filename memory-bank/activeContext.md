@@ -36,5 +36,12 @@
 ## Недавние правки UI (админка)
 - **Series → Assign players:** у `Select` включён поиск (`showSearch`) и фильтрация опций по подстроке (без учёта регистра), чтобы быстро находить игрока по нику в длинном списке.
 
+## Недавние правки TMA (сборка команды на серию)
+- **`GET /api/v1/me/cards`:** опциональный `seriesId` — только карты игроков из `series_player` (как при валидации fantasy-team); неизвестная серия → 404.
+- **`SeriesPlayerEntryDto` / TMA types:** поле `fantasyPlayerId` для фильтра «игрок серии» на экране сборки.
+- **`TeamPage`:** запрос карт с `tournamentId` + `seriesId`; вкладки редкости, селект игрока серии, сортировка сетки по убыванию редкости; синхронизация слотов с командой из API и `setQueryData` после сохранения.
+- **Тест:** `UserApiIntegrationTest` — `GET me cards with seriesId returns only cards for players on series roster`.
+
 ## Недавние правки интеграции
 - **polemica-library 1.8.2:** исправлен sync games — ответ `get-games` иногда отдаёт `mmr` объектом; в DTO добавлен `ProfileGameMmrDeserializer`. Сборка бэкенда: `../polemica-library` → `./gradlew publishToMavenLocal`, затем fantasy-backend подтянет 1.8.2 из `mavenLocal()` до публикации в Central.
+- **polemica-library (локально):** `Invalid enum value: 0` при `GET /v1/matches/{id}` — в JSON голосов встречается `candidate: 0` (не место за столом 1–10). Исправление: `PolemicaVote.candidate` как `Position?`, десериализация `0` → `null`, доработка `GameUtils` (игнор таких строк в подсчётах). После правки — снова `publishToMavenLocal` / bump версии библиотеки.

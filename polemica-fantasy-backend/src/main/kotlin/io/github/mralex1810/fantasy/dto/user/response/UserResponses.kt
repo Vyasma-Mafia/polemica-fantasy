@@ -50,6 +50,7 @@ data class UserTournamentDetailDto(
 
 data class SeriesPlayerEntryDto(
     val tournamentPlayerId: Long,
+    val fantasyPlayerId: Long,
     val nickname: String,
     val photoUrl: String?,
 )

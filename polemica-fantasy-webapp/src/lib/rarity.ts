@@ -19,6 +19,18 @@ export function rarityClass(r: Rarity | undefined): string {
   return r.toLowerCase()
 }
 
+/** Для сортировки: больше = реже; легендарные выше обычных. */
+export const RARITY_SORT_ORDER: Record<Rarity, number> = {
+  COMMON: 0,
+  RARE: 1,
+  EPIC: 2,
+  LEGENDARY: 3,
+}
+
+export function compareRarityDesc(a: Rarity, b: Rarity): number {
+  return RARITY_SORT_ORDER[b] - RARITY_SORT_ORDER[a]
+}
+
 export const RARITY_UI: { value: Rarity | ''; label: string }[] = [
   { value: '', label: 'Все' },
   { value: 'COMMON', label: 'Обычная' },
