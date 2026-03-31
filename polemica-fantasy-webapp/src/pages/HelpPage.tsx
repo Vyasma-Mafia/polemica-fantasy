@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '../components/PageHeader'
 import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { fetchEconomyInfo } from '../api/userEconomy'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import type { OccurrenceType, Rarity } from '../api/types'
 
 const RARITIES: Rarity[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY']

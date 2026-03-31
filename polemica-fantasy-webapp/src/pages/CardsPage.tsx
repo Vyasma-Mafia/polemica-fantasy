@@ -6,7 +6,7 @@ import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEco
 import type { Rarity, UserCardItem } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 

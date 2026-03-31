@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { LeaderboardEntry, UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { aggregateTournamentLeaderboards } from '../lib/aggregateLeaderboard'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 

@@ -25,7 +25,7 @@ export function EconomyPage() {
     if (!q.data) return
     const m: Record<string, string> = {}
     for (const row of q.data) m[row.key] = row.value
-    setDraft(m)
+    queueMicrotask(() => setDraft(m))
   }, [q.data])
 
   const rows = useMemo(() => {

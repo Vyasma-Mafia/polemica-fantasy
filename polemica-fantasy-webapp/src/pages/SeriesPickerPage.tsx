@@ -3,8 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { formatDateShort } from '../lib/tournamentDates'
+import { useNow } from '../lib/useNow'
 
 export function SeriesPickerPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
@@ -15,6 +16,7 @@ export function SeriesPickerPage() {
     queryFn: () => apiGet<UserTournamentDetail>(`/api/v1/tournaments/${id}`, initData),
     enabled: !!initData && Number.isFinite(id),
   })
+  const now = useNow()
 
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
   if (q.isLoading) return <p className="pf-loading">Загрузка…</p>
@@ -30,7 +32,7 @@ export function SeriesPickerPage() {
       <ul className="pf-day-list">
         {t.series.map((s, idx) => {
           const deadline = new Date(s.teamDeadline)
-          const expired = Date.now() > deadline.getTime()
+          const expired = now > deadline.getTime()
           return (
             <li key={s.id}>
               <div className={`pf-day-card ${expired ? 'pf-day-card--expired' : ''}`}>

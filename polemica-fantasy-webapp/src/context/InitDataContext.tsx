@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { retrieveRawInitData } from '@telegram-apps/sdk'
-
-const InitDataContext = createContext<string | undefined>(undefined)
+import { InitDataContext } from './initDataContext'
 
 export function InitDataProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<string | undefined>(() => {
@@ -12,17 +11,15 @@ export function InitDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (value !== undefined) return
-    try {
-      setValue(retrieveRawInitData())
-    } catch {
-      setValue(undefined)
-    }
+    queueMicrotask(() => {
+      try {
+        setValue(retrieveRawInitData())
+      } catch {
+        setValue(undefined)
+      }
+    })
   }, [value])
 
   const memo = useMemo(() => value, [value])
   return <InitDataContext.Provider value={memo}>{children}</InitDataContext.Provider>
-}
-
-export function useInitData(): string | undefined {
-  return useContext(InitDataContext)
 }

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { SeriesPlayerEntry } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 
 export function ParticipantsPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()

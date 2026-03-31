@@ -12,7 +12,7 @@ import type {
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 import { formatUserDisplayName } from '../lib/userDisplayName'

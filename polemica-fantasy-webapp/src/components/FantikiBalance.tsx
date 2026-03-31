@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '../api/client'
 import type { UserProfile } from '../api/types'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 
 function formatFantiki(n: number): string {
   return n.toLocaleString('ru-RU')

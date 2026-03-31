@@ -5,10 +5,11 @@ import { apiGet, apiSend, ApiError } from '../api/client'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { compareRarityDesc, RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
+import { useNow } from '../lib/useNow'
 
 function cardsQueryString(tournamentId: number, seriesId: number) {
   const sp = new URLSearchParams()
@@ -64,20 +65,24 @@ export function TeamPage() {
   const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
 
   useEffect(() => {
-    setSelected([])
-    setRarityFilter('')
-    setPlayerFantasyId('')
+    queueMicrotask(() => {
+      setSelected([])
+      setRarityFilter('')
+      setPlayerFantasyId('')
+    })
   }, [sid])
 
   useEffect(() => {
     if (!teamQ.isSuccess) return
-    if (teamQ.data?.slots?.length) {
-      setSelected(
-        [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
-      )
-    } else {
-      setSelected([])
-    }
+    queueMicrotask(() => {
+      if (teamQ.data?.slots?.length) {
+        setSelected(
+          [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
+        )
+      } else {
+        setSelected([])
+      }
+    })
   }, [teamQ.isSuccess, teamQ.data])
 
   const toggle = (id: number) => {
@@ -104,10 +109,11 @@ export function TeamPage() {
     },
   })
 
+  const now = useNow()
   const deadlinePassed = useMemo(() => {
     if (!seriesQ.data) return false
-    return Date.now() > new Date(seriesQ.data.teamDeadline).getTime()
-  }, [seriesQ.data])
+    return now > new Date(seriesQ.data.teamDeadline).getTime()
+  }, [seriesQ.data, now])
 
   const cardById = useMemo(() => {
     const m = new Map<number, UserCardItem>()

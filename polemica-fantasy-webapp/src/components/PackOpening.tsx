@@ -28,8 +28,10 @@ export function PackOpening({ cards, packName, onDismiss }: PackOpeningProps) {
 
   useEffect(() => {
     if (cards.length === 0) return undefined
-    setPhase('pack')
-    setVisibleIndex(0)
+    queueMicrotask(() => {
+      setPhase('pack')
+      setVisibleIndex(0)
+    })
     const t = setTimeout(() => {
       setPhase('reveal')
       setVisibleIndex(0)

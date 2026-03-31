@@ -72,7 +72,7 @@ export function SeriesDetailPage() {
       startsAt: dayjs(s.startsAt),
       teamDeadline: dayjs(s.teamDeadline),
     })
-    setSelectedPlayerIds(s.tournamentPlayerIds ?? [])
+    queueMicrotask(() => setSelectedPlayerIds(s.tournamentPlayerIds ?? []))
   }, [q.data, form])
 
   const updateMut = useMutation({

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserTournament } from '../api/types'
 import { TournamentStatusBadge } from '../components/StatusBadge'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 
 export function HomePage() {
   const initData = useInitData()

@@ -30,7 +30,7 @@ Controller → Service → Repository → PostgreSQL
 - **DTO separation:** entity-классы не выходят за пределы service layer; контроллеры работают с DTO
 - **JSONB caching:** полные данные игр из Полемики кэшируются в PostgreSQL JSONB для оффлайн-скоринга
 - **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `matchCount(game, player)`; справочник — таблица `achievement` (каталог после Flyway V10: `sniper`, `voteForBlack`, …)
-- **Manual trigger scoring:** расчёт очков запускается вручную через админку (не real-time)
+- **Синхронизация игр и скоринг:** вручную через админку (`sync`, `calculate`) и **по расписанию** — каждые 10 минут `ActiveSeriesSyncScheduler` для серий со статусом `ACTIVE` или `SCORING` и `finalized == false` вызывает `SeriesService.syncGames` → `calculateScores`; ошибки по одной серии логируются, остальные обрабатываются. В тестах `spring.task.scheduling.enabled: false`.
 
 ### Security
 - User API: `TelegramAuthFilter` в цепочке только для путей `/api/v1/**` кроме `/api/v1/admin/**` (`UserApiRequestMatcher`); заголовок `Authorization: tma <initData>`; HMAC в `TelegramInitDataValidator`. Экземпляр фильтра создаётся внутри `userApiSecurityFilterChain`, не как отдельный `@Bean` типа `Filter` — иначе Spring Boot регистрирует глобальный servlet filter.

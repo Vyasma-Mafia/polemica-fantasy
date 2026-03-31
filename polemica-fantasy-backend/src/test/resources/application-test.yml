@@ -1,6 +1,9 @@
 spring:
   flyway:
     enabled: true
+  task:
+    scheduling:
+      enabled: false
 
 s3:
   endpoint: http://127.0.0.1:9000

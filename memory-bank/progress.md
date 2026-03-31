@@ -38,6 +38,9 @@
 - [x] **Повторный расчёт скоринга серии (`POST .../calculate-scores`):** после `card.gameScores.clear()` вызывается `fantasyTeamRepository.flush()`, чтобы DELETE сирот ушёл в БД до INSERT новых строк с тем же `(fantasy_team_card_id, series_game_id)` — иначе Hibernate мог выполнять INSERT раньше DELETE и ловить `23505` на `fantasy_team_card_game_score_*_key`
 - [x] **Дубликаты достижений на автокартах:** `CardPackService.findOrCreateCardTemplate` сравнивает набор `achievement_id` через запрос к БД (не через in-memory `ct.achievements`); после сохранения `CardTemplateAchievement` строка добавляется в `saved.achievements`; в `UserCardItemMapping` дедуп по `achievementId` для выдачи; Flyway `V12` — удаление дублей в `card_template_achievement` + уникальный индекс `(card_template_id, achievement_id)`; админка `addAchievement` — отказ с `409 CONFLICT` при повторной привязке
 
+### Планировщик sync + скоринга (активные серии)
+- [x] **`ActiveSeriesSyncScheduler`** — каждые 10 минут для серий `ACTIVE`/`SCORING`, не `finalized`; в тестах отключение `spring.task.scheduling.enabled: false`
+
 ### Инфраструктура
 - [x] **VPS:** `fantasy.maftourbot.ru` — TMA; `admin.fantasy.maftourbot.ru` — админ SPA; Docker Compose prod (`docker-compose.prod.yml`), nginx + Let’s Encrypt; см. [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf), [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf)
 - [x] **VPS — репозиторий:** `~/polemica-fantasy` на `mafia@51.250.18.236` — **git** (ветка `master`, remote по SSH), не «голая» копия без `.git`; обновление кода прежде всего **`git pull`**, не только rsync

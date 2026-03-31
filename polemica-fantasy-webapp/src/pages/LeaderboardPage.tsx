@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { LeaderboardEntry, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function LeaderboardPage() {

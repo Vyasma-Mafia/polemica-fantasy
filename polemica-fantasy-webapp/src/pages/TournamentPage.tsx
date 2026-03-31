@@ -4,7 +4,7 @@ import { apiGet } from '../api/client'
 import type { SeriesStatus, UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { TournamentStatusBadge } from '../components/StatusBadge'
-import { useInitData } from '../context/InitDataContext'
+import { useInitData } from '../context/useInitData'
 import { formatDateShort, tournamentSeriesDateRange } from '../lib/tournamentDates'
 
 export function TournamentPage() {
