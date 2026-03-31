@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Автофинализация при FINISHED:** при `PUT /admin/series/{id}` (и при создании серии со статусом FINISHED), если после сохранения `status == FINISHED` и `finalized == false`, в том же транзакционном потоке вызывается `SeriesFinalizationService.finalizeSeries` (награды + декремент uses + `finalized = true`). Раньше награды начислялись только по кнопке `POST .../finalize`, поэтому смена статуса на FINISHED без отдельного вызова оставляла серию без фантиков.
+
 **V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), экран `/economy`, сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
 
 **Деплой:** TMA `https://fantasy.maftourbot.ru`, админка `https://admin.fantasy.maftourbot.ru`, бэкенд в Docker (`docker-compose.prod.yml`). На сервере **`~/polemica-fantasy`** — **git clone** ветки **`master`** (`git@github.com:Vyasma-Mafia/polemica-fantasy.git`, SSH).

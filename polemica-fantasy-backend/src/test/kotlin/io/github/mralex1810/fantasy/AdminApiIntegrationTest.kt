@@ -271,6 +271,47 @@ class AdminApiIntegrationTest {
             .andExpect(status().isBadRequest)
     }
 
+    @Test
+    @Order(9)
+    fun `put series status FINISHED runs finalization so finalized flag is true`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Finalize On Finish T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Round F","namePrefix":"RF","status":"UPCOMING",
+                    "startsAt":"2026-06-01T12:00:00Z","teamDeadline":"2026-06-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.finalized").value(false))
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            put("/api/v1/admin/series/$seriesId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"status":"FINISHED"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("FINISHED"))
+            .andExpect(jsonPath("$.finalized").value(true))
+    }
+
     companion object {
         @JvmField
         @Container

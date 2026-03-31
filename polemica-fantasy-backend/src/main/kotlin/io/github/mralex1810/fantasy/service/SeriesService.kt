@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.polemica.GameSyncService
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
@@ -26,6 +27,7 @@ class SeriesService(
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
+    private val seriesFinalizationService: SeriesFinalizationService,
 ) {
 
     @Transactional
@@ -46,7 +48,10 @@ class SeriesService(
                 teamDeadline = request.teamDeadline,
             ),
         )
-        return s.toDto(emptyList())
+        if (s.status == SeriesStatus.FINISHED && !s.finalized) {
+            seriesFinalizationService.finalizeSeries(s.id!!)
+        }
+        return seriesRepository.findById(s.id!!).get().toDto(emptyList())
     }
 
     @Transactional
@@ -89,7 +94,11 @@ class SeriesService(
             }
         }
         val saved = seriesRepository.save(s)
-        return saved.toDto(tournamentPlayerIdsForSeries(saved.id!!))
+        if (saved.status == SeriesStatus.FINISHED && !saved.finalized) {
+            seriesFinalizationService.finalizeSeries(saved.id!!)
+        }
+        val result = seriesRepository.findById(id).get()
+        return result.toDto(tournamentPlayerIdsForSeries(id))
     }
 
     private fun validatedSeriesFields(
