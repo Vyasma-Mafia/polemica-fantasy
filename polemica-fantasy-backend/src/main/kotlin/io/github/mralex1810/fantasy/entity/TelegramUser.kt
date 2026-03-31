@@ -25,6 +25,9 @@ class TelegramUser(
     @Column(name = "first_name")
     var firstName: String? = null,
 
+    @Column(name = "display_name")
+    var displayName: String? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 

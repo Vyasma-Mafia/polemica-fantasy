@@ -103,7 +103,7 @@ export function CardsPage() {
       <PageHeader title="Моя коллекция" backTo={backTo} backLabel={tournamentFromQuery ? 'К турниру' : 'Турниры'} />
 
       <p className="pf-footer-link" style={{ marginBottom: 12 }}>
-        <Link to="/economy">Правила экономики и награды</Link>
+        <Link to="/help">Справка: очки, достижения, экономика</Link>
       </p>
 
       <div className="pf-filters">

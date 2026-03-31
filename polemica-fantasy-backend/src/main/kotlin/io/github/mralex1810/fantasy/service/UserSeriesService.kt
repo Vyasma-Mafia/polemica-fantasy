@@ -75,6 +75,7 @@ class UserSeriesService(
                     telegramId = u.telegramId,
                     username = u.username,
                     firstName = u.firstName,
+                    displayName = u.displayName,
                 ),
             )
         }

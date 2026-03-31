@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.controller.user
 
+import io.github.mralex1810.fantasy.dto.user.request.UpdateProfileRequest
 import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -9,7 +10,9 @@ import io.github.mralex1810.fantasy.service.UserFantasyTeamService
 import io.github.mralex1810.fantasy.service.UserService
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -24,6 +27,12 @@ class UserController(
 
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal user: TelegramUser): UserProfileDto = userService.toProfileDto(user)
+
+    @PatchMapping("/me")
+    fun patchMe(
+        @AuthenticationPrincipal user: TelegramUser,
+        @RequestBody body: UpdateProfileRequest,
+    ): UserProfileDto = userService.updateDisplayName(user.id!!, body.displayName)
 
     @GetMapping("/me/cards")
     fun myCards(

@@ -143,9 +143,11 @@ export function TeamPage() {
           Команда отправлена ({teamQ.data.slots.length} карт). Можно обновить до дедлайна.
         </p>
       )}
-      {teamQ.isSuccess && !teamQ.data && <p className="pf-muted">Выберите три карты для серии.</p>}
+      {teamQ.isSuccess && !teamQ.data && (
+        <p className="pf-muted">Выберите от 1 до 3 карт для серии (неполный состав — меньше награда за место).</p>
+      )}
 
-      <p className="pf-instruction">Выберите ровно 3 карты (порядок — слоты 1–3)</p>
+      <p className="pf-instruction">Выберите от 1 до 3 карт (порядок — слоты 1–3)</p>
 
       <ol className="pf-picked-slots">
         {[0, 1, 2].map((i) => {
@@ -156,10 +158,16 @@ export function TeamPage() {
             <li key={i} className="pf-picked-slots__slot">
               <span className="pf-picked-slots__num">{i + 1}</span>
               {c ? (
-                <div className={`pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}>
+                <button
+                  type="button"
+                  className={`pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}
+                  disabled={deadlinePassed}
+                  title={deadlinePassed ? undefined : 'Снять из состава'}
+                  onClick={() => toggle(c.id)}
+                >
                   {pickedSrc ? <img src={pickedSrc} alt="" /> : <div className="pf-mini-card__ph" />}
                   <span>{c.playerNickname}</span>
-                </div>
+                </button>
               ) : (
                 <span className="pf-muted">—</span>
               )}
@@ -252,7 +260,7 @@ export function TeamPage() {
       <button
         type="button"
         className="pf-btn pf-btn--primary pf-btn--block"
-        disabled={selected.length !== 3 || deadlinePassed || submit.isPending}
+        disabled={selected.length < 1 || deadlinePassed || submit.isPending}
         onClick={() => submit.mutate()}
       >
         {teamQ.isSuccess && teamQ.data ? 'Обновить команду' : 'Отправить команду'}

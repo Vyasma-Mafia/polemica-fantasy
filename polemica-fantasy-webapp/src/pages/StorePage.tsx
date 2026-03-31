@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, apiGet, apiSend } from '../api/client'
 import type { BuyPackResponse, StorePackItem, UserProfile } from '../api/types'
@@ -7,6 +7,7 @@ import { PackOpening } from '../components/PackOpening'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { rarityClass } from '../lib/rarity'
+import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function StorePage() {
   const initData = useInitData()
@@ -15,11 +16,29 @@ export function StorePage() {
   const [confirmPackId, setConfirmPackId] = useState<number | null>(null)
   const [lastOpening, setLastOpening] = useState<{ response: BuyPackResponse; packName: string } | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
+  const [displayDraft, setDisplayDraft] = useState('')
+  const [displayError, setDisplayError] = useState<string | null>(null)
 
   const meQ = useQuery({
     queryKey: ['me', initData],
     queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
     enabled: !!initData,
+  })
+
+  useEffect(() => {
+    if (meQ.data) setDisplayDraft(meQ.data.displayName ?? '')
+  }, [meQ.data?.displayName, meQ.data?.id])
+
+  const patchDisplayM = useMutation({
+    mutationFn: (displayName: string | null) =>
+      apiSend<UserProfile>('PATCH', '/api/v1/me', initData, { displayName }),
+    onSuccess: () => {
+      setDisplayError(null)
+      void queryClient.invalidateQueries({ queryKey: ['me'] })
+    },
+    onError: (e: Error) => {
+      setDisplayError(e instanceof ApiError ? e.message : String(e))
+    },
   })
 
   const packsQ = useQuery({
@@ -54,6 +73,36 @@ export function StorePage() {
   return (
     <div className="pf-page">
       <PageHeader title="Магазин" backTo="/" backLabel="Турниры" />
+
+      {meQ.data && (
+        <section className="pf-store-profile" aria-label="Имя в игре">
+          <p className="pf-muted" style={{ marginBottom: 6 }}>
+            Сейчас в списках: <strong>{formatUserDisplayName(meQ.data)}</strong>
+          </p>
+          <div className="pf-store-profile__row">
+            <input
+              type="text"
+              className="pf-input"
+              placeholder="Ник в фэнтези (необязательно)"
+              maxLength={255}
+              value={displayDraft}
+              onChange={(e) => setDisplayDraft(e.target.value)}
+              aria-label="Ник в фэнтези"
+            />
+            <button
+              type="button"
+              className="pf-btn"
+              disabled={patchDisplayM.isPending}
+              onClick={() =>
+                patchDisplayM.mutate(displayDraft.trim() === '' ? null : displayDraft.trim())
+              }
+            >
+              {patchDisplayM.isPending ? 'Сохранение…' : 'Сохранить'}
+            </button>
+          </div>
+          {displayError && <p className="pf-err">{displayError}</p>}
+        </section>
+      )}
 
       {packsQ.isLoading && <p className="pf-muted">Загрузка…</p>}
       {packsQ.isError && <p className="pf-err">{(packsQ.error as Error).message}</p>}

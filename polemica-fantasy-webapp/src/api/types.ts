@@ -2,12 +2,24 @@ export type TournamentStatus = 'DRAFT' | 'ACTIVE' | 'FINISHED'
 export type TournamentKind = 'STANDALONE' | 'POLEMICA_COMPETITION'
 export type SeriesStatus = 'UPCOMING' | 'ACTIVE' | 'SCORING' | 'FINISHED'
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
+export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
+
+export interface AchievementCatalogItem {
+  id: string
+  name: string
+  description: string | null
+  bonusPoints: number
+  occurrenceType: OccurrenceType
+  applicableRoles: string[]
+  canAppearOnRandomCards: boolean
+}
 
 export interface UserProfile {
   id: number
   telegramId: number
   username: string | null
   firstName: string | null
+  displayName: string | null
   createdAt: string
   fantiki: number
 }
@@ -115,6 +127,7 @@ export interface UserPublic {
   telegramId: number
   username: string | null
   firstName: string | null
+  displayName: string | null
 }
 
 export interface LeaderboardEntry {

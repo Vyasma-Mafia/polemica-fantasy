@@ -56,8 +56,9 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
 
     @Query(
         """
-        SELECT ft FROM FantasyTeam ft
+        SELECT DISTINCT ft FROM FantasyTeam ft
         JOIN FETCH ft.telegramUser u
+        JOIN FETCH ft.cards c
         WHERE ft.series.id = :seriesId
         ORDER BY ft.totalScore DESC NULLS LAST, ft.id ASC
         """,

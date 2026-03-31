@@ -26,6 +26,7 @@ export interface UserProfileDto {
   telegramId: number
   username: string | null
   firstName: string | null
+  displayName: string | null
   createdAt: string
   fantiki: number
 }

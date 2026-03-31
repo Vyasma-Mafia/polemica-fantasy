@@ -79,6 +79,7 @@ class UserFantasyTeamService(
             telegramId = owner.telegramId,
             username = owner.username,
             firstName = owner.firstName,
+            displayName = owner.displayName,
         )
         val s = team.series!!
         val slots = team.cards.sortedBy { it.slot }.map { ftc ->
@@ -211,12 +212,15 @@ class UserFantasyTeamService(
         seriesId: Long,
         userCardIds: List<Long>,
     ) {
+        if (userCardIds.size !in 1..3) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Between 1 and 3 user cards required")
+        }
         val distinct = userCardIds.distinct()
-        if (distinct.size != 3) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Three distinct user cards required")
+        if (distinct.size != userCardIds.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate user cards in team are not allowed")
         }
         val cards = userCardRepository.findAllByIdInAndTelegramUser_Id(userCardIds.toSet(), user.id!!)
-        if (cards.size != 3) {
+        if (cards.size != userCardIds.size) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or foreign user cards")
         }
         val byId = cards.associateBy { it.id!! }

@@ -40,7 +40,8 @@ class SeriesFinalizationService(
         var rewardsDistributed = 0
         leaderboard.forEachIndexed { index, ft ->
             val position = index + 1
-            val reward = economyConfigService.getSeriesReward(position, n)
+            val baseReward = economyConfigService.getSeriesReward(position, n)
+            val reward = scaleSeriesRewardByRosterSize(baseReward, ft.cards.size)
             if (reward > 0) {
                 val u = ft.telegramUser!!
                 userService.addBalance(u.id!!, reward, FantikiTransactionReason.SERIES_REWARD)
@@ -53,5 +54,20 @@ class SeriesFinalizationService(
             rewardsDistributed = rewardsDistributed,
             cardsDecremented = cardsDecremented,
         )
+    }
+
+    /**
+     * Full roster (3 cards) gets the configured reward; 1 or 2 cards get ⌈1/3⌉ or ⌈2/3⌉ of that amount (integer fantiki).
+     */
+    internal fun scaleSeriesRewardByRosterSize(baseReward: Long, cardCount: Int): Long {
+        if (baseReward <= 0L || cardCount <= 0) {
+            return 0L
+        }
+        val c = cardCount.coerceIn(1, 3)
+        return when (c) {
+            3 -> baseReward
+            2 -> (2L * baseReward + 2L) / 3L
+            else -> (baseReward + 2L) / 3L
+        }
     }
 }

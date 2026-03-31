@@ -28,7 +28,7 @@ export async function apiGet<T>(path: string, initData: string | undefined): Pro
 }
 
 export async function apiSend<T>(
-  method: 'POST' | 'PUT' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   initData: string | undefined,
   body?: unknown,

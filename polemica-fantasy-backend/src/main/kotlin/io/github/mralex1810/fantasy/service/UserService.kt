@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,32 +16,46 @@ import org.springframework.web.server.ResponseStatusException
 class UserService(
     private val telegramUserRepository: TelegramUserRepository,
     private val fantikiTransactionRepository: FantikiTransactionRepository,
+    private val telegramUserBootstrapService: TelegramUserBootstrapService,
 ) {
 
     @Transactional
     fun getOrCreateAndUpdateProfile(telegramId: Long, username: String?, firstName: String?): TelegramUser {
         val existing = telegramUserRepository.findByTelegramId(telegramId)
-        return if (existing != null) {
-            username?.let { existing.username = it }
-            firstName?.let { existing.firstName = it }
-            telegramUserRepository.save(existing)
-        } else {
-            val saved = telegramUserRepository.save(
-                TelegramUser(
-                    telegramId = telegramId,
-                    username = username,
-                    firstName = firstName,
-                ),
-            )
-            fantikiTransactionRepository.save(
-                FantikiTransaction(
-                    telegramUser = saved,
-                    amount = 1000L,
-                    reason = FantikiTransactionReason.INITIAL,
-                ),
-            )
-            saved
+        if (existing != null) {
+            applyTelegramProfileFields(existing, username, firstName)
+            return telegramUserRepository.save(existing)
         }
+        return try {
+            telegramUserBootstrapService.insertNewUserWithInitialFantiki(telegramId, username, firstName)
+        } catch (e: DataIntegrityViolationException) {
+            val afterRace = telegramUserRepository.findByTelegramId(telegramId)
+                ?: throw e
+            applyTelegramProfileFields(afterRace, username, firstName)
+            telegramUserRepository.save(afterRace)
+        }
+    }
+
+    @Transactional
+    fun updateDisplayName(internalUserId: Long, displayName: String?): UserProfileDto {
+        val user = telegramUserRepository.findById(internalUserId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalUserId not found")
+        }
+        val normalized = displayName?.trim()?.takeIf { it.isNotEmpty() }
+        if (normalized != null && normalized.length > MAX_DISPLAY_NAME_LENGTH) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "displayName must be at most $MAX_DISPLAY_NAME_LENGTH characters",
+            )
+        }
+        user.displayName = normalized
+        val saved = telegramUserRepository.save(user)
+        return toProfileDto(saved)
+    }
+
+    private fun applyTelegramProfileFields(user: TelegramUser, username: String?, firstName: String?) {
+        username?.let { user.username = it }
+        firstName?.let { user.firstName = it }
     }
 
     fun getBalance(internalUserId: Long): Long =
@@ -93,6 +108,7 @@ class UserService(
             telegramId = user.telegramId,
             username = user.username,
             firstName = user.firstName,
+            displayName = user.displayName,
             createdAt = user.createdAt,
             fantiki = user.fantiki,
         )
@@ -103,5 +119,9 @@ class UserService(
         addBalance(user.id!!, amount, FantikiTransactionReason.ADMIN_GRANT)
         val fresh = telegramUserRepository.findById(user.id!!).get()
         return toProfileDto(fresh)
+    }
+
+    companion object {
+        private const val MAX_DISPLAY_NAME_LENGTH = 255
     }
 }

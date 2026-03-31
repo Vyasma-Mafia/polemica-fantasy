@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy
 
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.service.UserService
@@ -41,6 +43,31 @@ class UserServiceFantikiIntegrationTest {
             userService.deductBalance(u.id!!, 9_000L, FantikiTransactionReason.PACK_PURCHASE)
         }
         assertEquals(HttpStatus.BAD_REQUEST, ex.statusCode)
+    }
+
+    @Test
+    fun `concurrent getOrCreateAndUpdateProfile yields single user and single INITIAL tx`() {
+        val telegramId = 994_000_001L
+        // REQUIRES_NEW briefly needs an extra pool connection per caller; keep modest to avoid Hikari wait.
+        val n = 6
+        val executor = Executors.newFixedThreadPool(n)
+        try {
+            val futures = (1..n).map {
+                executor.submit<TelegramUser> {
+                    userService.getOrCreateAndUpdateProfile(telegramId, "u$it", "FN$it")
+                }
+            }
+            futures.forEach { it.get(60, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdown()
+        }
+        val users = telegramUserRepository.findAll().filter { it.telegramId == telegramId }
+        org.junit.jupiter.api.Assertions.assertEquals(1, users.size)
+        val uid = users.single().id!!
+        val initialCount = fantikiTransactionRepository.findAll().count {
+            it.telegramUser!!.id == uid && it.reason == FantikiTransactionReason.INITIAL
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(1, initialCount)
     }
 
     @Test

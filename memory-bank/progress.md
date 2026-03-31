@@ -2,12 +2,18 @@
 
 ## Что реализовано
 
+### Отображаемое имя и конкурентное создание пользователя
+- [x] **Flyway V14:** `telegram_user.display_name`
+- [x] **Backend:** `UserProfileDto` / `UserPublicDto` + `displayName`; `PATCH /api/v1/me` (`UpdateProfileRequest`); `TelegramUserBootstrapService` (`REQUIRES_NEW`) для устойчивости к параллельному первому входу (`23505`); маппинг в лидерборде и публичной команде
+- [x] **Тесты:** `UserApiIntegrationTest` (PATCH, сброс, лидерборд/owner), `UserServiceFantikiIntegrationTest` (конкурентные вызовы)
+- [x] **TMA:** `formatUserDisplayName`, форма на странице магазина, `PATCH` в `api/client`
+
 ### V3 — Экономика (контракты + финализация серии) — [`PLAN-V3.md`](../PLAN-V3.md)
 - [x] **Flyway V13:** `user_card.uses_remaining`, `times_renewed`; `series.finalized`; `economy_config` + сиды; бэкофилл uses по редкости
 - [x] **Backend:** `EconomyConfigService` (кэш + инвалидация из админки), `CardLifecycleService` (recycle/renew), `SeriesFinalizationService` (декремент uses + награды по лидерборду); причины `SERIES_REWARD`, `CARD_RECYCLE`, `CARD_RENEWAL`; выдача карт с uses из конфига; проверка uses при сборке команды; API user `/me/cards/{id}/recycle|renew`, `/me/economy-info`; admin `POST /series/{id}/finalize`, `GET/PUT /economy-config`
 - [x] **Тесты:** `CardLifecycleServiceTest`, `SeriesFinalizationServiceTest`, интеграция admin economy config в `AdminApiIntegrationTest`
 - [x] **Админка:** страница Economy, колонка Finalized в списке серий турнира, финализация на деталке серии
-- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница «Экономика» (`GET /me/economy-info`; подписи наград за лидерборд серии в UI берутся из `economy_config.description`, числа — из `value`)
+- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница **«Справка»** `/help` (очки, достижения из `GET /api/v1/achievements`, экономика из `GET /me/economy-info`; подписи наград за лидерборд серии — из `economy_config.description`, числа — из `value`)
 
 ### Статистика для баланса достижений (этап 1)
 - [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **`FantasyPlayerRepository.findAllPolemicaUserIds`**
@@ -15,6 +21,17 @@
 
 ### Отладка
 - [x] **`scripts/trace_series_game_sync.py`** — пошаговая трассировка `DefaultGameSyncService` (STANDALONE: профиль + пересечение + опционально `getMatch`/префикс; POLEMICA_COMPETITION: список игр турнира + диапазон `num` + полная загрузка). Требует `ADMIN_*`; для полного прогона STANDALONE с фильтром имени — `POLEMICA_USERNAME`/`POLEMICA_PASSWORD` (как на бэкенде для sync).
+
+### Импорт ростеров
+- [x] **`scripts/import_closed_league_from_html.py`** — HTML Закрытой лиги → турнир Fantasy + фото с Полемики
+- [x] **`scripts/import_tournament_from_mafoverlay.py`** — страница [MafOverlay](https://mafoverlay.ru) `…/admin/photos/tournaments/POLEMICA/{id}` → парсинг `#polemicaId`, ника, `data-photo-url` на MAIN → Admin API (`create` / `update` с `--refresh-photos`), опц. `--remove-bg` (rembg). Зависимости: `scripts/requirements-import-mafoverlay.txt`. Разметка соответствует проекту `overlay` (sibling `mafia/overlay`).
+
+### Неполная фэнтези-команда (1–2 карты)
+- [x] **API / валидация:** `SubmitFantasyTeamRequest` и `UserFantasyTeamService.attachCards` — 1–3 различных карты (дубликаты запрещены)
+- [x] **Финализация:** `SeriesFinalizationService.scaleSeriesRewardByRosterSize` — при 1 карте ⌈R/3⌉, при 2 картах ⌈2R/3⌉, при 3 — полная награда R; 0 карт или R≤0 → 0
+- [x] **Лидерборд:** `findLeaderboardForSeries` — `JOIN FETCH ft.cards` для подсчёта слотов при начислении
+- [x] **TMA TeamPage:** отправка при 1–3 выбранных картах; подсказка про пониженную награду
+- [x] **Тесты:** `SeriesFinalizationServiceTest` — масштабирование и verify `addBalance` по неполному составу
 
 ### Исправления (после релиза V2)
 - [x] **Обновление фэнтези-команды (`PUT .../series/{id}/fantasy-team`):** вместо bulk `deleteAllByFantasyTeam_Id` — `findAllByFantasyTeam_Id` + `deleteAll`, затем **`fantasyTeamCardRepository.flush()`** до `team.cards.clear()`. Иначе lazy-инициализация коллекции после отложенного DELETE снова поднимала старые строки из БД, а INSERT новых слотов давал `23505` на `fantasy_team_card_fantasy_team_id_slot_key`

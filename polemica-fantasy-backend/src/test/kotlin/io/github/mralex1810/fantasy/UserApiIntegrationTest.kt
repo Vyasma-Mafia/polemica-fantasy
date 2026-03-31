@@ -10,11 +10,14 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.hamcrest.Matchers.containsInAnyOrder
+import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.hasSize
+import org.hamcrest.Matchers.nullValue
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -167,6 +170,50 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `PATCH me displayName persists and Telegram sync updates firstName only`() {
+        val botToken = "test-token"
+        val tid = 888_555_001L
+        val initA = buildSignedInitData(
+            botToken = botToken,
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$tid,"first_name":"Alpha","username":"al"}""",
+        )
+        val tmaA = "tma $initA"
+        mockMvc.perform(
+            patch("/api/v1/me")
+                .header("Authorization", tmaA)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":"ИгровойНик"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.displayName").value("ИгровойНик"))
+            .andExpect(jsonPath("$.firstName").value("Alpha"))
+
+        val initB = buildSignedInitData(
+            botToken = botToken,
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$tid,"first_name":"Beta","username":"al2"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/me")
+                .header("Authorization", "tma $initB"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.displayName").value("ИгровойНик"))
+            .andExpect(jsonPath("$.firstName").value("Beta"))
+            .andExpect(jsonPath("$.username").value("al2"))
+
+        mockMvc.perform(
+            patch("/api/v1/me")
+                .header("Authorization", "tma $initB")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":null}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.displayName").value(nullValue()))
+    }
+
+    @Test
     fun `GET me with valid tma initData returns profile`() {
         val botToken = "test-token"
         val initData = buildSignedInitData(
@@ -182,6 +229,32 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.telegramId").value(888001))
             .andExpect(jsonPath("$.username").value("tmauser"))
             .andExpect(jsonPath("$.fantiki").value(1000))
+    }
+
+    @Test
+    fun `GET achievements without Authorization returns 401`() {
+        mockMvc.perform(get("/api/v1/achievements"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `GET achievements returns non-empty catalog from seed`() {
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":888903,"first_name":"AchCat"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/achievements").header("Authorization", "tma $initData"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(greaterThan(0)))
+            .andExpect(jsonPath("$[0].id").isString)
+            .andExpect(jsonPath("$[0].name").isString)
+            .andExpect(jsonPath("$[0].bonusPoints").isNumber)
+            .andExpect(jsonPath("$[0].occurrenceType").isString)
+            .andExpect(jsonPath("$[0].applicableRoles").isArray)
+            .andExpect(jsonPath("$[0].canAppearOnRandomCards").isBoolean)
     }
 
     @Test
@@ -473,6 +546,13 @@ class UserApiIntegrationTest {
                 .content("""{"userCardIds":[${userCardIds.joinToString()}]}"""),
         ).andExpect(status().isOk)
 
+        mockMvc.perform(
+            patch("/api/v1/me")
+                .header("Authorization", "tma $ownerInitData")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"displayName":"PubNick"}"""),
+        ).andExpect(status().isOk)
+
         val viewerInitData = buildSignedInitData(
             botToken = "test-token",
             authDate = Instant.now().epochSecond,
@@ -486,6 +566,7 @@ class UserApiIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.owner.telegramId").value(ownerTelegramId))
+            .andExpect(jsonPath("$.owner.displayName").value("PubNick"))
             .andExpect(jsonPath("$.seriesId").value(seriesId))
             .andExpect(jsonPath("$.slots.length()").value(3))
             .andExpect(jsonPath("$.slots[0].slot").value(1))
@@ -499,6 +580,13 @@ class UserApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.seriesId").value(seriesId))
             .andExpect(jsonPath("$.columns.length()").value(3))
+
+        mockMvc.perform(
+            get("/api/v1/series/$seriesId/leaderboard")
+                .header("Authorization", viewerTma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].user.displayName").value("PubNick"))
 
         mockMvc.perform(
             get("/api/v1/series/$seriesId/users/999888888888/fantasy-team")

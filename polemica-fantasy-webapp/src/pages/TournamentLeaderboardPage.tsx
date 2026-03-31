@@ -6,6 +6,7 @@ import type { LeaderboardEntry, UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { aggregateTournamentLeaderboards } from '../lib/aggregateLeaderboard'
+import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function TournamentLeaderboardPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
@@ -99,7 +100,7 @@ export function TournamentLeaderboardPage() {
                 className="pf-lb-row pf-lb-row--link"
               >
                 <span className="pf-lb-rank">#{r.rank}</span>
-                <span className="pf-lb-name">{r.user.firstName ?? r.user.username ?? r.user.telegramId}</span>
+                <span className="pf-lb-name">{formatUserDisplayName(r.user)}</span>
                 <span className="pf-lb-score">
                   {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
                   <span className="pf-lb-score-label">очков</span>

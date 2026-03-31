@@ -4,6 +4,7 @@ import { apiGet } from '../api/client'
 import type { LeaderboardEntry, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
+import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function LeaderboardPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
@@ -42,7 +43,7 @@ export function LeaderboardPage() {
               className="pf-lb-row pf-lb-row--link"
             >
               <span className="pf-lb-rank">#{r.rank}</span>
-              <span className="pf-lb-name">{r.user.firstName ?? r.user.username ?? r.user.telegramId}</span>
+              <span className="pf-lb-name">{formatUserDisplayName(r.user)}</span>
               <span className="pf-lb-score">
                 {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
                 <span className="pf-lb-score-label">очков</span>

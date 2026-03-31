@@ -1,9 +1,13 @@
 # Active Context
 
 ## Текущий фокус
+**Отображаемое имя (TMA):** колонка `telegram_user.display_name`, `PATCH /api/v1/me` с телом `{"displayName":…}` (null/`""` — сброс); `first_name`/`username` по-прежнему синхронизируются из Telegram initData, кастомный ник не затирается. Лидерборд и публичная команда отдают `displayName` в `UserPublicDto`. Гонка при первом `INSERT` одного `telegram_id`: вставка + INITIAL фантиков в `TelegramUserBootstrapService.insertNewUserWithInitialFantiki` с `REQUIRES_NEW`, при `23505` — догрузка строки и обновление полей Telegram в основной транзакции. Flyway **V14**.
+
+**Неполная команда на серию:** можно выставить 1–3 карты; награда за место при финализации масштабируется ⌈⅓⌉ / ⌈⅔⌉ / 100% от суммы из `economy_config` (см. `SeriesFinalizationService.scaleSeriesRewardByRosterSize`).
+
 **Автофинализация при FINISHED:** при `PUT /admin/series/{id}` (и при создании серии со статусом FINISHED), если после сохранения `status == FINISHED` и `finalized == false`, в том же транзакционном потоке вызывается `SeriesFinalizationService.finalizeSeries` (награды + декремент uses + `finalized = true`). Раньше награды начислялись только по кнопке `POST .../finalize`, поэтому смена статуса на FINISHED без отдельного вызова оставляла серию без фантиков.
 
-**V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), экран `/economy`, сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
+**V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), **экран «Справка»** `/help` (механика очков, каталог достижений `GET /api/v1/achievements`, блок экономики из `economy-info`), редирект `/economy` → `/help`; сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
 
 **Деплой:** TMA `https://fantasy.maftourbot.ru`, админка `https://admin.fantasy.maftourbot.ru`, бэкенд в Docker (`docker-compose.prod.yml`). На сервере **`~/polemica-fantasy`** — **git clone** ветки **`master`** (`git@github.com:Vyasma-Mafia/polemica-fantasy.git`, SSH).
 
@@ -19,7 +23,7 @@
 - Карточки привязаны к `fantasy_player` (глобальный), не к турниру
 - Achievement — справочник (не enum); бонус: `CardTemplateAchievement.bonusPoints ?? Achievement.bonusPoints`
 - Паки: `probability` убрана, только `cards_count`; auto-gen: `applicableRoles` не фильтруется при генерации (только при скоринге)
-- Язык бэкенда: Kotlin; Flyway V1–V13 (`V13__economy_contracts`)
+- Язык бэкенда: Kotlin; Flyway V1–V14 (`V14__telegram_user_display_name`)
 - Скоринг: `(base + Σachievement) × rarity_modifier`, per-game breakdown хранится в БД; **базовые очки** — `GamePointsService.fetchPlayerStats(polemicaGameId)` (публичная страница `/match/{id}`, поле `points` по позиции за столом), не `PolemicaPlayer.award`
 - S3: AWS SDK Java v2, MinIO в dev
 - Образ backend: GHCR; на VPS — `docker compose -f docker-compose.prod.yml up -d --build`

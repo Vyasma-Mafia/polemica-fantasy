@@ -1,4 +1,5 @@
 import type { LeaderboardEntry } from '../api/types'
+import { formatUserDisplayName } from './userDisplayName'
 
 export type AggregatedRow = {
   rank: number
@@ -14,7 +15,7 @@ export function aggregateTournamentLeaderboards(boards: LeaderboardEntry[][]): A
     for (const row of board) {
       const tid = row.user.telegramId
       const score = row.totalScore ?? 0
-      const name = row.user.firstName ?? row.user.username ?? String(tid)
+      const name = formatUserDisplayName(row.user)
       const prev = byUser.get(tid)
       if (prev) {
         prev.total += score

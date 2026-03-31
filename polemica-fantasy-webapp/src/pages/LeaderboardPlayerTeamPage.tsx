@@ -15,6 +15,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/InitDataContext'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
+import { formatUserDisplayName } from '../lib/userDisplayName'
 
 function highlightMaxes(columns: FantasyTeamDetailSlot[], gameCount: number) {
   const nC = columns.length
@@ -134,7 +135,7 @@ export function LeaderboardPlayerTeamPage() {
   }
 
   const team = teamQ.data!
-  const ownerLabel = team.owner.firstName ?? team.owner.username ?? String(team.owner.telegramId)
+  const ownerLabel = formatUserDisplayName(team.owner)
   const s = seriesMeta.data
   const backLb = `/series/${sid}/leaderboard`
 

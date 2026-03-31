@@ -779,6 +779,18 @@ a.pf-lb-row--link:focus-visible {
   background: var(--pf-bg-elevated);
 }
 
+button.pf-mini-card {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+button.pf-mini-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .pf-mini-card img {
   width: 32px;
   height: 32px;
@@ -1152,6 +1164,54 @@ a.pf-lb-row--link:focus-visible {
   font-size: 0.75rem;
 }
 
+.pf-help {
+  padding-bottom: 1rem;
+}
+
+.pf-help__section {
+  margin-bottom: 2rem;
+}
+
+.pf-help__section-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.pf-help__roles-note {
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.pf-help__achievement {
+  border: 1px solid var(--pf-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.pf-help__achievement-name {
+  font-weight: 600;
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.pf-help__achievement-desc {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.pf-help__achievement-meta {
+  font-size: 0.78rem;
+  color: var(--pf-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.pf-help__achievement-meta + .pf-help__achievement-meta {
+  margin-top: 4px;
+}
+
 .pf-economy__section {
   margin-bottom: 1.5rem;
 }
@@ -1491,6 +1551,22 @@ a.pf-lb-row--link:focus-visible {
 }
 
 /* --- Store --- */
+.pf-store-profile {
+  margin-bottom: 1.25rem;
+}
+
+.pf-store-profile__row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pf-store-profile__row .pf-input {
+  flex: 1;
+  min-width: 8rem;
+}
+
 .pf-store-list {
   list-style: none;
   margin: 0;

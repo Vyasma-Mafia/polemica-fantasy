@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.dto.user.response
 
+import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
@@ -11,6 +12,7 @@ data class UserProfileDto(
     val telegramId: Long,
     val username: String?,
     val firstName: String?,
+    val displayName: String?,
     val createdAt: Instant,
     val fantiki: Long,
 )
@@ -79,6 +81,7 @@ data class UserPublicDto(
     val telegramId: Long,
     val username: String?,
     val firstName: String?,
+    val displayName: String?,
 )
 
 data class LeaderboardEntryDto(
@@ -186,4 +189,14 @@ data class FantasyTeamSeriesDetailsDto(
     val seriesId: Long,
     val games: List<FantasyTeamSeriesGameInfoDto>,
     val columns: List<FantasyTeamDetailSlotDto>,
+)
+
+data class AchievementCatalogItemDto(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val bonusPoints: Double,
+    val occurrenceType: OccurrenceType,
+    val applicableRoles: List<String>,
+    val canAppearOnRandomCards: Boolean,
 )

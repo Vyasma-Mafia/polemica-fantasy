@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.entity.CardTemplate
+import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.web.server.ResponseStatusException
 import java.util.Optional
@@ -85,5 +87,30 @@ class SeriesFinalizationServiceTest {
         assertEquals(2, uc1.usesRemaining)
         assertEquals(1, uc2.usesRemaining)
         assertEquals(true, s.finalized)
+        verify(userService).addBalance(10L, 34L, FantikiTransactionReason.SERIES_REWARD)
+        verify(userService).addBalance(11L, 24L, FantikiTransactionReason.SERIES_REWARD)
+    }
+
+    @Test
+    fun `scale reward full roster`() {
+        assertEquals(100L, service.scaleSeriesRewardByRosterSize(100L, 3))
+    }
+
+    @Test
+    fun `scale reward two cards rounds up two thirds`() {
+        assertEquals(67L, service.scaleSeriesRewardByRosterSize(100L, 2))
+        assertEquals(7L, service.scaleSeriesRewardByRosterSize(10L, 2))
+    }
+
+    @Test
+    fun `scale reward one card rounds up one third`() {
+        assertEquals(34L, service.scaleSeriesRewardByRosterSize(100L, 1))
+        assertEquals(4L, service.scaleSeriesRewardByRosterSize(10L, 1))
+    }
+
+    @Test
+    fun `scale reward zero cards or base yields zero`() {
+        assertEquals(0L, service.scaleSeriesRewardByRosterSize(100L, 0))
+        assertEquals(0L, service.scaleSeriesRewardByRosterSize(0L, 2))
     }
 }
