@@ -1,5 +1,9 @@
 package io.github.mralex1810.fantasy.scoring
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaUser
 import com.github.mafia.vyasma.polemica.library.model.game.Position
@@ -59,6 +63,48 @@ class ScoringV2Test {
         assertFalse(isRoleApplicable(achievement, polemicaPlayer(Role.PEACE)))
     }
 
+    @Test
+    fun `isFinishedForScoring is false when result is null`() {
+        val game = polemicaGameJsonMapper.readValue(
+            """
+            {
+              "id": 1,
+              "master": 0,
+              "scoringType": 0,
+              "version": 0,
+              "players": [],
+              "checks": [],
+              "shots": [],
+              "started": "2020-01-01T12:00:00",
+              "result": null
+            }
+            """.trimIndent(),
+            PolemicaGame::class.java,
+        )
+        assertFalse(game.isFinishedForScoring())
+    }
+
+    @Test
+    fun `isFinishedForScoring is true when result is set`() {
+        val game = polemicaGameJsonMapper.readValue(
+            """
+            {
+              "id": 1,
+              "master": 0,
+              "scoringType": 0,
+              "version": 0,
+              "players": [],
+              "checks": [],
+              "shots": [],
+              "started": "2020-01-01T12:00:00",
+              "result": 0
+            }
+            """.trimIndent(),
+            PolemicaGame::class.java,
+        )
+        assertTrue(game.isFinishedForScoring())
+    }
+
     private fun roleRow(role: String) = AchievementApplicableRole().apply {
         achievementId = "X"
         this.role = role
@@ -75,4 +121,11 @@ class ScoringV2Test {
         disqual = null,
         award = null,
     )
+
+    private companion object {
+        private val polemicaGameJsonMapper =
+            ObjectMapper()
+                .registerModule(KotlinModule.Builder().build())
+                .registerModule(JavaTimeModule())
+    }
 }

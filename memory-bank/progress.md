@@ -33,6 +33,10 @@
 - [x] **TMA TeamPage:** отправка при 1–3 выбранных картах; подсказка про пониженную награду
 - [x] **Тесты:** `SeriesFinalizationServiceTest` — масштабирование и verify `addBalance` по неполному составу
 
+### Скоринг и названия игр (март 2026)
+- [x] **Только завершённые игры:** в `DefaultScoringService.calculateScores` учитываются строки `series_game` с кэшем, у которых в `PolemicaGame` задан `result` (победа красных/чёрных); live/незавершённые с `result == null` не попадают в сумму и не получают `scored = true`
+- [x] **Синтетическое имя:** при пустом `name` из API в `DefaultGameSyncService` в БД пишется `Игра {num}` или `Игра #{id}`; общее отображение — `formatSeriesGameDisplayName` (`SeriesGameDisplayName.kt`), используется в `UserSeriesService` и `UserFantasyTeamService`
+
 ### Исправления (после релиза V2)
 - [x] **Обновление фэнтези-команды (`PUT .../series/{id}/fantasy-team`):** вместо bulk `deleteAllByFantasyTeam_Id` — `findAllByFantasyTeam_Id` + `deleteAll`, затем **`fantasyTeamCardRepository.flush()`** до `team.cards.clear()`. Иначе lazy-инициализация коллекции после отложенного DELETE снова поднимала старые строки из БД, а INSERT новых слотов давал `23505` на `fantasy_team_card_fantasy_team_id_slot_key`
 - [x] **Повторный расчёт скоринга серии (`POST .../calculate-scores`):** после `card.gameScores.clear()` вызывается `fantasyTeamRepository.flush()`, чтобы DELETE сирот ушёл в БД до INSERT новых строк с тем же `(fantasy_team_card_id, series_game_id)` — иначе Hibernate мог выполнять INSERT раньше DELETE и ловить `23505` на `fantasy_team_card_game_score_*_key`

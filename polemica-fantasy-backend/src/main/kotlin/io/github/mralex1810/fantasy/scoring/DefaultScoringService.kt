@@ -33,6 +33,11 @@ class DefaultScoringService(
         }
         val games = seriesGameRepository.findAllBySeries_Id(seriesId)
             .filter { it.gameDataCache != null }
+            .filter { sg ->
+                val node = sg.gameDataCache!!
+                val polemicaGame = objectMapper.treeToValue(node, PolemicaGame::class.java)
+                polemicaGame.isFinishedForScoring()
+            }
 
         val pointsByTablePositionByGameId = games.map { it.polemicaGameId }.distinct().associateWith { gameId ->
             gamePointsService.fetchPlayerStats(gameId).associate { it.position to it.points }

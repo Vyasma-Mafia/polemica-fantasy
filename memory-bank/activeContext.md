@@ -26,7 +26,8 @@
 - Achievement — справочник (не enum); бонус: `CardTemplateAchievement.bonusPoints ?? Achievement.bonusPoints`
 - Паки: `probability` убрана, только `cards_count`; auto-gen: `applicableRoles` не фильтруется при генерации (только при скоринге)
 - Язык бэкенда: Kotlin; Flyway V1–V14 (`V14__telegram_user_display_name`)
-- Скоринг: `(base + Σachievement) × rarity_modifier`, per-game breakdown хранится в БД; **базовые очки** — `GamePointsService.fetchPlayerStats(polemicaGameId)` (публичная страница `/match/{id}`, поле `points` по позиции за столом), не `PolemicaPlayer.award`
+- Скоринг: `(base + Σachievement) × rarity_modifier`, per-game breakdown хранится в БД; **базовые очки** — `GamePointsService.fetchPlayerStats(polemicaGameId)` (публичная страница `/match/{id}`, поле `points` по позиции за столом), не `PolemicaPlayer.award`; в расчёт попадают **только завершённые** игры (`PolemicaGame.result != null`); в `scored = true` помечаются только они
+- Имена игр без заголовка из API: при sync — `Игра {num}` / `Игра #{polemicaGameId}`; для API — `formatSeriesGameDisplayName`
 - S3: AWS SDK Java v2, MinIO в dev
 - Образ backend: GHCR; на VPS — `docker compose -f docker-compose.prod.yml up -d --build`
 

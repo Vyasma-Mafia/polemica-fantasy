@@ -121,7 +121,7 @@ class UserFantasyTeamService(
             FantasyTeamSeriesGameInfoDto(
                 seriesGameId = sg.id!!,
                 polemicaGameId = sg.polemicaGameId,
-                gameName = sg.gameName,
+                gameName = formatSeriesGameDisplayName(sg),
                 scored = sg.scored,
             )
         }

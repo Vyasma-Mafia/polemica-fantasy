@@ -110,8 +110,9 @@ class DefaultGameSyncService(
         val playedAt = game.started.atZone(ZoneId.systemDefault()).toInstant()
 
         val existing = seriesGameRepository.findBySeries_IdAndPolemicaGameId(seriesId, gid)
+        val resolvedName = resolvedStoredGameName(game, name)
         if (existing != null) {
-            existing.gameName = name.ifEmpty { "(no name)" }
+            existing.gameName = resolvedName
             existing.gameDataCache = json
             existing.playedAt = playedAt
             existing.scored = false
@@ -121,12 +122,19 @@ class DefaultGameSyncService(
                 SeriesGame(
                     series = series,
                     polemicaGameId = gid,
-                    gameName = name.ifEmpty { "(no name)" },
+                    gameName = resolvedName,
                     gameDataCache = json,
                     scored = false,
                     playedAt = playedAt,
                 ),
             )
         }
+    }
+
+    private fun resolvedStoredGameName(game: PolemicaGame, name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) return trimmed
+        val n = game.num
+        return if (n != null) "Игра $n" else "Игра #${game.id}"
     }
 }
