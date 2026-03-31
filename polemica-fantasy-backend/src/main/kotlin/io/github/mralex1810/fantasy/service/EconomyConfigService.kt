@@ -15,6 +15,15 @@ class EconomyConfigService(
 ) {
     private val cache = ConcurrentHashMap<String, String>()
 
+    /** Order of tiers in UI / finalize logic must stay in sync with [getSeriesReward]. */
+    private val seriesRewardKeysInOrder: List<String> = listOf(
+        "series.reward.1",
+        "series.reward.2",
+        "series.reward.3",
+        "series.reward.top10",
+        "series.reward.participation",
+    )
+
     fun invalidateCache() {
         cache.clear()
     }
@@ -67,13 +76,13 @@ class EconomyConfigService(
         val uses = Rarity.entries.associateWith { getUsesForRarity(it) }
         val recycle = Rarity.entries.associateWith { getRecycleValue(it) }
         val renewal = Rarity.entries.associateWith { getRenewalCost(it) }
-        val tiers = listOf(
-            RewardTierDto("1 место", getLong("series.reward.1")),
-            RewardTierDto("2 место", getLong("series.reward.2")),
-            RewardTierDto("3 место", getLong("series.reward.3")),
-            RewardTierDto("4–10 место", getLong("series.reward.top10")),
-            RewardTierDto("Участие (11+)", getLong("series.reward.participation")),
-        )
+        val tiers = seriesRewardKeysInOrder.map { key ->
+            val row = economyConfigRepository.findById(key).orElseThrow {
+                ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Economy config row missing: $key")
+            }
+            val label = row.description?.trim()?.takeIf { it.isNotEmpty() } ?: key
+            RewardTierDto(label = label, fantiki = getLong(key))
+        }
         return EconomyInfoDto(
             usesPerRarity = uses,
             recycleValues = recycle,

@@ -185,6 +185,27 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `GET economy-info returns numeric maps and series tiers from economy_config seed`() {
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":888902,"first_name":"EconomyInfo"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/me/economy-info").header("Authorization", "tma $initData"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.usesPerRarity.COMMON").value(2))
+            .andExpect(jsonPath("$.usesPerRarity.LEGENDARY").value(5))
+            .andExpect(jsonPath("$.recycleValues.EPIC").value(60))
+            .andExpect(jsonPath("$.renewalCosts.RARE").value(60))
+            .andExpect(jsonPath("$.maxRenewals").value(2))
+            .andExpect(jsonPath("$.seriesRewards.length()").value(5))
+            .andExpect(jsonPath("$.seriesRewards[0].fantiki").value(100))
+            .andExpect(jsonPath("$.seriesRewards[0].label").value("Награда за 1 место"))
+    }
+
+    @Test
     fun `GET store packs and buy free pack returns cards`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tJson = mockMvc.perform(

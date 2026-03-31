@@ -7,7 +7,7 @@
 - [x] **Backend:** `EconomyConfigService` (кэш + инвалидация из админки), `CardLifecycleService` (recycle/renew), `SeriesFinalizationService` (декремент uses + награды по лидерборду); причины `SERIES_REWARD`, `CARD_RECYCLE`, `CARD_RENEWAL`; выдача карт с uses из конфига; проверка uses при сборке команды; API user `/me/cards/{id}/recycle|renew`, `/me/economy-info`; admin `POST /series/{id}/finalize`, `GET/PUT /economy-config`
 - [x] **Тесты:** `CardLifecycleServiceTest`, `SeriesFinalizationServiceTest`, интеграция admin economy config в `AdminApiIntegrationTest`
 - [x] **Админка:** страница Economy, колонка Finalized в списке серий турнира, финализация на деталке серии
-- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница «Экономика»
+- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница «Экономика» (`GET /me/economy-info`; подписи наград за лидерборд серии в UI берутся из `economy_config.description`, числа — из `value`)
 
 ### Статистика для баланса достижений (этап 1)
 - [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **`FantasyPlayerRepository.findAllPolemicaUserIds`**
