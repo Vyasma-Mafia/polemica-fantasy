@@ -31,6 +31,15 @@ export interface UserProfileDto {
   fantiki: number
 }
 
+/** Admin user list row; cardsInSeries is null when no tournament+series filter is applied. */
+export interface AdminUserListItemDto {
+  id: number
+  telegramId: number
+  username: string | null
+  displayName: string | null
+  cardsInSeries: number | null
+}
+
 export interface TournamentDto {
   id: number
   name: string

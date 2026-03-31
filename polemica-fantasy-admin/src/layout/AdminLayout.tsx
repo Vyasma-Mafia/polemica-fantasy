@@ -15,6 +15,7 @@ const menuItems = [
     label: <Link to="/achievements">Achievements</Link>,
   },
   { key: '/card-packs', label: <Link to="/card-packs">Card packs</Link> },
+  { key: '/users', label: <Link to="/users">Users</Link> },
   { key: '/user-tools', label: <Link to="/user-tools">User tools</Link> },
   { key: '/economy', label: <Link to="/economy">Economy</Link> },
 ]

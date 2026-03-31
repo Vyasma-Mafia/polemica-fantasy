@@ -118,3 +118,12 @@ data class ApiErrorBody(
     val message: String,
     val fieldErrors: Map<String, String>? = null,
 )
+
+/** Admin list row; [cardsInSeries] is null when no series filter was requested. */
+data class AdminUserListItemDto(
+    val id: Long,
+    val telegramId: Long,
+    val username: String?,
+    val displayName: String?,
+    val cardsInSeries: Long?,
+)

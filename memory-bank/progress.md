@@ -61,6 +61,7 @@
 - [x] Интеграционный тест контекста: Testcontainers PostgreSQL 16
 
 ### Backend (Agent A3 — Admin API)
+- [x] **GET `/api/v1/admin/users`:** список пользователей; с `tournamentId` + `seriesId` — поле `cardsInSeries` (подсчёт `user_card` по ростеру серии); `AdminUserListService`, `TelegramUserRepository.findAllWithCardsInSeriesCount`; тесты в `AdminApiIntegrationTest`
 - [x] Репозитории JPA для admin-сущностей; фильтр списка шаблонов карточек (опционально `tournamentId` через участие игрока в турнире / `fantasyPlayerId` / rarity)
 - [x] Сервисы: `TournamentService`, `SeriesService`, `CardService`, `CardPackService`; валидация multipart изображений; выдача карт и открытие паков
 - [x] Контроллеры: `TournamentAdminController`, `SeriesAdminController`, `CardAdminController`; DTO + Jakarta Validation; `GlobalExceptionHandler`
@@ -96,6 +97,7 @@
 
 ### Frontend (Admin)
 - [x] Проект `polemica-fantasy-admin/` (Vite + React 19 + TS + Ant Design 6 + TanStack Query + React Router 7)
+- [x] **Users overview:** маршрут `/users` — таблица пользователей, выбор турнира и серии, колонка числа карт по серии; `api/usersList.ts`
 - [x] Турниры: список, create/edit, деталь — игроки (add/remove/photo), серии (список + create)
 - [x] Серия: редактирование полей, assign players, sync games, calculate scores
 - [x] Шаблоны карт и паки: CRUD-операции, фильтры, загрузка изображения карты, добавление achievement

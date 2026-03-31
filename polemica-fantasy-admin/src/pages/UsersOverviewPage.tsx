@@ -1,0 +1,115 @@
+import { Select, Space, Table, Typography } from 'antd'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { listSeriesByTournament } from '../api/series'
+import { listTournaments } from '../api/tournaments'
+import type { AdminUserListItemDto } from '../api/types'
+import { listAdminUsers } from '../api/usersList'
+
+function dash(v: string | null | undefined) {
+  return v != null && v !== '' ? v : '—'
+}
+
+export function UsersOverviewPage() {
+  const [tournamentId, setTournamentId] = useState<number | undefined>()
+  const [seriesId, setSeriesId] = useState<number | undefined>()
+
+  const tournamentsQ = useQuery({
+    queryKey: ['admin', 'tournaments'],
+    queryFn: listTournaments,
+  })
+
+  const seriesQ = useQuery({
+    queryKey: ['admin', 'series', 'tournament', tournamentId],
+    queryFn: () => listSeriesByTournament(tournamentId!),
+    enabled: tournamentId != null,
+  })
+
+  const usersQ = useQuery({
+    queryKey: ['admin', 'users', tournamentId, seriesId],
+    queryFn: () => {
+      if (tournamentId != null && seriesId != null) {
+        return listAdminUsers({ tournamentId, seriesId })
+      }
+      return listAdminUsers()
+    },
+  })
+
+  const columns = useMemo(
+    () => [
+      {
+        title: 'Username',
+        dataIndex: 'username' as const,
+        key: 'username',
+        render: (_: unknown, r: AdminUserListItemDto) => dash(r.username),
+      },
+      {
+        title: 'Telegram ID',
+        dataIndex: 'telegramId' as const,
+        key: 'telegramId',
+      },
+      {
+        title: 'Display name',
+        dataIndex: 'displayName' as const,
+        key: 'displayName',
+        render: (_: unknown, r: AdminUserListItemDto) => dash(r.displayName),
+      },
+      {
+        title: 'Cards (series)',
+        dataIndex: 'cardsInSeries' as const,
+        key: 'cardsInSeries',
+        render: (v: number | null) => (v == null ? '—' : v),
+      },
+    ],
+    [],
+  )
+
+  return (
+    <div>
+      <Typography.Title level={3}>Users</Typography.Title>
+      <Typography.Paragraph type="secondary">
+        Pick a tournament and series to show how many card instances each user has
+        for players on that series roster (same rules as in-app collection).
+      </Typography.Paragraph>
+
+      <Space wrap style={{ marginBottom: 16 }}>
+        <Select
+          allowClear
+          placeholder="Tournament"
+          style={{ minWidth: 240 }}
+          loading={tournamentsQ.isLoading}
+          options={tournamentsQ.data?.map((t) => ({
+            value: t.id,
+            label: `#${t.id} ${t.name}`,
+          }))}
+          value={tournamentId}
+          onChange={(v) => {
+            setTournamentId(v ?? undefined)
+            setSeriesId(undefined)
+          }}
+        />
+        <Select
+          allowClear
+          placeholder="Series"
+          style={{ minWidth: 260 }}
+          disabled={tournamentId == null}
+          loading={seriesQ.isLoading}
+          options={seriesQ.data?.map((s) => ({
+            value: s.id,
+            label: `${s.name}`,
+          }))}
+          value={seriesId}
+          onChange={(v) => setSeriesId(v ?? undefined)}
+        />
+      </Space>
+
+      <Table<AdminUserListItemDto>
+        rowKey="id"
+        loading={usersQ.isLoading}
+        dataSource={usersQ.data ?? []}
+        columns={columns}
+        pagination={{ pageSize: 50, showSizeChanger: true }}
+      />
+    </div>
+  )
+}

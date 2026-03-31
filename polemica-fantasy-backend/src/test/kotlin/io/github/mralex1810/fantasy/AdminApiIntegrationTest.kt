@@ -16,6 +16,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import com.jayway.jsonpath.JsonPath
+import org.hamcrest.Matchers.nullValue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -310,6 +313,107 @@ class AdminApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.status").value("FINISHED"))
             .andExpect(jsonPath("$.finalized").value(true))
+    }
+
+    @Test
+    @Order(10)
+    fun `list admin users without series returns null cardsInSeries`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(get("/api/v1/admin/users").header("Authorization", auth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].id").exists())
+            .andExpect(jsonPath("$[0].cardsInSeries").value(nullValue()))
+    }
+
+    @Test
+    @Order(11)
+    fun `list admin users seriesId without tournamentId returns 400`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(
+            get("/api/v1/admin/users").param("seriesId", "1").header("Authorization", auth),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(12)
+    fun `list admin users with series counts cards for series roster`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Users List Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":777888,"nickname":"SeriesRoster"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentPlayerId = Regex("\"id\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"UL Round","namePrefix":"UL","status":"UPCOMING",
+                    "startsAt":"2026-07-01T12:00:00Z","teamDeadline":"2026-07-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$tournamentPlayerId]}"""),
+        )
+            .andExpect(status().isOk)
+
+        val ctJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctJson)!!.groupValues[1].toLong()
+
+        val telegramTarget = 777999L
+        mockMvc.perform(
+            post("/api/v1/admin/users/$telegramTarget/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+
+        val listJson = mockMvc.perform(
+            get("/api/v1/admin/users")
+                .param("tournamentId", tournamentId.toString())
+                .param("seriesId", seriesId.toString())
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+
+        val rows = JsonPath.parse(listJson).read<List<Map<String, Any?>>>("$")
+        val row = rows.first { (it["telegramId"] as Number).toLong() == telegramTarget }
+        assertEquals(1L, (row["cardsInSeries"] as Number).toLong())
     }
 
     companion object {
