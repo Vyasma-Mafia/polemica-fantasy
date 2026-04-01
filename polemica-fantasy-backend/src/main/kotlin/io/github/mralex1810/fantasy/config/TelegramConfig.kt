@@ -13,9 +13,10 @@ class TelegramConfig {
     fun telegramRestClient(): RestClient {
         val factory = JdkClientHttpRequestFactory()
         factory.setReadTimeout(Duration.ofSeconds(30))
+        // No baseUrl: sendMessage uses absolute URI so the bot token is not path-encoded
+        // (encoding ":" in the token breaks Telegram and yields 404).
         return RestClient.builder()
             .requestFactory(factory)
-            .baseUrl("https://api.telegram.org")
             .build()
     }
 }

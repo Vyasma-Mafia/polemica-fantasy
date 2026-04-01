@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import java.net.URI
 
 @Component
 class TelegramBotApiClient(
@@ -15,8 +16,13 @@ class TelegramBotApiClient(
      * @throws IllegalStateException when Telegram returns ok=false or body cannot be parsed
      */
     fun sendMessage(botToken: String, chatId: Long, text: String) {
+        val token = botToken.trim()
+        require(token.isNotEmpty()) { "bot token must not be empty" }
+        // Do not use RestClient URI templates for the token: Spring encodes ":" as %3A in path
+        // segments, and Telegram treats that as an invalid bot token (HTTP 404).
+        val uri = URI.create("https://api.telegram.org/bot$token/sendMessage")
         val responseBody = restClient.post()
-            .uri("/bot/{token}/sendMessage", botToken)
+            .uri(uri)
             .contentType(MediaType.APPLICATION_JSON)
             .body(mapOf("chat_id" to chatId, "text" to text))
             .retrieve()
