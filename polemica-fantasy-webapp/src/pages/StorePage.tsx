@@ -41,6 +41,7 @@ export function StorePage() {
       setBuyError(null)
       void queryClient.invalidateQueries({ queryKey: ['me'] })
       void queryClient.invalidateQueries({ queryKey: ['cards'] })
+      void queryClient.invalidateQueries({ queryKey: ['store-packs'] })
     },
     onError: (e: Error) => {
       setBuyError(e instanceof ApiError ? e.message : String(e))
@@ -70,13 +71,19 @@ export function StorePage() {
 
       <ul className="pf-store-list">
         {(packsQ.data ?? []).map((pack) => {
-          const affordable = balance >= pack.priceFantiki
+          const freeLeft = pack.freeOpensRemaining ?? 0
+          const nextIsFree = pack.priceFantiki > 0 && freeLeft > 0
+          const affordable = pack.priceFantiki === 0 || nextIsFree || balance >= pack.priceFantiki
           return (
             <li key={pack.id} className="pf-store-card">
               <div className="pf-store-card__head">
                 <h2 className="pf-store-card__title">{pack.name}</h2>
                 <span className="pf-store-card__price">
-                  {pack.priceFantiki === 0 ? 'Бесплатно' : `${pack.priceFantiki.toLocaleString('ru-RU')} 🪙`}
+                  {pack.priceFantiki === 0
+                    ? 'Бесплатно'
+                    : nextIsFree
+                      ? `0 🪙 (ещё ${freeLeft} беспл.)`
+                      : `${pack.priceFantiki.toLocaleString('ru-RU')} 🪙`}
                 </span>
               </div>
               <div className="pf-store-card__layout" aria-label="Состав пака">
@@ -100,6 +107,9 @@ export function StorePage() {
               </button>
               {!affordable && pack.priceFantiki > 0 && (
                 <p className="pf-store-hint pf-muted">Недостаточно фантиков</p>
+              )}
+              {pack.priceFantiki > 0 && freeLeft > 0 && (
+                <p className="pf-store-hint pf-muted">Бесплатных открытий: {freeLeft}</p>
               )}
             </li>
           )
@@ -130,7 +140,11 @@ export function StorePage() {
             <h3 className="pf-modal__title">Купить пак?</h3>
             <p className="pf-muted">
               {confirmingPack.name} —{' '}
-              {confirmingPack.priceFantiki === 0 ? 'бесплатно' : `${confirmingPack.priceFantiki.toLocaleString('ru-RU')} фантиков`}
+              {confirmingPack.priceFantiki === 0
+                ? 'бесплатно'
+                : (confirmingPack.freeOpensRemaining ?? 0) > 0
+                  ? 'бесплатно (квота)'
+                  : `${confirmingPack.priceFantiki.toLocaleString('ru-RU')} фантиков`}
             </p>
             <div className="pf-modal__actions">
               <button type="button" className="pf-btn pf-btn--ghost" onClick={() => setConfirmPackId(null)}>

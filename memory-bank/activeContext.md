@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Бесплатные паки:** лимит задаётся на паке (`card_pack.free_opens_per_user`), учёт в `user_card_pack_free_usage`; админка — Card packs; TMA магазин показывает остаток и не требует баланса, пока есть квота.
+
 **Планировщик серий:** `@EnableScheduling` на `FantasyApplication`; `schedule/ActiveSeriesSyncScheduler` — cron `0 0/10 * * * *` (каждые 10 мин), для серий `ACTIVE`/`SCORING` с `finalized = false` — `syncGames` + `calculateScores`; `SeriesRepository.findAllByStatusInAndFinalizedIsFalse`.
 
 **Отображаемое имя (TMA):** колонка `telegram_user.display_name`, `PATCH /api/v1/me` с телом `{"displayName":…}` (null/`""` — сброс); `first_name`/`username` по-прежнему синхронизируются из Telegram initData, кастомный ник не затирается. Лидерборд и публичная команда отдают `displayName` в `UserPublicDto`. Гонка при первом `INSERT` одного `telegram_id`: вставка + INITIAL фантиков в `TelegramUserBootstrapService.insertNewUserWithInitialFantiki` с `REQUIRES_NEW`, при `23505` — догрузка строки и обновление полей Telegram в основной транзакции. Flyway **V14**.

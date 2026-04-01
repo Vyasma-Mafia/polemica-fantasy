@@ -335,7 +335,7 @@ class UserApiIntegrationTest {
         mockMvc.perform(get("/api/v1/store/packs").header("Authorization", tma))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.hasItem(packId.toInt())))
-            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining[0]").value(0))
+            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining").value(0))
 
         mockMvc.perform(
             post("/api/v1/store/packs/$packId/buy")
@@ -403,21 +403,21 @@ class UserApiIntegrationTest {
 
         mockMvc.perform(get("/api/v1/store/packs").header("Authorization", tma))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining[0]").value(2))
+            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining").value(2))
 
         mockMvc.perform(post("/api/v1/store/packs/$packId/buy").header("Authorization", tma))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.fantiki").value(1000))
 
         mockMvc.perform(get("/api/v1/store/packs").header("Authorization", tma))
-            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining[0]").value(1))
+            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining").value(1))
 
         mockMvc.perform(post("/api/v1/store/packs/$packId/buy").header("Authorization", tma))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.fantiki").value(1000))
 
         mockMvc.perform(get("/api/v1/store/packs").header("Authorization", tma))
-            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining[0]").value(0))
+            .andExpect(jsonPath("$[?(@.id == $packId)].freeOpensRemaining").value(0))
 
         mockMvc.perform(post("/api/v1/store/packs/$packId/buy").header("Authorization", tma))
             .andExpect(status().isOk)

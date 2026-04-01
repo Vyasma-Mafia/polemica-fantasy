@@ -33,6 +33,8 @@ export interface StorePackItem {
   id: number
   name: string
   priceFantiki: number
+  /** Remaining free opens for current user; 0 when not applicable. */
+  freeOpensRemaining: number
   rarityLayout: StorePackRaritySlot[]
 }
 

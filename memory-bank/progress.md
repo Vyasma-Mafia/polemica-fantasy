@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Бесплатные открытия паков (per user, per pack)
+- [x] **Flyway V16:** `card_pack.free_opens_per_user`; таблица `user_card_pack_free_usage` (счётчик использованных бесплатных открытий на пару user+pack)
+- [x] **Backend:** `UserStoreService` — для платного пака и положительного лимита: `INSERT … ON CONFLICT DO NOTHING` + атомарный `UPDATE … WHERE free_opens_used < limit`; иначе полное списание; для цены 0 квота не расходуется; `GET /store/packs` с `@AuthenticationPrincipal`, в ответе `freeOpensRemaining`
+- [x] **Admin:** поле в `CreateCardPackRequest` / `UpdateCardPackRequest` и `CardPackDto`; формы Card packs
+- [x] **TMA:** `StorePackItem.freeOpensRemaining`, подсказки и доступность кнопки, инвалидация списка паков после покупки
+- [x] **Тесты:** `UserApiIntegrationTest` — сценарий с двумя бесплатными и третьей платной покупкой
+
 ### Отображаемое имя и конкурентное создание пользователя
 - [x] **Flyway V14:** `telegram_user.display_name`
 - [x] **Backend:** `UserProfileDto` / `UserPublicDto` + `displayName`; `PATCH /api/v1/me` (`UpdateProfileRequest`); `TelegramUserBootstrapService` (`REQUIRES_NEW`) для устойчивости к параллельному первому входу (`23505`); маппинг в лидерборде и публичной команде
