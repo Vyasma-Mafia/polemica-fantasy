@@ -18,7 +18,8 @@ class StoreController(
 ) {
 
     @GetMapping("/packs")
-    fun listPacks(): List<StorePackItemDto> = userStoreService.listStorePacks()
+    fun listPacks(@AuthenticationPrincipal user: TelegramUser): List<StorePackItemDto> =
+        userStoreService.listStorePacks(user)
 
     @PostMapping("/packs/{id}/buy")
     fun buyPack(

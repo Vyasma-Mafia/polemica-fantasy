@@ -7,7 +7,9 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
+import io.github.mralex1810.fantasy.repository.UserCardPackFreeUsageRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import kotlin.math.max
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,18 +22,36 @@ class UserStoreService(
     private val userService: UserService,
     private val userCardRepository: UserCardRepository,
     private val cardTemplateRepository: CardTemplateRepository,
+    private val userCardPackFreeUsageRepository: UserCardPackFreeUsageRepository,
 ) {
 
     @Transactional(readOnly = true)
-    fun listStorePacks(): List<StorePackItemDto> {
-        return cardPackRepository
-            .findAllByActiveTrueAndPriceFantikiGreaterThanEqualOrderByIdAsc(0L)
-            .map { pack ->
-                StorePackItemDto(
-                    id = pack.id!!,
-                    name = pack.name,
-                    priceFantiki = pack.priceFantiki,
-                    rarityLayout = pack.rarityConfigs
+    fun listStorePacks(user: TelegramUser): List<StorePackItemDto> {
+        val packs =
+            cardPackRepository
+                .findAllByActiveTrueAndPriceFantikiGreaterThanEqualOrderByIdAsc(0L)
+        if (packs.isEmpty()) return emptyList()
+        val internalId = user.id!!
+        val packIds = packs.map { it.id!! }
+        val usedByPackId =
+            userCardPackFreeUsageRepository
+                .findAllByTelegramUser_IdAndCardPack_IdIn(internalId, packIds)
+                .associate { it.cardPack!!.id!! to it.freeOpensUsed }
+        return packs.map { pack ->
+            val used = usedByPackId[pack.id!!] ?: 0
+            val freeRemaining =
+                if (pack.priceFantiki <= 0L || pack.freeOpensPerUser <= 0) {
+                    0
+                } else {
+                    max(0, pack.freeOpensPerUser - used)
+                }
+            StorePackItemDto(
+                id = pack.id!!,
+                name = pack.name,
+                priceFantiki = pack.priceFantiki,
+                freeOpensRemaining = freeRemaining,
+                rarityLayout =
+                    pack.rarityConfigs
                         .sortedBy { it.rarity.ordinal }
                         .map { cfg ->
                             StorePackRaritySlotDto(
@@ -39,20 +59,34 @@ class UserStoreService(
                                 cardsCount = cfg.cardsCount,
                             )
                         },
-                )
-            }
+            )
+        }
     }
 
     @Transactional
     fun buyPack(user: TelegramUser, packId: Long): BuyPackResponseDto {
-        val pack = cardPackRepository.findById(packId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Card pack $packId not found")
-        }
+        val pack =
+            cardPackRepository.findById(packId).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Card pack $packId not found")
+            }
         if (!pack.active) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card pack is not active")
         }
         val internalId = user.id!!
-        userService.deductBalance(internalId, pack.priceFantiki, FantikiTransactionReason.PACK_PURCHASE)
+        val price = pack.priceFantiki
+        if (price > 0L) {
+            val limit = pack.freeOpensPerUser
+            if (limit > 0) {
+                userCardPackFreeUsageRepository.ensureUsageRow(internalId, pack.id!!)
+                val incremented =
+                    userCardPackFreeUsageRepository.incrementIfBelowLimit(internalId, pack.id!!, limit)
+                if (incremented == 0) {
+                    userService.deductBalance(internalId, price, FantikiTransactionReason.PACK_PURCHASE)
+                }
+            } else {
+                userService.deductBalance(internalId, price, FantikiTransactionReason.PACK_PURCHASE)
+            }
+        }
         val opened = cardService.openPack(user.telegramId, packId)
         val ids = opened.userCards.map { it.id }
         val byId = userCardRepository.findAllByIdInAndTelegramUser_Id(ids, internalId).associateBy { it.id!! }
@@ -63,14 +97,20 @@ class UserStoreService(
             } else {
                 cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
             }
-        val cards = ids.map { id ->
-            val uc = byId[id]
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opened card $id not found")
-            val tid = uc.cardTemplate!!.id!!
-            val ct = templatesById[tid]
-                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Card template $tid not found")
-            uc.toUserCardItemDto(ct)
-        }
+        val cards =
+            ids.map { id ->
+                val uc =
+                    byId[id]
+                        ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Opened card $id not found")
+                val tid = uc.cardTemplate!!.id!!
+                val ct =
+                    templatesById[tid]
+                        ?: throw ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Card template $tid not found",
+                        )
+                uc.toUserCardItemDto(ct)
+            }
         val balance = userService.getBalance(internalId)
         return BuyPackResponseDto(fantiki = balance, cards = cards)
     }

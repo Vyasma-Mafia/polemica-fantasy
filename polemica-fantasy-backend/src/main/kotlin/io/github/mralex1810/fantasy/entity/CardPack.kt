@@ -34,6 +34,10 @@ class CardPack(
     @Column(name = "price_fantiki", nullable = false)
     var priceFantiki: Long = 0L,
 
+    /** Free opens per user for this pack (only applies when price in fantiki is positive). */
+    @Column(name = "free_opens_per_user", nullable = false)
+    var freeOpensPerUser: Int = 0,
+
     @Column(name = "use_all_tournament_players", nullable = false)
     var useAllTournamentPlayers: Boolean = false,
 

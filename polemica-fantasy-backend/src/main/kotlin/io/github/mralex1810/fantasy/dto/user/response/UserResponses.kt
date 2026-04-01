@@ -150,6 +150,8 @@ data class StorePackItemDto(
     val id: Long,
     val name: String,
     val priceFantiki: Long,
+    /** Remaining free opens for the current user; 0 when not applicable. */
+    val freeOpensRemaining: Int,
     val rarityLayout: List<StorePackRaritySlotDto>,
 )
 
