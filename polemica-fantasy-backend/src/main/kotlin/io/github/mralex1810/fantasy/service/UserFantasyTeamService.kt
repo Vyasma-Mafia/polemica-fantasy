@@ -41,6 +41,7 @@ class UserFantasyTeamService(
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
+    private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
 ) {
 
     @Transactional(readOnly = true)
@@ -49,25 +50,28 @@ class UserFantasyTeamService(
         return teams.map { it.toDto() }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getTeamForSeries(user: TelegramUser, seriesId: Long): FantasyTeamDto {
+        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return team.toDto()
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getTeamDetailsForSeries(user: TelegramUser, seriesId: Long): FantasyTeamSeriesDetailsDto {
+        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return buildTeamSeriesDetails(team, seriesId)
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getPublicTeamForSeries(seriesId: Long, ownerTelegramId: Long): PublicFantasyTeamDto {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
+        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)
@@ -102,11 +106,12 @@ class UserFantasyTeamService(
         )
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     fun getPublicTeamDetailsForSeries(seriesId: Long, ownerTelegramId: Long): FantasyTeamSeriesDetailsDto {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
+        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)

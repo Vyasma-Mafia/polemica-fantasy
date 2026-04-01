@@ -64,4 +64,16 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
         """,
     )
     fun findLeaderboardForSeries(@Param("seriesId") seriesId: Long): List<FantasyTeam>
+
+    @Query(
+        """
+        SELECT DISTINCT ft FROM FantasyTeam ft
+        LEFT JOIN FETCH ft.cards c
+        LEFT JOIN FETCH c.userCard uc
+        LEFT JOIN FETCH uc.cardTemplate ct
+        LEFT JOIN FETCH ct.fantasyPlayer fp
+        WHERE ft.series.id = :seriesId
+        """,
+    )
+    fun findAllBySeries_IdWithCards(@Param("seriesId") seriesId: Long): List<FantasyTeam>
 }

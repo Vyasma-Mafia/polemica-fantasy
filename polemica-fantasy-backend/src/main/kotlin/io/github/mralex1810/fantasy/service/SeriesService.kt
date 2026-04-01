@@ -28,6 +28,7 @@ class SeriesService(
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
     private val seriesFinalizationService: SeriesFinalizationService,
+    private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
 ) {
 
     @Transactional
@@ -147,6 +148,7 @@ class SeriesService(
             val tp = tournamentPlayerRepository.findById(tpId).get()
             seriesPlayerRepository.save(SeriesPlayer(series = series, tournamentPlayer = tp))
         }
+        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         return seriesRepository.findById(seriesId).get().toDto(tournamentPlayerIdsForSeries(seriesId))
     }
 

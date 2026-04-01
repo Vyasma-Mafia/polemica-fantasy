@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Ростер серии и фэнтези:** при смене игроков серии до дедлайна `FantasyTeamRosterPruningService` убирает из `fantasy_team_card` карты игроков, которых больше нет в `series_player` (вызов из `assignPlayers` и при GET команды); Flyway **V17** — разовая чистка для `series_id = 5`.
+
 **Бесплатные паки:** лимит задаётся на паке (`card_pack.free_opens_per_user`), учёт в `user_card_pack_free_usage`; админка — Card packs; TMA магазин показывает остаток и не требует баланса, пока есть квота.
 
 **Планировщик серий:** `@EnableScheduling` на `FantasyApplication`; `schedule/ActiveSeriesSyncScheduler` — cron `0 0/10 * * * *` (каждые 10 мин), для серий `ACTIVE`/`SCORING` с `finalized = false` — `syncGames` + `calculateScores`; `SeriesRepository.findAllByStatusInAndFinalizedIsFalse`.
