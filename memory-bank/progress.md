@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Рассылка в Telegram из админки
+- [x] **Backend:** `POST /api/v1/admin/notifications/broadcast`, `AdminBroadcastNotificationService`, `TelegramBroadcastAsyncSender`, `TelegramUserRepository.findAllTelegramIds`; тесты `AdminBroadcastNotificationServiceTest`, `AdminBroadcastApiIntegrationTest`
+- [x] **Админка:** маршрут `/broadcast`, меню Broadcast, `api/notifications.ts`
+
 ### Бесплатные открытия паков (per user, per pack)
 - [x] **Flyway V16:** `card_pack.free_opens_per_user`; таблица `user_card_pack_free_usage` (счётчик использованных бесплатных открытий на пару user+pack)
 - [x] **Backend:** `UserStoreService` — для платного пака и положительного лимита: `INSERT … ON CONFLICT DO NOTHING` + атомарный `UPDATE … WHERE free_opens_used < limit`; иначе полное списание; для цены 0 квота не расходуется; `GET /store/packs` с `@AuthenticationPrincipal`, в ответе `freeOpensRemaining`

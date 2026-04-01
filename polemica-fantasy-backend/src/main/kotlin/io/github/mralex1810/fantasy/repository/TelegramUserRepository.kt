@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
+    @Query("SELECT u.telegramId FROM TelegramUser u ORDER BY u.id")
+    fun findAllTelegramIds(): List<Long>
+
     fun findByTelegramId(telegramId: Long): TelegramUser?
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

@@ -31,6 +31,10 @@ export interface UserProfileDto {
   fantiki: number
 }
 
+export interface BroadcastAcceptedDto {
+  recipientCount: number
+}
+
 /** Admin user list row; cardsInSeries is null when no tournament+series filter is applied. */
 export interface AdminUserListItemDto {
   id: number

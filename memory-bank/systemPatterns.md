@@ -32,6 +32,7 @@ Controller → Service → Repository → PostgreSQL
 - **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `matchCount(game, player)`; справочник — таблица `achievement` (каталог после Flyway V10: `sniper`, `voteForBlack`, …)
 - **Синхронизация игр и скоринг:** вручную через админку (`sync`, `calculate`) и **по расписанию** — каждые 10 минут `ActiveSeriesSyncScheduler` для серий со статусом `ACTIVE` или `SCORING` и `finalized == false` вызывает `SeriesService.syncGames` → `calculateScores`; ошибки по одной серии логируются, остальные обрабатываются. В тестах `spring.task.scheduling.enabled: false`.
 - **Уведомления Telegram после финализации серии:** `SeriesFinalizationService` публикует `SeriesFinalizedNotificationEvent` с данными для каждого участника лидерборда; `SeriesFinalizedNotificationListener` обрабатывает событие в фазе `AFTER_COMMIT` и асинхронно (`@Async`, включён `@EnableAsync` на приложении) вызывает Bot API `sendMessage` через `TelegramBotApiClient` (`RestClient`). URL собирается как абсолютный `https://api.telegram.org/bot{token}/sendMessage` через `URI.create`, без шаблона `RestClient` с `{token}` в пути — иначе Spring кодирует `:` в токене как `%3A`, Telegram возвращает 404. Отправка не в транзакции БД; сбои Telegram логируются, финализация не откатывается. Флаг `telegram.bot.notifications.enabled` / `TELEGRAM_NOTIFICATIONS_ENABLED` отключает рассылку без смены токена.
+- **Массовая рассылка из админки:** `POST /api/v1/admin/notifications/broadcast` (Basic Auth), тело `BroadcastMessageRequest` (текст до 4096 символов). `AdminBroadcastNotificationService` выбирает все `telegram_id` из `telegram_user` (`TelegramUserRepository.findAllTelegramIds`); при отключённых уведомлениях или пустом токене — **503**. Ответ **202 Accepted** с `recipientCount`; фактическая отправка в `TelegramBroadcastAsyncSender` (`@Async`, задержка 50 ms между чатами, ошибки по чату — warn в лог, как у финализации серии).
 
 ### Security
 - User API: `TelegramAuthFilter` в цепочке только для путей `/api/v1/**` кроме `/api/v1/admin/**` (`UserApiRequestMatcher`); заголовок `Authorization: tma <initData>`; HMAC в `TelegramInitDataValidator`. Экземпляр фильтра создаётся внутри `userApiSecurityFilterChain`, не как отдельный `@Bean` типа `Filter` — иначе Spring Boot регистрирует глобальный servlet filter.
@@ -50,6 +51,7 @@ Controller → Service → Repository → PostgreSQL
 - Ant Design как UI framework
 - React Router для навигации
 - TanStack Query для data fetching
+- Страница **Broadcast** (`/broadcast`) — текстовая рассылка всем пользователям через бота (подтверждение перед отправкой)
 
 ## Структура пакетов бэкенда
 
