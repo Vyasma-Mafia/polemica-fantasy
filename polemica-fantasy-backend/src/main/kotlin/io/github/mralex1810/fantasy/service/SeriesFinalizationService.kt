@@ -2,8 +2,11 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
+import io.github.mralex1810.fantasy.event.SeriesFinalizedRecipient
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,6 +18,7 @@ class SeriesFinalizationService(
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -25,6 +29,8 @@ class SeriesFinalizationService(
         if (series.finalized) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Series already finalized")
         }
+        val tournamentName = series.tournament!!.name
+        val seriesName = series.name
         val teamsWithCards = fantasyTeamRepository.findAllWithCardsForScoring(seriesId)
         var cardsDecremented = 0
         for (ft in teamsWithCards) {
@@ -38,18 +44,37 @@ class SeriesFinalizationService(
         val leaderboard = fantasyTeamRepository.findLeaderboardForSeries(seriesId)
         val n = leaderboard.size
         var rewardsDistributed = 0
+        val notificationRecipients = ArrayList<SeriesFinalizedRecipient>(n)
         leaderboard.forEachIndexed { index, ft ->
             val position = index + 1
             val baseReward = economyConfigService.getSeriesReward(position, n)
             val reward = scaleSeriesRewardByRosterSize(baseReward, ft.cards.size)
+            val u = ft.telegramUser!!
+            val userId = u.id!!
             if (reward > 0) {
-                val u = ft.telegramUser!!
-                userService.addBalance(u.id!!, reward, FantikiTransactionReason.SERIES_REWARD)
+                userService.addBalance(userId, reward, FantikiTransactionReason.SERIES_REWARD)
                 rewardsDistributed++
             }
+            val balanceAfter = userService.getBalance(userId)
+            notificationRecipients.add(
+                SeriesFinalizedRecipient(
+                    telegramId = u.telegramId,
+                    place = position,
+                    total = n,
+                    reward = reward,
+                    balanceAfter = balanceAfter,
+                ),
+            )
         }
         series.finalized = true
         seriesRepository.save(series)
+        applicationEventPublisher.publishEvent(
+            SeriesFinalizedNotificationEvent(
+                tournamentName = tournamentName,
+                seriesName = seriesName,
+                recipients = notificationRecipients,
+            ),
+        )
         return SeriesFinalizationResultDto(
             rewardsDistributed = rewardsDistributed,
             cardsDecremented = cardsDecremented,

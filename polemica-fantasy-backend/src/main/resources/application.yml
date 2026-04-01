@@ -37,6 +37,8 @@ s3:
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:}
+    notifications:
+      enabled: ${TELEGRAM_NOTIFICATIONS_ENABLED:true}
 
 polemica:
   api:

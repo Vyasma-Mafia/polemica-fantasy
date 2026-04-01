@@ -10,17 +10,20 @@ import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentCaptor
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.server.ResponseStatusException
 import java.util.Optional
 
@@ -38,6 +41,9 @@ class SeriesFinalizationServiceTest {
 
     @Mock
     private lateinit var userService: UserService
+
+    @Mock
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @InjectMocks
     private lateinit var service: SeriesFinalizationService
@@ -79,6 +85,8 @@ class SeriesFinalizationServiceTest {
         `when`(fantasyTeamRepository.findLeaderboardForSeries(7L)).thenReturn(listOf(ft1, ft2))
         `when`(economyConfigService.getSeriesReward(1, 2)).thenReturn(100L)
         `when`(economyConfigService.getSeriesReward(2, 2)).thenReturn(70L)
+        `when`(userService.getBalance(10L)).thenReturn(134L)
+        `when`(userService.getBalance(11L)).thenReturn(124L)
 
         val result = service.finalizeSeries(7L)
 
@@ -89,6 +97,14 @@ class SeriesFinalizationServiceTest {
         assertEquals(true, s.finalized)
         verify(userService).addBalance(10L, 34L, FantikiTransactionReason.SERIES_REWARD)
         verify(userService).addBalance(11L, 24L, FantikiTransactionReason.SERIES_REWARD)
+        val captor = ArgumentCaptor.forClass(SeriesFinalizedNotificationEvent::class.java)
+        verify(applicationEventPublisher).publishEvent(captor.capture())
+        val event = captor.value
+        assertEquals(2, event.recipients.size)
+        assertEquals(1, event.recipients[0].place)
+        assertEquals(2, event.recipients[1].place)
+        assertEquals(134L, event.recipients[0].balanceAfter)
+        assertEquals(124L, event.recipients[1].balanceAfter)
     }
 
     @Test

@@ -160,7 +160,8 @@ Admin API (прокси к Polemica для UI): `GET /api/v1/admin/polemica/comp
 - `polemica.api.base-url` — URL API Полемики
 - `polemica.api.profile-site-base-url` — база публичного сайта для `getProfileGames` (по умолчанию совпадает с API-хостом в конфиге)
 - `polemica.api.username/password` — credentials для Polemica API (обязательны для sync-games)
-- `telegram.bot.token` — токен бота для валидации initData
+- `telegram.bot.token` — токен бота для валидации initData и для Bot API (уведомления после финализации серии)
+- `telegram.bot.notifications.enabled` — включить/выключить отправку сообщений при финализации (env: `TELEGRAM_NOTIFICATIONS_ENABLED`, по умолчанию `true`)
 - `s3.endpoint` / `s3.region` / `s3.bucket` / `s3.access-key` / `s3.secret-key` — S3 storage
 - `app.admin.username` / `app.admin.password` — Basic Auth для `/api/v1/admin/**` (env: `ADMIN_USERNAME`, `ADMIN_PASSWORD`)
 
@@ -169,7 +170,7 @@ Admin API (прокси к Polemica для UI): `GET /api/v1/admin/polemica/comp
 Бэкенд (`polemica-fantasy-backend/`):
 - Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 + Spring Boot 3.4.2
 - JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.2
-- `src/main`: `FantasyApplication`, `config/` (S3, Security, `TelegramProperties`, AdminProperties, `PolemicaProperties`, `PolemicaConfig`), `auth/` (`TelegramInitDataValidator`, `TelegramAuthFilter`, `TelegramAuthentication`, `UserApiRequestMatcher`), `entity/` (в т.ч. `TournamentKind`, `FantasyPlayer`, `TournamentPlayer`, `CardTemplate`), `repository/`, `service/` (в т.ч. `UserService`, `UserTournamentService`, `UserSeriesService`, `UserCardCollectionService`, `UserFantasyTeamService`), `controller/user/*`, `controller/admin/*` (в т.ч. `PolemicaAdminController`), `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `resources/application.yml`, Flyway: `V1` … `V4__tournament_kind_competition.sql`
+- `src/main`: `FantasyApplication`, `config/` (S3, Security, `TelegramProperties`, `TelegramConfig`, AdminProperties, `PolemicaProperties`, `PolemicaConfig`), `auth/` (`TelegramInitDataValidator`, `TelegramAuthFilter`, `TelegramAuthentication`, `UserApiRequestMatcher`), `telegram/` (`TelegramBotApiClient`), `event/` (события и слушатель финализации серии), `entity/` (в т.ч. `TournamentKind`, `FantasyPlayer`, `TournamentPlayer`, `CardTemplate`), `repository/`, `service/` (в т.ч. `UserService`, `UserTournamentService`, `UserSeriesService`, `UserCardCollectionService`, `UserFantasyTeamService`, `SeriesFinalizationService`), `controller/user/*`, `controller/admin/*` (в т.ч. `PolemicaAdminController`), `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `resources/application.yml`, Flyway: `V1` … `V4__tournament_kind_competition.sql`
 - `src/test`: Testcontainers PostgreSQL 16; `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackServiceProbabilityTest`, `FantasyApplicationTests`, achievement unit tests
 - Docker: multi-stage `Dockerfile`, артефакт `build/libs/app.jar` (bootJar)
 - Корень репозитория: `docker-compose.yml`, `.env.example`
