@@ -165,6 +165,8 @@ export interface UserCardItem {
   achievements: { achievementId: string; achievementName: string; bonusPoints: number }[]
   usesRemaining: number
   timesRenewed: number
+  /** Present when the card came from opening a pack */
+  sourceCardPackId?: number | null
 }
 
 export interface RewardTier {

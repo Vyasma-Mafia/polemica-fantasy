@@ -109,6 +109,7 @@ data class UserCardItemDto(
     val achievements: List<CardAchievementBriefDto>,
     val usesRemaining: Int,
     val timesRenewed: Int,
+    val sourceCardPackId: Long?,
 )
 
 data class FantasyTeamSlotDto(

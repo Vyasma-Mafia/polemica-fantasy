@@ -55,6 +55,13 @@ export function UsersOverviewPage() {
         render: (_: unknown, r: AdminUserListItemDto) => dash(r.displayName),
       },
       {
+        title: 'Fantiki',
+        dataIndex: 'fantiki' as const,
+        key: 'fantiki',
+        align: 'right' as const,
+        render: (v: number) => v.toLocaleString('ru-RU'),
+      },
+      {
         title: 'Cards (series)',
         dataIndex: 'cardsInSeries' as const,
         key: 'cardsInSeries',

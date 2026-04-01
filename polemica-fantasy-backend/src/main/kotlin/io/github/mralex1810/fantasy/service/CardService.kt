@@ -161,5 +161,6 @@ class CardService(
         telegramUserId = telegramUser!!.telegramId,
         cardTemplateId = cardTemplate!!.id!!,
         acquiredAt = acquiredAt,
+        sourceCardPackId = sourceCardPack?.id,
     )
 }

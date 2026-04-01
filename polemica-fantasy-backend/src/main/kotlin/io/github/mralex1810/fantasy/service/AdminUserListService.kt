@@ -35,6 +35,7 @@ class AdminUserListService(
                         telegramId = u.telegramId,
                         username = u.username,
                         displayName = u.displayName,
+                        fantiki = u.fantiki,
                         cardsInSeries = null,
                     )
                 }
@@ -56,12 +57,14 @@ class AdminUserListService(
         val telegramId = (row[1] as Number).toLong()
         val username = row[2] as String?
         val displayName = row[3] as String?
-        val count = (row[4] as Number).toLong()
+        val fantiki = (row[4] as Number).toLong()
+        val count = (row[5] as Number).toLong()
         return AdminUserListItemDto(
             id = id,
             telegramId = telegramId,
             username = username,
             displayName = displayName,
+            fantiki = fantiki,
             cardsInSeries = count,
         )
     }

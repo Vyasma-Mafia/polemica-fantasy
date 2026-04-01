@@ -214,6 +214,7 @@ class CardPackService(
                         UserCard(
                             telegramUser = user,
                             cardTemplate = template,
+                            sourceCardPack = pack,
                             acquiredAt = now,
                             usesRemaining = economyConfigService.getUsesForRarity(cfg.rarity),
                             timesRenewed = 0,
@@ -336,6 +337,7 @@ class CardPackService(
         telegramUserId = telegramUser!!.telegramId,
         cardTemplateId = cardTemplate!!.id!!,
         acquiredAt = acquiredAt,
+        sourceCardPackId = sourceCardPack?.id,
     )
 
     companion object {

@@ -211,6 +211,7 @@ class AdminApiIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.userCards.length()").value(1))
+            .andExpect(jsonPath("$.userCards[0].sourceCardPackId").value(packId.toInt()))
 
         mockMvc.perform(
             get("/api/v1/admin/card-packs").param("tournamentId", tournamentId.toString())
@@ -322,6 +323,7 @@ class AdminApiIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/users").header("Authorization", auth))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[0].id").exists())
+            .andExpect(jsonPath("$[0].fantiki").isNumber)
             .andExpect(jsonPath("$[0].cardsInSeries").value(nullValue()))
     }
 
@@ -414,6 +416,7 @@ class AdminApiIntegrationTest {
         val rows = JsonPath.parse(listJson).read<List<Map<String, Any?>>>("$")
         val row = rows.first { (it["telegramId"] as Number).toLong() == telegramTarget }
         assertEquals(1L, (row["cardsInSeries"] as Number).toLong())
+        assertEquals(1000L, (row["fantiki"] as Number).toLong())
     }
 
     companion object {

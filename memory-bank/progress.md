@@ -104,7 +104,7 @@
 
 ### Frontend (Admin)
 - [x] Проект `polemica-fantasy-admin/` (Vite + React 19 + TS + Ant Design 6 + TanStack Query + React Router 7)
-- [x] **Users overview:** маршрут `/users` — таблица пользователей, выбор турнира и серии, колонка числа карт по серии; `api/usersList.ts`
+- [x] **Users overview:** маршрут `/users` — таблица пользователей, выбор турнира и серии, колонки актуального баланса фантиков и числа карт по серии; `GET /api/v1/admin/users` (`AdminUserListItemDto.fantiki`, в native-запросе с фильтром серии — `tu.fantiki`); `api/usersList.ts`
 - [x] Турниры: список, create/edit, деталь — игроки (add/remove/photo), серии (список + create)
 - [x] Серия: редактирование полей, assign players, sync games, calculate scores
 - [x] Шаблоны карт и паки: CRUD-операции, фильтры, загрузка изображения карты, добавление achievement

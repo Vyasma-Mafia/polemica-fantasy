@@ -37,6 +37,7 @@ export interface AdminUserListItemDto {
   telegramId: number
   username: string | null
   displayName: string | null
+  fantiki: number
   cardsInSeries: number | null
 }
 
@@ -136,6 +137,7 @@ export interface UserCardDto {
   telegramUserId: number
   cardTemplateId: number
   acquiredAt: string
+  sourceCardPackId: number | null
 }
 
 export interface OpenPackResultDto {

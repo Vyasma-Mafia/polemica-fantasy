@@ -26,7 +26,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     @Query(
         value =
             """
-            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, COUNT(uc.id)
+            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
             FROM telegram_user tu
             LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
               AND EXISTS (
@@ -36,7 +36,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
                 WHERE ct.id = uc.card_template_id
                   AND tp.fantasy_player_id = ct.fantasy_player_id
               )
-            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name
+            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki
             ORDER BY tu.id
             """,
         nativeQuery = true,

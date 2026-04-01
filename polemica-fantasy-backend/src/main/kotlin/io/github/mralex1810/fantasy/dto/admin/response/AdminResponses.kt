@@ -102,6 +102,7 @@ data class UserCardDto(
     val telegramUserId: Long,
     val cardTemplateId: Long,
     val acquiredAt: Instant,
+    val sourceCardPackId: Long?,
 )
 
 data class OpenPackResultDto(
@@ -125,5 +126,6 @@ data class AdminUserListItemDto(
     val telegramId: Long,
     val username: String?,
     val displayName: String?,
+    val fantiki: Long,
     val cardsInSeries: Long?,
 )

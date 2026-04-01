@@ -27,6 +27,10 @@ class UserCard(
     @JoinColumn(name = "card_template_id", nullable = false)
     var cardTemplate: CardTemplate? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "source_card_pack_id", nullable = true)
+    var sourceCardPack: CardPack? = null,
+
     @Column(name = "acquired_at", nullable = false)
     var acquiredAt: Instant = Instant.now(),
 
