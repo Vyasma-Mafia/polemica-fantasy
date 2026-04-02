@@ -32,6 +32,7 @@
 - [x] **Тесты:** `CardLifecycleServiceTest`, `SeriesFinalizationServiceTest`, интеграция admin economy config в `AdminApiIntegrationTest`
 - [x] **Админка:** страница Economy, колонка Finalized в списке серий турнира, финализация на деталке серии
 - [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница **«Справка»** `/help` (очки, достижения из `GET /api/v1/achievements`, экономика из `GET /me/economy-info`; подписи наград за лидерборд серии — из `economy_config.description`, числа — из `value`)
+- [x] **Коллекция — модалка карты:** как в лидерборде/истории фэнтези — полный список достижений, блок «Очки в сериях» из `GET /me/fantasy-teams`, детализация «По играм серии» через `GET /me/fantasy-teams/{seriesId}/details` (селектор серии, если карта участвовала в нескольких); переработка/продление в модалке и на сетке; общий компонент разбивки очков — `ScoreBreakdownBlock` (`LeaderboardPlayerTeamPage`, `FantasyHistoryPage`, `CardsPage`)
 
 ### Статистика для баланса достижений (этап 1)
 - [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **`FantasyPlayerRepository.findAllPolemicaUserIds`**

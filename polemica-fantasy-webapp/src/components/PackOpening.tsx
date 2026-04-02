@@ -15,13 +15,15 @@ export interface PackOpeningProps {
   packName?: string
   /** «В коллекцию» — закрыть overlay (родитель сбрасывает state / ведёт на /cards). */
   onDismiss: () => void
+  /** «Купить ещё» — закрыть overlay и снова предложить покупку того же пака (например, открыть модалку в магазине). */
+  onBuyMore?: () => void
 }
 
 /**
  * Полноэкранная анимация открытия пака: тряска → поочерёдное раскрытие карт → сводка.
  * При `cards.length === 0` ничего не рендерится.
  */
-export function PackOpening({ cards, packName, onDismiss }: PackOpeningProps) {
+export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeningProps) {
   const [phase, setPhase] = useState<Phase>('pack')
   const [visibleIndex, setVisibleIndex] = useState(0)
   const revealRunId = useRef(0)
@@ -131,9 +133,16 @@ export function PackOpening({ cards, packName, onDismiss }: PackOpeningProps) {
               )
             })}
           </ul>
-          <button type="button" className="pf-btn pf-pack-open__cta" onClick={onDismiss}>
-            В коллекцию
-          </button>
+          <div className="pf-pack-open__actions">
+            {onBuyMore && (
+              <button type="button" className="pf-btn pf-btn--ghost pf-pack-open__cta" onClick={onBuyMore}>
+                Купить ещё
+              </button>
+            )}
+            <button type="button" className="pf-btn pf-pack-open__cta" onClick={onDismiss}>
+              В коллекцию
+            </button>
+          </div>
         </div>
       )}
     </div>

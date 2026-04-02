@@ -1,11 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
-import type { Rarity, UserCardItem, UserTournament } from '../api/types'
+import type {
+  FantasyTeamDto,
+  FantasyTeamSeriesDetails,
+  Rarity,
+  UserCardItem,
+  UserSeriesDetail,
+  UserTournament,
+} from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
+import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
@@ -15,6 +23,16 @@ type LifecycleFilter = 'all' | 'active' | 'expired'
 function maxUsesForCard(c: UserCardItem, usesPerRarity: Record<Rarity, number> | undefined): number {
   if (!usesPerRarity) return Math.max(c.usesRemaining, 1)
   return usesPerRarity[c.rarity] ?? c.usesRemaining
+}
+
+function teamsContainingCard(teams: FantasyTeamDto[] | undefined, userCardId: number): FantasyTeamDto[] {
+  if (!teams) return []
+  return teams.filter((t) => t.slots.some((s) => s.userCardId === userCardId))
+}
+
+function slotScoreForCard(team: FantasyTeamDto, userCardId: number): number | null {
+  const slot = team.slots.find((s) => s.userCardId === userCardId)
+  return slot?.score ?? null
 }
 
 export function CardsPage() {
@@ -33,6 +51,9 @@ export function CardsPage() {
   const [lifeFilter, setLifeFilter] = useState<LifecycleFilter>('all')
   const [sortUses, setSortUses] = useState<'none' | 'asc' | 'desc'>('none')
 
+  const [detailCardId, setDetailCardId] = useState<number | null>(null)
+  const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null)
+
   const params = useMemo(() => {
     const sp = new URLSearchParams()
     if (tournamentId) sp.set('tournamentId', tournamentId)
@@ -44,6 +65,12 @@ export function CardsPage() {
   const q = useQuery({
     queryKey: ['cards', params, initData],
     queryFn: () => apiGet<UserCardItem[]>(`/api/v1/me/cards${params}`, initData),
+    enabled: !!initData,
+  })
+
+  const teamsQ = useQuery({
+    queryKey: ['fantasy-teams', initData],
+    queryFn: () => apiGet<FantasyTeamDto[]>('/api/v1/me/fantasy-teams', initData),
     enabled: !!initData,
   })
 
@@ -88,11 +115,78 @@ export function CardsPage() {
     return list
   }, [q.data, playerFilter, lifeFilter, sortUses])
 
+  const detailCard = detailCardId != null ? q.data?.find((c) => c.id === detailCardId) : undefined
+
+  const teamsWithCard = useMemo(
+    () => teamsContainingCard(teamsQ.data, detailCardId ?? -1),
+    [teamsQ.data, detailCardId],
+  )
+
+  useEffect(() => {
+    if (detailCardId == null) {
+      setSelectedSeriesId(null)
+      return
+    }
+    if (teamsWithCard.length === 0) {
+      setSelectedSeriesId(null)
+      return
+    }
+    setSelectedSeriesId((prev) => {
+      const stillValid = prev != null && teamsWithCard.some((t) => t.seriesId === prev)
+      if (stillValid) return prev
+      const sorted = [...teamsWithCard].sort(
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+      )
+      return sorted[0].seriesId
+    })
+  }, [detailCardId, teamsWithCard])
+
+  const seriesIdsForHistory = useMemo(
+    () => [...new Set(teamsWithCard.map((t) => t.seriesId))],
+    [teamsWithCard],
+  )
+
+  const seriesMetaQueries = useQueries({
+    queries: seriesIdsForHistory.map((sid) => ({
+      queryKey: ['series', sid, initData],
+      queryFn: () => apiGet<UserSeriesDetail>(`/api/v1/series/${sid}`, initData!),
+      enabled: !!initData && detailCardId != null,
+    })),
+  })
+
+  const seriesNameById = useMemo(() => {
+    const m = new Map<number, string>()
+    seriesIdsForHistory.forEach((sid, i) => {
+      const name = seriesMetaQueries[i]?.data?.name
+      if (name) m.set(sid, name)
+    })
+    return m
+  }, [seriesIdsForHistory, seriesMetaQueries])
+
+  const detailsModalQ = useQuery({
+    queryKey: ['fantasy-team-details', selectedSeriesId, initData],
+    queryFn: () =>
+      apiGet<FantasyTeamSeriesDetails>(
+        `/api/v1/me/fantasy-teams/${selectedSeriesId}/details`,
+        initData!,
+      ),
+    enabled: !!initData && selectedSeriesId != null && detailCardId != null && teamsWithCard.length > 0,
+  })
+
+  const modalColumn =
+    detailCardId != null && detailsModalQ.data
+      ? detailsModalQ.data.columns.find((col) => col.userCardId === detailCardId)
+      : undefined
+
+  const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
+
   const recycleMut = useMutation({
     mutationFn: (cardId: number) => recycleUserCard(initData!, cardId),
-    onSuccess: () => {
+    onSuccess: (_, cardId) => {
       void qc.invalidateQueries({ queryKey: ['cards'] })
       void qc.invalidateQueries({ queryKey: ['me'] })
+      void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
+      setDetailCardId((d) => (d === cardId ? null : d))
     },
     onError: (e: Error) => window.alert(e.message),
   })
@@ -102,11 +196,42 @@ export function CardsPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['cards'] })
       void qc.invalidateQueries({ queryKey: ['me'] })
+      void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
     },
     onError: (e: Error) => window.alert(e.message),
   })
 
+  const runRecycle = (c: UserCardItem) => {
+    const recycleVal = economyQ.data?.recycleValues[c.rarity]
+    if (
+      !window.confirm(
+        recycleVal != null
+          ? `Переработать карту? Вы получите ${recycleVal}₣. Карта будет уничтожена.`
+          : 'Переработать карту? Карта будет уничтожена.',
+      )
+    ) {
+      return
+    }
+    recycleMut.mutate(c.id)
+  }
+
+  const runRenew = (c: UserCardItem) => {
+    if (!economyQ.data) return
+    const cost = economyQ.data.renewalCosts[c.rarity]
+    if (!window.confirm(`Продлить контракт за ${cost}₣?`)) return
+    renewMut.mutate(c.id)
+  }
+
+  const closeModal = () => {
+    setDetailCardId(null)
+    setSelectedSeriesId(null)
+  }
+
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
+
+  const teamsSortedForHistory = [...teamsWithCard].sort(
+    (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+  )
 
   return (
     <div className="pf-page">
@@ -205,43 +330,46 @@ export function CardsPage() {
               }`}
             >
               <div className="pf-collection-card__frame">
-                {imgSrc ? (
-                  <img src={imgSrc} alt="" className="pf-collection-card__img" />
-                ) : (
-                  <div className="pf-collection-card__ph">{c.rarity}</div>
-                )}
-                <span className="pf-uses-badge" title="Осталось использований">
-                  ⚡{c.usesRemaining}/{maxU}
-                </span>
-                {expired && <span className="pf-expired-badge">Истекла</span>}
-                <div className="pf-collection-card__cap">
-                  <span className="pf-collection-card__name">{c.playerNickname}</span>
-                  <span className="pf-collection-card__rarity">
-                    {c.rarity}{' '}
-                    <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
-                      {rarityScoreModifierLabel(c.rarity)}
-                    </span>
+                <div
+                  className="pf-collection-card__open"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailCardId(c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setDetailCardId(c.id)
+                    }
+                  }}
+                >
+                  {imgSrc ? (
+                    <img src={imgSrc} alt="" className="pf-collection-card__img" />
+                  ) : (
+                    <div className="pf-collection-card__ph">{c.rarity}</div>
+                  )}
+                  <span className="pf-uses-badge" title="Осталось использований">
+                    ⚡{c.usesRemaining}/{maxU}
                   </span>
-                  <CardAchievementChips achievements={c.achievements} max={4} />
+                  {expired && <span className="pf-expired-badge">Истекла</span>}
+                  <div className="pf-collection-card__cap">
+                    <span className="pf-collection-card__name">{c.playerNickname}</span>
+                    <span className="pf-collection-card__rarity">
+                      {c.rarity}{' '}
+                      <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                        {rarityScoreModifierLabel(c.rarity)}
+                      </span>
+                    </span>
+                    <CardAchievementChips achievements={c.achievements} max={4} />
+                  </div>
+                </div>
+                <div className="pf-collection-card__toolbar">
                   <div className="pf-card-actions">
                     {!expired && (
                       <button
                         type="button"
                         className="pf-btn pf-btn--small"
                         disabled={recycleMut.isPending}
-                        onClick={() => {
-                          const recycleVal = economyQ.data?.recycleValues[c.rarity]
-                          if (
-                            !window.confirm(
-                              recycleVal != null
-                                ? `Переработать карту? Вы получите ${recycleVal}₣. Карта будет уничтожена.`
-                                : 'Переработать карту? Карта будет уничтожена.',
-                            )
-                          ) {
-                            return
-                          }
-                          recycleMut.mutate(c.id)
-                        }}
+                        onClick={() => runRecycle(c)}
                       >
                         Переработать
                       </button>
@@ -252,15 +380,9 @@ export function CardsPage() {
                         className="pf-btn pf-btn--small pf-btn--primary"
                         disabled={renewMut.isPending || c.timesRenewed >= economyQ.data.maxRenewals}
                         title={
-                          c.timesRenewed >= economyQ.data.maxRenewals
-                            ? 'Лимит продлений'
-                            : undefined
+                          c.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
                         }
-                        onClick={() => {
-                          const cost = economyQ.data!.renewalCosts[c.rarity]
-                          if (!window.confirm(`Продлить контракт за ${cost}₣?`)) return
-                          renewMut.mutate(c.id)
-                        }}
+                        onClick={() => runRenew(c)}
                       >
                         Продлить ({economyQ.data.renewalCosts[c.rarity]}₣)
                       </button>
@@ -272,6 +394,153 @@ export function CardsPage() {
           )
         })}
       </ul>
+
+      {detailCard && (
+        <div
+          className="pf-modal-backdrop"
+          role="dialog"
+          aria-modal
+          aria-label="Карточка"
+          onClick={closeModal}
+        >
+          <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="pf-modal__close" onClick={closeModal}>
+              ×
+            </button>
+            {detailImgSrc && (
+              <div className={`pf-modal__img-frame pf-modal__img-frame--${rarityClass(detailCard.rarity)}`}>
+                <img src={detailImgSrc} alt="" className="pf-modal__img" />
+              </div>
+            )}
+            <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
+            <p className="pf-muted">{detailCard.rarity}</p>
+            <ul className="pf-modal__ach">
+              {detailCard.achievements.map((a) => (
+                <li key={a.achievementId}>
+                  {a.achievementName}: +{a.bonusPoints}
+                </li>
+              ))}
+            </ul>
+
+            {teamsWithCard.length > 0 && (
+              <div className="pf-modal__per-game" style={{ marginTop: 12 }}>
+                <h4>Очки в сериях</h4>
+                <ul className="pf-modal__ach" style={{ listStyle: 'disc', paddingLeft: 20 }}>
+                  {teamsSortedForHistory.map((team) => {
+                    const pts = slotScoreForCard(team, detailCard.id)
+                    const label =
+                      seriesNameById.get(team.seriesId) ??
+                      (seriesMetaQueries[seriesIdsForHistory.indexOf(team.seriesId)]?.isLoading
+                        ? '…'
+                        : `Серия #${team.seriesId}`)
+                    return (
+                      <li key={team.seriesId}>
+                        <strong>{label}</strong>
+                        <span className="pf-muted"> — </span>
+                        {pts != null ? `${pts.toFixed(2)}` : '—'}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {teamsWithCard.length > 1 && selectedSeriesId != null && (
+              <label className="pf-field pf-modal__series-pick">
+                <span className="pf-field__label">Детализация по играм</span>
+                <select
+                  className="pf-input"
+                  value={selectedSeriesId}
+                  onChange={(e) => setSelectedSeriesId(Number(e.target.value))}
+                >
+                  {teamsWithCard.map((t) => (
+                    <option key={t.seriesId} value={t.seriesId}>
+                      {seriesNameById.get(t.seriesId) ?? `Серия #${t.seriesId}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {teamsWithCard.length === 0 && (
+              <p className="pf-muted" style={{ marginTop: 10 }}>
+                Карта ещё не участвовала в составе команд в сериях.
+              </p>
+            )}
+
+            {detailsModalQ.isLoading && teamsWithCard.length > 0 && (
+              <p className="pf-muted">Загрузка по играм…</p>
+            )}
+            {detailsModalQ.isError && (
+              <p className="pf-err">{(detailsModalQ.error as Error).message}</p>
+            )}
+            {modalColumn && detailsModalQ.data && detailsModalQ.data.games.length > 0 && (
+              <div className="pf-modal__per-game">
+                <h4>По играм серии</h4>
+                <ul className="pf-modal__ach" style={{ listStyle: 'none', paddingLeft: 0 }}>
+                  {detailsModalQ.data.games.map((g, gi) => {
+                    const cell = modalColumn.cells[gi]
+                    return (
+                      <li
+                        key={g.seriesGameId}
+                        style={{
+                          marginBottom: 10,
+                          borderBottom: '1px solid var(--pf-border)',
+                          paddingBottom: 8,
+                        }}
+                      >
+                        <strong>{g.gameName}</strong>
+                        {!g.scored && <span className="pf-muted"> — не засчитана</span>}
+                        {cell ? (
+                          <>
+                            <div style={{ marginTop: 6 }}>
+                              <span className="pf-muted">Очки: </span>
+                              <strong>{cell.totalScore != null ? cell.totalScore.toFixed(2) : '—'}</strong>
+                            </div>
+                            <ScoreBreakdownBlock b={cell} />
+                          </>
+                        ) : (
+                          <p className="pf-muted" style={{ marginTop: 4 }}>
+                            Нет данных
+                          </p>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="pf-modal__economy-actions">
+              {detailCard.usesRemaining > 0 && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small"
+                  disabled={recycleMut.isPending}
+                  onClick={() => runRecycle(detailCard)}
+                >
+                  Переработать
+                </button>
+              )}
+              {detailCard.usesRemaining <= 0 && economyQ.data && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  disabled={
+                    renewMut.isPending || detailCard.timesRenewed >= economyQ.data.maxRenewals
+                  }
+                  title={
+                    detailCard.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
+                  }
+                  onClick={() => runRenew(detailCard)}
+                >
+                  Продлить контракт ({economyQ.data.renewalCosts[detailCard.rarity]}₣)
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

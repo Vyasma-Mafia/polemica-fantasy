@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type {
-  CardGameBreakdown,
   FantasyTeamDetailSlot,
   FantasyTeamSeriesDetails,
   PublicFantasyTeam,
@@ -11,6 +10,7 @@ import type {
   UserSeriesDetail,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -31,42 +31,6 @@ function highlightMaxes(columns: FantasyTeamDetailSlot[], gameCount: number) {
     }
   }
   return { rowMax, colMax }
-}
-
-function BreakdownBlock({ b }: { b: CardGameBreakdown }) {
-  const base = b.basePoints
-  const ach = b.achievementBonus
-  const mod = b.rarityModifier
-  const total = b.totalScore
-  return (
-    <div className="pf-score-breakdown">
-      <div className="pf-score-breakdown__row">
-        <span>База</span>
-        <strong>{base != null ? base.toFixed(2) : '—'}</strong>
-      </div>
-      <div className="pf-score-breakdown__row">
-        <span>Достижения</span>
-        <strong>{ach != null ? ach.toFixed(2) : '—'}</strong>
-      </div>
-      {b.achievements.length > 0 && (
-        <ul className="pf-modal__ach" style={{ marginTop: 6 }}>
-          {b.achievements.map((a) => (
-            <li key={`${a.achievementId}-${a.bonusPoints}`}>
-              {a.achievementName}: +{a.bonusPoints.toFixed(2)}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="pf-score-breakdown__row">
-        <span>× редкость</span>
-        <strong>{mod != null ? mod.toFixed(2) : '—'}</strong>
-      </div>
-      <div className="pf-score-breakdown__row">
-        <span>Итого</span>
-        <strong>{total != null ? total.toFixed(2) : '—'}</strong>
-      </div>
-    </div>
-  )
 }
 
 export function LeaderboardPlayerTeamPage() {
@@ -220,7 +184,7 @@ export function LeaderboardPlayerTeamPage() {
                               </button>
                               {exp && cell && (
                                 <div style={{ padding: 8 }}>
-                                  <BreakdownBlock b={cell} />
+                                  <ScoreBreakdownBlock b={cell} />
                                 </div>
                               )}
                             </td>
@@ -314,7 +278,7 @@ export function LeaderboardPlayerTeamPage() {
                               <span className="pf-muted">Очки: </span>
                               <strong>{cell.totalScore != null ? cell.totalScore.toFixed(2) : '—'}</strong>
                             </div>
-                            <BreakdownBlock b={cell} />
+                            <ScoreBreakdownBlock b={cell} />
                           </>
                         ) : (
                           <p className="pf-muted" style={{ marginTop: 4 }}>

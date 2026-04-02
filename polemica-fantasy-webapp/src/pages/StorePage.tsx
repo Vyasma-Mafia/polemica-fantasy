@@ -15,7 +15,11 @@ export function StorePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [confirmPackId, setConfirmPackId] = useState<number | null>(null)
-  const [lastOpening, setLastOpening] = useState<{ response: BuyPackResponse; packName: string } | null>(null)
+  const [lastOpening, setLastOpening] = useState<{
+    response: BuyPackResponse
+    packName: string
+    packId: number
+  } | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
   const meQ = useQuery({
     queryKey: ['me', initData],
@@ -35,7 +39,7 @@ export function StorePage() {
     onSuccess: (data, packId) => {
       const pack = queryClient.getQueryData<StorePackItem[]>(['store-packs', initData])?.find((p) => p.id === packId)
       if (data.cards.length > 0) {
-        setLastOpening({ response: data, packName: pack?.name ?? 'Пак' })
+        setLastOpening({ response: data, packName: pack?.name ?? 'Пак', packId })
       }
       setConfirmPackId(null)
       setBuyError(null)
@@ -127,6 +131,12 @@ export function StorePage() {
           key={lastOpening.response.cards.map((c) => c.id).join('-')}
           cards={lastOpening.response.cards}
           packName={lastOpening.packName}
+          onBuyMore={() => {
+            const id = lastOpening.packId
+            setLastOpening(null)
+            setBuyError(null)
+            setConfirmPackId(id)
+          }}
           onDismiss={() => {
             setLastOpening(null)
             navigate('/cards')

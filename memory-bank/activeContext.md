@@ -15,6 +15,8 @@
 
 **V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), **экран «Справка»** `/help` (механика очков, каталог достижений `GET /api/v1/achievements`, блок экономики из `economy-info`), редирект `/economy` → `/help`; сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
 
+**Коллекция — полная карточка:** на `/cards` по клику на область карточки открывается модалка как в лидерборде/истории фэнтези (полный список достижений, «Очки в сериях» из `GET /me/fantasy-teams`, детализация по играм через `GET /me/fantasy-teams/{seriesId}/details`, переключатель серии при нескольких командах); переработка/продление — в тулбаре сетки и в модалке; общий компонент разбивки очков — `ScoreBreakdownBlock.tsx`.
+
 **Деплой:** TMA `https://fantasy.maftourbot.ru`, админка `https://admin.fantasy.maftourbot.ru`, бэкенд в Docker (`docker-compose.prod.yml`). На сервере **`~/polemica-fantasy`** — **git clone** ветки **`master`** (`git@github.com:Vyasma-Mafia/polemica-fantasy.git`, SSH).
 
 ## Реализованные изменения V2
@@ -62,7 +64,7 @@
 ## Недавние правки TMA (карты и коллекция)
 - **Коллекция (`CardsPage`):** фильтр по турниру — `<select>` с названиями из `GET /api/v1/tournaments` (кэш-ключ `['tournaments', initData]`, как на главной); опция «Все карты»; если в URL есть `tournamentId`, которого нет в списке активных турниров, показывается доп. опция «Турнир №{id}».
 - **Карты:** общая палитра редкости — common матовый серый (`--pf-card-common`), rare ледяной cyan с лёгким свечением (`--pf-card-rare`); достижения в виде чипов на оверлее фото (`CardAchievementChips`) на коллекции, сборке команды, раскрытии пака и сводке пака; увеличены шрифты в подписи к карте.
-- **Покупка пака:** ответ `POST …/store/packs/{id}/buy` мапится в `UserCardItemDto` через шаблоны из `CardTemplateRepository.findAllByIdWithAchievementsLoaded`, чтобы список достижений не терялся при сборке DTO; на экране раскрытия частицы EPIC/LEGENDARY под текстом (`z-index` у `pf-pack-open__card-cap` выше, чем у `pf-pack-open__particles`).
+- **Покупка пака:** ответ `POST …/store/packs/{id}/buy` мапится в `UserCardItemDto` через шаблоны из `CardTemplateRepository.findAllByIdWithAchievementsLoaded`, чтобы список достижений не терялся при сборке DTO; на экране раскрытия частицы EPIC/LEGENDARY под текстом (`z-index` у `pf-pack-open__card-cap` выше, чем у `pf-pack-open__particles`). После сводки пака — кнопки «Купить ещё» (закрывает оверлей, открывает модалку подтверждения того же `packId`) и «В коллекцию» → `/cards`.
 
 ## Недавние правки (экономика TMA)
 - **`EconomyConfigService.buildEconomyInfo`:** строки наград за лидерборд серии формируются из БД (`economy_config`: `description` как подпись, `value` как сумма через тот же кэш, что и финализация); порядок ключей `series.reward.*` зафиксирован списком в сервисе (как и в `getSeriesReward`). Интеграционный тест: `UserApiIntegrationTest` — `GET economy-info returns…`.
