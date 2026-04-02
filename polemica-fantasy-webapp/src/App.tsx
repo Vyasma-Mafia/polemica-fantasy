@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { FantikiBalance } from './components/FantikiBalance'
-import { InitDataProvider } from './context/InitDataContext'
+import { TopBarDisplayName } from './components/TopBarDisplayName'
+import { InitDataProvider } from './context/InitDataContext.tsx'
 import { CardsPage } from './pages/CardsPage'
 import { HelpPage } from './pages/HelpPage'
 import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
@@ -31,7 +32,10 @@ function Shell() {
           <NavLink to="/" className="top__brand">
             Polemica Fantasy
           </NavLink>
-          <FantikiBalance />
+          <TopBarDisplayName />
+          <div className="top__balance">
+            <FantikiBalance />
+          </div>
         </div>
         <nav className="nav" aria-label="Основное меню">
           <NavLink to="/" end>

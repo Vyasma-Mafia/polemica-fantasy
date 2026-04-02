@@ -82,13 +82,28 @@ a {
   border-bottom: 1px solid var(--pf-border);
 }
 
-/* Одна строка: бренд слева, баланс справа — без «третьей» строки под пунктами меню */
+/* Бренд | ник по центру доступного места | баланс */
 .top__bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
+}
+
+.top__user {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--pf-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top__balance {
+  flex-shrink: 0;
 }
 
 .pf-fantiki {
@@ -122,6 +137,7 @@ a {
 }
 
 .top__brand {
+  flex-shrink: 0;
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--pf-text-heading);
