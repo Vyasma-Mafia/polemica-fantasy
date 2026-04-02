@@ -30,7 +30,7 @@ class UserTournamentService(
         val t = tournamentRepository.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $id not found")
         }
-        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdAsc(id).map { s ->
+        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdDesc(id).map { s ->
             UserSeriesSummaryDto(
                 id = s.id!!,
                 tournamentId = t.id!!,

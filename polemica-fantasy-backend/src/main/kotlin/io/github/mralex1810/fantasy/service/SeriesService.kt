@@ -157,7 +157,7 @@ class SeriesService(
         if (!tournamentRepository.existsById(tournamentId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
         }
-        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdAsc(tournamentId)
+        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdDesc(tournamentId)
         val sidList = seriesList.map { it.id!! }
         if (sidList.isEmpty()) return emptyList()
         val bySeriesId = seriesPlayerRepository.findAllBySeries_IdIn(sidList).groupBy { sp ->

@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Порядок серий турнира (новые сверху)
+- [x] **Backend:** `findAllByTournament_IdOrderByIdDesc` в `SeriesRepository`; `UserTournamentService.getTournament`, `SeriesService.listSeriesByTournament`
+- [x] **TMA:** `SeriesPickerPage` — бейдж номера серии не зависит от порядка в списке (`gameNumFrom` или порядок по `id`)
+
 ### Очистка «призрачных» карт при смене ростера серии
 - [x] **`FantasyTeamRosterPruningService.pruneInvalidCardsForSeries`:** удаляет `fantasy_team_card`, если `card_template.fantasy_player_id` больше не в `series_player` для этой серии; только пока `now <= team_deadline`; уплотняет слоты 1..n; при отсутствии карт удаляет `fantasy_team`
 - [x] Вызовы: после **`SeriesService.assignPlayers`**; в начале **`UserFantasyTeamService`** — `getTeamForSeries`, `getTeamDetailsForSeries`, `getPublicTeamForSeries`, `getPublicTeamDetailsForSeries` (методы переведены с `readOnly` на обычную `@Transactional` из-за prune)

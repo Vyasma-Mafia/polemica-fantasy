@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserTournamentDetail } from '../api/types'
@@ -24,6 +25,10 @@ export function SeriesPickerPage() {
 
   const t = q.data!
   const back = `/tournaments/${t.id}`
+  const seriesChronologicalIndex = useMemo(() => {
+    const sorted = [...t.series].sort((a, b) => a.id - b.id)
+    return new Map(sorted.map((s, i) => [s.id, i + 1]))
+  }, [t.series])
 
   return (
     <div className="pf-page">
@@ -33,12 +38,13 @@ export function SeriesPickerPage() {
         {t.series.map((s, idx) => {
           const deadline = new Date(s.teamDeadline)
           const expired = now > deadline.getTime()
+          const seriesNum = s.gameNumFrom ?? seriesChronologicalIndex.get(s.id) ?? idx + 1
           return (
             <li key={s.id}>
               <div className={`pf-day-card ${expired ? 'pf-day-card--expired' : ''}`}>
                 <div className="pf-day-card__badge">
                   <span className="pf-day-card__badge-label">Серия</span>
-                  <span className="pf-day-card__badge-num">{idx + 1}</span>
+                  <span className="pf-day-card__badge-num">{seriesNum}</span>
                 </div>
                 <div className="pf-day-card__body">
                   <p className="pf-day-card__deadline">Доступно до: {formatDateShort(deadline)}</p>
