@@ -27,25 +27,25 @@ function Shell() {
   return (
     <div className="shell">
       <header className="top">
-        <NavLink to="/" className="top__brand">
-          Polemica Fantasy
-        </NavLink>
-        <div className="top__trailing">
-          <nav className="nav">
-            <NavLink to="/" end>
-              Турниры
-            </NavLink>
-            <NavLink to="/cards">Коллекция</NavLink>
-            <NavLink to="/help">Справка</NavLink>
-            <NavLink to="/store" className="nav__store">
-              <span className="nav__store-icon" aria-hidden>
-                🛒
-              </span>
-              Магазин
-            </NavLink>
-          </nav>
+        <div className="top__bar">
+          <NavLink to="/" className="top__brand">
+            Polemica Fantasy
+          </NavLink>
           <FantikiBalance />
         </div>
+        <nav className="nav" aria-label="Основное меню">
+          <NavLink to="/" end>
+            Турниры
+          </NavLink>
+          <NavLink to="/cards">Коллекция</NavLink>
+          <NavLink to="/help">Справка</NavLink>
+          <NavLink to="/store" className="nav__store">
+            <span className="nav__store-icon" aria-hidden>
+              🛒
+            </span>
+            Магазин
+          </NavLink>
+        </nav>
       </header>
       <main className="main">
         <Routes>

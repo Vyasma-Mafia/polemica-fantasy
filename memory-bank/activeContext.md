@@ -55,7 +55,11 @@
 - **Users (`/users`):** список всех `telegram_user` с колонками username, Telegram ID, displayName; фильтры **Tournament** + **Series**; столбец **Cards (series)** — число экземпляров `user_card`, чья `card_template` относится к игроку из ростера серии (как `GET /me/cards?seriesId`). API: **GET** `/api/v1/admin/users` (без query — `cardsInSeries: null`) и с `tournamentId` + `seriesId` (оба обязательны вместе для счётчика). Реализация: `AdminUserListService`, нативный запрос в `TelegramUserRepository.findAllWithCardsInSeriesCount`.
 - **Series → Assign players:** у `Select` включён поиск (`showSearch`) и фильтрация опций по подстроке (без учёта регистра), чтобы быстро находить игрока по нику в длинном списке.
 
+## Недавние правки TMA (шапка приложения)
+- **`App.tsx` / `index.css`:** шапка `header.top` — две логические строки: **`top__bar`** (бренд + `FantikiBalance` в одну линию), ниже **`nav`**; убран вложенный `flex-wrap`, из‑за которого на узкой колонке баланс уезжал на третью строку под «Магазин».
+
 ## Недавние правки TMA (карты и коллекция)
+- **Коллекция (`CardsPage`):** фильтр по турниру — `<select>` с названиями из `GET /api/v1/tournaments` (кэш-ключ `['tournaments', initData]`, как на главной); опция «Все карты»; если в URL есть `tournamentId`, которого нет в списке активных турниров, показывается доп. опция «Турнир №{id}».
 - **Карты:** общая палитра редкости — common матовый серый (`--pf-card-common`), rare ледяной cyan с лёгким свечением (`--pf-card-rare`); достижения в виде чипов на оверлее фото (`CardAchievementChips`) на коллекции, сборке команды, раскрытии пака и сводке пака; увеличены шрифты в подписи к карте.
 - **Покупка пака:** ответ `POST …/store/packs/{id}/buy` мапится в `UserCardItemDto` через шаблоны из `CardTemplateRepository.findAllByIdWithAchievementsLoaded`, чтобы список достижений не терялся при сборке DTO; на экране раскрытия частицы EPIC/LEGENDARY под текстом (`z-index` у `pf-pack-open__card-cap` выше, чем у `pf-pack-open__particles`).
 

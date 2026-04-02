@@ -75,21 +75,20 @@ a {
 
 .top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
   padding-bottom: 12px;
   margin-bottom: 8px;
   border-bottom: 1px solid var(--pf-border);
 }
 
-.top__trailing {
+/* Одна строка: бренд слева, баланс справа — без «третьей» строки под пунктами меню */
+.top__bar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px 14px;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
 }
 
 .pf-fantiki {
@@ -132,7 +131,9 @@ a {
 
 .nav {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
 }
 
 .nav a {

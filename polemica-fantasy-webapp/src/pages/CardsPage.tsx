@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
-import type { Rarity, UserCardItem } from '../api/types'
+import type { Rarity, UserCardItem, UserTournament } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -47,6 +47,12 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
+  const tournamentsQ = useQuery({
+    queryKey: ['tournaments', initData],
+    queryFn: () => apiGet<UserTournament[]>('/api/v1/tournaments', initData),
+    enabled: !!initData,
+  })
+
   const economyQ = useQuery({
     queryKey: ['economy-info', initData],
     queryFn: () => fetchEconomyInfo(initData!),
@@ -54,6 +60,10 @@ export function CardsPage() {
   })
 
   const usesPerRarity = economyQ.data?.usesPerRarity
+
+  const tournaments = tournamentsQ.data ?? []
+  const tournamentSelectUnknown =
+    Boolean(tournamentId) && !tournaments.some((t) => String(t.id) === tournamentId)
 
   const players = useMemo(() => {
     const names = new Set<string>()
@@ -108,14 +118,22 @@ export function CardsPage() {
 
       <div className="pf-filters">
         <label className="pf-field">
-          <span className="pf-field__label">Турнир ID</span>
-          <input
+          <span className="pf-field__label">Турнир</span>
+          <select
             className="pf-input"
             value={tournamentId}
             onChange={(e) => setTournamentId(e.target.value)}
-            placeholder="все карты"
-            inputMode="numeric"
-          />
+          >
+            <option value="">Все карты</option>
+            {tournamentSelectUnknown && (
+              <option value={tournamentId}>Турнир №{tournamentId}</option>
+            )}
+            {tournaments.map((t) => (
+              <option key={t.id} value={String(t.id)}>
+                {t.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="pf-field">
           <span className="pf-field__label">Игрок</span>
