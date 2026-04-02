@@ -51,6 +51,7 @@
 - Нет критичных блокеров
 
 ## Недавние правки UI (админка)
+- **Tournament detail (`/tournaments/:id`):** над таблицей игроков — сетка карточек (`List` + `Card`) с аватаром (фото или первая буква ника), ником и внутренним id; в колонке Photo таблицы — миниатюра `Avatar` + ссылка «open» на полное изображение.
 - **Users (`/users`):** список всех `telegram_user` с колонками username, Telegram ID, displayName; фильтры **Tournament** + **Series**; столбец **Cards (series)** — число экземпляров `user_card`, чья `card_template` относится к игроку из ростера серии (как `GET /me/cards?seriesId`). API: **GET** `/api/v1/admin/users` (без query — `cardsInSeries: null`) и с `tournamentId` + `seriesId` (оба обязательны вместе для счётчика). Реализация: `AdminUserListService`, нативный запрос в `TelegramUserRepository.findAllWithCardsInSeriesCount`.
 - **Series → Assign players:** у `Select` включён поиск (`showSearch`) и фильтрация опций по подстроке (без учёта регистра), чтобы быстро находить игрока по нику в длинном списке.
 

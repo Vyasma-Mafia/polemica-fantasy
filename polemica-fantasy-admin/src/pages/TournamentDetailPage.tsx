@@ -1,6 +1,9 @@
 import {
   App,
+  Avatar,
   Button,
+  Card,
+  List,
   Modal,
   Space,
   Table,
@@ -135,6 +138,50 @@ export function TournamentDetailPage() {
           Add player
         </Button>
       </Space>
+
+      {(t?.players?.length ?? 0) > 0 && (
+        <List
+          grid={{
+            gutter: [16, 16],
+            xs: 1,
+            sm: 2,
+            md: 3,
+            lg: 4,
+            xl: 5,
+          }}
+          dataSource={t?.players ?? []}
+          loading={tq.isLoading}
+          style={{ marginBottom: 24 }}
+          renderItem={(p) => (
+            <List.Item>
+              <Card size="small" styles={{ body: { padding: 12 } }}>
+                <Card.Meta
+                  avatar={
+                    <Avatar
+                      src={p.photoUrl ?? undefined}
+                      size={72}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {(p.nickname || '?').slice(0, 1).toUpperCase()}
+                    </Avatar>
+                  }
+                  title={
+                    <Typography.Text ellipsis title={p.nickname}>
+                      {p.nickname}
+                    </Typography.Text>
+                  }
+                  description={
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      #{p.id}
+                    </Typography.Text>
+                  }
+                />
+              </Card>
+            </List.Item>
+          )}
+        />
+      )}
+
       <Table
         rowKey="id"
         loading={tq.isLoading}
@@ -146,14 +193,19 @@ export function TournamentDetailPage() {
           {
             title: 'Photo',
             dataIndex: 'photoUrl',
-            render: (url: string | null) =>
-              url ? (
-                <a href={url} target="_blank" rel="noreferrer">
-                  link
-                </a>
-              ) : (
-                '—'
-              ),
+            width: 100,
+            render: (url: string | null, row) => (
+              <Space size="small" align="center">
+                <Avatar src={url ?? undefined} size={40}>
+                  {(row.nickname || '?').slice(0, 1).toUpperCase()}
+                </Avatar>
+                {url ? (
+                  <a href={url} target="_blank" rel="noreferrer">
+                    open
+                  </a>
+                ) : null}
+              </Space>
+            ),
           },
           {
             title: 'Upload',
