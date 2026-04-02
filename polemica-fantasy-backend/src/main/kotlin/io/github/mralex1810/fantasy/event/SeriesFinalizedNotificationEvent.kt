@@ -11,5 +11,7 @@ data class SeriesFinalizedRecipient(
 data class SeriesFinalizedNotificationEvent(
     val tournamentName: String,
     val seriesName: String,
+    /** Public label for the series winner (first row on leaderboard); same resolution as webapp leaderboard names. */
+    val winnerPublicName: String?,
     val recipients: List<SeriesFinalizedRecipient>,
 )

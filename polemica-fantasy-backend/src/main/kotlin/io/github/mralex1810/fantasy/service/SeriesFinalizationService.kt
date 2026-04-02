@@ -4,6 +4,7 @@ import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDt
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesFinalizedRecipient
+import io.github.mralex1810.fantasy.event.publicDisplayNameForNotifications
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -42,6 +43,7 @@ class SeriesFinalizationService(
             }
         }
         val leaderboard = fantasyTeamRepository.findLeaderboardForSeries(seriesId)
+        val winnerPublicName = leaderboard.firstOrNull()?.telegramUser?.publicDisplayNameForNotifications()
         val n = leaderboard.size
         var rewardsDistributed = 0
         val notificationRecipients = ArrayList<SeriesFinalizedRecipient>(n)
@@ -72,6 +74,7 @@ class SeriesFinalizationService(
             SeriesFinalizedNotificationEvent(
                 tournamentName = tournamentName,
                 seriesName = seriesName,
+                winnerPublicName = winnerPublicName,
                 recipients = notificationRecipients,
             ),
         )

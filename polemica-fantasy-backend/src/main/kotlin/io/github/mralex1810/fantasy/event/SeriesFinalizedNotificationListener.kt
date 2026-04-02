@@ -25,7 +25,12 @@ class SeriesFinalizedNotificationListener(
             return
         }
         for (recipient in event.recipients) {
-            val text = buildSeriesFinalizedTelegramMessage(event.tournamentName, event.seriesName, recipient)
+            val text = buildSeriesFinalizedTelegramMessage(
+                event.tournamentName,
+                event.seriesName,
+                event.winnerPublicName,
+                recipient,
+            )
             try {
                 telegramBotApiClient.sendMessage(token, recipient.telegramId, text)
             } catch (e: Exception) {

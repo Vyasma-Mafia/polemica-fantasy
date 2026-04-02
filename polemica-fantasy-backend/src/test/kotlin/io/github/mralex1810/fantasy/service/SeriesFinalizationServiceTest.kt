@@ -100,6 +100,7 @@ class SeriesFinalizationServiceTest {
         val captor = ArgumentCaptor.forClass(SeriesFinalizedNotificationEvent::class.java)
         verify(applicationEventPublisher).publishEvent(captor.capture())
         val event = captor.value
+        assertEquals("1", event.winnerPublicName)
         assertEquals(2, event.recipients.size)
         assertEquals(1, event.recipients[0].place)
         assertEquals(2, event.recipients[1].place)
