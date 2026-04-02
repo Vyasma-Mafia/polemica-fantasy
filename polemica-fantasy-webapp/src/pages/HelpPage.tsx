@@ -188,6 +188,18 @@ export function HelpPage() {
             </div>
           )}
         </section>
+
+        <section className="pf-help__section" id="feedback">
+          <article className="pf-prose">
+            <p className="pf-muted">
+              С вопросами, пожеланиями и предложениями можно писать{' '}
+              <a href="https://t.me/MrAlex18" target="_blank" rel="noopener noreferrer">
+                t.me/MrAlex18
+              </a>
+              .
+            </p>
+          </article>
+        </section>
       </div>
     </div>
   )
