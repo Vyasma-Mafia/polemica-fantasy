@@ -45,7 +45,9 @@
 - [x] **`scripts/import_tournament_from_mafoverlay.py`** — страница [MafOverlay](https://mafoverlay.ru) `…/admin/photos/tournaments/POLEMICA/{id}` → парсинг `#polemicaId`, ника, `data-photo-url` на MAIN → Admin API (`create` / `update` с `--refresh-photos`), опц. `--remove-bg` (rembg). Зависимости: `scripts/requirements-import-mafoverlay.txt`. Разметка соответствует проекту `overlay` (sibling `mafia/overlay`).
 
 ### Неполная фэнтези-команда (1–2 карты)
-- [x] **API / валидация:** `SubmitFantasyTeamRequest` и `UserFantasyTeamService.attachCards` — 1–3 различных карты (дубликаты запрещены)
+- [x] **Один игрок — одна карта в составе:** в `attachCards` проверяется уникальность `fantasy_player_id` (нельзя две разные `user_card` одного игрока, например COMMON+RARE); TMA `TeamPage` — нельзя выбрать вторую карту того же игрока (disabled + подсказка). Интеграционные тесты в `UserApiIntegrationTest`
+- [x] **Ответ POST/PUT fantasy-team:** после `attachCards` вызываются `entityManager.flush()` и `refresh(team)` перед `team.toDto()` — иначе в JSON уходил пустой `slots` из-за кэша Hibernate по коллекции `FantasyTeam.cards`
+- [x] **API / валидация:** `SubmitFantasyTeamRequest` и `UserFantasyTeamService.attachCards` — 1–3 различных карты (дубликаты `user_card` id запрещены)
 - [x] **Финализация:** `SeriesFinalizationService.scaleSeriesRewardByRosterSize` — при 1 карте ⌈R/3⌉, при 2 картах ⌈2R/3⌉, при 3 — полная награда R; 0 карт или R≤0 → 0
 - [x] **Лидерборд:** `findLeaderboardForSeries` — `JOIN FETCH ft.cards` для подсчёта слотов при начислении
 - [x] **TMA TeamPage:** отправка при 1–3 выбранных картах; подсказка про пониженную награду

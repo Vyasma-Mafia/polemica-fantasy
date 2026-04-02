@@ -24,6 +24,7 @@ import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import jakarta.persistence.EntityManager
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -42,6 +43,7 @@ class UserFantasyTeamService(
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
+    private val entityManager: EntityManager,
 ) {
 
     @Transactional(readOnly = true)
@@ -185,7 +187,9 @@ class UserFantasyTeamService(
         )
         fantasyTeamRepository.save(team)
         attachCards(team, user, seriesId, request.userCardIds)
-        return fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)!!.toDto()
+        entityManager.flush()
+        entityManager.refresh(team)
+        return team.toDto()
     }
 
     @Transactional
@@ -202,7 +206,9 @@ class UserFantasyTeamService(
         team.totalScore = null
         fantasyTeamRepository.save(team)
         attachCards(team, user, seriesId, request.userCardIds)
-        return fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)!!.toDto()
+        entityManager.flush()
+        entityManager.refresh(team)
+        return team.toDto()
     }
 
     private fun assertDeadline(teamDeadline: Instant) {
@@ -233,6 +239,10 @@ class UserFantasyTeamService(
             if (byId[id] == null) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown user card id $id")
             }
+        }
+        val fantasyPlayerIds = userCardIds.map { byId[it]!!.cardTemplate!!.fantasyPlayer!!.id!! }
+        if (fantasyPlayerIds.toSet().size != fantasyPlayerIds.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Team cannot include more than one card per player")
         }
         userCardIds.forEachIndexed { index, ucId ->
             val uc = byId[ucId]!!

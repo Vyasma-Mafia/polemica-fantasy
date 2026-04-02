@@ -845,6 +845,11 @@ button.pf-mini-card:disabled {
   filter: grayscale(0.25);
 }
 
+.pf-team-card--blocked {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .pf-team-uses {
   position: absolute;
   top: 6px;

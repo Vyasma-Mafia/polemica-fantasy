@@ -85,10 +85,23 @@ export function TeamPage() {
     })
   }, [teamQ.isSuccess, teamQ.data])
 
+  const cardById = useMemo(() => {
+    const m = new Map<number, UserCardItem>()
+    for (const c of cardsQ.data ?? []) m.set(c.id, c)
+    return m
+  }, [cardsQ.data])
+
   const toggle = (id: number) => {
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
       if (prev.length >= 3) return prev
+      const adding = cardById.get(id)
+      if (adding) {
+        const fp = adding.fantasyPlayerId
+        for (const x of prev) {
+          if (cardById.get(x)?.fantasyPlayerId === fp) return prev
+        }
+      }
       return [...prev, id]
     })
   }
@@ -114,12 +127,6 @@ export function TeamPage() {
     if (!seriesQ.data) return false
     return now > new Date(seriesQ.data.teamDeadline).getTime()
   }, [seriesQ.data, now])
-
-  const cardById = useMemo(() => {
-    const m = new Map<number, UserCardItem>()
-    for (const c of cardsQ.data ?? []) m.set(c.id, c)
-    return m
-  }, [cardsQ.data])
 
   const usesPerRarity = economyQ.data?.usesPerRarity
 
@@ -153,7 +160,9 @@ export function TeamPage() {
         <p className="pf-muted">Выберите от 1 до 3 карт для серии (неполный состав — меньше награда за место).</p>
       )}
 
-      <p className="pf-instruction">Выберите от 1 до 3 карт (порядок — слоты 1–3)</p>
+      <p className="pf-instruction">
+        Выберите от 1 до 3 карт (порядок — слоты 1–3). Один игрок — не больше одной карты.
+      </p>
 
       <ol className="pf-picked-slots">
         {[0, 1, 2].map((i) => {
@@ -228,14 +237,23 @@ export function TeamPage() {
           const maxU = usesPerRarity?.[c.rarity] ?? Math.max(c.usesRemaining, 1)
           const dead = c.usesRemaining <= 0
           const lastUse = c.usesRemaining === 1
+          const playerAlreadyPicked =
+            !selected.includes(c.id) &&
+            selected.some((sid) => cardById.get(sid)?.fantasyPlayerId === c.fantasyPlayerId)
+          const gridDisabled = deadlinePassed || dead || playerAlreadyPicked
+          const gridTitle = dead
+            ? 'Контракт истёк — продлите в коллекции'
+            : playerAlreadyPicked
+              ? 'Этот игрок уже в команде'
+              : undefined
           return (
             <li key={c.id}>
               <button
                 type="button"
-                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}${dead ? ' pf-team-card--dead' : ''}`}
-                onClick={() => !dead && toggle(c.id)}
-                disabled={deadlinePassed || dead}
-                title={dead ? 'Контракт истёк — продлите в коллекции' : undefined}
+                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}${dead ? ' pf-team-card--dead' : ''}${playerAlreadyPicked && !dead ? ' pf-team-card--blocked' : ''}`}
+                onClick={() => !gridDisabled && toggle(c.id)}
+                disabled={gridDisabled}
+                title={gridTitle}
               >
                 <div className="pf-team-card__media">
                   {imgSrc ? (

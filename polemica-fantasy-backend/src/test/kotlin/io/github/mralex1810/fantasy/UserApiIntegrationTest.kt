@@ -18,6 +18,7 @@ import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.hasSize
 import org.hamcrest.Matchers.nullValue
+import com.jayway.jsonpath.JsonPath
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -532,6 +533,195 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.slots[0].userCardId").value(reordered[0]))
             .andExpect(jsonPath("$.slots[1].userCardId").value(reordered[1]))
             .andExpect(jsonPath("$.slots[2].userCardId").value(reordered[2]))
+    }
+
+    @Test
+    fun `POST fantasy team rejects two cards for same fantasy player`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Dup player FT","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":800501,"nickname":"DupP0"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tpId = Regex("\"id\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+        val fpId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val ctCommon = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fpId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateCommon = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctCommon)!!.groupValues[1].toLong()
+
+        val ctRare = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fpId,"rarity":"RARE"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateRare = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctRare)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Dup Day","namePrefix":"DD","status":"UPCOMING",
+                    "startsAt":"2030-06-01T12:00:00Z",
+                    "teamDeadline":"2030-06-15T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$tpId]}"""),
+        ).andExpect(status().isOk)
+
+        val telegramUserId = 889101L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateCommon,$templateRare]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+
+        val userCardIds = JsonPath.parse(giveJson).read<List<Number>>("$[*].id").map { it.toLong() }
+        check(userCardIds.size == 2) { "expected 2 user card ids, got ${userCardIds.size} in $giveJson" }
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"DupFT"}""",
+        )
+        val tma = "tma $initData"
+
+        mockMvc.perform(
+            post("/api/v1/series/$seriesId/fantasy-team")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"userCardIds":[${userCardIds[0]},${userCardIds[1]}]}""",
+                ),
+        ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST fantasy team accepts two cards for different fantasy players`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Two FP FT","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val tpIds = mutableListOf<Long>()
+        val fpIds = mutableListOf<Long>()
+        repeat(2) { i ->
+            val pJson = mockMvc.perform(
+                post("/api/v1/admin/tournaments/$tournamentId/players")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"polemicaUserId":${800601 + i},"nickname":"TwoFP$i"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            tpIds.add(Regex("\"id\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong())
+            fpIds.add(Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong())
+        }
+
+        val templateIds = fpIds.map { fpId ->
+            val ct = mockMvc.perform(
+                post("/api/v1/admin/card-templates")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"fantasyPlayerId":$fpId,"rarity":"COMMON"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            Regex("\"id\"\\s*:\\s*(\\d+)").find(ct)!!.groupValues[1].toLong()
+        }
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Two FP Day","namePrefix":"TFD","status":"UPCOMING",
+                    "startsAt":"2030-06-01T12:00:00Z",
+                    "teamDeadline":"2030-06-15T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[${tpIds.joinToString()}]}"""),
+        ).andExpect(status().isOk)
+
+        val telegramUserId = 889102L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[${templateIds.joinToString()}]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+
+        val userCardIds = JsonPath.parse(giveJson).read<List<Number>>("$[*].id").map { it.toLong() }
+        check(userCardIds.size == 2) { "expected 2 user card ids, got ${userCardIds.size} in $giveJson" }
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"TwoFP"}""",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/series/$seriesId/fantasy-team")
+                .header("Authorization", "tma $initData")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${userCardIds[0]},${userCardIds[1]}]}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.slots.length()").value(2))
     }
 
     @Test
