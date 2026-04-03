@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### Поддержка через Telegram Forum + webhook
+- [x] **Flyway V18:** `telegram_support_topic` (`telegram_user_id`, `forum_message_thread_id`)
+- [x] **Backend:** `telegram.support.*` (`TELEGRAM_SUPPORT_ENABLED`, `TELEGRAM_SUPPORT_FORUM_CHAT_ID`, `TELEGRAM_SUPPORT_WEBHOOK_SECRET`); расширен `TelegramBotApiClient` (`getMe`, `createForumTopic`, `sendMessage` с `message_thread_id`, `forwardMessage`, `copyMessage`); `TelegramSupportRelayService`, `TelegramSupportUpdateService`, `TelegramSupportBotIdentity`; `POST /api/v1/telegram/webhook` + `TelegramWebhookController`; `TelegramUserRepository.findByTelegramIdForUpdate` (PESSIMISTIC_WRITE)
+- [x] **Тесты:** `TelegramSupportUpdateServiceTest`, `TelegramWebhookControllerTest`; `mockito-kotlin` в test scope
+
 ### Порядок серий турнира (новые сверху)
 - [x] **Backend:** `findAllByTournament_IdOrderByIdDesc` в `SeriesRepository`; `UserTournamentService.getTournament`, `SeriesService.listSeriesByTournament`
 - [x] **TMA:** `SeriesPickerPage` — бейдж номера серии не зависит от порядка в списке (`gameNumFrom` или порядок по `id`)

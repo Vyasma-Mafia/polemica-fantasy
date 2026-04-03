@@ -162,6 +162,19 @@ Admin API (прокси к Polemica для UI): `GET /api/v1/admin/polemica/comp
 - `polemica.api.username/password` — credentials для Polemica API (обязательны для sync-games)
 - `telegram.bot.token` — токен бота для валидации initData и для Bot API (уведомления после финализации серии)
 - `telegram.bot.notifications.enabled` — включить/выключить отправку сообщений при финализации (env: `TELEGRAM_NOTIFICATIONS_ENABLED`, по умолчанию `true`)
+- `telegram.support.enabled` — приём webhook поддержки (супергруппа с Forum topics); env `TELEGRAM_SUPPORT_ENABLED`, по умолчанию `false`
+- `telegram.support.forum-chat-id` — `chat_id` супергруппы поддержки; env `TELEGRAM_SUPPORT_FORUM_CHAT_ID`, по умолчанию `-1003620873111`
+- `telegram.support.webhook-secret` — секрет для заголовка `X-Telegram-Bot-Api-Secret-Token` (тот же передаётся в `setWebhook` как `secret_token`); env `TELEGRAM_SUPPORT_WEBHOOK_SECRET`; при `enabled=true` должен быть непустым, иначе webhook отвечает 503
+
+**Поддержка через Telegram (личка бота → тема в группе → ответ админа в теме → копия в личку):** `POST /api/v1/telegram/webhook` (body — JSON Update от Telegram), в security — `permitAll`, но проверка секрета обязательна. Таблица `telegram_support_topic` (Flyway V18): связь `telegram_user_id` ↔ `forum_message_thread_id`.
+
+Регистрация webhook после деплоя (HTTPS, тот же URL, что проксирует nginx на `/api/`):
+
+```bash
+curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+  --data-urlencode "url=https://fantasy.maftourbot.ru/api/v1/telegram/webhook" \
+  --data-urlencode "secret_token=${TELEGRAM_SUPPORT_WEBHOOK_SECRET}"
+```
 - `s3.endpoint` / `s3.region` / `s3.bucket` / `s3.access-key` / `s3.secret-key` — S3 storage
 - `app.admin.username` / `app.admin.password` — Basic Auth для `/api/v1/admin/**` (env: `ADMIN_USERNAME`, `ADMIN_PASSWORD`)
 

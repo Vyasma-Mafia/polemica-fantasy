@@ -39,6 +39,10 @@ telegram:
     token: ${TELEGRAM_BOT_TOKEN:}
     notifications:
       enabled: ${TELEGRAM_NOTIFICATIONS_ENABLED:true}
+  support:
+    enabled: ${TELEGRAM_SUPPORT_ENABLED:false}
+    forum-chat-id: ${TELEGRAM_SUPPORT_FORUM_CHAT_ID:-1003620873111}
+    webhook-secret: ${TELEGRAM_SUPPORT_WEBHOOK_SECRET:}
 
 polemica:
   api:

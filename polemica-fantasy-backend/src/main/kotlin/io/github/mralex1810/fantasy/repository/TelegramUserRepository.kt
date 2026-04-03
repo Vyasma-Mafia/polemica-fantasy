@@ -1,7 +1,9 @@
 package io.github.mralex1810.fantasy.repository
 
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -11,6 +13,10 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     fun findAllTelegramIds(): List<Long>
 
     fun findByTelegramId(telegramId: Long): TelegramUser?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM TelegramUser u WHERE u.telegramId = :telegramId")
+    fun findByTelegramIdForUpdate(@Param("telegramId") telegramId: Long): TelegramUser?
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE TelegramUser u SET u.fantiki = u.fantiki + :amount WHERE u.id = :id")
