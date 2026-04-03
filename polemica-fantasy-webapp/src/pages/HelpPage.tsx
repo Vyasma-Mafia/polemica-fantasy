@@ -21,6 +21,7 @@ function occurrenceLabel(t: OccurrenceType): string {
 
 export function HelpPage() {
   const initData = useInitData()
+  const telegramBotUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME
   const economyQ = useQuery({
     queryKey: ['economy-info', initData],
     queryFn: () => fetchEconomyInfo(initData!),
@@ -190,13 +191,27 @@ export function HelpPage() {
         </section>
 
         <section className="pf-help__section" id="feedback">
+          <h2 className="pf-help__section-title">Поддержка</h2>
           <article className="pf-prose">
             <p className="pf-muted">
-              С вопросами, пожеланиями и предложениями можно писать{' '}
-              <a href="https://t.me/MrAlex18" target="_blank" rel="noopener noreferrer">
-                t.me/MrAlex18
-              </a>
-              .
+              Вопросы и предложения по игре направляйте <strong>боту</strong> Polemica Fantasy в Telegram: откройте чат с ботом
+              {telegramBotUsername ? (
+                <>
+                  {' '}
+                  (
+                  <a
+                    href={`https://t.me/${telegramBotUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    @{telegramBotUsername}
+                  </a>
+                  )
+                </>
+              ) : (
+                ' (через кнопку у бота или меню Telegram) '
+              )}
+              и напишите сообщение <strong>в чат с ботом</strong>, а не в личку другим людям. Ответ придёт от бота.
             </p>
           </article>
         </section>

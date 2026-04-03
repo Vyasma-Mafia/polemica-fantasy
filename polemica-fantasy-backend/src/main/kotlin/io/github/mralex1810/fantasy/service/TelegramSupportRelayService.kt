@@ -38,9 +38,11 @@ class TelegramSupportRelayService(
     fun copyAdminReplyToUser(forumMessageThreadId: Int, sourceMessageId: Int) {
         val topic = telegramSupportTopicRepository.findByForumMessageThreadIdWithUser(forumMessageThreadId) ?: return
         val token = telegramProperties.token.trim()
+        val userChatId = topic.telegramUser.telegramId
+        telegramBotApiClient.sendMessage(token, userChatId, SUPPORT_REPLY_HEADER)
         telegramBotApiClient.copyMessage(
             token,
-            topic.telegramUser.telegramId,
+            userChatId,
             telegramSupportProperties.forumChatId,
             sourceMessageId,
         )
@@ -55,5 +57,8 @@ class TelegramSupportRelayService(
 
     companion object {
         private const val MAX_TOPIC_NAME_LENGTH = 128
+
+        /** Строка перед копией сообщения админа в личку пользователю. */
+        const val SUPPORT_REPLY_HEADER = "Ответ от поддержки:"
     }
 }

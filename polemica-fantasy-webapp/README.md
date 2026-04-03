@@ -15,6 +15,8 @@ VITE_DEV_INIT_DATA=auth_date=...&user=...&hash=...
 
 Сгенерируйте пару токен + подпись через тест `UserApiIntegrationTest` / `TelegramInitDataValidatorTest` в бэкенде или вручную по [документации Telegram](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app).
 
+Опционально для страницы «Справка» → блок «Поддержка»: `VITE_TELEGRAM_BOT_USERNAME` — username бота без `@` (ссылка `https://t.me/…`).
+
 ## Сборка
 
 `npm run build` — вывод в `dist/`.
