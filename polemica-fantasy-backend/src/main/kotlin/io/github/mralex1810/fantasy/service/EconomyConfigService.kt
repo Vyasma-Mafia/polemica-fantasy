@@ -58,6 +58,10 @@ class EconomyConfigService(
 
     fun getMaxRenewals(): Int = getInt("renewal.max_times")
 
+    fun getLegendaryUpgradeCost(): Long = getLong("legendary.upgrade.cost")
+
+    fun getLegendaryTeamMaxPerSeries(): Int = getInt("legendary.team.max_per_series")
+
     /**
      * @param position 1-based rank on the series leaderboard (same order as [io.github.mralex1810.fantasy.repository.FantasyTeamRepository.findLeaderboardForSeries]).
      */

@@ -110,6 +110,14 @@ data class UserCardItemDto(
     val usesRemaining: Int,
     val timesRenewed: Int,
     val sourceCardPackId: Long?,
+    /** Telegram user id of the crafter (platform id); null for admin-issued cards. */
+    val craftedByTelegramUserId: Long?,
+)
+
+data class LegendaryUpgradeInfoDto(
+    val cost: Long,
+    val balance: Long,
+    val canAfford: Boolean,
 )
 
 data class FantasyTeamSlotDto(

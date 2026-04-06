@@ -867,6 +867,277 @@ class UserApiIntegrationTest {
         ).andExpect(status().isNotFound)
     }
 
+    @Test
+    fun `GET legendary-upgrade info returns cost balance and canAfford`() {
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":889600,"first_name":"LegInfo"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/legendary-upgrade/info")
+                .header("Authorization", "tma $initData"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.cost").value(400))
+            .andExpect(jsonPath("$.balance").value(1000))
+            .andExpect(jsonPath("$.canAfford").value(true))
+    }
+
+    @Test
+    fun `POST legendary-upgrade upgrades EPIC to LEGENDARY and sets craftedBy`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Legendary upgrade T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":910001,"nickname":"LegUpPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fpId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val epicTemplateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(
+            mockMvc.perform(
+                post("/api/v1/admin/card-templates")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"fantasyPlayerId":$fpId,"rarity":"EPIC"}"""),
+            ).andExpect(status().isOk).andReturn().response.contentAsString,
+        )!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"sniper"}"""),
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"voteForBlack"}"""),
+        ).andExpect(status().isOk)
+
+        val telegramUserId = 889601L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$epicTemplateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"LegUp"}""",
+        )
+        val tma = "tma $initData"
+
+        mockMvc.perform(
+            post("/api/v1/legendary-upgrade")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"achievementId":"findSheriff"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.rarity").value("LEGENDARY"))
+            .andExpect(jsonPath("$.usesRemaining").value(5))
+            .andExpect(jsonPath("$.achievements.length()").value(3))
+            .andExpect(jsonPath("$.craftedByTelegramUserId").value(telegramUserId))
+
+        mockMvc.perform(get("/api/v1/me").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantiki").value(600))
+    }
+
+    @Test
+    fun `POST legendary-upgrade rejects duplicate achievement on card`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Leg dup ach T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":910002,"nickname":"DupAch"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fpId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val epicTemplateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(
+            mockMvc.perform(
+                post("/api/v1/admin/card-templates")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"fantasyPlayerId":$fpId,"rarity":"EPIC"}"""),
+            ).andExpect(status().isOk).andReturn().response.contentAsString,
+        )!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"sniper"}"""),
+        ).andExpect(status().isOk)
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"voteForBlack"}"""),
+        ).andExpect(status().isOk)
+
+        val telegramUserId = 889602L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$epicTemplateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"DupA"}""",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/legendary-upgrade")
+                .header("Authorization", "tma $initData")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"achievementId":"sniper"}"""),
+        ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST fantasy team rejects more than one LEGENDARY per team`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Two leg T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val tpIds = mutableListOf<Long>()
+        val fpIds = mutableListOf<Long>()
+        repeat(2) { i ->
+            val pJson = mockMvc.perform(
+                post("/api/v1/admin/tournaments/$tournamentId/players")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"polemicaUserId":${920001 + i},"nickname":"Leg$i"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            tpIds.add(Regex("\"id\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong())
+            fpIds.add(Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong())
+        }
+
+        fun createLegendaryTemplate(fpId: Long): Long {
+            val tid = Regex("\"id\"\\s*:\\s*(\\d+)").find(
+                mockMvc.perform(
+                    post("/api/v1/admin/card-templates")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""{"fantasyPlayerId":$fpId,"rarity":"LEGENDARY"}"""),
+                ).andExpect(status().isOk).andReturn().response.contentAsString,
+            )!!.groupValues[1].toLong()
+            for (ach in listOf("sniper", "voteForBlack", "findSheriff")) {
+                mockMvc.perform(
+                    post("/api/v1/admin/card-templates/$tid/achievements")
+                        .header("Authorization", auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""{"achievementId":"$ach"}"""),
+                ).andExpect(status().isOk)
+            }
+            return tid
+        }
+
+        val legT1 = createLegendaryTemplate(fpIds[0])
+        val legT2 = createLegendaryTemplate(fpIds[1])
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Leg day","namePrefix":"LD","status":"UPCOMING",
+                    "startsAt":"2030-06-01T12:00:00Z",
+                    "teamDeadline":"2030-06-15T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[${tpIds.joinToString()}]}"""),
+        ).andExpect(status().isOk)
+
+        val telegramUserId = 889603L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$legT1,$legT2]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+
+        val idRegex = Regex(""""id"\s*:\s*(\d+)""")
+        val userCardIds = idRegex.findAll(giveJson).map { it.groupValues[1].toLong() }.toList()
+        check(userCardIds.size == 2) { "expected 2 user card ids in $giveJson" }
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"TwoLeg"}""",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/series/$seriesId/fantasy-team")
+                .header("Authorization", "tma $initData")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${userCardIds.joinToString()}]}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
     private fun buildSignedInitData(botToken: String, authDate: Long, userJson: String): String {
         val userEncoded = java.net.URLEncoder.encode(userJson, StandardCharsets.UTF_8)
         val pairs = linkedMapOf(

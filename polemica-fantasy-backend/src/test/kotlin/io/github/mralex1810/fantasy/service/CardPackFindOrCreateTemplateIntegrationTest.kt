@@ -1,6 +1,5 @@
 package io.github.mralex1810.fantasy.service
 
-import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.repository.AchievementRepository
@@ -11,15 +10,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.util.AopTestUtils
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
-import java.lang.reflect.Method
-
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
@@ -48,14 +44,8 @@ class CardPackFindOrCreateTemplateIntegrationTest {
         )
         val ach = achievementRepository.findById("voteForBlack").orElseThrow()
 
-        val method = findOrCreateCardTemplateMethod()
-        method.isAccessible = true
-        val target = AopTestUtils.getUltimateTargetObject(cardPackService) as CardPackService
-
-        @Suppress("UNCHECKED_CAST")
-        val first = method.invoke(target, fp, Rarity.RARE, listOf(ach)) as CardTemplate
-        @Suppress("UNCHECKED_CAST")
-        val second = method.invoke(target, fp, Rarity.RARE, listOf(ach)) as CardTemplate
+        val first = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.RARE, listOf(ach))
+        val second = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.RARE, listOf(ach))
 
         assertEquals(first.id, second.id)
         assertEquals(
@@ -77,24 +67,8 @@ class CardPackFindOrCreateTemplateIntegrationTest {
         val a = achievementRepository.findById("voteForBlack").orElseThrow()
         val b = achievementRepository.findById("sniper").orElseThrow()
 
-        val method = findOrCreateCardTemplateMethod()
-        method.isAccessible = true
-        val target = AopTestUtils.getUltimateTargetObject(cardPackService) as CardPackService
-
-        @Suppress("UNCHECKED_CAST")
-        val first = method.invoke(
-            target,
-            fp,
-            Rarity.EPIC,
-            listOf(a, b),
-        ) as CardTemplate
-        @Suppress("UNCHECKED_CAST")
-        val second = method.invoke(
-            target,
-            fp,
-            Rarity.EPIC,
-            listOf(b, a),
-        ) as CardTemplate
+        val first = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.EPIC, listOf(a, b))
+        val second = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.EPIC, listOf(b, a))
 
         assertEquals(first.id, second.id)
         assertEquals(
@@ -109,15 +83,5 @@ class CardPackFindOrCreateTemplateIntegrationTest {
         @Container
         @ServiceConnection
         val postgres: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:16-alpine")
-
-        private val javaListClass: Class<*> = Class.forName("java.util.List")
-
-        private fun findOrCreateCardTemplateMethod(): Method =
-            CardPackService::class.java.getDeclaredMethod(
-                "findOrCreateCardTemplate",
-                FantasyPlayer::class.java,
-                Rarity::class.java,
-                javaListClass,
-            )
     }
 }

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LEGENDARY — превью дизайна (Polemica Fantasy)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Синхронизировано с polemica-fantasy-webapp/src/index.css (:root и карточки коллекции) */
+      :root {
+        --pf-bg: #0a0a0c;
+        --pf-bg-elevated: #12141a;
+        --pf-border: #2a2d36;
+        --pf-text: #c4c9d4;
+        --pf-text-muted: #7a8190;
+        --pf-text-heading: #f4f5f7;
+        --pf-gold: #e8c547;
+        --pf-gold-dim: rgba(232, 197, 71, 0.85);
+        --pf-gradient: linear-gradient(115deg, #7c3aed 0%, #db2777 55%, #c026d3 100%);
+        --pf-sans: 'DM Sans', system-ui, sans-serif;
+        --pf-display: 'Fraunces', Georgia, serif;
+        --pf-radius: 12px;
+        --pf-radius-sm: 8px;
+        --pf-card-common: #525252;
+        --pf-card-rare: #38bdf8;
+        --pf-card-rare-glow: rgba(56, 189, 248, 0.32);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: var(--pf-sans);
+        font-size: 16px;
+        line-height: 1.45;
+        color: var(--pf-text);
+        background: var(--pf-bg);
+        color-scheme: dark;
+      }
+
+      .pf-preview-shell {
+        max-width: 430px;
+        margin: 0 auto;
+        min-height: 100dvh;
+        padding: 20px 16px 32px;
+        border-inline: 1px solid var(--pf-border);
+        background: var(--pf-bg);
+      }
+
+      .pf-preview-h1 {
+        font-family: var(--pf-sans);
+        font-weight: 600;
+        font-size: 1.15rem;
+        color: var(--pf-text-heading);
+        margin: 0 0 8px;
+      }
+
+      .pf-preview-lead {
+        margin: 0 0 20px;
+        font-size: 0.88rem;
+        color: var(--pf-text-muted);
+        line-height: 1.4;
+      }
+
+      .pf-preview-section-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--pf-text-muted);
+        margin: 24px 0 12px;
+      }
+
+      .pf-preview-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .pf-preview-grid--compare {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      @media (max-width: 380px) {
+        .pf-preview-grid--compare {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .pf-collection-card {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .pf-collection-card__frame {
+        position: relative;
+        border-radius: var(--pf-radius-sm);
+        overflow: hidden;
+        border: 2px solid var(--pf-border);
+      }
+
+      .pf-collection-card__img {
+        width: 100%;
+        aspect-ratio: 3/4;
+        object-fit: cover;
+        display: block;
+        position: relative;
+        z-index: 1;
+      }
+
+      .pf-collection-card__cap {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        padding: 14px 10px 10px;
+        background: linear-gradient(
+          180deg,
+          transparent 0%,
+          rgba(0, 0, 0, 0.55) 28%,
+          rgba(0, 0, 0, 0.92) 100%
+        );
+      }
+
+      .pf-collection-card__name {
+        font-family: var(--pf-display);
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #fff;
+        display: block;
+        line-height: 1.2;
+      }
+
+      .pf-collection-card__rarity {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .pf-rarity-mod {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--pf-gold-dim);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+
+      .pf-uses-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 5;
+        font-size: 0.72rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .pf-card-ach-chips {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .pf-card-ach-chips--tight {
+        margin-top: 5px;
+        gap: 3px;
+      }
+
+      .pf-card-ach-chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        max-width: 100%;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.62rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #e8ecf5;
+        background: rgba(15, 23, 42, 0.82);
+        border: 1px solid rgba(148, 163, 184, 0.38);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+      }
+
+      .pf-card-ach-chip__bonus {
+        font-variant-numeric: tabular-nums;
+        color: var(--pf-gold-dim);
+        flex-shrink: 0;
+      }
+
+      /* Редкости — как в index.css */
+      .pf-collection-card--common .pf-collection-card__frame {
+        border-color: var(--pf-card-common);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+
+      .pf-collection-card--rare .pf-collection-card__frame {
+        border-color: var(--pf-card-rare);
+        box-shadow:
+          0 0 22px var(--pf-card-rare-glow),
+          inset 0 0 0 1px rgba(56, 189, 248, 0.12);
+      }
+
+      .pf-collection-card--epic .pf-collection-card__frame {
+        border-color: #a78bfa;
+        box-shadow: 0 0 16px rgba(167, 139, 250, 0.15);
+      }
+
+      .pf-collection-card--legendary .pf-collection-card__frame {
+        border-color: var(--pf-gold);
+        box-shadow: 0 0 18px rgba(232, 197, 71, 0.2);
+      }
+
+      /* Подложка под фото с прозрачным фоном: видна сквозь альфу, усиливает язык редкости */
+      .pf-collection-card--common .pf-collection-card__frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+          radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+          linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+      }
+
+      .pf-collection-card--rare .pf-collection-card__frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+          radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+          linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+      }
+
+      .pf-collection-card--epic .pf-collection-card__frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+          radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+          linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+      }
+
+      .pf-collection-card--legendary .pf-collection-card__frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+          radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+          radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+          linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+      }
+
+      /* ——— Уникальный дизайн «скрафченой» легендарки (концепт) ——— */
+      .pf-collection-card--legendary-crafted {
+        position: relative;
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__frame {
+        border: none;
+        /* Та же золотая подложка, что у обычной LEGENDARY (+ conic-рамка) */
+        background:
+          radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+          radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+          radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+          linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%) padding-box,
+          conic-gradient(
+              from 220deg,
+              #e8c547,
+              #fde68a,
+              #f59e0b,
+              #d97706,
+              #b45309,
+              #fbbf24,
+              #e8c547
+            )
+            border-box;
+        border: 2px solid transparent;
+        box-shadow:
+          0 0 28px rgba(232, 197, 71, 0.45),
+          0 0 64px rgba(232, 197, 71, 0.2),
+          inset 0 0 40px rgba(232, 197, 71, 0.06);
+        animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__frame::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          radial-gradient(ellipse 120% 80% at 50% -20%, rgba(232, 197, 71, 0.2), transparent 55%),
+          radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.14), transparent 45%),
+          radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.1), transparent 40%);
+        z-index: 2;
+        mix-blend-mode: screen;
+        /* не затемняем нижнюю полосу с именем и ачивками */
+        mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+        -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__frame::after {
+        content: '';
+        position: absolute;
+        inset: 6px;
+        border-radius: calc(var(--pf-radius-sm) - 4px);
+        border: 1px solid rgba(232, 197, 71, 0.22);
+        pointer-events: none;
+        z-index: 3;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__img {
+        position: relative;
+        z-index: 1;
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__cap {
+        position: absolute;
+        z-index: 4;
+      }
+
+      .pf-collection-card--legendary-crafted .pf-card-ach-chip {
+        border-color: rgba(232, 197, 71, 0.45);
+        background: rgba(15, 23, 42, 0.92);
+        box-shadow: 0 0 12px rgba(232, 197, 71, 0.08);
+      }
+
+      .pf-collection-card--legendary-crafted .pf-collection-card__name {
+        background: linear-gradient(90deg, #fff 0%, #fde68a 55%, #fff 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: pf-legendary-crafted-shimmer 4s ease-in-out infinite;
+      }
+
+      @keyframes pf-legendary-crafted-glow {
+        0%,
+        100% {
+          filter: saturate(1) brightness(1);
+          box-shadow:
+            0 0 28px rgba(232, 197, 71, 0.45),
+            0 0 64px rgba(232, 197, 71, 0.2),
+            inset 0 0 40px rgba(232, 197, 71, 0.06);
+        }
+        50% {
+          filter: saturate(1.12) brightness(1.04);
+          box-shadow:
+            0 0 38px rgba(232, 197, 71, 0.62),
+            0 0 72px rgba(245, 158, 11, 0.22),
+            inset 0 0 48px rgba(232, 197, 71, 0.1);
+        }
+      }
+
+      @keyframes pf-legendary-crafted-shimmer {
+        0%,
+        100% {
+          background-position: 0% center;
+        }
+        50% {
+          background-position: 100% center;
+        }
+      }
+
+      .pf-preview-note {
+        margin-top: 20px;
+        padding: 12px;
+        border-radius: var(--pf-radius-sm);
+        border: 1px solid var(--pf-border);
+        background: var(--pf-bg-elevated);
+        font-size: 0.8rem;
+        color: var(--pf-text-muted);
+        line-height: 1.45;
+      }
+
+      .pf-preview-note strong {
+        color: var(--pf-text-heading);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pf-preview-shell">
+      <h1 class="pf-preview-h1">Сравнение рамок карт</h1>
+      <p class="pf-preview-lead">
+        Слева направо в сетке — как в коллекции сейчас. Под фото с прозрачным фоном —
+        разная подложка по редкости (в приложении то же можно сделать слоем под
+        <code style="font-size: 0.85em">img</code>). Легендарка «как в паке» — золотая обводка. Рядом —
+        <strong style="color: var(--pf-text-heading)">концепт крафта</strong>: градиентная рамка в цветах бренда и усиленное свечение.
+      </p>
+
+      <p class="pf-preview-section-title">Все редкости (коллекция)</p>
+      <ul class="pf-preview-grid">
+        <li class="pf-collection-card pf-collection-card--common">
+          <div class="pf-collection-card__frame">
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <span class="pf-uses-badge">⚡2/2</span>
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">Игрок А</span>
+              <span class="pf-collection-card__rarity"
+                >COMMON <span class="pf-rarity-mod">×1.00</span></span
+              >
+            </div>
+          </div>
+        </li>
+        <li class="pf-collection-card pf-collection-card--rare">
+          <div class="pf-collection-card__frame">
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <span class="pf-uses-badge">⚡2/2</span>
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">Игрок Б</span>
+              <span class="pf-collection-card__rarity"
+                >RARE <span class="pf-rarity-mod">×1.05</span></span
+              >
+            </div>
+          </div>
+        </li>
+        <li class="pf-collection-card pf-collection-card--epic">
+          <div class="pf-collection-card__frame">
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <span class="pf-uses-badge">⚡1/2</span>
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">Игрок В</span>
+              <span class="pf-collection-card__rarity"
+                >EPIC <span class="pf-rarity-mod">×1.15</span></span
+              >
+            </div>
+          </div>
+        </li>
+        <li class="pf-collection-card pf-collection-card--legendary">
+          <div class="pf-collection-card__frame">
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <span class="pf-uses-badge">⚡2/2</span>
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">Игрок Г</span>
+              <span class="pf-collection-card__rarity"
+                >LEGENDARY <span class="pf-rarity-mod">×1.25</span></span
+              >
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <p class="pf-preview-section-title">LEGENDARY: сейчас vs крафт (концепт)</p>
+      <ul class="pf-preview-grid pf-preview-grid--compare">
+        <li class="pf-collection-card pf-collection-card--legendary">
+          <div class="pf-collection-card__frame">
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <span class="pf-uses-badge">⚡2/2</span>
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">МихалычЪ</span>
+              <span class="pf-collection-card__rarity"
+                >LEGENDARY <span class="pf-rarity-mod">×1.25</span></span
+              >
+              <ul class="pf-card-ach-chips pf-card-ach-chips--tight" aria-label="Достижения">
+                <li class="pf-card-ach-chip">
+                  <span>Победа</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+                <li class="pf-card-ach-chip">
+                  <span>Лучший ход</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+                <li class="pf-card-ach-chip">
+                  <span>Дожил</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 0.72rem; color: var(--pf-text-muted); text-align: center">
+            Текущий стиль LEGENDARY
+          </p>
+        </li>
+        <li class="pf-collection-card pf-collection-card--legendary-crafted">
+          <div class="pf-collection-card__frame">
+            <span class="pf-uses-badge">⚡2/2</span>
+            <img
+              class="pf-collection-card__img"
+              src="https://storage.yandexcloud.net/polemica-fantasy/players/1/photo.png"
+              alt=""
+            />
+            <div class="pf-collection-card__cap">
+              <span class="pf-collection-card__name">МихалычЪ</span>
+              <span class="pf-collection-card__rarity"
+                >LEGENDARY <span class="pf-rarity-mod">×1.25</span></span
+              >
+              <ul class="pf-card-ach-chips pf-card-ach-chips--tight" aria-label="Достижения">
+                <li class="pf-card-ach-chip">
+                  <span>Победа</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+                <li class="pf-card-ach-chip">
+                  <span>Лучший ход</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+                <li class="pf-card-ach-chip">
+                  <span>Дожил</span><span class="pf-card-ach-chip__bonus">+1</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 0.72rem; color: var(--pf-text-muted); text-align: center">
+            Концепт: <code style="color: var(--pf-gold-dim)">.pf-collection-card--legendary-crafted</code>
+          </p>
+        </li>
+      </ul>
+
+      <div class="pf-preview-note">
+        <strong>Как открыть:</strong> из корня webapp выполните <code>npm run dev</code> и перейдите на
+        <code>/legendary-card-preview.html</code>. Стили токенов и разметка карточки коллекции совпадают с
+        <code>index.css</code>; новый модификатор можно перенести в прод при согласовании.
+      </div>
+    </div>
+  </body>
+</html>

@@ -51,4 +51,20 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("ids") ids: Collection<Long>,
         @Param("telegramUserId") telegramUserId: Long,
     ): List<UserCard>
+
+    @Query(
+        """
+        SELECT DISTINCT uc FROM UserCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.craftedBy
+        LEFT JOIN FETCH ct.achievements ach
+        LEFT JOIN FETCH ach.achievement
+        WHERE uc.id = :id AND uc.telegramUser.id = :telegramUserId
+        """,
+    )
+    fun findByIdAndTelegramUser_IdWithTemplateAchievements(
+        @Param("id") id: Long,
+        @Param("telegramUserId") telegramUserId: Long,
+    ): UserCard?
 }

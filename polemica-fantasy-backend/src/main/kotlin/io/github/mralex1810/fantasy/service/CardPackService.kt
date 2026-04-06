@@ -210,7 +210,7 @@ class CardPackService(
             repeat(cfg.cardsCount) {
                 val fantasyPlayer = playerPool[random.nextInt(playerPool.size)]
                 val achievements = pickAchievementsForSlot(cfg.rarity, randomAchievements)
-                val template = findOrCreateCardTemplate(fantasyPlayer, cfg.rarity, achievements)
+                val template = findOrCreateCardTemplateForAchievements(fantasyPlayer, cfg.rarity, achievements)
                 drawn.add(
                     userCardRepository.save(
                         UserCard(
@@ -269,7 +269,11 @@ class CardPackService(
         }
     }
 
-    private fun findOrCreateCardTemplate(
+    /**
+     * Shared by pack opening and EPIC → LEGENDARY upgrade: reuse [CardTemplate] when the same
+     * player, rarity, and achievement id set already exists.
+     */
+    fun findOrCreateCardTemplateForAchievements(
         fantasyPlayer: FantasyPlayer,
         rarity: Rarity,
         achievements: List<Achievement>,

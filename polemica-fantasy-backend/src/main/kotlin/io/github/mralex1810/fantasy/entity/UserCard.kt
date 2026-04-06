@@ -31,6 +31,11 @@ class UserCard(
     @JoinColumn(name = "source_card_pack_id", nullable = true)
     var sourceCardPack: CardPack? = null,
 
+    /** User who crafted this card via EPIC → LEGENDARY upgrade; admin-issued LEGENDARY stays null. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "crafted_by_telegram_user_id", nullable = true)
+    var craftedBy: TelegramUser? = null,
+
     @Column(name = "acquired_at", nullable = false)
     var acquiredAt: Instant = Instant.now(),
 

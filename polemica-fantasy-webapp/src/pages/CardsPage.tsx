@@ -12,11 +12,13 @@ import type {
   UserTournament,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
+import { collectionCardRootClass, modalImgFrameClass } from '../lib/cardFrameClasses'
+import { RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 
 type LifecycleFilter = 'all' | 'active' | 'expired'
 
@@ -38,7 +40,7 @@ function slotScoreForCard(team: FantasyTeamDto, userCardId: number): number | nu
 export function CardsPage() {
   const initData = useInitData()
   const qc = useQueryClient()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const tournamentFromQuery = searchParams.get('tournamentId') ?? ''
   const backTo = tournamentFromQuery ? `/tournaments/${tournamentFromQuery}` : '/'
 
@@ -53,6 +55,8 @@ export function CardsPage() {
 
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null)
+  const [legendaryWizardOpen, setLegendaryWizardOpen] = useState(false)
+  const [legendaryWizardInitialCardId, setLegendaryWizardInitialCardId] = useState<number | null>(null)
 
   const params = useMemo(() => {
     const sp = new URLSearchParams()
@@ -61,6 +65,29 @@ export function CardsPage() {
     const q = sp.toString()
     return q ? `?${q}` : ''
   }, [tournamentId, rarity])
+
+  const legendaryUpgradeParam = searchParams.get('legendaryUpgrade')
+  useEffect(() => {
+    if (legendaryUpgradeParam == null || !initData) return
+    if (legendaryUpgradeParam === '1' || legendaryUpgradeParam === 'true') {
+      setLegendaryWizardInitialCardId(null)
+      setLegendaryWizardOpen(true)
+    } else {
+      const n = Number(legendaryUpgradeParam)
+      if (Number.isFinite(n)) {
+        setLegendaryWizardInitialCardId(n)
+        setLegendaryWizardOpen(true)
+      }
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('legendaryUpgrade')
+        return next
+      },
+      { replace: true },
+    )
+  }, [legendaryUpgradeParam, initData, setSearchParams])
 
   const q = useQuery({
     queryKey: ['cards', params, initData],
@@ -227,6 +254,24 @@ export function CardsPage() {
     setSelectedSeriesId(null)
   }
 
+  const legendaryParam = searchParams.get('legendaryUpgrade')
+  useEffect(() => {
+    if (legendaryParam == null || !initData) return
+    if (legendaryParam === '1' || legendaryParam === 'true') {
+      setLegendaryWizardInitialCardId(null)
+      setLegendaryWizardOpen(true)
+    } else {
+      const n = Number(legendaryParam)
+      if (Number.isFinite(n) && n > 0) {
+        setLegendaryWizardInitialCardId(n)
+        setLegendaryWizardOpen(true)
+      }
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('legendaryUpgrade')
+    setSearchParams(next, { replace: true })
+  }, [legendaryParam, initData, searchParams, setSearchParams])
+
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
 
   const teamsSortedForHistory = [...teamsWithCard].sort(
@@ -325,9 +370,7 @@ export function CardsPage() {
           return (
             <li
               key={c.id}
-              className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${
-                expired ? ' pf-collection-card--expired' : ''
-              }`}
+              className={collectionCardRootClass(c, { expired })}
             >
               <div className="pf-collection-card__frame">
                 <div
@@ -408,7 +451,7 @@ export function CardsPage() {
               ×
             </button>
             {detailImgSrc && (
-              <div className={`pf-modal__img-frame pf-modal__img-frame--${rarityClass(detailCard.rarity)}`}>
+              <div className={modalImgFrameClass(detailCard)}>
                 <img src={detailImgSrc} alt="" className="pf-modal__img" />
               </div>
             )}
@@ -512,6 +555,19 @@ export function CardsPage() {
             )}
 
             <div className="pf-modal__economy-actions">
+              {isEligibleEpicForLegendary(detailCard) && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  onClick={() => {
+                    setLegendaryWizardInitialCardId(detailCard.id)
+                    setLegendaryWizardOpen(true)
+                    closeModal()
+                  }}
+                >
+                  Улучшить до легендарной
+                </button>
+              )}
               {detailCard.usesRemaining > 0 && (
                 <button
                   type="button"
@@ -540,6 +596,18 @@ export function CardsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {initData && (
+        <LegendaryUpgradeWizard
+          isOpen={legendaryWizardOpen}
+          onClose={() => {
+            setLegendaryWizardOpen(false)
+            setLegendaryWizardInitialCardId(null)
+          }}
+          initData={initData}
+          initialUserCardId={legendaryWizardInitialCardId}
+        />
       )}
     </div>
   )

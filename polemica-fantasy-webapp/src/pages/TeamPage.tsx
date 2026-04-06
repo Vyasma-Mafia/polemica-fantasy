@@ -6,9 +6,10 @@ import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from '../components/CardAchievementChips'
-import { compareRarityDesc, RARITY_UI, rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
+import { compareRarityDesc, RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 import { useNow } from '../lib/useNow'
 
 function cardsQueryString(tournamentId: number, seriesId: number) {
@@ -101,6 +102,10 @@ export function TeamPage() {
         for (const x of prev) {
           if (cardById.get(x)?.fantasyPlayerId === fp) return prev
         }
+        if (adding.rarity === 'LEGENDARY') {
+          const hasLegendary = prev.some((x) => cardById.get(x)?.rarity === 'LEGENDARY')
+          if (hasLegendary) return prev
+        }
       }
       return [...prev, id]
     })
@@ -138,6 +143,11 @@ export function TeamPage() {
     return list
   }, [cardsQ.data, rarityFilter, playerFantasyId])
 
+  const legendarySlotsUsed = useMemo(
+    () => selected.filter((cid) => cardById.get(cid)?.rarity === 'LEGENDARY').length,
+    [selected, cardById],
+  )
+
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
   if (seriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (seriesQ.isError) return <p className="pf-err">{(seriesQ.error as Error).message}</p>
@@ -161,7 +171,8 @@ export function TeamPage() {
       )}
 
       <p className="pf-instruction">
-        Выберите от 1 до 3 карт (порядок — слоты 1–3). Один игрок — не больше одной карты.
+        Выберите от 1 до 3 карт (порядок — слоты 1–3). Один игрок — не больше одной карты. Легендарных карт в команде —
+        не больше одной.
       </p>
 
       <ol className="pf-picked-slots">
@@ -175,7 +186,7 @@ export function TeamPage() {
               {c ? (
                 <button
                   type="button"
-                  className={`pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}
+                  className={miniCardClass(c)}
                   disabled={deadlinePassed}
                   title={deadlinePassed ? undefined : 'Снять из состава'}
                   onClick={() => toggle(c.id)}
@@ -240,17 +251,30 @@ export function TeamPage() {
           const playerAlreadyPicked =
             !selected.includes(c.id) &&
             selected.some((sid) => cardById.get(sid)?.fantasyPlayerId === c.fantasyPlayerId)
-          const gridDisabled = deadlinePassed || dead || playerAlreadyPicked
+          const secondLegendaryBlocked =
+            c.rarity === 'LEGENDARY' && !selected.includes(c.id) && legendarySlotsUsed >= 1
+          const gridDisabled = deadlinePassed || dead || playerAlreadyPicked || secondLegendaryBlocked
           const gridTitle = dead
             ? 'Контракт истёк — продлите в коллекции'
             : playerAlreadyPicked
               ? 'Этот игрок уже в команде'
-              : undefined
+              : secondLegendaryBlocked
+                ? 'В команде не больше одной легендарной карты за серию'
+                : undefined
           return (
             <li key={c.id}>
               <button
                 type="button"
-                className={`pf-team-card pf-team-card--${rarityClass(c.rarity)} ${selected.includes(c.id) ? 'pf-team-card--picked' : ''}${dead ? ' pf-team-card--dead' : ''}${playerAlreadyPicked && !dead ? ' pf-team-card--blocked' : ''}`}
+                className={teamCardRootClass(
+                  c,
+                  [
+                    selected.includes(c.id) ? 'pf-team-card--picked' : '',
+                    dead ? 'pf-team-card--dead' : '',
+                    playerAlreadyPicked && !dead ? 'pf-team-card--blocked' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' '),
+                )}
                 onClick={() => !gridDisabled && toggle(c.id)}
                 disabled={gridDisabled}
                 title={gridTitle}

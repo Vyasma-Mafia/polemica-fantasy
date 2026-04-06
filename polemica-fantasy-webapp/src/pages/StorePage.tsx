@@ -70,6 +70,16 @@ export function StorePage() {
         />
       )}
 
+      <section className="pf-store-legendary" aria-label="Легендарный апгрейд">
+        <p className="pf-muted pf-store-legendary__text">
+          Эпическую карту с двумя достижениями можно превратить в легендарную за фантики (тот же экземпляр карты, +1
+          использование).
+        </p>
+        <button type="button" className="pf-btn pf-store-legendary__btn" onClick={() => navigate('/cards?legendaryUpgrade=1')}>
+          Легендарный апгрейд
+        </button>
+      </section>
+
       {packsQ.isLoading && <p className="pf-muted">Загрузка…</p>}
       {packsQ.isError && <p className="pf-err">{(packsQ.error as Error).message}</p>}
 

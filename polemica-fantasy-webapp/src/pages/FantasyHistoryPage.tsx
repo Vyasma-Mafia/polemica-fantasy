@@ -12,6 +12,7 @@ import type {
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
+import { modalImgFrameClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 
@@ -270,7 +271,7 @@ export function FantasyHistoryPage() {
               ×
             </button>
             {detailImgSrc && detailCard && (
-              <div className={`pf-modal__img-frame pf-modal__img-frame--${rarityClass(detailCard.rarity)}`}>
+              <div className={modalImgFrameClass(detailCard)}>
                 <img src={detailImgSrc} alt="" className="pf-modal__img" />
               </div>
             )}

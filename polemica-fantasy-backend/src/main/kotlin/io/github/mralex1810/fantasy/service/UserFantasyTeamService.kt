@@ -14,6 +14,7 @@ import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
+import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
@@ -43,6 +44,7 @@ class UserFantasyTeamService(
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
+    private val economyConfigService: EconomyConfigService,
     private val entityManager: EntityManager,
 ) {
 
@@ -243,6 +245,14 @@ class UserFantasyTeamService(
         val fantasyPlayerIds = userCardIds.map { byId[it]!!.cardTemplate!!.fantasyPlayer!!.id!! }
         if (fantasyPlayerIds.toSet().size != fantasyPlayerIds.size) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Team cannot include more than one card per player")
+        }
+        val legendaryCount = cards.count { it.cardTemplate!!.rarity == Rarity.LEGENDARY }
+        val maxLegendary = economyConfigService.getLegendaryTeamMaxPerSeries()
+        if (legendaryCount > maxLegendary) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Maximum $maxLegendary LEGENDARY card(s) allowed per fantasy team",
+            )
         }
         userCardIds.forEachIndexed { index, ucId ->
             val uc = byId[ucId]!!

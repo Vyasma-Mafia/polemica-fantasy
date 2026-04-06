@@ -35,5 +35,6 @@ fun UserCard.toUserCardItemDto(templateOverride: CardTemplate? = null): UserCard
         usesRemaining = usesRemaining,
         timesRenewed = timesRenewed,
         sourceCardPackId = sourceCardPack?.id,
+        craftedByTelegramUserId = craftedBy?.telegramId,
     )
 }

@@ -7,4 +7,5 @@ enum class FantikiTransactionReason {
     SERIES_REWARD,
     CARD_RECYCLE,
     CARD_RENEWAL,
+    LEGENDARY_UPGRADE,
 }

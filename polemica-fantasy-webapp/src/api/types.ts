@@ -169,6 +169,15 @@ export interface UserCardItem {
   timesRenewed: number
   /** Present when the card came from opening a pack */
   sourceCardPackId?: number | null
+  /** Telegram user id of the crafter; set after legendary upgrade from a pack card */
+  craftedByTelegramUserId?: number | null
+}
+
+/** GET /api/v1/legendary-upgrade/info */
+export interface LegendaryUpgradeInfo {
+  cost: number
+  balance: number
+  canAfford: boolean
 }
 
 export interface RewardTier {

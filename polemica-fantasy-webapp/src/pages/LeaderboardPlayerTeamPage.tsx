@@ -13,6 +13,7 @@ import { CardAchievementChips } from '../components/CardAchievementChips'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { modalImgFrameClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 import { formatUserDisplayName } from '../lib/userDisplayName'
@@ -243,7 +244,7 @@ export function LeaderboardPlayerTeamPage() {
               ×
             </button>
             {detailImgSrc && (
-              <div className={`pf-modal__img-frame pf-modal__img-frame--${rarityClass(detailCard.rarity)}`}>
+              <div className={modalImgFrameClass(detailCard)}>
                 <img src={detailImgSrc} alt="" className="pf-modal__img" />
               </div>
             )}

@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Легендарные карты (backend L1–L3):** Flyway **V19** — `user_card.crafted_by_telegram_user_id` → `telegram_user`, ключи `economy_config` `legendary.upgrade.cost` (400), `legendary.team.max_per_series` (1). `UserCardItemDto.craftedByTelegramUserId` (Telegram platform id крафтера). `LegendaryUpgradeService`: EPIC → LEGENDARY in-place, +1 ачивка, списание `LEGENDARY_UPGRADE`, `findOrCreateCardTemplateForAchievements` в `CardPackService`. API: `GET/POST /api/v1/legendary-upgrade` (+ `/info`). `UserFantasyTeamService.attachCards` — не больше `legendary.team.max_per_series` LEGENDARY в команде.
+
 **Порядок серий в турнире (API + TMA):** `SeriesRepository.findAllByTournament_IdOrderByIdDesc` — в ответе `GET /api/v1/tournaments/{id}` и админском списке серий — **от новых к старым** (по `id` DESC). Лидерборд турнира (вкладки) и экран выбора серии (`/tournaments/:id/series`) берут порядок из API. На `SeriesPickerPage` номер бейджа «Серия N» — `gameNumFrom` или хронологический индекс по `id`, чтобы при обратном списке не путать номер серии в турнире.
 
 **Ростер серии и фэнтези:** при смене игроков серии до дедлайна `FantasyTeamRosterPruningService` убирает из `fantasy_team_card` карты игроков, которых больше нет в `series_player` (вызов из `assignPlayers` и при GET команды); Flyway **V17** — разовая чистка для `series_id = 5`.
@@ -8,6 +10,8 @@
 **Бесплатные паки:** лимит задаётся на паке (`card_pack.free_opens_per_user`), учёт в `user_card_pack_free_usage`; админка — Card packs; TMA магазин показывает остаток и не требует баланса, пока есть квота.
 
 **Планировщик серий:** `@EnableScheduling` на `FantasyApplication`; `schedule/ActiveSeriesSyncScheduler` — cron `0 0/10 * * * *` (каждые 10 мин), для серий `ACTIVE`/`SCORING` с `finalized = false` — `syncGames` + `calculateScores`; `SeriesRepository.findAllByStatusInAndFinalizedIsFalse`.
+
+**Sync/scoring и Hikari:** HTTP к Polemica не внутри `@Transactional` — сначала загрузка/подготовка данных (`DefaultGameSyncService`: список `PreparedSeriesGame`; `DefaultScoringService`: `gamePointsService.fetchPlayerStats` по id игр), затем короткая транзакция записи через `TransactionTemplate` (`persistPreparedGames` / `applyScoresInTransaction`), чтобы не удерживать соединение пула на время сетевых вызовов.
 
 **Отображаемое имя (TMA):** колонка `telegram_user.display_name`, `PATCH /api/v1/me` с телом `{"displayName":…}` (null/`""` — сброс); `first_name`/`username` по-прежнему синхронизируются из Telegram initData, кастомный ник не затирается. Лидерборд и публичная команда отдают `displayName` в `UserPublicDto`. Гонка при первом `INSERT` одного `telegram_id`: вставка + INITIAL фантиков в `TelegramUserBootstrapService.insertNewUserWithInitialFantiki` с `REQUIRES_NEW`, при `23505` — догрузка строки и обновление полей Telegram в основной транзакции. Flyway **V14**.
 

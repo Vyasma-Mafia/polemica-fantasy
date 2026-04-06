@@ -7,13 +7,15 @@ import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameAchievement
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
+import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.scoring.achievement.AchievementDetectorRegistry
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 
 @Service
@@ -24,25 +26,37 @@ class DefaultScoringService(
     private val achievementRegistry: AchievementDetectorRegistry,
     private val objectMapper: ObjectMapper,
     private val gamePointsService: GamePointsService,
+    platformTransactionManager: PlatformTransactionManager,
 ) : ScoringService {
 
-    @Transactional
+    private val transactionTemplate = TransactionTemplate(platformTransactionManager)
+
+    /**
+     * Fetches points from Polemica public HTTP API outside a DB transaction; persistence and scoring run in a short transaction.
+     */
     override fun calculateScores(seriesId: Long) {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
-        val games = seriesGameRepository.findAllBySeries_Id(seriesId)
-            .filter { it.gameDataCache != null }
-            .filter { sg ->
-                val node = sg.gameDataCache!!
-                val polemicaGame = objectMapper.treeToValue(node, PolemicaGame::class.java)
-                polemicaGame.isFinishedForScoring()
+        val rows = seriesGameRepository.findAllBySeries_Id(seriesId)
+        val gamesForPoints = gamesFinishedForScoring(rows)
+        val pointsByTablePositionByGameId = gamesForPoints
+            .map { it.polemicaGameId }
+            .distinct()
+            .associateWith { gameId ->
+                gamePointsService.fetchPlayerStats(gameId).associate { it.position to it.points }
             }
 
-        val pointsByTablePositionByGameId = games.map { it.polemicaGameId }.distinct().associateWith { gameId ->
-            gamePointsService.fetchPlayerStats(gameId).associate { it.position to it.points }
+        transactionTemplate.executeWithoutResult {
+            applyScoresInTransaction(seriesId, pointsByTablePositionByGameId)
         }
+    }
 
+    private fun applyScoresInTransaction(
+        seriesId: Long,
+        pointsByTablePositionByGameId: Map<Long, Map<Int, Double>>,
+    ) {
+        val games = gamesFinishedForScoring(seriesGameRepository.findAllBySeries_Id(seriesId))
         val teams = fantasyTeamRepository.findAllWithCardsForScoring(seriesId)
 
         for (team in teams) {
@@ -61,6 +75,15 @@ class DefaultScoringService(
             g.scored = true
         }
     }
+
+    private fun gamesFinishedForScoring(rows: List<SeriesGame>): List<SeriesGame> =
+        rows
+            .filter { it.gameDataCache != null }
+            .filter { sg ->
+                val node = sg.gameDataCache!!
+                val polemicaGame = objectMapper.treeToValue(node, PolemicaGame::class.java)
+                polemicaGame.isFinishedForScoring()
+            }
 
     private fun scoreCardForSeries(
         games: List<io.github.mralex1810.fantasy.entity.SeriesGame>,

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '../components/PageHeader'
 import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchLegendaryUpgradeInfo } from '../api/legendaryUpgrade'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import { useInitData } from '../context/useInitData'
 import type { OccurrenceType, Rarity } from '../api/types'
@@ -30,6 +31,12 @@ export function HelpPage() {
   const achievementsQ = useQuery({
     queryKey: ['achievements-catalog', initData],
     queryFn: () => fetchAchievementCatalog(initData!),
+    enabled: !!initData,
+  })
+
+  const legendaryInfoQ = useQuery({
+    queryKey: ['legendary-upgrade-info', initData],
+    queryFn: () => fetchLegendaryUpgradeInfo(initData!),
     enabled: !!initData,
   })
 
@@ -110,6 +117,31 @@ export function HelpPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="pf-help__section pf-help__anchor" id="legendary">
+          <h2 className="pf-help__section-title">Легендарные карты</h2>
+          <article className="pf-prose">
+            <p>
+              Эпическую карту с <strong>двумя</strong> достижениями на борту можно улучить до <strong>легендарной</strong> в
+              коллекции или с экрана магазина: добавляется <strong>третье достижение</strong> на выбор из каталога, редкость
+              и множитель очков растут, к экземпляру карты прибавляется <strong>одно использование</strong>. Сам экземпляр (
+              <code>id</code> карты) сохраняется.
+            </p>
+            <p>
+              Стоимость апгрейда:{' '}
+              {legendaryInfoQ.isLoading && <span className="pf-muted">…</span>}
+              {legendaryInfoQ.data && (
+                <strong>{legendaryInfoQ.data.cost.toLocaleString('ru-RU')}₣</strong>
+              )}
+              {legendaryInfoQ.isError && <span className="pf-muted"> (не удалось загрузить)</span>}. Улучшать можно только
+              карту с оставшимися использованиями и <strong>не стоящую в команде по незавершённой серии</strong> (после
+              финализации серии карту снова можно прокачать, если она не в активной заявке).
+            </p>
+            <p>
+              В одной фэнтези-команде на серию допускается <strong>не больше одной</strong> легендарной карты.
+            </p>
+          </article>
         </section>
 
         <section className="pf-help__section pf-help__anchor" id="economy">
