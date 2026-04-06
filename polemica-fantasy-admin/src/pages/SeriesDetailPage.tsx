@@ -96,13 +96,25 @@ export function SeriesDetailPage() {
 
   const syncMut = useMutation({
     mutationFn: () => syncGames(seriesId),
-    onSuccess: () => message.success('Sync completed'),
+    onSuccess: () => {
+      message.success('Sync completed')
+      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+      void qc.invalidateQueries({
+        queryKey: ['admin', 'series', 'tournament', tournamentId],
+      })
+    },
     onError: (e: Error) => message.error(e.message),
   })
 
   const scoreMut = useMutation({
     mutationFn: () => calculateScores(seriesId),
-    onSuccess: () => message.success('Scores calculated'),
+    onSuccess: () => {
+      message.success('Scores calculated')
+      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+      void qc.invalidateQueries({
+        queryKey: ['admin', 'series', 'tournament', tournamentId],
+      })
+    },
     onError: (e: Error) => message.error(e.message),
   })
 
@@ -113,6 +125,10 @@ export function SeriesDetailPage() {
         `Finalized: rewards ${res.rewardsDistributed}, cards updated ${res.cardsDecremented}`,
       )
       void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+      void qc.invalidateQueries({
+        queryKey: ['admin', 'series', 'tournament', tournamentId],
+      })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -136,6 +152,12 @@ export function SeriesDetailPage() {
           '…'
         )}
       </Typography.Title>
+      {s && (
+        <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+          Games in DB (synced): {s.syncedGamesCount} · With scores calculated:{' '}
+          {s.scoredGamesCount}
+        </Typography.Paragraph>
+      )}
 
       <Form
         form={form}

@@ -7,6 +7,12 @@ import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import java.time.Instant
 
+data class ActiveSeriesBriefDto(
+    val id: Long,
+    val name: String,
+    val status: SeriesStatus,
+)
+
 data class TournamentDto(
     val id: Long,
     val name: String,
@@ -15,6 +21,8 @@ data class TournamentDto(
     val kind: TournamentKind,
     val polemicaCompetitionId: Long?,
     val createdAt: Instant,
+    /** Populated on list tournaments; empty on create/update responses. */
+    val activeSeries: List<ActiveSeriesBriefDto> = emptyList(),
 )
 
 data class TournamentDetailDto(
@@ -48,6 +56,10 @@ data class SeriesDto(
     val startsAt: Instant,
     val teamDeadline: Instant,
     val finalized: Boolean,
+    /** Rows in `series_game` (synced from Polemica). */
+    val syncedGamesCount: Long,
+    /** Subset with `scored = true` (calculated fantasy points). */
+    val scoredGamesCount: Long,
     /** `tournament_player.id` for players assigned to this series */
     val tournamentPlayerIds: List<Long>,
 )

@@ -39,6 +39,26 @@ class TelegramInitDataValidatorTest {
         }
     }
 
+    /**
+     * Локально: снять @Disabled, выполнить
+     * `./gradlew :polemica-fantasy-backend:test --tests "*TelegramInitDataValidatorTest.printViteDevInitDataSample"`.
+     * Строка подписана [test-token] как в [application-test.yml]; для docker/backend задайте в .env
+     * `TELEGRAM_BOT_TOKEN=test-token` или перегенерируйте под свой токен.
+     */
+    @Test
+    @org.junit.jupiter.api.Disabled("Включите локально, чтобы напечатать VITE_DEV_INIT_DATA")
+    fun printViteDevInitDataSample() {
+        val botToken = "test-token"
+        val authDate = Instant.now().epochSecond
+        val userJson = """{"id":888001,"first_name":"LocalDev","username":"localdev"}"""
+        val initData = buildSignedInitData(botToken, authDate, userJson)
+        println()
+        println("--- paste into polemica-fantasy-webapp/.env.local ---")
+        println("VITE_DEV_INIT_DATA=\"$initData\"")
+        println("--- end ---")
+        println()
+    }
+
     @Test
     fun `rejects stale auth_date`() {
         val botToken = "test-token"

@@ -17,7 +17,7 @@
 
 **Неполная команда на серию:** можно выставить 1–3 карты; награда за место при финализации масштабируется ⌈⅓⌉ / ⌈⅔⌉ / 100% от суммы из `economy_config` (см. `SeriesFinalizationService.scaleSeriesRewardByRosterSize`).
 
-**Автофинализация при FINISHED:** при `PUT /admin/series/{id}` (и при создании серии со статусом FINISHED), если после сохранения `status == FINISHED` и `finalized == false`, в том же транзакционном потоке вызывается `SeriesFinalizationService.finalizeSeries` (награды + декремент uses + `finalized = true`). Раньше награды начислялись только по кнопке `POST .../finalize`, поэтому смена статуса на FINISHED без отдельного вызова оставляла серию без фантиков.
+**Автофинализация при FINISHED:** при `PUT /admin/series/{id}` (и при создании серии со статусом FINISHED), если после сохранения `status == FINISHED` и `finalized == false`, вызывается `SeriesFinalizationService.finalizeSeries`. Кнопка `POST .../finalize` тоже ведёт в `finalizeSeries` и дополнительно выставляет `status = FINISHED` (награды + декремент uses + `finalized = true`).
 
 **V3 (PLAN-V3) реализована по цепочке C1→C5:** контракты карт (`uses_remaining`, `times_renewed`), `series.finalized`, таблица `economy_config` + сиды; сервисы `EconomyConfigService`, `CardLifecycleService`, `SeriesFinalizationService`; user API recycle/renew/economy-info; admin finalize series + CRUD экономики; админка `/economy` и кнопка финализации серии; TMA — бейджи использований, коллекция (фильтры/сортировка, переработка/продление), **экран «Справка»** `/help` (механика очков, каталог достижений `GET /api/v1/achievements`, блок экономики из `economy-info`), редирект `/economy` → `/help`; сборка команды (истёкшие недоступны, предупреждение «последнее использование»). План: [`PLAN-V3.md`](../PLAN-V3.md). Обновление `DESIGN.md` по V3 — по желанию (см. конец PLAN-V3).
 
@@ -59,6 +59,7 @@
 - Нет критичных блокеров
 
 ## Недавние правки UI (админка)
+- **Серии — sync/score счётчики:** `SeriesDto` содержит `syncedGamesCount` / `scoredGamesCount` (агрегаты по `series_game`); таблица серий на странице турнира и подзаголовок на странице серии. Список турниров — колонка **Active series** (все серии со статусом ≠ `FINISHED`, ссылки на `/series/:id`). **Finalize** (`SeriesFinalizationService`) выставляет `status = FINISHED`. На **Tournament detail** блок **Series** выше блока **Players**.
 - **Tournament detail (`/tournaments/:id`):** над таблицей игроков — сетка карточек (`List` + `Card`) с аватаром (фото или первая буква ника), ником и внутренним id; в колонке Photo таблицы — миниатюра `Avatar` + ссылка «open» на полное изображение.
 - **Users (`/users`):** список всех `telegram_user` с колонками username, Telegram ID, displayName; фильтры **Tournament** + **Series**; столбец **Cards (series)** — число экземпляров `user_card`, чья `card_template` относится к игроку из ростера серии (как `GET /me/cards?seriesId`). API: **GET** `/api/v1/admin/users` (без query — `cardsInSeries: null`) и с `tournamentId` + `seriesId` (оба обязательны вместе для счётчика). Реализация: `AdminUserListService`, нативный запрос в `TelegramUserRepository.findAllWithCardsInSeriesCount`.
 - **Series → Assign players:** у `Select` включён поиск (`showSearch`) и фильтрация опций по подстроке (без учёта регистра), чтобы быстро находить игрока по нику в длинном списке.

@@ -45,6 +45,12 @@ export interface AdminUserListItemDto {
   cardsInSeries: number | null
 }
 
+export interface ActiveSeriesBriefDto {
+  id: number
+  name: string
+  status: SeriesStatus
+}
+
 export interface TournamentDto {
   id: number
   name: string
@@ -53,6 +59,8 @@ export interface TournamentDto {
   kind: TournamentKind
   polemicaCompetitionId: number | null
   createdAt: string
+  /** Non-finished series; set on list tournaments. Omitted on single-tournament responses. */
+  activeSeries?: ActiveSeriesBriefDto[]
 }
 
 export interface TournamentPlayerDto {
@@ -79,6 +87,10 @@ export interface SeriesDto {
   startsAt: string
   teamDeadline: string
   finalized: boolean
+  /** Games synced from Polemica (`series_game` rows). */
+  syncedGamesCount: number
+  /** Games with calculated fantasy scores (`scored`). */
+  scoredGamesCount: number
   /** tournament_player.id assigned to this series */
   tournamentPlayerIds: number[]
 }

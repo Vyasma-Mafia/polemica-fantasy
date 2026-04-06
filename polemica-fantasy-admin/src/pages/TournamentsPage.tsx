@@ -1,6 +1,7 @@
 import { App, Button, Modal, Space, Table, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { ActiveSeriesBriefDto } from '../api/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createTournament,
@@ -86,6 +87,27 @@ export function TournamentsPage() {
             title: 'Status',
             dataIndex: 'status',
             render: (s: string) => <Tag>{s}</Tag>,
+          },
+          {
+            title: 'Active series',
+            key: 'activeSeries',
+            render: (_: unknown, row) => {
+              const list = row.activeSeries ?? []
+              if (list.length === 0) {
+                return <Typography.Text type="secondary">—</Typography.Text>
+              }
+              return (
+                <Space size={[4, 4]} wrap>
+                  {list.map((s: ActiveSeriesBriefDto) => (
+                    <Link key={s.id} to={`/series/${s.id}`}>
+                      <Tag>
+                        {s.name} <Typography.Text type="secondary">({s.status})</Typography.Text>
+                      </Tag>
+                    </Link>
+                  ))}
+                </Space>
+              )
+            },
           },
           {
             title: 'Created',

@@ -5,6 +5,7 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesFinalizedRecipient
 import io.github.mralex1810.fantasy.event.publicDisplayNameForNotifications
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -68,6 +69,7 @@ class SeriesFinalizationService(
                 ),
             )
         }
+        series.status = SeriesStatus.FINISHED
         series.finalized = true
         seriesRepository.save(series)
         applicationEventPublisher.publishEvent(

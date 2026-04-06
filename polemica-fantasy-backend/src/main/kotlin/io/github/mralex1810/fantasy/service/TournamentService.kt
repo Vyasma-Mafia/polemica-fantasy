@@ -3,10 +3,12 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.admin.request.AddTournamentPlayerRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateTournamentRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateTournamentRequest
+import io.github.mralex1810.fantasy.dto.admin.response.ActiveSeriesBriefDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentDetailDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentPlayerDto
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentPlayer
@@ -119,8 +121,25 @@ class TournamentService(
     }
 
     @Transactional(readOnly = true)
-    fun listTournaments(): List<TournamentDto> =
-        tournamentRepository.findAll().sortedBy { it.id }.map { it.toDto() }
+    fun listTournaments(): List<TournamentDto> {
+        val tournaments = tournamentRepository.findAll().sortedBy { it.id }
+        if (tournaments.isEmpty()) return emptyList()
+        val tournamentIds = tournaments.mapNotNull { it.id }
+        val nonFinishedSeries = seriesRepository.findAllByTournament_IdInAndStatusNot(
+            tournamentIds,
+            SeriesStatus.FINISHED,
+        )
+        val byTournamentId = nonFinishedSeries.groupBy { it.tournament!!.id!! }
+        return tournaments.map { t ->
+            val tid = t.id!!
+            val briefs = (byTournamentId[tid] ?: emptyList())
+                .sortedByDescending { it.id }
+                .map { s ->
+                    ActiveSeriesBriefDto(id = s.id!!, name = s.name, status = s.status)
+                }
+            t.toDto(activeSeries = briefs)
+        }
+    }
 
     @Transactional(readOnly = true)
     fun getTournament(id: Long): TournamentDetailDto {
@@ -189,7 +208,7 @@ class TournamentService(
         return tournamentPlayerRepository.save(p).toDto()
     }
 
-    private fun Tournament.toDto() = TournamentDto(
+    private fun Tournament.toDto(activeSeries: List<ActiveSeriesBriefDto> = emptyList()) = TournamentDto(
         id = id!!,
         name = name,
         description = description,
@@ -197,6 +216,7 @@ class TournamentService(
         kind = kind,
         polemicaCompetitionId = polemicaCompetitionId,
         createdAt = createdAt,
+        activeSeries = activeSeries,
     )
 
     private fun TournamentPlayer.toDto(): TournamentPlayerDto {

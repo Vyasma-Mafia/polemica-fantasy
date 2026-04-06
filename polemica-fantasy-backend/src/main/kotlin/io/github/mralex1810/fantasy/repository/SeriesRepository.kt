@@ -9,6 +9,11 @@ interface SeriesRepository : JpaRepository<Series, Long> {
 
     fun findAllByTournament_IdOrderByIdDesc(tournamentId: Long): List<Series>
 
+    fun findAllByTournament_IdInAndStatusNot(
+        tournamentIds: Collection<Long>,
+        status: SeriesStatus,
+    ): List<Series>
+
     fun countByTournament_Id(tournamentId: Long): Long
 
     fun findAllByStatusInAndFinalizedIsFalse(statuses: Collection<SeriesStatus>): List<Series>

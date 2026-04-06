@@ -7,6 +7,7 @@ import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.Series
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.UserCard
@@ -95,6 +96,7 @@ class SeriesFinalizationServiceTest {
         assertEquals(2, uc1.usesRemaining)
         assertEquals(1, uc2.usesRemaining)
         assertEquals(true, s.finalized)
+        assertEquals(SeriesStatus.FINISHED, s.status)
         verify(userService).addBalance(10L, 34L, FantikiTransactionReason.SERIES_REWARD)
         verify(userService).addBalance(11L, 24L, FantikiTransactionReason.SERIES_REWARD)
         val captor = ArgumentCaptor.forClass(SeriesFinalizedNotificationEvent::class.java)

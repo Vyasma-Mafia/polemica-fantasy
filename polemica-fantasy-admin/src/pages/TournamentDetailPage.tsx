@@ -99,6 +99,7 @@ export function TournamentDetailPage() {
       void qc.invalidateQueries({
         queryKey: ['admin', 'series', 'tournament', tournamentId],
       })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -132,7 +133,78 @@ export function TournamentDetailPage() {
         <Typography.Paragraph>{t.description}</Typography.Paragraph>
       )}
 
-      <Typography.Title level={4}>Players</Typography.Title>
+      <Typography.Title level={4}>Series</Typography.Title>
+      <Button
+        type="primary"
+        style={{ marginBottom: 8 }}
+        disabled={!t}
+        onClick={() => setSeriesOpen(true)}
+      >
+        New series
+      </Button>
+      <Table
+        rowKey="id"
+        loading={sq.isLoading}
+        dataSource={sq.data}
+        style={{ marginBottom: 24 }}
+        columns={[
+          { title: 'ID', dataIndex: 'id', width: 70 },
+          {
+            title: 'Name',
+            dataIndex: 'name',
+            render: (name: string, row) => (
+              <Link to={`/series/${row.id}`}>{name}</Link>
+            ),
+          },
+          {
+            title: t?.kind === 'POLEMICA_COMPETITION' ? 'Games (num)' : 'Prefix',
+            key: 'pf',
+            render: (_, row) =>
+              t?.kind === 'POLEMICA_COMPETITION'
+                ? row.gameNumFrom != null && row.gameNumTo != null
+                  ? `${row.gameNumFrom}–${row.gameNumTo}`
+                  : '—'
+                : (row.namePrefix ?? '—'),
+          },
+          {
+            title: 'Synced',
+            dataIndex: 'syncedGamesCount',
+            width: 90,
+            render: (n: number) => n,
+          },
+          {
+            title: 'Scored',
+            dataIndex: 'scoredGamesCount',
+            width: 90,
+            render: (n: number) => n,
+          },
+          {
+            title: 'Status',
+            dataIndex: 'status',
+            render: (s: string) => <Tag>{s}</Tag>,
+          },
+          {
+            title: 'Finalized',
+            dataIndex: 'finalized',
+            width: 100,
+            render: (v: boolean) => (v ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
+          },
+          {
+            title: 'Starts',
+            dataIndex: 'startsAt',
+            render: (x: string) => new Date(x).toLocaleString(),
+          },
+          {
+            title: 'Deadline',
+            dataIndex: 'teamDeadline',
+            render: (x: string) => new Date(x).toLocaleString(),
+          },
+        ]}
+      />
+
+      <Typography.Title level={4} style={{ marginTop: 8 }}>
+        Players
+      </Typography.Title>
       <Space style={{ marginBottom: 8 }}>
         <Button type="primary" onClick={() => setAddPlayerOpen(true)}>
           Add player
@@ -242,64 +314,6 @@ export function TournamentDetailPage() {
                 Remove
               </Button>
             ),
-          },
-        ]}
-      />
-
-      <Typography.Title level={4} style={{ marginTop: 24 }}>
-        Series
-      </Typography.Title>
-      <Button
-        type="primary"
-        style={{ marginBottom: 8 }}
-        disabled={!t}
-        onClick={() => setSeriesOpen(true)}
-      >
-        New series
-      </Button>
-      <Table
-        rowKey="id"
-        loading={sq.isLoading}
-        dataSource={sq.data}
-        columns={[
-          { title: 'ID', dataIndex: 'id', width: 70 },
-          {
-            title: 'Name',
-            dataIndex: 'name',
-            render: (name: string, row) => (
-              <Link to={`/series/${row.id}`}>{name}</Link>
-            ),
-          },
-          {
-            title: t?.kind === 'POLEMICA_COMPETITION' ? 'Games (num)' : 'Prefix',
-            key: 'pf',
-            render: (_, row) =>
-              t?.kind === 'POLEMICA_COMPETITION'
-                ? row.gameNumFrom != null && row.gameNumTo != null
-                  ? `${row.gameNumFrom}–${row.gameNumTo}`
-                  : '—'
-                : (row.namePrefix ?? '—'),
-          },
-          {
-            title: 'Status',
-            dataIndex: 'status',
-            render: (s: string) => <Tag>{s}</Tag>,
-          },
-          {
-            title: 'Finalized',
-            dataIndex: 'finalized',
-            width: 100,
-            render: (v: boolean) => (v ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
-          },
-          {
-            title: 'Starts',
-            dataIndex: 'startsAt',
-            render: (x: string) => new Date(x).toLocaleString(),
-          },
-          {
-            title: 'Deadline',
-            dataIndex: 'teamDeadline',
-            render: (x: string) => new Date(x).toLocaleString(),
           },
         ]}
       />

@@ -9,6 +9,7 @@ import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.polemica.GameSyncService
+import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException
 class SeriesService(
     private val tournamentRepository: TournamentRepository,
     private val seriesRepository: SeriesRepository,
+    private val seriesGameRepository: SeriesGameRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val gameSyncService: GameSyncService,
@@ -52,7 +54,7 @@ class SeriesService(
         if (s.status == SeriesStatus.FINISHED && !s.finalized) {
             seriesFinalizationService.finalizeSeries(s.id!!)
         }
-        return seriesRepository.findById(s.id!!).get().toDto(emptyList())
+        return seriesRepository.findById(s.id!!).get().toDto(emptyList(), 0L, 0L)
     }
 
     @Transactional
@@ -99,7 +101,8 @@ class SeriesService(
             seriesFinalizationService.finalizeSeries(saved.id!!)
         }
         val result = seriesRepository.findById(id).get()
-        return result.toDto(tournamentPlayerIdsForSeries(id))
+        val counts = gameCountsForSeriesIds(listOf(id))[id] ?: (0L to 0L)
+        return result.toDto(tournamentPlayerIdsForSeries(id), counts.first, counts.second)
     }
 
     private fun validatedSeriesFields(
@@ -149,7 +152,9 @@ class SeriesService(
             seriesPlayerRepository.save(SeriesPlayer(series = series, tournamentPlayer = tp))
         }
         fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
-        return seriesRepository.findById(seriesId).get().toDto(tournamentPlayerIdsForSeries(seriesId))
+        val counts = gameCountsForSeriesIds(listOf(seriesId))[seriesId] ?: (0L to 0L)
+        return seriesRepository.findById(seriesId).get()
+            .toDto(tournamentPlayerIdsForSeries(seriesId), counts.first, counts.second)
     }
 
     @Transactional(readOnly = true)
@@ -163,9 +168,11 @@ class SeriesService(
         val bySeriesId = seriesPlayerRepository.findAllBySeries_IdIn(sidList).groupBy { sp ->
             sp.series!!.id!!
         }
+        val countMap = gameCountsForSeriesIds(sidList)
         return seriesList.map { s ->
             val tpIds = bySeriesId[s.id]?.map { it.tournamentPlayer!!.id!! }?.sorted() ?: emptyList()
-            s.toDto(tpIds)
+            val counts = countMap[s.id!!] ?: (0L to 0L)
+            s.toDto(tpIds, counts.first, counts.second)
         }
     }
 
@@ -174,7 +181,8 @@ class SeriesService(
         val s = seriesRepository.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
         }
-        return s.toDto(tournamentPlayerIdsForSeries(id))
+        val counts = gameCountsForSeriesIds(listOf(id))[id] ?: (0L to 0L)
+        return s.toDto(tournamentPlayerIdsForSeries(id), counts.first, counts.second)
     }
 
     fun syncGames(seriesId: Long) {
@@ -188,7 +196,30 @@ class SeriesService(
     private fun tournamentPlayerIdsForSeries(seriesId: Long): List<Long> =
         seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId).map { it.tournamentPlayer!!.id!! }
 
-    private fun Series.toDto(tournamentPlayerIds: List<Long>) = SeriesDto(
+    private fun gameCountsForSeriesIds(seriesIds: List<Long>): Map<Long, Pair<Long, Long>> {
+        if (seriesIds.isEmpty()) return emptyMap()
+        val totalRows = seriesGameRepository.countTotalBySeriesIdIn(seriesIds)
+        val scoredRows = seriesGameRepository.countScoredBySeriesIdIn(seriesIds)
+        val totals = totalRows.associate { row ->
+            val sid = (row[0] as Number).toLong()
+            val c = (row[1] as Number).toLong()
+            sid to c
+        }
+        val scored = scoredRows.associate { row ->
+            val sid = (row[0] as Number).toLong()
+            val c = (row[1] as Number).toLong()
+            sid to c
+        }
+        return seriesIds.associateWith { id ->
+            Pair(totals[id] ?: 0L, scored[id] ?: 0L)
+        }
+    }
+
+    private fun Series.toDto(
+        tournamentPlayerIds: List<Long>,
+        syncedGamesCount: Long,
+        scoredGamesCount: Long,
+    ) = SeriesDto(
         id = id!!,
         tournamentId = tournament!!.id!!,
         name = name,
@@ -199,6 +230,8 @@ class SeriesService(
         startsAt = startsAt,
         teamDeadline = teamDeadline,
         finalized = finalized,
+        syncedGamesCount = syncedGamesCount,
+        scoredGamesCount = scoredGamesCount,
         tournamentPlayerIds = tournamentPlayerIds,
     )
 }
