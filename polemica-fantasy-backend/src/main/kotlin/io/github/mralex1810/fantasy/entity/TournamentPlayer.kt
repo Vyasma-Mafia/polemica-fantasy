@@ -26,6 +26,13 @@ class TournamentPlayer(
     @JoinColumn(name = "fantasy_player_id", nullable = false)
     var fantasyPlayer: FantasyPlayer? = null,
 
+    /**
+     * If true, this player is not included in auto-generated card pack draws for this tournament
+     * (both "all tournament players" and explicit pack pools).
+     */
+    @Column(name = "excluded_from_pack_pool", nullable = false)
+    var excludedFromPackPool: Boolean = false,
+
     @OneToMany(mappedBy = "tournamentPlayer")
     var seriesPlayers: MutableList<SeriesPlayer> = mutableListOf(),
 )

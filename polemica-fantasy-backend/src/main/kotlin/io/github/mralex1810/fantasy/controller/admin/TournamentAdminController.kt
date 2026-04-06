@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.AddTournamentPlayerRequest
+import io.github.mralex1810.fantasy.dto.admin.request.PatchTournamentPlayerRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateTournamentRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateTournamentRequest
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentDetailDto
@@ -10,6 +11,7 @@ import io.github.mralex1810.fantasy.service.TournamentService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -58,6 +60,13 @@ class TournamentAdminController(
     ) {
         tournamentService.removePlayer(id, playerId)
     }
+
+    @PatchMapping("/{id}/players/{playerId}")
+    fun patchTournamentPlayer(
+        @PathVariable id: Long,
+        @PathVariable playerId: Long,
+        @Valid @RequestBody body: PatchTournamentPlayerRequest,
+    ): TournamentPlayerDto = tournamentService.patchTournamentPlayer(id, playerId, body)
 
     @PostMapping("/{id}/players/{playerId}/photo", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadPlayerPhoto(

@@ -70,6 +70,8 @@ export interface TournamentPlayerDto {
   polemicaUserId: number
   nickname: string
   photoUrl: string | null
+  /** If true, player is not included in random pack draws for this tournament. */
+  excludedFromPackPool: boolean
 }
 
 export interface TournamentDetailDto extends TournamentDto {

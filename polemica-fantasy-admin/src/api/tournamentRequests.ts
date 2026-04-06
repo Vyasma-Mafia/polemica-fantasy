@@ -20,3 +20,7 @@ export interface AddTournamentPlayerRequest {
   polemicaUserId: number
   nickname: string
 }
+
+export interface PatchTournamentPlayerRequest {
+  excludedFromPackPool: boolean
+}

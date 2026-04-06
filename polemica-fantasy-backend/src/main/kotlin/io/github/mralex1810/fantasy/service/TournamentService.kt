@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.admin.request.AddTournamentPlayerRequest
+import io.github.mralex1810.fantasy.dto.admin.request.PatchTournamentPlayerRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateTournamentRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateTournamentRequest
 import io.github.mralex1810.fantasy.dto.admin.response.ActiveSeriesBriefDto
@@ -193,6 +194,18 @@ class TournamentService(
     }
 
     @Transactional
+    fun patchTournamentPlayer(
+        tournamentId: Long,
+        playerId: Long,
+        request: PatchTournamentPlayerRequest,
+    ): TournamentPlayerDto {
+        val p = tournamentPlayerRepository.findByIdAndTournament_Id(playerId, tournamentId)
+            ?: throw notFound("TournamentPlayer", playerId)
+        p.excludedFromPackPool = request.excludedFromPackPool
+        return tournamentPlayerRepository.save(p).toDto()
+    }
+
+    @Transactional
     fun uploadPlayerPhoto(tournamentId: Long, playerId: Long, file: MultipartFile): TournamentPlayerDto {
         file.validateImageUpload()
         val p = tournamentPlayerRepository.findByIdAndTournament_Id(playerId, tournamentId)
@@ -228,6 +241,7 @@ class TournamentService(
             polemicaUserId = fp.polemicaUserId,
             nickname = fp.nickname,
             photoUrl = fp.photoUrl,
+            excludedFromPackPool = excludedFromPackPool,
         )
     }
 

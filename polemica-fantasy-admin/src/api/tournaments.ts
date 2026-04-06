@@ -1,6 +1,7 @@
 import type {
   AddTournamentPlayerRequest,
   CreateTournamentRequest,
+  PatchTournamentPlayerRequest,
   UpdateTournamentRequest,
 } from './tournamentRequests'
 import type {
@@ -13,6 +14,7 @@ import { apiJson, apiVoid } from './client'
 export type {
   AddTournamentPlayerRequest,
   CreateTournamentRequest,
+  PatchTournamentPlayerRequest,
   UpdateTournamentRequest,
 } from './tournamentRequests'
 
@@ -52,6 +54,17 @@ export function removeTournamentPlayer(tournamentId: number, playerId: number) {
   return apiVoid(`/v1/admin/tournaments/${tournamentId}/players/${playerId}`, {
     method: 'DELETE',
   })
+}
+
+export function patchTournamentPlayer(
+  tournamentId: number,
+  playerId: number,
+  body: PatchTournamentPlayerRequest,
+) {
+  return apiJson<TournamentPlayerDto>(
+    `/v1/admin/tournaments/${tournamentId}/players/${playerId}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  )
 }
 
 export function uploadPlayerPhoto(

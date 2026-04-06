@@ -34,3 +34,8 @@ data class AddTournamentPlayerRequest(
     @field:NotBlank @field:Size(max = 512)
     val nickname: String,
 )
+
+data class PatchTournamentPlayerRequest(
+    @field:NotNull
+    val excludedFromPackPool: Boolean,
+)

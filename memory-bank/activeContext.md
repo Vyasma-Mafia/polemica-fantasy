@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Исключение из пула пака:** колонка `tournament_player.excluded_from_pack_pool` (Flyway **V20**), API `PATCH /api/v1/admin/tournaments/{id}/players/{playerId}` с телом `{"excludedFromPackPool": boolean}`; `CardPackService.buildFantasyPlayerPool` и валидация паков учитывают флаг. Админка: страница турнира, колонка «Пул пака» (Switch).
+
 **Легендарные карты (backend L1–L3):** Flyway **V19** — `user_card.crafted_by_telegram_user_id` → `telegram_user`, ключи `economy_config` `legendary.upgrade.cost` (400), `legendary.team.max_per_series` (1). `UserCardItemDto.craftedByTelegramUserId` (Telegram platform id крафтера). `LegendaryUpgradeService`: EPIC → LEGENDARY in-place, +1 ачивка, списание `LEGENDARY_UPGRADE`, `findOrCreateCardTemplateForAchievements` в `CardPackService`. API: `GET/POST /api/v1/legendary-upgrade` (+ `/info`). `UserFantasyTeamService.attachCards` — не больше `legendary.team.max_per_series` LEGENDARY в команде.
 
 **Порядок серий в турнире (API + TMA):** `SeriesRepository.findAllByTournament_IdOrderByIdDesc` — в ответе `GET /api/v1/tournaments/{id}` и админском списке серий — **от новых к старым** (по `id` DESC). Лидерборд турнира (вкладки) и экран выбора серии (`/tournaments/:id/series`) берут порядок из API. На `SeriesPickerPage` номер бейджа «Серия N» — `gameNumFrom` или хронологический индекс по `id`, чтобы при обратном списке не путать номер серии в турнире.

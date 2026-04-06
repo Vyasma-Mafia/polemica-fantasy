@@ -43,6 +43,8 @@ data class TournamentPlayerDto(
     val polemicaUserId: Long,
     val nickname: String,
     val photoUrl: String?,
+    /** If true, omitted from random pack player pools for this tournament. */
+    val excludedFromPackPool: Boolean,
 )
 
 data class SeriesDto(

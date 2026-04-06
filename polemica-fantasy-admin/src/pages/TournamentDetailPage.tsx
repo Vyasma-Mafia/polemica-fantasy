@@ -6,8 +6,10 @@ import {
   List,
   Modal,
   Space,
+  Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd'
@@ -17,6 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addTournamentPlayer,
   getTournament,
+  patchTournamentPlayer,
   removeTournamentPlayer,
   uploadPlayerPhoto,
 } from '../api/tournaments'
@@ -65,6 +68,21 @@ export function TournamentDetailPage() {
       removeTournamentPlayer(tournamentId, playerId),
     onSuccess: () => {
       message.success('Player removed')
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournament', tournamentId] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const patchPackPool = useMutation({
+    mutationFn: ({
+      playerId,
+      excludedFromPackPool,
+    }: {
+      playerId: number
+      excludedFromPackPool: boolean
+    }) =>
+      patchTournamentPlayer(tournamentId, playerId, { excludedFromPackPool }),
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'tournament', tournamentId] })
     },
     onError: (e: Error) => message.error(e.message),
@@ -277,6 +295,32 @@ export function TournamentDetailPage() {
                   </a>
                 ) : null}
               </Space>
+            ),
+          },
+          {
+            title: (
+              <Tooltip title="Исключить из рандомного пула паков этого турнира (вылетевшие и т.п.)">
+                <span>Пул пака</span>
+              </Tooltip>
+            ),
+            key: 'packPool',
+            width: 110,
+            render: (_, row) => (
+              <Tooltip title="Выкл — может выпасть в паке; вкл — не выпадает">
+                <Switch
+                  checked={row.excludedFromPackPool ?? false}
+                  loading={
+                    patchPackPool.isPending &&
+                    patchPackPool.variables?.playerId === row.id
+                  }
+                  onChange={(checked) =>
+                    patchPackPool.mutate({
+                      playerId: row.id,
+                      excludedFromPackPool: checked,
+                    })
+                  }
+                />
+              </Tooltip>
             ),
           },
           {

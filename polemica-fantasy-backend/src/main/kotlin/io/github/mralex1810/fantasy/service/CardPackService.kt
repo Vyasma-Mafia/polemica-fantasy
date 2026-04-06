@@ -230,14 +230,17 @@ class CardPackService(
 
     private fun buildFantasyPlayerPool(pack: CardPack, tournamentId: Long): List<FantasyPlayer> {
         return if (pack.useAllTournamentPlayers) {
-            val tps = tournamentPlayerRepository.findAllByTournament_IdOrderById(tournamentId)
-            if (tps.isEmpty()) {
-                emptyList()
-            } else {
-                tps.map { it.fantasyPlayer!! }
-            }
+            tournamentPlayerRepository.findAllByTournament_IdOrderById(tournamentId)
+                .filter { !it.excludedFromPackPool }
+                .map { it.fantasyPlayer!! }
         } else {
-            cardPackPlayerRepository.findAllByCardPack_Id(pack.id!!).map { it.fantasyPlayer!! }
+            val excludedIds = tournamentPlayerRepository.findAllByTournament_IdOrderById(tournamentId)
+                .filter { it.excludedFromPackPool }
+                .mapNotNull { it.fantasyPlayer?.id }
+                .toSet()
+            cardPackPlayerRepository.findAllByCardPack_Id(pack.id!!)
+                .map { it.fantasyPlayer!! }
+                .filter { it.id !in excludedIds }
         }
     }
 
@@ -387,8 +390,11 @@ class CardPackService(
         ) {
             validateRarityConfigs(configs)
             if (useAllTournamentPlayers) {
-                if (tournamentPlayerRepository.countByTournament_Id(tournamentId) == 0L) {
-                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Tournament has no players")
+                if (tournamentPlayerRepository.countByTournament_IdAndExcludedFromPackPoolIsFalse(tournamentId) == 0L) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tournament has no players eligible for pack pool (all may be excluded from pack)",
+                    )
                 }
             } else {
                 val ids = playerIds ?: emptyList()
@@ -405,6 +411,18 @@ class CardPackService(
                             "Fantasy player $fpId is not registered in tournament $tournamentId",
                         )
                     }
+                }
+                val anyEligible = ids.any { fpId ->
+                    tournamentPlayerRepository.existsByTournament_IdAndFantasyPlayer_IdAndExcludedFromPackPoolIsFalse(
+                        tournamentId,
+                        fpId,
+                    )
+                }
+                if (!anyEligible) {
+                    throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "All selected players are excluded from pack pool for this tournament",
+                    )
                 }
             }
         }
@@ -433,6 +451,18 @@ class CardPackService(
                     "Fantasy player $fpId is not registered in tournament $tournamentId",
                 )
             }
+        }
+        val anyEligible = playerIds.any { fpId ->
+            tournamentPlayerRepository.existsByTournament_IdAndFantasyPlayer_IdAndExcludedFromPackPoolIsFalse(
+                tournamentId,
+                fpId,
+            )
+        }
+        if (!anyEligible) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "All selected players are excluded from pack pool for this tournament",
+            )
         }
     }
 }
