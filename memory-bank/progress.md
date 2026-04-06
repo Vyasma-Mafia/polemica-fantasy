@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Документация в репозитории
+- [x] **Структура `docs/`:** [`architecture/DESIGN.md`](../docs/architecture/DESIGN.md) (SDD), [`plans/archive/`](../docs/plans/archive/) (V2/V3 планы, CHANGES-V2), [`features/DESIGN-LEGENDARY-CARDS.md`](../docs/features/DESIGN-LEGENDARY-CARDS.md); в корне — [`README.md`](../README.md), указатель [`docs/README.md`](../docs/README.md)
+- [x] **Актуализация SDD:** команды 1–3 карты и награды; базовые очки через `GamePointsService`; V11 `can_appear_on_random_cards`; сущности и API (display name, legendary upgrade, free pack opens, GET `/achievements`, порядок серий, автофинализация, Phase 4+)
+
 ### Поддержка через Telegram Forum + webhook
 - [x] **Flyway V18:** `telegram_support_topic` (`telegram_user_id`, `forum_message_thread_id`)
 - [x] **Backend:** `telegram.support.*` (`TELEGRAM_SUPPORT_ENABLED`, `TELEGRAM_SUPPORT_FORUM_CHAT_ID`, `TELEGRAM_SUPPORT_WEBHOOK_SECRET`); расширен `TelegramBotApiClient` (`getMe`, `createForumTopic`, `sendMessage` с `message_thread_id`, `forwardMessage`, `copyMessage`); `TelegramSupportRelayService`, `TelegramSupportUpdateService`, `TelegramSupportBotIdentity`; `POST /api/v1/telegram/webhook` + `TelegramWebhookController`; `TelegramUserRepository.findByTelegramIdForUpdate` (PESSIMISTIC_WRITE)
@@ -36,7 +40,7 @@
 - [x] **Тесты:** `UserApiIntegrationTest` (PATCH, сброс, лидерборд/owner), `UserServiceFantikiIntegrationTest` (конкурентные вызовы)
 - [x] **TMA:** `formatUserDisplayName`, форма на странице магазина, `PATCH` в `api/client`
 
-### V3 — Экономика (контракты + финализация серии) — [`PLAN-V3.md`](../PLAN-V3.md)
+### V3 — Экономика (контракты + финализация серии) — [`PLAN-V3.md`](../docs/plans/archive/PLAN-V3.md)
 - [x] **Flyway V13:** `user_card.uses_remaining`, `times_renewed`; `series.finalized`; `economy_config` + сиды; бэкофилл uses по редкости
 - [x] **Backend:** `EconomyConfigService` (кэш + инвалидация из админки), `CardLifecycleService` (recycle/renew), `SeriesFinalizationService` (декремент uses + награды по лидерборду); причины `SERIES_REWARD`, `CARD_RECYCLE`, `CARD_RENEWAL`; выдача карт с uses из конфига; проверка uses при сборке команды; API user `/me/cards/{id}/recycle|renew`, `/me/economy-info`; admin `POST /series/{id}/finalize`, `GET/PUT /economy-config`
 - [x] **Тесты:** `CardLifecycleServiceTest`, `SeriesFinalizationServiceTest`, интеграция admin economy config в `AdminApiIntegrationTest`
@@ -80,7 +84,7 @@
 - [x] **VPS:** `fantasy.maftourbot.ru` — TMA; `admin.fantasy.maftourbot.ru` — админ SPA; Docker Compose prod (`docker-compose.prod.yml`), nginx + Let’s Encrypt; см. [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf), [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf)
 - [x] **VPS — репозиторий:** `~/polemica-fantasy` на `mafia@51.250.18.236` — **git** (ветка `master`, remote по SSH), не «голая» копия без `.git`; обновление кода прежде всего **`git pull`**, не только rsync
 - [x] Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 — скелет проекта
-- [x] Дизайн-документ (`DESIGN.md`) — актуализирован под глобальных игроков и карточки (Fantasy Player, §4 / API / S3)
+- [x] Дизайн-документ [`docs/architecture/DESIGN.md`](../docs/architecture/DESIGN.md) — SDD (глобальные игроки, карточки, API, V3+, легендарки)
 - [x] Memory Bank инициализирован
 - [x] Docker Compose (PostgreSQL 16 + MinIO + backend), корневой `docker-compose.yml`, `.env.example`
 - [x] Multi-stage `polemica-fantasy-backend/Dockerfile`, `.dockerignore`
@@ -112,7 +116,7 @@
 - [x] `PolemicaIntegrationService` — пагинация `getProfileGames`, `getMatch`, JSON в `JsonNode`
 - [x] `DefaultGameSyncService` — игроки серии → профильные match id → `getMatch` → фильтр по `namePrefix` → upsert `SeriesGame`, без кредов Polemica → HTTP 400
 - [x] `AchievementDetector` + 8 компонентов (логика как в polemica-achievement-service: `sniper`, `winThreeToThree`, …) + `AchievementDetectorRegistry` (**V2:** идентификаторы — строки `achievement.id`, не enum)
-- [x] `DefaultScoringService` — очки по формуле DESIGN §5.3, `FantasyTeamRepository.findAllWithCardsForScoring`; базовые очки из `GamePointsService` (polemica-library), префетч по `polemica_game_id` при расчёте серии
+- [x] `DefaultScoringService` — очки по формуле DESIGN §5.4, `FantasyTeamRepository.findAllWithCardsForScoring`; базовые очки из `GamePointsService` (polemica-library), префетч по `polemica_game_id` при расчёте серии
 - [x] Flyway `V2__series_game_unique.sql`
 - [x] Flyway `V4__tournament_kind_competition.sql` — `tournament.kind`, `tournament.polemica_competition_id`, `series.game_num_from` / `game_num_to`, `series.name_prefix` nullable
 - [x] `TournamentKind`, ветвление `DefaultGameSyncService` (STANDALONE vs POLEMICA_COMPETITION); `PolemicaIntegrationService` — competitions + `getGamesFromCompetition` / `getGameFromCompetition`; `PolemicaAdminController` — read-only список/деталь Competition

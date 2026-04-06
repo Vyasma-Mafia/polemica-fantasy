@@ -1,5 +1,7 @@
 # Polemica Fantasy V3 — Экономика: Контракты + Цикл фантиков
 
+> **Архив:** план реализован. Актуальный SDD: [`../../architecture/DESIGN.md`](../../architecture/DESIGN.md).
+
 ## Мотивация
 
 Текущая проблема: карточки вечные, после сбора топ-колоды нет причины покупать новые паки.
@@ -455,6 +457,8 @@ fun finalizeSeries(seriesId: Long): SeriesFinalizationResultDto
 ---
 
 ## Обновления DESIGN.md после реализации
+
+Целевой файл: [`../../architecture/DESIGN.md`](../../architecture/DESIGN.md) (секции ниже там поддерживаются).
 
 - §2 Glossary — термины: Card Contract, Recycle, Renewal, Finalize, Economy Config
 - §4.1 ERD — `user_card` (новые поля), `economy_config` (новая таблица), `series.finalized`

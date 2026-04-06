@@ -1,5 +1,7 @@
 # Polemica Fantasy V2 — План работ
 
+> **Архив:** план выполнен. Актуальный SDD: [`../../architecture/DESIGN.md`](../../architecture/DESIGN.md).
+
 ## Порядок выполнения
 
 ```
