@@ -904,12 +904,16 @@ button.pf-mini-card:disabled {
 }
 
 .pf-team-card__img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
 }
 
 .pf-team-card__ph {
+  position: relative;
+  z-index: 1;
   aspect-ratio: 3/4;
   display: flex;
   align-items: center;
@@ -924,6 +928,7 @@ button.pf-mini-card:disabled {
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 2;
   padding: 12px 8px 8px;
   background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.72) 40%, rgba(0, 0, 0, 0.93) 100%);
   text-align: left;
@@ -974,6 +979,56 @@ button.pf-mini-card:disabled {
 .pf-team-card--legendary {
   border-color: var(--pf-gold);
   box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
+/* Подложка под фото (как у коллекции / legendary-card-preview) */
+.pf-team-card--common .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-team-card--rare .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-team-card--epic .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-team-card--legendary:not(.pf-team-card--legendary-crafted) .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
 }
 
 .pf-team-card--legendary-crafted:not(.pf-team-card--dead) {
@@ -1635,6 +1690,7 @@ button.pf-mini-card:disabled {
 }
 
 .pf-fantasy-card {
+  position: relative;
   flex: 0 0 78%;
   max-width: 260px;
   scroll-snap-align: center;
@@ -1668,7 +1724,75 @@ button.pf-mini-card:disabled {
   box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
 }
 
+/* Подложка под фото в карусели (та же, что в коллекции) */
+.pf-fantasy-card--common::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-fantasy-card--rare::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-fantasy-card--epic::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-fantasy-card--legendary::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
 .pf-fantasy-card__img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
@@ -1676,6 +1800,8 @@ button.pf-mini-card:disabled {
 }
 
 .pf-fantasy-card__ph {
+  position: relative;
+  z-index: 1;
   aspect-ratio: 3/4;
   display: flex;
   align-items: center;
@@ -1743,6 +1869,7 @@ button.pf-mini-card:disabled {
 }
 
 .pf-modal__img-frame {
+  position: relative;
   border-radius: var(--pf-radius-sm);
   overflow: hidden;
   margin-bottom: 10px;
@@ -1767,6 +1894,55 @@ button.pf-mini-card:disabled {
   box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
 }
 
+.pf-modal__img-frame--common::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-modal__img-frame--rare::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-modal__img-frame--epic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-modal__img-frame--legendary:not(.pf-modal__img-frame--legendary-crafted)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
 .pf-modal__img-frame--legendary-crafted {
   border: none;
   background:
@@ -1781,6 +1957,8 @@ button.pf-mini-card:disabled {
 }
 
 .pf-modal__img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   display: block;
 }
@@ -2377,6 +2555,56 @@ button.pf-mini-card:disabled {
   animation: pf-pack-legendary-pulse 2.4s ease-in-out infinite;
 }
 
+/* Подложка под фото при раскрытии пака */
+.pf-pack-open__card-wrap--common .pf-pack-open__card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-pack-open__card-wrap--rare .pf-pack-open__card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-pack-open__card-wrap--epic .pf-pack-open__card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-pack-open__card-wrap--legendary .pf-pack-open__card-inner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
 .pf-pack-open__card-wrap--legendary .pf-pack-open__flip {
   animation: pf-pack-flip-in 0.75s ease-out forwards;
 }
@@ -2455,6 +2683,8 @@ button.pf-mini-card:disabled {
 }
 
 .pf-pack-open__card-img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
@@ -2462,6 +2692,8 @@ button.pf-mini-card:disabled {
 }
 
 .pf-pack-open__card-ph {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3 / 4;
   display: flex;
@@ -2605,7 +2837,58 @@ button.pf-mini-card:disabled {
   box-shadow: 0 0 16px rgba(232, 197, 71, 0.3);
 }
 
+.pf-pack-open__summary-card--common .pf-pack-open__summary-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-pack-open__summary-card--rare .pf-pack-open__summary-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-pack-open__summary-card--epic .pf-pack-open__summary-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-pack-open__summary-card--legendary .pf-pack-open__summary-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
 .pf-pack-open__summary-card-img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
@@ -2613,6 +2896,8 @@ button.pf-mini-card:disabled {
 }
 
 .pf-pack-open__summary-card-ph {
+  position: relative;
+  z-index: 1;
   width: 100%;
   aspect-ratio: 3 / 4;
   background: var(--pf-bg);
@@ -2628,7 +2913,7 @@ button.pf-mini-card:disabled {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 1;
+  z-index: 2;
   padding: 8px 6px 6px;
   background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.65) 35%, rgba(0, 0, 0, 0.94) 100%);
 }
