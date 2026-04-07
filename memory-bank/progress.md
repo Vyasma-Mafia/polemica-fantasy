@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### STANDALONE: подбор игр серии по профилю (min(8, N))
+- [x] **`DefaultGameSyncService.fetchStandalonePrepared`:** частоты match id по страницам профиля; порог **≥ min(8, N)** игроков ростера, затем `name_prefix`; константа `STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP`.
+- [x] **`scripts/trace_series_game_sync.py`:** та же логика, `--min-overlap` (default 8).
+
 ### Документация в репозитории
 - [x] **Структура `docs/`:** [`architecture/DESIGN.md`](../docs/architecture/DESIGN.md) (SDD), [`plans/archive/`](../docs/plans/archive/) (V2/V3 планы, CHANGES-V2), [`features/DESIGN-LEGENDARY-CARDS.md`](../docs/features/DESIGN-LEGENDARY-CARDS.md); в корне — [`README.md`](../README.md), указатель [`docs/README.md`](../docs/README.md)
 - [x] **Актуализация SDD:** команды 1–3 карты и награды; базовые очки через `GamePointsService`; V11 `can_appear_on_random_cards`; сущности и API (display name, legendary upgrade, free pack opens, GET `/achievements`, порядок серий, автофинализация, Phase 4+)

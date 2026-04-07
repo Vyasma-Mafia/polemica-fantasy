@@ -15,6 +15,8 @@
 
 **Sync/scoring и Hikari:** HTTP к Polemica не внутри `@Transactional` — сначала загрузка/подготовка данных (`DefaultGameSyncService`: список `PreparedSeriesGame`; `DefaultScoringService`: `gamePointsService.fetchPlayerStats` по id игр), затем короткая транзакция записи через `TransactionTemplate` (`persistPreparedGames` / `applyScoresInTransaction`), чтобы не удерживать соединение пула на время сетевых вызовов.
 
+**STANDALONE sync игр:** `fetchStandalonePrepared` — кандидаты по профилю, если match id есть у **≥ min(8, N)** игроков ростера (**N** = размер ростера), затем `name_prefix` и `loadMatch`; константа `STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP = 8`. Скрипт [`scripts/trace_series_game_sync.py`](../scripts/trace_series_game_sync.py) — флаг `--min-overlap` (default 8).
+
 **Отображаемое имя (TMA):** колонка `telegram_user.display_name`, `PATCH /api/v1/me` с телом `{"displayName":…}` (null/`""` — сброс); `first_name`/`username` по-прежнему синхронизируются из Telegram initData, кастомный ник не затирается. Лидерборд и публичная команда отдают `displayName` в `UserPublicDto`. Гонка при первом `INSERT` одного `telegram_id`: вставка + INITIAL фантиков в `TelegramUserBootstrapService.insertNewUserWithInitialFantiki` с `REQUIRES_NEW`, при `23505` — догрузка строки и обновление полей Telegram в основной транзакции. Flyway **V14**.
 
 **Неполная команда на серию:** можно выставить 1–3 карты; награда за место при финализации масштабируется ⌈⅓⌉ / ⌈⅔⌉ / 100% от суммы из `economy_config` (см. `SeriesFinalizationService.scaleSeriesRewardByRosterSize`).

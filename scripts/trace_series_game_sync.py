@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Пошаговая трассировка логики sync игр серии (как DefaultGameSyncService).
+Пошаговая трассировка логики sync игр серии (как DefaultGameSyncService.fetchStandalonePrepared).
 
 Источники:
 - polemica-fantasy-backend/.../DefaultGameSyncService.kt
@@ -20,10 +20,12 @@
   python3 scripts/trace_series_game_sync.py --series-id 1 --insecure
 
 Коды «потери» игр в бэкенде:
-- STANDALONE: матч не в пересечении профильных id всех игроков; имя не начинается с name_prefix;
-  лимит 500 последних игр на игрока (PROFILE_SYNC_PAGE_SIZE) — если у кого-то в истории >500 игр,
-  общие матчи старее «хвоста» не попадут в пересечение.
+- STANDALONE: id матча встречается в профильной выборке у меньше чем min(min_overlap, N) игроков из N в серии;
+  имя не начинается с name_prefix; лимит 500 последних игр на игрока (PROFILE_SYNC_PAGE_SIZE) —
+  если у кого-то в истории >500 игр, матчи старее «хвоста» не учитываются в частотах.
 - POLEMICA_COMPETITION: num вне [game_num_from, game_num_to]; в upsertSeriesGame при game.id == null запись не создаётся.
+
+По умолчанию min_overlap=8 (как STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP в Kotlin); для ростера короче 8 порог = размер ростера.
 """
 
 from __future__ import annotations
@@ -134,10 +136,11 @@ def trace_standalone(
     profile_page_limit: int,
     polemica: Optional[PolemicaAuth],
     insecure: bool,
+    min_overlap: int,
     polemica_login_failed: bool = False,
 ) -> None:
     prefix = (series.get("namePrefix") or "").strip()
-    print("\n=== STANDALONE sync (как syncStandalone) ===")
+    print("\n=== STANDALONE sync (как fetchStandalonePrepared) ===")
     if not prefix:
         print("ERROR: name_prefix пуст — бэкенд вернёт 400.")
         return
@@ -169,15 +172,22 @@ def trace_standalone(
     if not id_sets:
         return
 
-    intersection: Set[int] = set(id_sets[0])
-    for s in id_sets[1:]:
-        intersection &= s
-    print(f"\nПересечение match id по всем игрокам: {len(intersection)} шт.")
-    if len(intersection) > 30:
-        sample = sorted(intersection)[:15]
+    freq: Dict[int, int] = {}
+    for s in id_sets:
+        for mid in s:
+            freq[mid] = freq.get(mid, 0) + 1
+    threshold = min(min_overlap, len(id_sets))
+    candidates = sorted(mid for mid, c in freq.items() if c >= threshold)
+    print(
+        f"\nПорог совпадений в профильной выборке: {threshold} из {len(id_sets)} "
+        f"(min_overlap={min_overlap}, как в бэкенде)"
+    )
+    print(f"Кандидатов match id (частота ≥ {threshold}): {len(candidates)} шт.")
+    if len(candidates) > 30:
+        sample = candidates[:15]
         print(f"  (первые 15 id: {sample} …)")
     else:
-        print(f"  ids: {sorted(intersection)}")
+        print(f"  ids: {candidates}")
 
     if not polemica:
         if polemica_login_failed:
@@ -197,7 +207,7 @@ def trace_standalone(
     kept: List[int] = []
     dropped_prefix: List[Tuple[int, str]] = []
     dropped_null_id: List[int] = []
-    for mid in sorted(intersection):
+    for mid in candidates:
         try:
             game = polemica.get_json(f"/v1/matches/{mid}")
         except RuntimeError as e:
@@ -290,6 +300,12 @@ def main() -> None:
     ap.add_argument("--polemica-user", default=None, help="Логин Polemica API (иначе env POLEMICA_USERNAME)")
     ap.add_argument("--polemica-password", default=None, help="Пароль Polemica API (иначе env POLEMICA_PASSWORD)")
     ap.add_argument("--profile-limit", type=int, default=500, help="Как PROFILE_SYNC_PAGE_SIZE в бэкенде")
+    ap.add_argument(
+        "--min-overlap",
+        type=int,
+        default=8,
+        help="Мин. число игроков ростера, у которых match id есть в профиле (бэкенд: min(8, N); см. STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP)",
+    )
     ap.add_argument("--insecure", action="store_true", help="Не проверять TLS (для IP с самоподписанным сертификатом)")
     args = ap.parse_args()
 
@@ -356,6 +372,7 @@ def main() -> None:
             args.profile_limit,
             polemica,
             args.insecure,
+            min_overlap=args.min_overlap,
             polemica_login_failed=polemica_login_failed,
         )
     elif kind == "POLEMICA_COMPETITION":

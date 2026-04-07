@@ -76,10 +76,14 @@ class DefaultGameSyncService(
             val uid = sp.tournamentPlayer!!.fantasyPlayer!!.polemicaUserId
             integration.fetchRecentProfileRowsForSync(uid).map { it.id }.toSet()
         }
-        val matchIds = LinkedHashSet(idSets.first())
-        for (i in 1 until idSets.size) {
-            matchIds.retainAll(idSets[i])
+        val freq = mutableMapOf<Long, Int>()
+        for (set in idSets) {
+            for (id in set) {
+                freq[id] = (freq[id] ?: 0) + 1
+            }
         }
+        val threshold = minOf(STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP, idSets.size)
+        val matchIds = freq.filter { it.value >= threshold }.keys.sorted()
 
         val loaded = mutableMapOf<Long, PolemicaGame>()
         val result = mutableListOf<PreparedSeriesGame>()
@@ -170,5 +174,13 @@ class DefaultGameSyncService(
         if (trimmed.isNotEmpty()) return trimmed
         val n = game.num
         return if (n != null) "Игра $n" else "Игра #${game.id}"
+    }
+
+    private companion object {
+        /**
+         * STANDALONE sync: a profile match id is a candidate if it appears in at least this many
+         * players' recent profile pages (capped by roster size), then [Series.namePrefix] filters.
+         */
+        private const val STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP = 8
     }
 }
