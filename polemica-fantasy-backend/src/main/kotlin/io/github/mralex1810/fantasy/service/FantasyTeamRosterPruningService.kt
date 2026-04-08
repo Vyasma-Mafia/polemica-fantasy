@@ -48,15 +48,15 @@ class FantasyTeamRosterPruningService(
         }
         fantasyTeamCardRepository.flush()
 
+        // Flush each slot change separately: UNIQUE (fantasy_team_id, slot) is checked per UPDATE;
+        // a single Hibernate flush can reorder SQL so a row moves into slot N before the row at N moves away.
         val remaining = team.cards.sortedBy { it.slot }.toMutableList()
         remaining.forEachIndexed { index, ftc ->
             val newSlot = index + 1
             if (ftc.slot != newSlot) {
                 ftc.slot = newSlot
+                fantasyTeamCardRepository.saveAndFlush(ftc)
             }
-        }
-        if (remaining.isNotEmpty()) {
-            fantasyTeamCardRepository.saveAll(remaining)
         }
 
         if (team.cards.isEmpty()) {

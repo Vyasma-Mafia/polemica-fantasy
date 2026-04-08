@@ -16,15 +16,14 @@ import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Captor
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.ArgumentMatchers
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
-import org.mockito.ArgumentCaptor
 import java.time.Instant
 import java.util.Optional
 
@@ -42,9 +41,6 @@ class FantasyTeamRosterPruningServiceTest {
 
     @Mock
     private lateinit var fantasyTeamCardRepository: FantasyTeamCardRepository
-
-    @Captor
-    private lateinit var savedCardsCaptor: ArgumentCaptor<List<FantasyTeamCard>>
 
     @InjectMocks
     private lateinit var service: FantasyTeamRosterPruningService
@@ -99,11 +95,47 @@ class FantasyTeamRosterPruningServiceTest {
         service.pruneInvalidCardsForSeries(seriesId)
 
         verify(fantasyTeamCardRepository).delete(c2)
-        verify(fantasyTeamCardRepository).saveAll(savedCardsCaptor.capture())
-        val saved = savedCardsCaptor.value
-        assertEquals(2, saved.size)
-        assertEquals(1, saved[0].slot)
-        assertEquals(2, saved[1].slot)
+        verify(fantasyTeamCardRepository).saveAndFlush(c3)
+        assertEquals(2, c3.slot)
+        verify(fantasyTeamCardRepository, never()).saveAll(ArgumentMatchers.anyList())
+        verify(fantasyTeamRepository, never()).delete(team)
+    }
+
+    @Test
+    fun `removes invalid first slot and renumbers high slots without unique violation order`() {
+        val series = Series(
+            tournament = Tournament(name = "t"),
+            name = "s",
+            teamDeadline = Instant.now().plusSeconds(3600),
+        ).apply { id = seriesId }
+        `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
+
+        val fp1 = fp(1L)
+        val fp2 = fp(2L)
+        val fp3 = fp(3L)
+        val uc1 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp1), usesRemaining = 1).apply { id = 101L }
+        val uc2 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp2), usesRemaining = 1).apply { id = 102L }
+        val uc3 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp3), usesRemaining = 1).apply { id = 103L }
+
+        val team = FantasyTeam().apply { id = 7L }
+        val c1 = FantasyTeamCard(fantasyTeam = team, userCard = uc1, slot = 1)
+        val c2 = FantasyTeamCard(fantasyTeam = team, userCard = uc2, slot = 2)
+        val c3 = FantasyTeamCard(fantasyTeam = team, userCard = uc3, slot = 3)
+        team.cards = mutableListOf(c1, c2, c3)
+
+        `when`(fantasyTeamRepository.findAllBySeries_IdWithCards(seriesId)).thenReturn(listOf(team))
+        `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 1L)).thenReturn(false)
+        `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 2L)).thenReturn(true)
+        `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 3L)).thenReturn(true)
+
+        service.pruneInvalidCardsForSeries(seriesId)
+
+        verify(fantasyTeamCardRepository).delete(c1)
+        val ord = inOrder(fantasyTeamCardRepository)
+        ord.verify(fantasyTeamCardRepository).saveAndFlush(c2)
+        ord.verify(fantasyTeamCardRepository).saveAndFlush(c3)
+        assertEquals(1, c2.slot)
+        assertEquals(2, c3.slot)
         verify(fantasyTeamRepository, never()).delete(team)
     }
 
@@ -130,5 +162,6 @@ class FantasyTeamRosterPruningServiceTest {
         verify(fantasyTeamCardRepository).delete(c1)
         verify(fantasyTeamRepository).delete(team)
         verify(fantasyTeamCardRepository, never()).saveAll(ArgumentMatchers.anyList())
+        verify(fantasyTeamCardRepository, never()).saveAndFlush(ArgumentMatchers.any())
     }
 }

@@ -7,7 +7,7 @@
 
 **Порядок серий в турнире (API + TMA):** `SeriesRepository.findAllByTournament_IdOrderByIdDesc` — в ответе `GET /api/v1/tournaments/{id}` и админском списке серий — **от новых к старым** (по `id` DESC). Лидерборд турнира (вкладки) и экран выбора серии (`/tournaments/:id/series`) берут порядок из API. На `SeriesPickerPage` номер бейджа «Серия N» — `gameNumFrom` или хронологический индекс по `id`, чтобы при обратном списке не путать номер серии в турнире.
 
-**Ростер серии и фэнтези:** при смене игроков серии до дедлайна `FantasyTeamRosterPruningService` убирает из `fantasy_team_card` карты игроков, которых больше нет в `series_player` (вызов из `assignPlayers` и при GET команды); Flyway **V17** — разовая чистка для `series_id = 5`.
+**Ростер серии и фэнтези:** при смене игроков серии до дедлайна `FantasyTeamRosterPruningService` убирает из `fantasy_team_card` карты игроков, которых больше нет в `series_player` (вызов из `assignPlayers` и при GET команды); Flyway **V17** — разовая чистка для `series_id = 5`. После удаления строк уплотнение слотов `1..n` делает **`saveAndFlush` по одной карточке** (а не `saveAll`), чтобы не ловить `23505` на `UNIQUE (fantasy_team_id, slot)` из‑за порядка SQL при одном flush.
 
 **Бесплатные паки:** лимит задаётся на паке (`card_pack.free_opens_per_user`), учёт в `user_card_pack_free_usage`; админка — Card packs; TMA магазин показывает остаток и не требует баланса, пока есть квота.
 
