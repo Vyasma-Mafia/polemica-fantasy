@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Награды лидерборда серии: топ-25 и топ-50
+- [x] **Flyway V21:** ключи `economy_config` `series.reward.top25`, `series.reward.top50`; подпись участия — «51+ место»
+- [x] **`EconomyConfigService`:** `getSeriesReward` — диапазоны 11–25 и 26–50; `seriesRewardKeysInOrder` — 7 тиров
+- [x] **Админка:** порядок строк наград серии в таблице Economy
+- [x] **TMA Справка:** текст про диапазоны мест + список сумм из `economy-info`
+- [x] **Тест:** `UserApiIntegrationTest` ожидает `seriesRewards.length() == 7`
+
 ### Детекторы достижений (polemica-fantasy-backend)
 - [x] **`votingOnlyForBlack`:** учитывается только если у мирного есть хотя бы одно финальное голосование (`mine.isNotEmpty()`), иначе пустой список давал бы «все голоса за чёрных» по `Collection.all`.
 - [x] **`sniper`:** дополнительно требуется смерть шерифа в **ночь 1** (`getKilled` + `night == 1`), а не только «реальный ком-убийца» по первой жертве в целом.

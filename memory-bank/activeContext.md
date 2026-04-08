@@ -79,6 +79,7 @@
 
 ## Недавние правки (экономика TMA)
 - **`EconomyConfigService.buildEconomyInfo`:** строки наград за лидерборд серии формируются из БД (`economy_config`: `description` как подпись, `value` как сумма через тот же кэш, что и финализация); порядок ключей `series.reward.*` зафиксирован списком в сервисе (как и в `getSeriesReward`). Интеграционный тест: `UserApiIntegrationTest` — `GET economy-info returns…`.
+- **Тиры топ-25 / топ-50:** Flyway **V21** — `series.reward.top25` (11–25 место), `series.reward.top50` (26–50); участие с **51+** места (`description` у `series.reward.participation` обновлена). `getSeriesReward` и список в `buildEconomyInfo` синхронизированы. Админка **Economy**: сортировка строк «Series rewards» в логическом порядке. Справка `/help`: пояснение диапазонов мест + динамический список из API.
 
 ## Недавние правки TMA (лидерборд и чужие команды)
 - **Просмотр команды из лидерборда серии:** `GET /api/v1/series/{id}/users/{telegramId}/fantasy-team` и `.../fantasy-team/details`; в TMA маршрут `/series/:seriesId/leaderboard/player/:telegramId` (`LeaderboardPlayerTeamPage`), переход по строке лидерборда (серия и вкладка серии на лидерборде турнира; вкладка «Общий» без ссылки на команду).

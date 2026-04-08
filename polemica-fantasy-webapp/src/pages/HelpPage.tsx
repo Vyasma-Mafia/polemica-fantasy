@@ -171,6 +171,11 @@ export function HelpPage() {
               </section>
               <section className="pf-economy__section">
                 <h3 className="pf-economy__h">Награды за лидерборд серии</h3>
+                <p className="pf-muted">
+                  Место — итоговая позиция команды в лидерборде серии. Диапазоны: 1-е, 2-е, 3-е, 4–10, 11–25, 26–50,
+                  остальные участники. Конкретные суммы — ниже; при неполном составе команды награда может быть ниже (см.
+                  раздел «Подсчёт баллов»).
+                </p>
                 <ul className="pf-economy__list">
                   {economyQ.data!.seriesRewards.map((t) => (
                     <li key={t.label}>

@@ -274,7 +274,7 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.recycleValues.EPIC").value(60))
             .andExpect(jsonPath("$.renewalCosts.RARE").value(60))
             .andExpect(jsonPath("$.maxRenewals").value(2))
-            .andExpect(jsonPath("$.seriesRewards.length()").value(5))
+            .andExpect(jsonPath("$.seriesRewards.length()").value(7))
             .andExpect(jsonPath("$.seriesRewards[0].fantiki").value(100))
             .andExpect(jsonPath("$.seriesRewards[0].label").value("Награда за 1 место"))
     }

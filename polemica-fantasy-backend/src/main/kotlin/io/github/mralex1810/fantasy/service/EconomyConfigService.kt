@@ -21,6 +21,8 @@ class EconomyConfigService(
         "series.reward.2",
         "series.reward.3",
         "series.reward.top10",
+        "series.reward.top25",
+        "series.reward.top50",
         "series.reward.participation",
     )
 
@@ -72,6 +74,8 @@ class EconomyConfigService(
             position == 2 -> getLong("series.reward.2")
             position == 3 -> getLong("series.reward.3")
             position in 4..10 -> getLong("series.reward.top10")
+            position in 11..25 -> getLong("series.reward.top25")
+            position in 26..50 -> getLong("series.reward.top50")
             else -> getLong("series.reward.participation")
         }
     }

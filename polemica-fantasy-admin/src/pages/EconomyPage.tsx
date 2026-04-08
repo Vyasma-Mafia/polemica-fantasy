@@ -12,6 +12,22 @@ function categoryForKey(key: string): string {
   return 'Other'
 }
 
+/** Matches backend [EconomyConfigService] tier order for leaderboard rewards. */
+const SERIES_REWARD_KEY_ORDER: string[] = [
+  'series.reward.1',
+  'series.reward.2',
+  'series.reward.3',
+  'series.reward.top10',
+  'series.reward.top25',
+  'series.reward.top50',
+  'series.reward.participation',
+]
+
+function seriesRewardSortIndex(key: string): number {
+  const i = SERIES_REWARD_KEY_ORDER.indexOf(key)
+  return i === -1 ? 999 : i
+}
+
 export function EconomyPage() {
   const { message } = App.useApp()
   const qc = useQueryClient()
@@ -34,6 +50,11 @@ export function EconomyPage() {
       const ca = categoryForKey(a.key)
       const cb = categoryForKey(b.key)
       if (ca !== cb) return ca.localeCompare(cb)
+      if (ca === 'Series rewards' && cb === 'Series rewards') {
+        const ia = seriesRewardSortIndex(a.key)
+        const ib = seriesRewardSortIndex(b.key)
+        if (ia !== ib) return ia - ib
+      }
       return a.key.localeCompare(b.key)
     })
   }, [q.data])
