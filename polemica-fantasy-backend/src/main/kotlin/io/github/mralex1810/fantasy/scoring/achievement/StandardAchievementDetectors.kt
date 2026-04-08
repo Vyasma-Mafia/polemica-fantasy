@@ -9,6 +9,7 @@ import com.github.mafia.vyasma.polemica.library.utils.getBlacksOnTable
 import com.github.mafia.vyasma.polemica.library.utils.getCriticDay
 import com.github.mafia.vyasma.polemica.library.utils.getFinalVotes
 import com.github.mafia.vyasma.polemica.library.utils.getKickedFromTable
+import com.github.mafia.vyasma.polemica.library.utils.getKilled
 import com.github.mafia.vyasma.polemica.library.utils.getRealComKiller
 import com.github.mafia.vyasma.polemica.library.utils.getRole
 import com.github.mafia.vyasma.polemica.library.utils.isBlack
@@ -23,8 +24,15 @@ private fun boolToInt(value: Boolean): Int = if (value) 1 else 0
 @Component
 class SniperAchievementDetector : AchievementDetector {
     override val type = "sniper"
-    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int =
-        boolToInt(game.getRealComKiller() == player.position)
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
+        if (game.getRealComKiller() != player.position) return 0
+        val sheriffShotNight1 =
+            game.getKilled(null).any { killed ->
+                val pos = killed.position
+                killed.night == 1 && pos != null && game.getRole(pos) == Role.SHERIFF
+            }
+        return boolToInt(sheriffShotNight1)
+    }
 }
 
 /** Выиграйте за черного 3 в 3 — [WinThreeToThreeLastAchievement] */
@@ -113,9 +121,10 @@ class VotingOnlyForBlackAchievementDetector : AchievementDetector {
         game.check {
             assert { player.role == Role.PEACE }
             val votes = game.getFinalVotes(null)
+            val mine = votes.filter { it.position == player.position }
             return boolToInt(
-                votes.filter { it.position == player.position }
-                    .all { fv -> fv.convicted.any { game.getRole(it).isBlack() } },
+                mine.isNotEmpty() &&
+                    mine.all { fv -> fv.convicted.any { game.getRole(it).isBlack() } },
             )
         }
 }

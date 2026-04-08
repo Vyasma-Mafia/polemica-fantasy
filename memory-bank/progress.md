@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Детекторы достижений (polemica-fantasy-backend)
+- [x] **`votingOnlyForBlack`:** учитывается только если у мирного есть хотя бы одно финальное голосование (`mine.isNotEmpty()`), иначе пустой список давал бы «все голоса за чёрных» по `Collection.all`.
+- [x] **`sniper`:** дополнительно требуется смерть шерифа в **ночь 1** (`getKilled` + `night == 1`), а не только «реальный ком-убийца» по первой жертве в целом.
+
 ### STANDALONE: подбор игр серии по профилю (min(8, N))
 - [x] **`DefaultGameSyncService.fetchStandalonePrepared`:** частоты match id по страницам профиля; порог **≥ min(8, N)** игроков ростера, затем `name_prefix`; константа `STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP`.
 - [x] **`scripts/trace_series_game_sync.py`:** та же логика, `--min-overlap` (default 8).
