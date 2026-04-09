@@ -5,7 +5,7 @@ import { apiGet } from '../api/client'
 import type { UserTournamentDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
-import { formatDateShort } from '../lib/tournamentDates'
+import { formatDateShortWithTime } from '../lib/tournamentDates'
 import { useNow } from '../lib/useNow'
 
 export function SeriesPickerPage() {
@@ -51,7 +51,7 @@ export function SeriesPickerPage() {
                   <span className="pf-day-card__badge-num">{seriesNum}</span>
                 </div>
                 <div className="pf-day-card__body">
-                  <p className="pf-day-card__deadline">Доступно до: {formatDateShort(deadline)}</p>
+                  <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
                   <p className="pf-day-card__name">{s.name}</p>
                 </div>
                 <div className="pf-day-card__action">

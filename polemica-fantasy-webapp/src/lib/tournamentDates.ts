@@ -17,3 +17,14 @@ export function tournamentSeriesDateRange(series: UserSeriesSummary[]): { from: 
 export function formatDateShort(d: Date): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+/** Дата и время дедлайна состава (часы:минуты). */
+export function formatDateShortWithTime(d: Date): string {
+  return d.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

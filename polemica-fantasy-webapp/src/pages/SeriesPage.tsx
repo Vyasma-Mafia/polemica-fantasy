@@ -5,7 +5,7 @@ import type { UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
-import { formatDateShort } from '../lib/tournamentDates'
+import { formatDateShortWithTime } from '../lib/tournamentDates'
 
 export function SeriesPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
@@ -31,7 +31,7 @@ export function SeriesPage() {
           <SeriesStatusBadge status={s.status} />
         </div>
         <p className="pf-hero-card__meta">
-          Дедлайн команды: {formatDateShort(new Date(s.teamDeadline))}
+          Дедлайн команды: {formatDateShortWithTime(new Date(s.teamDeadline))}
         </p>
       </div>
       <div className="pf-action-grid pf-action-grid--single">

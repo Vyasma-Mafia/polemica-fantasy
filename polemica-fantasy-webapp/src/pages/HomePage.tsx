@@ -4,7 +4,7 @@ import { apiGet } from '../api/client'
 import type { SeriesOpenForTeam, UserTournament } from '../api/types'
 import { TournamentStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
-import { formatDateShort } from '../lib/tournamentDates'
+import { formatDateShortWithTime } from '../lib/tournamentDates'
 
 export function HomePage() {
   const initData = useInitData()
@@ -62,7 +62,7 @@ export function HomePage() {
                     </div>
                     <div className="pf-day-card__body">
                       <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
-                      <p className="pf-day-card__deadline">Доступно до: {formatDateShort(deadline)}</p>
+                      <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
                     </div>
                     <div className="pf-day-card__action">

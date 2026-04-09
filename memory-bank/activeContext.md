@@ -99,6 +99,7 @@
 - **Просмотр команды из лидерборда серии:** `GET /api/v1/series/{id}/users/{telegramId}/fantasy-team` и `.../fantasy-team/details`; в TMA маршрут `/series/:seriesId/leaderboard/player/:telegramId` (`LeaderboardPlayerTeamPage`), переход по строке лидерборда (серия и вкладка серии на лидерборде турнира; вкладка «Общий» без ссылки на команду).
 
 ## Недавние правки TMA (сборка команды на серию)
+- **Дедлайн состава — время:** `formatDateShortWithTime` в `tournamentDates.ts`; на главной («Состав на серию»), выборе серии турнира и карточке серии (`SeriesPage`) подписи «Доступно до» / «Дедлайн команды» включают часы и минуты (локаль браузера).
 - **`GET /api/v1/me/cards`:** опциональный `seriesId` — только карты игроков из `series_player` (как при валидации fantasy-team); неизвестная серия → 404.
 - **`SeriesPlayerEntryDto` / TMA types:** поле `fantasyPlayerId` для фильтра «игрок серии» на экране сборки.
 - **`TeamPage`:** запрос карт с `tournamentId` + `seriesId`; вкладки редкости, селект игрока серии, сортировка сетки по убыванию редкости; синхронизация слотов с командой из API и `setQueryData` после сохранения.
