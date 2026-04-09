@@ -1,6 +1,8 @@
 # Active Context
 
 ## Текущий фокус
+**Маркетплейс (TMA M7–M11 + доработки API):** спецификация [`docs/features/DESIGN-MARKETPLACE.md`](docs/features/DESIGN-MARKETPLACE.md). TMA: `/marketplace` (лента `GET /marketplace/feed`, фильтры, покупка), `/marketplace/my`, навигация «Маркетплейс»; коллекция — «Продать» и модалка цены; провенанс — `CardOwnershipHistoryBlock` в модалках коллекции и лидерборда (`LeaderboardPlayerTeamPage`). Backend: `GET /api/v1/user-cards/{id}/ownership-history`; в `EconomyInfoDto` — `marketplaceCommissionPercent` (из `economy_config`). REST маркетплейса и Telegram продавцу без изменений по смыслу.
+
 **Исключение из пула пака:** колонка `tournament_player.excluded_from_pack_pool` (Flyway **V20**), API `PATCH /api/v1/admin/tournaments/{id}/players/{playerId}` с телом `{"excludedFromPackPool": boolean}`; `CardPackService.buildFantasyPlayerPool` и валидация паков учитывают флаг. Админка: страница турнира, колонка «Пул пака» (Switch).
 
 **Легендарные карты (backend L1–L3):** Flyway **V19** — `user_card.crafted_by_telegram_user_id` → `telegram_user`, ключи `economy_config` `legendary.upgrade.cost` (400), `legendary.team.max_per_series` (1). `UserCardItemDto.craftedByTelegramUserId` (Telegram platform id крафтера). `LegendaryUpgradeService`: EPIC → LEGENDARY in-place, +1 ачивка, списание `LEGENDARY_UPGRADE`, `findOrCreateCardTemplateForAchievements` в `CardPackService`. API: `GET/POST /api/v1/legendary-upgrade` (+ `/info`). `UserFantasyTeamService.attachCards` — не больше `legendary.team.max_per_series` LEGENDARY в команде.

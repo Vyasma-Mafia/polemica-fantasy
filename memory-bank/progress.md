@@ -2,6 +2,22 @@
 
 ## Что реализовано
 
+### Маркетплейс карт (backend M1–M6)
+- [x] **Flyway V22:** `marketplace_listing`, `user_card_ownership_history`, индексы (в т.ч. лента продаж), ключ `economy_config.marketplace.commission_percent`, бэкфилл провенанса из `user_card` как `PACK_OPENING`
+- [x] **Сущности и репозитории:** `MarketplaceListing`, `UserCardOwnershipHistory`, `MarketplaceListingRepository` (фильтры активных листингов, `PESSIMISTIC_WRITE` на покупку, лента SOLD), `UserCardOwnershipHistoryRepository.existsBy…`; причины фантиков `MARKETPLACE_PURCHASE` / `MARKETPLACE_SALE`; `EconomyConfigService.getMarketplaceCommissionPercent()`
+- [x] **`UserCardOwnershipService`:** запись при выдаче карт из **CardPackService.openPack** (`PACK_OPENING`) и **CardService.giveCards** (`ADMIN_GRANT`); при покупке на маркетплейсе — `MARKETPLACE_PURCHASE`
+- [x] **`MarketplaceService`:** листинг / снятие / покупка (комиссия `⌊price×pct/100⌋`, сброс контракта покупателю), каталог с `canBuy`/`canBuyReason`, мои листинги, лента; событие **после** успешной покупки
+- [x] **Блокировки:** активный листинг — нельзя в команду (`UserFantasyTeamService.attachCards`), recycle/renew (`CardLifecycleService`), legendary upgrade (`LegendaryUpgradeService`)
+- [x] **API:** `MarketplaceController` под `/api/v1/marketplace` — `GET listings|my-listings|feed`, `POST listings`, `DELETE listings/{id}`, `POST listings/{id}/buy`
+- [x] **Telegram:** `MarketplaceSaleNotificationListener` — `AFTER_COMMIT` + `@Async`, plain-text сообщение продавцу (`TelegramBotApiClient`), баланс после коммита через `UserService.getBalance`; `telegram.bot.notifications.enabled` / токен как у финализации серии
+- [x] **Тесты:** расширен `CardLifecycleServiceTest` (mock `MarketplaceListingRepository`, сценарий «карта в листинге»); полный `test` с Testcontainers в CI/локально при доступном Docker
+
+### Маркетплейс TMA (M7–M11) и чтение провенанса
+- [x] **TMA:** `MarketplacePage` (`/marketplace`) — лента сделок, фильтры (редкость, сортировка, цена, игрок через турнир→серия→ростер), пагинация, покупка; `MyListingsPage` (`/marketplace/my`); `api/marketplace.ts` + типы в `api/types.ts`; навигация в `App.tsx`
+- [x] **Коллекция:** кнопка «Продать» (тулбар и модалка карты), модалка цены с превью комиссии; условия: `uses_remaining > 0`, нет активного листинга (`GET my-listings`), карта не в команде серии со статусом ≠ `FINISHED` (загрузка статусов серий по `fantasy-teams`)
+- [x] **Провенанс в UI:** `CardOwnershipHistoryBlock` + `GET /api/v1/user-cards/{userCardId}/ownership-history` (`UserCardOwnershipController`, `UserCardOwnershipService.listOwnershipHistory`, репозиторий `findAllByUserCard_IdOrderByAcquiredAtAsc`); подписи `acquisitionLabel` на русском
+- [x] **Economy info:** в `EconomyInfoDto` поле `marketplaceCommissionPercent`; интеграционный тест `UserApiIntegrationTest` ожидает `10`
+
 ### Награды лидерборда серии: топ-25 и топ-50
 - [x] **Flyway V21:** ключи `economy_config` `series.reward.top25`, `series.reward.top50`; подпись участия — «51+ место»
 - [x] **`EconomyConfigService`:** `getSeriesReward` — диапазоны 11–25 и 26–50; `seriesRewardKeysInOrder` — 7 тиров

@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.CardPackRarityConfigRespo
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
 import io.github.mralex1810.fantasy.entity.Achievement
+import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardPack
 import io.github.mralex1810.fantasy.entity.CardPackPlayer
 import io.github.mralex1810.fantasy.entity.CardPackRarityConfig
@@ -47,6 +48,7 @@ class CardPackService(
     private val userCardRepository: UserCardRepository,
     private val userService: UserService,
     private val economyConfigService: EconomyConfigService,
+    private val userCardOwnershipService: UserCardOwnershipService,
 ) {
 
     private val random = Random()
@@ -211,18 +213,18 @@ class CardPackService(
                 val fantasyPlayer = playerPool[random.nextInt(playerPool.size)]
                 val achievements = pickAchievementsForSlot(cfg.rarity, randomAchievements)
                 val template = findOrCreateCardTemplateForAchievements(fantasyPlayer, cfg.rarity, achievements)
-                drawn.add(
-                    userCardRepository.save(
-                        UserCard(
-                            telegramUser = user,
-                            cardTemplate = template,
-                            sourceCardPack = pack,
-                            acquiredAt = now,
-                            usesRemaining = economyConfigService.getUsesForRarity(cfg.rarity),
-                            timesRenewed = 0,
-                        ),
+                val saved = userCardRepository.save(
+                    UserCard(
+                        telegramUser = user,
+                        cardTemplate = template,
+                        sourceCardPack = pack,
+                        acquiredAt = now,
+                        usesRemaining = economyConfigService.getUsesForRarity(cfg.rarity),
+                        timesRenewed = 0,
                     ),
                 )
+                userCardOwnershipService.recordAcquisition(saved, user, CardAcquisitionType.PACK_OPENING, now)
+                drawn.add(saved)
             }
         }
         return OpenPackResultDto(userCards = drawn.map { it.toUserCardDto() })

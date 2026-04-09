@@ -277,6 +277,7 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.seriesRewards.length()").value(7))
             .andExpect(jsonPath("$.seriesRewards[0].fantiki").value(100))
             .andExpect(jsonPath("$.seriesRewards[0].label").value("Награда за 1 место"))
+            .andExpect(jsonPath("$.marketplaceCommissionPercent").value(10))
     }
 
     @Test

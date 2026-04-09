@@ -10,6 +10,7 @@ import type {
   UserSeriesDetail,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -257,6 +258,8 @@ export function LeaderboardPlayerTeamPage() {
                 </li>
               ))}
             </ul>
+
+            <CardOwnershipHistoryBlock userCardId={detailCard.id} />
 
             {detailsQ.isLoading && <p className="pf-muted">Загрузка по играм…</p>}
             {detailsQ.isError && <p className="pf-err">{(detailsQ.error as Error).message}</p>}

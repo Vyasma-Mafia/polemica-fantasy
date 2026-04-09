@@ -13,6 +13,8 @@ import { LeaderboardPlayerTeamPage } from './pages/LeaderboardPlayerTeamPage'
 import { ParticipantsPage } from './pages/ParticipantsPage'
 import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
+import { MarketplacePage } from './pages/MarketplacePage'
+import { MyListingsPage } from './pages/MyListingsPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
@@ -43,6 +45,7 @@ function Shell() {
           </NavLink>
           <NavLink to="/cards">Коллекция</NavLink>
           <NavLink to="/help">Справка</NavLink>
+          <NavLink to="/marketplace">Маркетплейс</NavLink>
           <NavLink to="/store" className="nav__store">
             <span className="nav__store-icon" aria-hidden>
               🛒
@@ -68,6 +71,8 @@ function Shell() {
           <Route path="/help" element={<HelpPage />} />
           <Route path="/economy" element={<Navigate to="/help" replace />} />
           <Route path="/store" element={<StorePage />} />
+          <Route path="/marketplace" element={<MarketplacePage />} />
+          <Route path="/marketplace/my" element={<MyListingsPage />} />
         </Routes>
       </main>
     </div>

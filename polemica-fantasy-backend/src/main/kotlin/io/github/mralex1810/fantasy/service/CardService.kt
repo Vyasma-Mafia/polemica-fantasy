@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.CardTemplateAchievementDt
 import io.github.mralex1810.fantasy.dto.admin.response.CardTemplateDto
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
+import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.CardTemplateAchievement
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -35,6 +36,7 @@ class CardService(
     private val imageStorageService: ImageStorageService,
     private val cardPackService: CardPackService,
     private val economyConfigService: EconomyConfigService,
+    private val userCardOwnershipService: UserCardOwnershipService,
 ) {
 
     @Transactional
@@ -117,7 +119,7 @@ class CardService(
             val template = cardTemplateRepository.findById(templateId).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Card template $templateId not found")
             }
-            userCardRepository.save(
+            val saved = userCardRepository.save(
                 UserCard(
                     telegramUser = user,
                     cardTemplate = template,
@@ -125,7 +127,9 @@ class CardService(
                     usesRemaining = economyConfigService.getUsesForRarity(template.rarity),
                     timesRenewed = 0,
                 ),
-            ).toDto()
+            )
+            userCardOwnershipService.recordAcquisition(saved, user, CardAcquisitionType.ADMIN_GRANT, now)
+            saved.toDto()
         }
     }
 

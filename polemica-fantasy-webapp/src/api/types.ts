@@ -191,6 +191,8 @@ export interface EconomyInfo {
   renewalCosts: Record<Rarity, number>
   maxRenewals: number
   seriesRewards: RewardTier[]
+  /** Комиссия маркетплейса при продаже карты, % (экономика). */
+  marketplaceCommissionPercent: number
 }
 
 export interface RecycleResult {
@@ -210,4 +212,70 @@ export interface FantasyTeamDto {
   totalScore: number | null
   submittedAt: string
   slots: { slot: number; userCardId: number; score: number | null }[]
+}
+
+/** GET /api/v1/marketplace/listings */
+export type MarketplaceSortBy = 'price_asc' | 'price_desc' | 'created_at_desc'
+
+export interface MarketplaceCardAchievement {
+  achievementId: string
+  name: string
+  bonusPoints: number
+}
+
+export interface MarketplaceListingCard {
+  userCardId: number
+  fantasyPlayerId: number
+  playerName: string
+  playerPhotoUrl: string | null
+  rarity: Rarity
+  achievements: MarketplaceCardAchievement[]
+}
+
+export interface MarketplaceListingEntry {
+  listingId: number
+  price: number
+  createdAt: string
+  card: MarketplaceListingCard
+  seller: { displayName: string }
+  canBuy: boolean
+  canBuyReason: string | null
+}
+
+export interface MarketplaceListingsPage {
+  content: MarketplaceListingEntry[]
+  totalElements: number
+  totalPages: number
+  page: number
+  size: number
+}
+
+export interface MarketplaceFeedItem {
+  playerName: string
+  rarity: Rarity
+  price: number
+  soldAt: string
+  buyerDisplayName: string
+}
+
+export interface MarketplaceFeed {
+  items: MarketplaceFeedItem[]
+}
+
+export interface BuyCardResult {
+  listing: MarketplaceListingEntry
+  card: UserCardItem
+  pricePaid: number
+  sellerReceived: number
+  commission: number
+  newBalance: number
+}
+
+export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE'
+
+export interface CardOwnershipHistoryEntry {
+  ownerDisplayName: string
+  acquisitionType: CardAcquisitionType
+  acquisitionLabel: string
+  acquiredAt: string
 }

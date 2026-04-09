@@ -27,6 +27,7 @@ Controller → Service → Repository → PostgreSQL
 - **Polemica layer** — обёртка над polemica-library для fetch + cache
 
 ### Key Patterns
+- **Маркетплейс карт:** таблицы `marketplace_listing`, `user_card_ownership_history`; комиссия из `economy_config.marketplace.commission_percent`; покупка с `PESSIMISTIC_WRITE` на листинг; уведомление продавцу в Telegram — `MarketplaceSaleNotificationEvent` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` + `TelegramBotApiClient` (как финализация серии). Карта в **ACTIVE**-листинге заблокирована для команды, recycle, renew, legendary upgrade.
 - **DTO separation:** entity-классы не выходят за пределы service layer; контроллеры работают с DTO
 - **JSONB caching:** полные данные игр из Полемики кэшируются в PostgreSQL JSONB для оффлайн-скоринга
 - **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `matchCount(game, player)`; справочник — таблица `achievement` (каталог после Flyway V10: `sniper`, `voteForBlack`, …)

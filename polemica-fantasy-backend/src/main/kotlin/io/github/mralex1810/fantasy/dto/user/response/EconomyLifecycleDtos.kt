@@ -29,4 +29,5 @@ data class EconomyInfoDto(
     val renewalCosts: Map<Rarity, Long>,
     val maxRenewals: Int,
     val seriesRewards: List<RewardTierDto>,
+    val marketplaceCommissionPercent: Int,
 )

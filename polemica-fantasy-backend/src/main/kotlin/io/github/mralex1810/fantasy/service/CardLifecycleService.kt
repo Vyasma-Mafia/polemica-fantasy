@@ -3,8 +3,10 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.user.response.RecycleResultDto
 import io.github.mralex1810.fantasy.dto.user.response.RenewResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -17,6 +19,7 @@ class CardLifecycleService(
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
+    private val marketplaceListingRepository: MarketplaceListingRepository,
 ) {
 
     @Transactional
@@ -27,6 +30,12 @@ class CardLifecycleService(
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Cannot recycle a card that is in a team for a series that is not finalized yet",
+            )
+        }
+        if (marketplaceListingRepository.existsByUserCard_IdAndStatus(userCardId, MarketplaceListingStatus.ACTIVE)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Cannot recycle a card that is listed on the marketplace",
             )
         }
         val rarity = uc.cardTemplate!!.rarity
@@ -49,6 +58,12 @@ class CardLifecycleService(
         val maxR = economyConfigService.getMaxRenewals()
         if (uc.timesRenewed >= maxR) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum renewals reached for this card")
+        }
+        if (marketplaceListingRepository.existsByUserCard_IdAndStatus(userCardId, MarketplaceListingStatus.ACTIVE)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Cannot renew a card that is listed on the marketplace",
+            )
         }
         val rarity = uc.cardTemplate!!.rarity
         val cost = economyConfigService.getRenewalCost(rarity)

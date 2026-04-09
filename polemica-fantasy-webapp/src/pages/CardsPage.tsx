@@ -1,17 +1,20 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { apiGet } from '../api/client'
+import { ApiError, apiGet } from '../api/client'
+import { createMarketplaceListing, fetchMyMarketplaceListings } from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type {
   FantasyTeamDto,
   FantasyTeamSeriesDetails,
   Rarity,
+  SeriesStatus,
   UserCardItem,
   UserSeriesDetail,
   UserTournament,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
@@ -57,6 +60,8 @@ export function CardsPage() {
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null)
   const [legendaryWizardOpen, setLegendaryWizardOpen] = useState(false)
   const [legendaryWizardInitialCardId, setLegendaryWizardInitialCardId] = useState<number | null>(null)
+  const [sellModalCard, setSellModalCard] = useState<UserCardItem | null>(null)
+  const [sellPrice, setSellPrice] = useState('')
 
   const params = useMemo(() => {
     const sp = new URLSearchParams()
@@ -113,7 +118,57 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
+  const myListingsQ = useQuery({
+    queryKey: ['my-marketplace-listings', initData],
+    queryFn: () => fetchMyMarketplaceListings(initData),
+    enabled: !!initData,
+  })
+
+  const teamSeriesIds = useMemo(
+    () => [...new Set((teamsQ.data ?? []).map((t) => t.seriesId))],
+    [teamsQ.data],
+  )
+
+  const seriesMetaForTeams = useQueries({
+    queries: teamSeriesIds.map((seriesId) => ({
+      queryKey: ['series', seriesId, initData],
+      queryFn: () => apiGet<UserSeriesDetail>(`/api/v1/series/${seriesId}`, initData!),
+      enabled: !!initData && teamSeriesIds.length > 0,
+    })),
+  })
+
+  const seriesStatusById = useMemo(() => {
+    const m = new Map<number, SeriesStatus>()
+    teamSeriesIds.forEach((id, i) => {
+      const st = seriesMetaForTeams[i]?.data?.status
+      if (st) m.set(id, st)
+    })
+    return m
+  }, [teamSeriesIds, seriesMetaForTeams])
+
+  const listedUserCardIds = useMemo(
+    () => new Set((myListingsQ.data ?? []).map((l) => l.card.userCardId)),
+    [myListingsQ.data],
+  )
+
   const usesPerRarity = economyQ.data?.usesPerRarity
+
+  function cardBlockedForMarketplaceByTeam(cardId: number): boolean {
+    const teams = teamsContainingCard(teamsQ.data, cardId)
+    for (const t of teams) {
+      const st = seriesStatusById.get(t.seriesId)
+      if (st == null) return true
+      if (st !== 'FINISHED') return true
+    }
+    return false
+  }
+
+  function canOfferCardOnMarketplace(c: UserCardItem): boolean {
+    if (c.usesRemaining <= 0) return false
+    if (listedUserCardIds.has(c.id)) return false
+    if (cardBlockedForMarketplaceByTeam(c.id)) return false
+    return true
+  }
 
   const tournaments = tournamentsQ.data ?? []
   const tournamentSelectUnknown =
@@ -226,6 +281,22 @@ export function CardsPage() {
       void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
     },
     onError: (e: Error) => window.alert(e.message),
+  })
+
+  const sellMut = useMutation({
+    mutationFn: () => {
+      const card = sellModalCard
+      if (!card || !initData) throw new Error('Нет карты')
+      const price = Number(sellPrice)
+      return createMarketplaceListing(initData, { userCardId: card.id, price })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      setSellModalCard(null)
+    },
+    onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
   })
 
   const runRecycle = (c: UserCardItem) => {
@@ -407,6 +478,19 @@ export function CardsPage() {
                 </div>
                 <div className="pf-collection-card__toolbar">
                   <div className="pf-card-actions">
+                    {!expired && canOfferCardOnMarketplace(c) && (
+                      <button
+                        type="button"
+                        className="pf-btn pf-btn--small pf-btn--primary"
+                        onClick={() => {
+                          setSellModalCard(c)
+                          const min = economyQ.data?.renewalCosts[c.rarity] ?? 0
+                          setSellPrice(String(min))
+                        }}
+                      >
+                        Продать
+                      </button>
+                    )}
                     {!expired && (
                       <button
                         type="button"
@@ -464,6 +548,8 @@ export function CardsPage() {
                 </li>
               ))}
             </ul>
+
+            <CardOwnershipHistoryBlock userCardId={detailCard.id} />
 
             {teamsWithCard.length > 0 && (
               <div className="pf-modal__per-game" style={{ marginTop: 12 }}>
@@ -568,6 +654,19 @@ export function CardsPage() {
                   Улучшить до легендарной
                 </button>
               )}
+              {canOfferCardOnMarketplace(detailCard) && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  onClick={() => {
+                    setSellModalCard(detailCard)
+                    const min = economyQ.data?.renewalCosts[detailCard.rarity] ?? 0
+                    setSellPrice(String(min))
+                  }}
+                >
+                  Продать
+                </button>
+              )}
               {detailCard.usesRemaining > 0 && (
                 <button
                   type="button"
@@ -593,6 +692,78 @@ export function CardsPage() {
                   Продлить контракт ({economyQ.data.renewalCosts[detailCard.rarity]}₣)
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sellModalCard && economyQ.data && (
+        <div
+          className="pf-modal-backdrop"
+          role="dialog"
+          aria-modal
+          aria-label="Продажа карты"
+          onClick={() => !sellMut.isPending && setSellModalCard(null)}
+        >
+          <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="pf-modal__close"
+              disabled={sellMut.isPending}
+              onClick={() => setSellModalCard(null)}
+            >
+              ×
+            </button>
+            <h3 className="pf-modal__title">Выставить на маркетплейс</h3>
+            <p className="pf-muted">{sellModalCard.playerNickname}</p>
+            <label className="pf-field">
+              <span className="pf-field__label">
+                Цена (мин. {economyQ.data.renewalCosts[sellModalCard.rarity]}₣)
+              </span>
+              <input
+                className="pf-input"
+                inputMode="numeric"
+                value={sellPrice}
+                onChange={(e) => setSellPrice(e.target.value)}
+              />
+            </label>
+            {(() => {
+              const price = Number(sellPrice)
+              const pct = economyQ.data.marketplaceCommissionPercent ?? 10
+              const commission = Number.isFinite(price) ? Math.floor((price * pct) / 100) : 0
+              const youGet = Number.isFinite(price) ? price - commission : 0
+              return (
+                <p className="pf-muted" style={{ marginTop: 8 }}>
+                  Комиссия {pct}%: {Number.isFinite(price) ? `${commission}₣` : '—'}. Вы получите:{' '}
+                  <strong>{Number.isFinite(price) && price > 0 ? `${youGet}₣` : '—'}</strong>
+                </p>
+              )
+            })()}
+            <div className="pf-modal__economy-actions" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="pf-btn pf-btn--small"
+                disabled={sellMut.isPending}
+                onClick={() => setSellModalCard(null)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="pf-btn pf-btn--small pf-btn--primary"
+                disabled={sellMut.isPending}
+                onClick={() => {
+                  const min = economyQ.data!.renewalCosts[sellModalCard.rarity]
+                  const price = Number(sellPrice)
+                  if (!Number.isFinite(price) || price < min) {
+                    window.alert(`Минимальная цена для этой редкости: ${min}₣`)
+                    return
+                  }
+                  sellMut.mutate()
+                }}
+              >
+                {sellMut.isPending ? 'Отправка…' : 'Выставить на продажу'}
+              </button>
             </div>
           </div>
         </div>

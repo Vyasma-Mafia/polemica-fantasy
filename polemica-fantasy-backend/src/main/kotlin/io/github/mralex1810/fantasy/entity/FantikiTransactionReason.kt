@@ -8,4 +8,6 @@ enum class FantikiTransactionReason {
     CARD_RECYCLE,
     CARD_RENEWAL,
     LEGENDARY_UPGRADE,
+    MARKETPLACE_PURCHASE,
+    MARKETPLACE_SALE,
 }

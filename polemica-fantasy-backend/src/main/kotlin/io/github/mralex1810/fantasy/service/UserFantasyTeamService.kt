@@ -14,11 +14,13 @@ import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
@@ -45,6 +47,7 @@ class UserFantasyTeamService(
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
     private val economyConfigService: EconomyConfigService,
+    private val marketplaceListingRepository: MarketplaceListingRepository,
     private val entityManager: EntityManager,
 ) {
 
@@ -240,6 +243,14 @@ class UserFantasyTeamService(
         userCardIds.forEach { id ->
             if (byId[id] == null) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown user card id $id")
+            }
+        }
+        userCardIds.forEach { id ->
+            if (marketplaceListingRepository.existsByUserCard_IdAndStatus(id, MarketplaceListingStatus.ACTIVE)) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot use a card that is listed on the marketplace",
+                )
             }
         }
         val fantasyPlayerIds = userCardIds.map { byId[it]!!.cardTemplate!!.fantasyPlayer!!.id!! }

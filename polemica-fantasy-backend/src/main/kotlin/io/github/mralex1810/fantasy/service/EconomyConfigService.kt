@@ -64,6 +64,8 @@ class EconomyConfigService(
 
     fun getLegendaryTeamMaxPerSeries(): Int = getInt("legendary.team.max_per_series")
 
+    fun getMarketplaceCommissionPercent(): Int = getInt("marketplace.commission_percent")
+
     /**
      * @param position 1-based rank on the series leaderboard (same order as [io.github.mralex1810.fantasy.repository.FantasyTeamRepository.findLeaderboardForSeries]).
      */
@@ -97,6 +99,7 @@ class EconomyConfigService(
             renewalCosts = renewal,
             maxRenewals = getMaxRenewals(),
             seriesRewards = tiers,
+            marketplaceCommissionPercent = getMarketplaceCommissionPercent(),
         )
     }
 }
