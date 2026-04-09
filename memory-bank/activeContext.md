@@ -65,6 +65,8 @@
 - Нет критичных блокеров
 
 ## Недавние правки UI (админка)
+- **User tools — списание фантиков:** `POST /api/v1/admin/users/{telegramUserId}/take-fantiki` с телом `{"amount": positive}`; причина транзакции `ADMIN_CONFISCATE`; пользователь должен существовать (иначе 404), при недостаточном балансе — 400. Кнопка «Take fantiki» на `/user-tools` (тот же amount, что и для grant).
+
 - **Серии — sync/score счётчики:** `SeriesDto` содержит `syncedGamesCount` / `scoredGamesCount` (агрегаты по `series_game`); таблица серий на странице турнира и подзаголовок на странице серии. Список турниров — колонка **Active series** (все серии со статусом ≠ `FINISHED`, ссылки на `/series/:id`). **Finalize** (`SeriesFinalizationService`) выставляет `status = FINISHED`. На **Tournament detail** блок **Series** выше блока **Players**.
 - **Tournament detail (`/tournaments/:id`):** над таблицей игроков — сетка карточек (`List` + `Card`) с аватаром (фото или первая буква ника), ником и внутренним id; в колонке Photo таблицы — миниатюра `Avatar` + ссылка «open» на полное изображение.
 - **Users (`/users`):** список всех `telegram_user` с колонками username, Telegram ID, displayName; фильтры **Tournament** + **Series**; столбец **Cards (series)** — число экземпляров `user_card`, чья `card_template` относится к игроку из ростера серии (как `GET /me/cards?seriesId`). API: **GET** `/api/v1/admin/users` (без query — `cardsInSeries: null`) и с `tournamentId` + `seriesId` (оба обязательны вместе для счётчика). Реализация: `AdminUserListService`, нативный запрос в `TelegramUserRepository.findAllWithCardsInSeriesCount`.
