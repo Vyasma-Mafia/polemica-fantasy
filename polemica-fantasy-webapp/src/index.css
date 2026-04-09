@@ -3147,10 +3147,14 @@ button.pf-mini-card:disabled {
 }
 
 .pf-marketplace-card__meta {
-  padding: 8px 0 0;
+  position: relative;
+  z-index: 4;
+  padding: 10px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  background: rgba(12, 12, 15, 0.96);
+  border-top: 1px solid var(--pf-border);
 }
 
 .pf-marketplace-card__price {
