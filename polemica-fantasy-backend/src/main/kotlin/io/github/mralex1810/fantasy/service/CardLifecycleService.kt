@@ -7,6 +7,7 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException
 class CardLifecycleService(
     private val userCardRepository: UserCardRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
+    private val userCardOwnershipHistoryRepository: UserCardOwnershipHistoryRepository,
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
@@ -42,6 +44,7 @@ class CardLifecycleService(
         val earned = economyConfigService.getRecycleValue(rarity)
         val internalId = user.id!!
         fantasyTeamCardRepository.deleteAllByUserCard_Id(userCardId)
+        userCardOwnershipHistoryRepository.deleteAllByUserCard_Id(userCardId)
         userCardRepository.delete(uc)
         userService.addBalance(internalId, earned, FantikiTransactionReason.CARD_RECYCLE)
         val balance = userService.getBalance(internalId)

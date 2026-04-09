@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface UserCardOwnershipHistoryRepository : JpaRepository<UserCardOwnershipHistory, Long> {
+    fun deleteAllByUserCard_Id(userCardId: Long)
+
     fun existsByUserCard_IdAndTelegramUser_Id(userCardId: Long, telegramUserId: Long): Boolean
 
     @Query(

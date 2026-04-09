@@ -8,6 +8,7 @@
 - [x] **`UserCardOwnershipService`:** запись при выдаче карт из **CardPackService.openPack** (`PACK_OPENING`) и **CardService.giveCards** (`ADMIN_GRANT`); при покупке на маркетплейсе — `MARKETPLACE_PURCHASE`
 - [x] **`MarketplaceService`:** листинг / снятие / покупка (комиссия `⌊price×pct/100⌋`, сброс контракта покупателю), каталог с `canBuy`/`canBuyReason`, мои листинги, лента; событие **после** успешной покупки
 - [x] **Блокировки:** активный листинг — нельзя в команду (`UserFantasyTeamService.attachCards`), recycle/renew (`CardLifecycleService`), legendary upgrade (`LegendaryUpgradeService`)
+- [x] **Recycle + провенанс:** при переработке карты `CardLifecycleService.recycleCard` вызывает `UserCardOwnershipHistoryRepository.deleteAllByUserCard_Id` до удаления `user_card` (иначе FK `user_card_ownership_history_user_card_id_fkey` после V22)
 - [x] **API:** `MarketplaceController` под `/api/v1/marketplace` — `GET listings|my-listings|feed`, `POST listings`, `DELETE listings/{id}`, `POST listings/{id}/buy`
 - [x] **Telegram:** `MarketplaceSaleNotificationListener` — `AFTER_COMMIT` + `@Async`, plain-text сообщение продавцу (`TelegramBotApiClient`), баланс после коммита через `UserService.getBalance`; `telegram.bot.notifications.enabled` / токен как у финализации серии
 - [x] **Тесты:** расширен `CardLifecycleServiceTest` (mock `MarketplaceListingRepository`, сценарий «карта в листинге»); полный `test` с Testcontainers в CI/локально при доступном Docker
