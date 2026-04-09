@@ -223,6 +223,40 @@ export function HelpPage() {
                   </tbody>
                 </table>
               </section>
+              <section className="pf-economy__section">
+                <h3 className="pf-economy__h">Маркетплейс</h3>
+                <p className="pf-muted">
+                  На маркетплейсе можно продавать и покупать карты за фантики. С продавца удерживается комиссия{' '}
+                  <strong>{economyQ.data!.marketplaceCommissionPercent}%</strong> от цены сделки.
+                </p>
+                <p className="pf-muted">
+                  Покупать карты на маркетплейсе можно только после того, как в магазине открыто не менее{' '}
+                  <strong>{economyQ.data!.minPackOpensBeforeMarketplacePurchase}</strong> паков (считаются успешные
+                  открытия паков).
+                </p>
+                <p className="pf-muted">
+                  Цена листинга по редкости не ниже стоимости продления и не выше максимума (таблица ниже; числа из
+                  экономики сервера).
+                </p>
+                <table className="pf-economy__table">
+                  <thead>
+                    <tr>
+                      <th>Редкость</th>
+                      <th>Мин. цена (как продление)</th>
+                      <th>Макс. цена</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RARITIES.map((r) => (
+                      <tr key={r}>
+                        <td>{r}</td>
+                        <td>{economyQ.data!.renewalCosts[r]}₣</td>
+                        <td>{economyQ.data!.marketplaceMaxPrices[r]}₣</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
             </div>
           )}
         </section>
