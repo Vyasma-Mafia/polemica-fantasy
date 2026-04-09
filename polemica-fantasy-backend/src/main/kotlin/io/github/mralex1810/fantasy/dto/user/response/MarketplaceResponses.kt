@@ -46,6 +46,8 @@ data class MarketplaceFeedItemDto(
     val price: Long,
     val soldAt: Instant,
     val buyerDisplayName: String,
+    /** Карта сделки — для превью в ленте (фото, ачивки). */
+    val card: MarketplaceListingCardDto,
 )
 
 data class MarketplaceFeedDto(

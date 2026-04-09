@@ -1139,6 +1139,61 @@ class UserApiIntegrationTest {
             .andExpect(status().isBadRequest)
     }
 
+    @Test
+    fun `GET tournaments series-open-for-team returns series with open deadline in active tournaments`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Open series home T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"status":"ACTIVE"}"""),
+        ).andExpect(status().isOk)
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Open Day","namePrefix":"OD","status":"UPCOMING",
+                    "startsAt":"2031-06-01T12:00:00Z",
+                    "teamDeadline":"2031-06-15T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        val telegramUserId = 777888001L
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"HomeOpen"}""",
+        )
+
+        mockMvc.perform(
+            get("/api/v1/tournaments/series-open-for-team")
+                .header("Authorization", "tma $initData"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(greaterThan(0))))
+            .andExpect(jsonPath("$[0].seriesId").value(seriesId))
+            .andExpect(jsonPath("$[0].tournamentId").value(tournamentId))
+            .andExpect(jsonPath("$[0].tournamentName").value("Open series home T"))
+            .andExpect(jsonPath("$[0].seriesName").value("Open Day"))
+    }
+
     private fun buildSignedInitData(botToken: String, authDate: Long, userJson: String): String {
         val userEncoded = java.net.URLEncoder.encode(userJson, StandardCharsets.UTF_8)
         val pairs = linkedMapOf(

@@ -50,6 +50,17 @@ data class UserTournamentDetailDto(
     val series: List<UserSeriesSummaryDto>,
 )
 
+/** Series in an ACTIVE tournament where team submission deadline has not passed (home / quick lineup). */
+data class SeriesOpenForTeamDto(
+    val seriesId: Long,
+    val tournamentId: Long,
+    val tournamentName: String,
+    val seriesName: String,
+    val gameNumFrom: Long?,
+    val gameNumTo: Long?,
+    val teamDeadline: Instant,
+)
+
 data class SeriesPlayerEntryDto(
     val tournamentPlayerId: Long,
     val fantasyPlayerId: Long,

@@ -102,6 +102,17 @@ export interface UserTournamentDetail extends UserTournament {
   series: UserSeriesSummary[]
 }
 
+/** GET /api/v1/tournaments/series-open-for-team — серии с открытым дедлайном состава. */
+export interface SeriesOpenForTeam {
+  seriesId: number
+  tournamentId: number
+  tournamentName: string
+  seriesName: string
+  gameNumFrom: number | null
+  gameNumTo: number | null
+  teamDeadline: string
+}
+
 /** Tournament roster / series players share this shape in the API. */
 export interface SeriesPlayerEntry {
   tournamentPlayerId: number
@@ -256,6 +267,8 @@ export interface MarketplaceFeedItem {
   price: number
   soldAt: string
   buyerDisplayName: string
+  /** Карта сделки — превью в ленте */
+  card: MarketplaceListingCard
 }
 
 export interface MarketplaceFeed {

@@ -74,7 +74,11 @@
 - **`App.tsx` / `index.css`:** шапка `header.top` — две логические строки: **`top__bar`** (бренд + `FantikiBalance` в одну линию), ниже **`nav`**; убран вложенный `flex-wrap`, из‑за которого на узкой колонке баланс уезжал на третью строку под «Магазин».
 - **`TopBarDisplayName`:** между брендом и балансом — ник через `formatUserDisplayName` (`GET /me`, тот же `queryKey`, что у `FantikiBalance`); класс **`top__user`** — по центру гибкой колонки, обрезка длинного текста.
 
+## Недавние правки TMA (главная)
+- **Список серий с открытым составом:** `GET /api/v1/tournaments/series-open-for-team` — серии турниров со статусом `ACTIVE`, `team_deadline > now`, `series.status != FINISHED`, сортировка по дедлайну; DTO `SeriesOpenForTeamDto`. На `/` (`HomePage`) блок «Состав на серию» (карточки как на выборе серии), ссылка «Далее» → `/series/:id/team`; кэш-ключ `['tournaments', 'series-open-for-team', initData]`.
+
 ## Недавние правки TMA (карты и коллекция)
+- **Маркетплейс — лента сделок:** `GET /api/v1/marketplace/feed` в каждом элементе отдаёт `card` (`MarketplaceListingCardDto`: фото, редкость, ачивки как в листинге). На `/marketplace` в «Последние покупки» справа в чипе — компактное превью (`pf-marketplace-feed__thumb` + `pf-mini-card--{rarity}`), портрет ~44×56px.
 - **Маркетплейс / мои листинги:** блок `.pf-marketplace-card__meta` (цена, продавец, «Купить» / «Снять с продажи») получил `position: relative; z-index: 4`, фон и верхнюю границу — иначе декоративные `::before` / `::after` у `.pf-collection-card__frame` (до `z-index: 3` у legendary-crafted) перекрывали действия.
 - **Модалки с фото карты:** у `.pf-modal__close` задан `z-index: 2`, чтобы крестик не уходил под блок `.pf-modal__img-frame` / картинку (у `img` был `z-index: 1`).
 - **Коллекция (`CardsPage`):** в сетке карточек убран нижний тулбар «Продать / Переработать / Продлить» — те же действия остаются в модалке по клику на карту (`pf-modal__economy-actions`).

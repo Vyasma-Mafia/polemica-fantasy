@@ -231,16 +231,23 @@ class MarketplaceService(
         val capped = limit.coerceIn(1, 50)
         val pageable = PageRequest.of(0, capped)
         val sold = marketplaceListingRepository.findRecentSold(MarketplaceListingStatus.SOLD, pageable)
+        if (sold.isEmpty()) return MarketplaceFeedDto(items = emptyList())
+
+        val templateIds = sold.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
+        val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+
         val items = sold.map { ml ->
             val uc = ml.userCard!!
-            val fp = uc.cardTemplate!!.fantasyPlayer!!
+            val tpl = templatesById[uc.cardTemplate!!.id!!] ?: uc.cardTemplate!!
+            val fp = tpl.fantasyPlayer!!
             val buyer = ml.buyer!!
             MarketplaceFeedItemDto(
                 playerName = fp.nickname,
-                rarity = uc.cardTemplate!!.rarity,
+                rarity = tpl.rarity,
                 price = ml.price,
                 soldAt = ml.soldAt!!,
                 buyerDisplayName = buyer.publicDisplayName(),
+                card = toMarketplaceCardDto(uc, tpl),
             )
         }
         return MarketplaceFeedDto(items = items)

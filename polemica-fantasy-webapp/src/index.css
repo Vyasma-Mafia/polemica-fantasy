@@ -184,6 +184,25 @@ a {
   margin-bottom: 20px;
 }
 
+.pf-home-open-series {
+  margin-bottom: 28px;
+}
+
+.pf-home-open-series-hint {
+  margin-top: -4px;
+  margin-bottom: 14px;
+}
+
+.pf-home-open-series-err {
+  margin-bottom: 16px;
+}
+
+.pf-home-open-series-tournament {
+  font-size: 0.82rem;
+  color: var(--pf-text-muted);
+  margin: 0 0 4px;
+}
+
 .pf-muted {
   color: var(--pf-text-muted);
   font-size: 0.92rem;
@@ -3083,7 +3102,8 @@ button.pf-mini-card:disabled {
 .pf-marketplace-feed__chip {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  min-width: 200px;
+  min-width: 220px;
+  max-width: 280px;
   padding: 10px 12px;
   border-radius: var(--pf-radius-sm);
   background: var(--pf-bg);
@@ -3092,6 +3112,38 @@ button.pf-mini-card:disabled {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.pf-marketplace-feed__chip-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-marketplace-feed__chip-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Портрет превью карты в ленте сделок (чуть крупнее слотов команды). */
+.pf-marketplace-feed__thumb.pf-mini-card {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 3px 4px;
+  gap: 0;
+}
+
+.pf-marketplace-feed__thumb.pf-mini-card img,
+.pf-marketplace-feed__thumb .pf-mini-card__ph {
+  width: 44px;
+  height: 56px;
+  border-radius: 5px;
+  object-fit: cover;
 }
 
 .pf-rarity-tag {

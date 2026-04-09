@@ -131,14 +131,36 @@ export function MarketplacePage() {
         )}
         {feedQ.data && feedQ.data.items.length > 0 && (
           <div className="pf-marketplace-feed__strip">
-            {feedQ.data.items.map((it, i) => (
-              <div key={`${it.soldAt}-${i}`} className="pf-marketplace-feed__chip">
-                <span className={`pf-rarity-tag pf-rarity-tag--${rarityClass(it.rarity)}`}>{it.rarity}</span>
-                <span className="pf-marketplace-feed__chip-name">{it.playerName}</span>
-                <span className="pf-marketplace-feed__chip-price">{it.price}₣</span>
-                <span className="pf-marketplace-feed__chip-buyer">→ {it.buyerDisplayName}</span>
-              </div>
-            ))}
+            {feedQ.data.items.map((it, i) => {
+              const c = it.card
+              const img = cardDisplayImageUrl({
+                playerPhotoUrl: c.playerPhotoUrl,
+                imageUrl: null,
+              })
+              return (
+                <div key={`${it.soldAt}-${i}`} className="pf-marketplace-feed__chip">
+                  <div className="pf-marketplace-feed__chip-row">
+                    <div className="pf-marketplace-feed__chip-copy">
+                      <span className={`pf-rarity-tag pf-rarity-tag--${rarityClass(it.rarity)}`}>{it.rarity}</span>
+                      <span className="pf-marketplace-feed__chip-name">{it.playerName}</span>
+                      <span className="pf-marketplace-feed__chip-price">{it.price}₣</span>
+                      <span className="pf-marketplace-feed__chip-buyer">→ {it.buyerDisplayName}</span>
+                    </div>
+                    <div
+                      className={`pf-marketplace-feed__thumb pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}
+                      aria-hidden
+                      title={c.playerName}
+                    >
+                      {img ? (
+                        <img src={img} alt="" />
+                      ) : (
+                        <div className="pf-mini-card__ph" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </section>

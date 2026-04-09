@@ -1,9 +1,11 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.SeriesOpenForTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserSeriesSummaryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDto
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -13,6 +15,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
 
 @Service
 class UserTournamentService(
@@ -24,6 +27,29 @@ class UserTournamentService(
     @Transactional(readOnly = true)
     fun listActiveTournaments(): List<UserTournamentDto> =
         tournamentRepository.findAllByStatusOrderByIdAsc(TournamentStatus.ACTIVE).map { it.toUserDto() }
+
+    @Transactional(readOnly = true)
+    fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> {
+        val now = Instant.now()
+        return seriesRepository
+            .findAllOpenForTeamSubmission(
+                tournamentStatus = TournamentStatus.ACTIVE,
+                finishedStatus = SeriesStatus.FINISHED,
+                now = now,
+            )
+            .map { s ->
+                val t = s.tournament!!
+                SeriesOpenForTeamDto(
+                    seriesId = s.id!!,
+                    tournamentId = t.id!!,
+                    tournamentName = t.name,
+                    seriesName = s.name,
+                    gameNumFrom = s.gameNumFrom,
+                    gameNumTo = s.gameNumTo,
+                    teamDeadline = s.teamDeadline,
+                )
+            }
+    }
 
     @Transactional(readOnly = true)
     fun getTournament(id: Long): UserTournamentDetailDto {
