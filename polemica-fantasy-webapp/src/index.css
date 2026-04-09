@@ -1173,12 +1173,6 @@ button.pf-mini-card:disabled {
   outline-offset: 2px;
 }
 
-.pf-collection-card__toolbar {
-  padding: 8px 10px 10px;
-  background: rgba(0, 0, 0, 0.82);
-  border-top: 1px solid var(--pf-border);
-}
-
 .pf-modal__series-pick {
   margin-top: 12px;
 }
@@ -1446,13 +1440,6 @@ button.pf-mini-card:disabled {
   50% {
     background-position: 100% center;
   }
-}
-
-.pf-card-actions {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 .pf-btn--small {
@@ -1860,6 +1847,7 @@ button.pf-mini-card:disabled {
   position: absolute;
   top: 8px;
   right: 10px;
+  z-index: 2;
   border: none;
   background: transparent;
   color: var(--pf-text-muted);

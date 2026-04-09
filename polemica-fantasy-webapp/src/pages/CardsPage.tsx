@@ -476,46 +476,6 @@ export function CardsPage() {
                     <CardAchievementChips achievements={c.achievements} max={4} />
                   </div>
                 </div>
-                <div className="pf-collection-card__toolbar">
-                  <div className="pf-card-actions">
-                    {!expired && canOfferCardOnMarketplace(c) && (
-                      <button
-                        type="button"
-                        className="pf-btn pf-btn--small pf-btn--primary"
-                        onClick={() => {
-                          setSellModalCard(c)
-                          const min = economyQ.data?.renewalCosts[c.rarity] ?? 0
-                          setSellPrice(String(min))
-                        }}
-                      >
-                        Продать
-                      </button>
-                    )}
-                    {!expired && (
-                      <button
-                        type="button"
-                        className="pf-btn pf-btn--small"
-                        disabled={recycleMut.isPending}
-                        onClick={() => runRecycle(c)}
-                      >
-                        Переработать
-                      </button>
-                    )}
-                    {expired && economyQ.data && (
-                      <button
-                        type="button"
-                        className="pf-btn pf-btn--small pf-btn--primary"
-                        disabled={renewMut.isPending || c.timesRenewed >= economyQ.data.maxRenewals}
-                        title={
-                          c.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
-                        }
-                        onClick={() => runRenew(c)}
-                      >
-                        Продлить ({economyQ.data.renewalCosts[c.rarity]}₣)
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
             </li>
           )
