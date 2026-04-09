@@ -75,7 +75,7 @@
 - **`TopBarDisplayName`:** между брендом и балансом — ник через `formatUserDisplayName` (`GET /me`, тот же `queryKey`, что у `FantikiBalance`); класс **`top__user`** — по центру гибкой колонки, обрезка длинного текста.
 
 ## Недавние правки TMA (главная)
-- **Список серий с открытым составом:** `GET /api/v1/tournaments/series-open-for-team` — серии турниров со статусом `ACTIVE`, `team_deadline > now`, `series.status != FINISHED`, сортировка по дедлайну; DTO `SeriesOpenForTeamDto`. На `/` (`HomePage`) блок «Состав на серию» (карточки как на выборе серии), ссылка «Далее» → `/series/:id/team`; кэш-ключ `['tournaments', 'series-open-for-team', initData]`.
+- **Список серий с открытым составом:** `GET /api/v1/tournaments/series-open-for-team` — серии турниров со статусом `ACTIVE`, `team_deadline > now`, `series.status != FINISHED`, сортировка по дедлайну; DTO `SeriesOpenForTeamDto`. На `/` (`HomePage`) блок «Состав на серию», ссылка «Далее» → `/series/:id/team` с `state={{ fromHome: true }}`; кэш-ключ `['tournaments', 'series-open-for-team', initData]`. Первая загрузка: не рендерить контент, пока оба запроса не дали данные или ошибку (`isPending && data === undefined && !isError`) — иначе возможен пустой экран (TanStack Query v5). `TeamPage`: назад на `/` при `fromHome`, подпись «Турниры». `SeriesPickerPage`: валидный `tournamentId` и проверка `data` до использования.
 
 ## Недавние правки TMA (карты и коллекция)
 - **Маркетплейс — лента сделок:** `GET /api/v1/marketplace/feed` в каждом элементе отдаёт `card` (`MarketplaceListingCardDto`: фото, редкость, ачивки как в листинге). На `/marketplace` в «Последние покупки» справа в чипе — компактное превью (`pf-marketplace-feed__thumb` + `pf-mini-card--{rarity}`), портрет ~44×56px.

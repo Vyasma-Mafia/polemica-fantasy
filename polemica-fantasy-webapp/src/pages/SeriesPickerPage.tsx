@@ -20,10 +20,14 @@ export function SeriesPickerPage() {
   const now = useNow()
 
   if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!Number.isFinite(id)) {
+    return <p className="pf-err">Некорректная ссылка на турнир.</p>
+  }
   if (q.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
+  if (q.data == null) return <p className="pf-loading">Загрузка…</p>
 
-  const t = q.data!
+  const t = q.data
   const back = `/tournaments/${t.id}`
   const seriesChronologicalIndex = useMemo(() => {
     const sorted = [...t.series].sort((a, b) => a.id - b.id)

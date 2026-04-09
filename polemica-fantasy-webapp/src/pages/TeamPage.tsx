@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { apiGet, apiSend, ApiError } from '../api/client'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
@@ -22,8 +22,10 @@ function cardsQueryString(tournamentId: number, seriesId: number) {
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const sid = Number(seriesId)
+  const location = useLocation()
   const initData = useInitData()
   const qc = useQueryClient()
+  const fromHome = (location.state as { fromHome?: boolean } | null)?.fromHome === true
 
   const seriesQ = useQuery({
     queryKey: ['series', sid, initData],
@@ -154,11 +156,11 @@ export function TeamPage() {
 
   const s = seriesQ.data!
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
-  const back = `/tournaments/${s.tournamentId}/series`
+  const back = fromHome ? '/' : `/tournaments/${s.tournamentId}/series`
 
   return (
     <div className="pf-page">
-      <PageHeader title="Сборка команды" subtitle={s.name} backTo={back} />
+      <PageHeader title="Сборка команды" subtitle={s.name} backTo={back} backLabel={fromHome ? 'Турниры' : 'Назад'} />
 
       {deadlinePassed && <p className="pf-err">Дедлайн сбора команды прошёл.</p>}
       {teamQ.isSuccess && teamQ.data && (

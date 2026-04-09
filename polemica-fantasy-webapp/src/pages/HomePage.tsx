@@ -27,7 +27,10 @@ export function HomePage() {
     )
   }
 
-  if (q.isLoading || openSeriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
+  /** v5: `isLoading` is only pending+fetching; avoid rendering with no data during the brief pending+idle gap. */
+  const tournamentsBooting = q.isPending && q.data === undefined && !q.isError
+  const openBooting = openSeriesQ.isPending && openSeriesQ.data === undefined && !openSeriesQ.isError
+  if (tournamentsBooting || openBooting) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
 
   const list = q.data ?? []
@@ -63,7 +66,11 @@ export function HomePage() {
                       <p className="pf-day-card__name">{s.seriesName}</p>
                     </div>
                     <div className="pf-day-card__action">
-                      <Link className="pf-btn pf-btn--small pf-btn--ghost" to={`/series/${s.seriesId}/team`}>
+                      <Link
+                        className="pf-btn pf-btn--small pf-btn--ghost"
+                        to={`/series/${s.seriesId}/team`}
+                        state={{ fromHome: true }}
+                      >
                         Далее
                       </Link>
                     </div>
