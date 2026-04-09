@@ -293,12 +293,14 @@ class MarketplaceService(
             val uc = ml.userCard!!
             val tpl = templatesById[uc.cardTemplate!!.id!!] ?: uc.cardTemplate!!
             val fp = tpl.fantasyPlayer!!
+            val seller = ml.seller!!
             val buyer = ml.buyer!!
             MarketplaceFeedItemDto(
                 playerName = fp.nickname,
                 rarity = tpl.rarity,
                 price = ml.price,
                 soldAt = ml.soldAt!!,
+                sellerDisplayName = seller.publicDisplayName(),
                 buyerDisplayName = buyer.publicDisplayName(),
                 card = toMarketplaceCardDto(uc, tpl),
             )

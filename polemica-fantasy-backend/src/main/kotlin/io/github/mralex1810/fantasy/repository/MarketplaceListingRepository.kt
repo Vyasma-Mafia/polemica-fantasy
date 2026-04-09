@@ -72,6 +72,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
     @Query(
         """
         SELECT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.seller
         JOIN FETCH ml.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp

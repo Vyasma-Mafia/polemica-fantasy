@@ -272,6 +272,7 @@ export interface MarketplaceFeedItem {
   rarity: Rarity
   price: number
   soldAt: string
+  sellerDisplayName: string
   buyerDisplayName: string
   /** Карта сделки — превью в ленте */
   card: MarketplaceListingCard

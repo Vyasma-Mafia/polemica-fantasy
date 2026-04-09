@@ -144,7 +144,9 @@ export function MarketplacePage() {
                       <span className={`pf-rarity-tag pf-rarity-tag--${rarityClass(it.rarity)}`}>{it.rarity}</span>
                       <span className="pf-marketplace-feed__chip-name">{it.playerName}</span>
                       <span className="pf-marketplace-feed__chip-price">{it.price}₣</span>
-                      <span className="pf-marketplace-feed__chip-buyer">→ {it.buyerDisplayName}</span>
+                      <span className="pf-marketplace-feed__chip-buyer">
+                        {it.sellerDisplayName} → {it.buyerDisplayName}
+                      </span>
                     </div>
                     <div
                       className={`pf-marketplace-feed__thumb pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}
