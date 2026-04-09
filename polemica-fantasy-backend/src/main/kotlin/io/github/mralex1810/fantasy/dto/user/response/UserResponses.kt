@@ -70,6 +70,12 @@ data class SeriesPlayerEntryDto(
     val photoUrl: String?,
 )
 
+/** Справочник игроков (например, фильтр маркетплейса). */
+data class FantasyPlayerBriefDto(
+    val id: Long,
+    val nickname: String,
+)
+
 data class SeriesGameEntryDto(
     val polemicaGameId: Long,
     val gameName: String,

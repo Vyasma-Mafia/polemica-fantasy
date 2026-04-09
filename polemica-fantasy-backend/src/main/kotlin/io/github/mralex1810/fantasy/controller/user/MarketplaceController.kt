@@ -30,6 +30,8 @@ class MarketplaceController(
     fun getListings(
         @AuthenticationPrincipal user: TelegramUser,
         @RequestParam(required = false) fantasyPlayerId: Long?,
+        @RequestParam(required = false) tournamentId: Long?,
+        @RequestParam(required = false) seriesId: Long?,
         @RequestParam(required = false) rarity: Rarity?,
         @RequestParam(required = false) minPrice: Long?,
         @RequestParam(required = false) maxPrice: Long?,
@@ -40,6 +42,8 @@ class MarketplaceController(
         marketplaceService.getListings(
             viewer = user,
             fantasyPlayerId = fantasyPlayerId,
+            tournamentId = tournamentId,
+            seriesId = seriesId,
             rarity = rarity,
             minPrice = minPrice,
             maxPrice = maxPrice,

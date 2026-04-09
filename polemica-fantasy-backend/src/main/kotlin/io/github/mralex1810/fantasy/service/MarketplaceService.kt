@@ -201,6 +201,8 @@ class MarketplaceService(
     fun getListings(
         viewer: TelegramUser,
         fantasyPlayerId: Long?,
+        tournamentId: Long?,
+        seriesId: Long?,
         rarity: Rarity?,
         minPrice: Long?,
         maxPrice: Long?,
@@ -218,6 +220,8 @@ class MarketplaceService(
         val result = marketplaceListingRepository.findAllActiveFiltered(
             MarketplaceListingStatus.ACTIVE,
             fantasyPlayerId,
+            tournamentId,
+            seriesId,
             rarity,
             minPrice,
             maxPrice,

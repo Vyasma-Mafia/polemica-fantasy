@@ -8,10 +8,10 @@ import {
   fetchMarketplaceListings,
 } from '../api/marketplace'
 import type {
+  FantasyPlayerBrief,
   MarketplaceListingEntry,
   MarketplaceSortBy,
   Rarity,
-  UserSeriesDetail,
   UserTournamentDetail,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
@@ -38,7 +38,7 @@ export function MarketplacePage() {
   const [page, setPage] = useState(0)
   const [tournamentId, setTournamentId] = useState('')
   const [seriesId, setSeriesId] = useState('')
-  const [fantasyPlayerId, setFantasyPlayerId] = useState<number | ''>('')
+  const [playerFilterId, setPlayerFilterId] = useState<number | ''>('')
 
   const [buyConfirm, setBuyConfirm] = useState<MarketplaceListingEntry | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -55,10 +55,10 @@ export function MarketplacePage() {
     enabled: !!initData && tournamentId !== '',
   })
 
-  const seriesDetailQ = useQuery({
-    queryKey: ['series', seriesId, initData],
-    queryFn: () => apiGet<UserSeriesDetail>(`/api/v1/series/${seriesId}`, initData),
-    enabled: !!initData && seriesId !== '',
+  const fantasyPlayersQ = useQuery({
+    queryKey: ['fantasy-players', initData],
+    queryFn: () => apiGet<FantasyPlayerBrief[]>('/api/v1/fantasy-players', initData),
+    enabled: !!initData,
   })
 
   const minP = minPrice.trim() === '' ? undefined : Number(minPrice)
@@ -66,18 +66,22 @@ export function MarketplacePage() {
   const minOk = minP === undefined || Number.isFinite(minP)
   const maxOk = maxP === undefined || Number.isFinite(maxP)
 
-  const listingsParams = useMemo(
-    () => ({
-      fantasyPlayerId: fantasyPlayerId === '' ? undefined : fantasyPlayerId,
+  const listingsParams = useMemo(() => {
+    const scopeTournament =
+      seriesId === '' && tournamentId !== '' ? Number(tournamentId) : undefined
+    const scopeSeries = seriesId !== '' ? Number(seriesId) : undefined
+    return {
+      fantasyPlayerId: playerFilterId === '' ? undefined : playerFilterId,
+      tournamentId: scopeTournament,
+      seriesId: scopeSeries,
       rarity: rarity || undefined,
       minPrice: minOk ? minP : undefined,
       maxPrice: maxOk ? maxP : undefined,
       sortBy,
       page,
       size: 20,
-    }),
-    [fantasyPlayerId, rarity, minOk, maxOk, minP, maxP, sortBy, page],
-  )
+    }
+  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, sortBy, page])
 
   const listingsQ = useQuery({
     queryKey: ['marketplace-listings', initData, listingsParams],
@@ -169,14 +173,33 @@ export function MarketplacePage() {
 
       <div className="pf-filters pf-marketplace-filters">
         <label className="pf-field">
-          <span className="pf-field__label">Турнир (фильтр по игроку ростера)</span>
+          <span className="pf-field__label">Игрок</span>
+          <select
+            className="pf-input"
+            value={playerFilterId === '' ? '' : String(playerFilterId)}
+            onChange={(e) => {
+              const v = e.target.value
+              setPlayerFilterId(v === '' ? '' : Number(v))
+              setPage(0)
+            }}
+            disabled={fantasyPlayersQ.isLoading}
+          >
+            <option value="">Все игроки</option>
+            {(fantasyPlayersQ.data ?? []).map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {p.nickname}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          <span className="pf-field__label">Турнир</span>
           <select
             className="pf-input"
             value={tournamentId}
             onChange={(e) => {
               setTournamentId(e.target.value)
               setSeriesId('')
-              setFantasyPlayerId('')
               setPage(0)
             }}
           >
@@ -196,35 +219,13 @@ export function MarketplacePage() {
               value={seriesId}
               onChange={(e) => {
                 setSeriesId(e.target.value)
-                setFantasyPlayerId('')
                 setPage(0)
               }}
             >
-              <option value="">—</option>
+              <option value="">Весь турнир</option>
               {(tournamentDetailQ.data?.series ?? []).map((s) => (
                 <option key={s.id} value={String(s.id)}>
                   {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {seriesId && (
-          <label className="pf-field">
-            <span className="pf-field__label">Игрок</span>
-            <select
-              className="pf-input"
-              value={fantasyPlayerId === '' ? '' : String(fantasyPlayerId)}
-              onChange={(e) => {
-                const v = e.target.value
-                setFantasyPlayerId(v === '' ? '' : Number(v))
-                setPage(0)
-              }}
-            >
-              <option value="">Все на серии</option>
-              {(seriesDetailQ.data?.players ?? []).map((p) => (
-                <option key={p.fantasyPlayerId} value={String(p.fantasyPlayerId)}>
-                  {p.nickname}
                 </option>
               ))}
             </select>

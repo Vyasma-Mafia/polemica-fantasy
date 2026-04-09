@@ -11,6 +11,8 @@ import type {
 
 export interface ListingsQueryParams {
   fantasyPlayerId?: number
+  tournamentId?: number
+  seriesId?: number
   rarity?: Rarity
   minPrice?: number
   maxPrice?: number
@@ -22,6 +24,8 @@ export interface ListingsQueryParams {
 function listingsSearchParams(p: ListingsQueryParams): string {
   const sp = new URLSearchParams()
   if (p.fantasyPlayerId != null) sp.set('fantasyPlayerId', String(p.fantasyPlayerId))
+  if (p.tournamentId != null) sp.set('tournamentId', String(p.tournamentId))
+  if (p.seriesId != null) sp.set('seriesId', String(p.seriesId))
   if (p.rarity) sp.set('rarity', p.rarity)
   if (p.minPrice != null) sp.set('minPrice', String(p.minPrice))
   if (p.maxPrice != null) sp.set('maxPrice', String(p.maxPrice))

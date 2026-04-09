@@ -46,6 +46,15 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN ct.fantasyPlayer fp
         WHERE ml.status = :active
         AND (:fantasyPlayerId IS NULL OR fp.id = :fantasyPlayerId)
+        AND (:tournamentId IS NULL OR EXISTS (
+            SELECT 1 FROM TournamentPlayer tp
+            WHERE tp.fantasyPlayer.id = fp.id AND tp.tournament.id = :tournamentId
+        ))
+        AND (:seriesId IS NULL OR EXISTS (
+            SELECT 1 FROM SeriesPlayer sp
+            JOIN sp.tournamentPlayer tp2
+            WHERE tp2.fantasyPlayer.id = fp.id AND sp.series.id = :seriesId
+        ))
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
@@ -57,6 +66,15 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN ct.fantasyPlayer fp
         WHERE ml.status = :active
         AND (:fantasyPlayerId IS NULL OR fp.id = :fantasyPlayerId)
+        AND (:tournamentId IS NULL OR EXISTS (
+            SELECT 1 FROM TournamentPlayer tp
+            WHERE tp.fantasyPlayer.id = fp.id AND tp.tournament.id = :tournamentId
+        ))
+        AND (:seriesId IS NULL OR EXISTS (
+            SELECT 1 FROM SeriesPlayer sp
+            JOIN sp.tournamentPlayer tp2
+            WHERE tp2.fantasyPlayer.id = fp.id AND sp.series.id = :seriesId
+        ))
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
@@ -65,6 +83,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
     fun findAllActiveFiltered(
         @Param("active") active: MarketplaceListingStatus,
         @Param("fantasyPlayerId") fantasyPlayerId: Long?,
+        @Param("tournamentId") tournamentId: Long?,
+        @Param("seriesId") seriesId: Long?,
         @Param("rarity") rarity: Rarity?,
         @Param("minPrice") minPrice: Long?,
         @Param("maxPrice") maxPrice: Long?,

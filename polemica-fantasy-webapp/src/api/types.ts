@@ -231,6 +231,12 @@ export interface FantasyTeamDto {
   slots: { slot: number; userCardId: number; score: number | null }[]
 }
 
+/** GET /api/v1/fantasy-players */
+export interface FantasyPlayerBrief {
+  id: number
+  nickname: string
+}
+
 /** GET /api/v1/marketplace/listings */
 export type MarketplaceSortBy = 'price_asc' | 'price_desc' | 'created_at_desc'
 
