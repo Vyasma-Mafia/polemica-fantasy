@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { giveCards, listCardTemplates, openPack } from '../api/cards'
 import { listCardPacks } from '../api/packs'
-import { giveFantiki } from '../api/users'
+import { giveFantiki, takeFantiki } from '../api/users'
 
 export function UserToolsPage() {
   const { message } = App.useApp()
@@ -45,6 +45,15 @@ export function UserToolsPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const takeFantikiMut = useMutation({
+    mutationFn: ({ uid, amount }: { uid: number; amount: number }) =>
+      takeFantiki(uid, amount),
+    onSuccess: (profile) => {
+      message.success(`Balance: ${profile.fantiki} fantiki`)
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
   const openMut = useMutation({
     mutationFn: ({
       uid,
@@ -78,7 +87,7 @@ export function UserToolsPage() {
 
         <Typography.Title level={5}>Fantiki</Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          Grant currency to the user (same Telegram user id as below).
+          Grant or take currency by Telegram user id (user must already exist to take).
         </Typography.Paragraph>
         <Space wrap style={{ marginBottom: 24 }}>
           <InputNumber
@@ -98,6 +107,17 @@ export function UserToolsPage() {
             }}
           >
             Grant fantiki
+          </Button>
+          <Button
+            danger
+            loading={takeFantikiMut.isPending}
+            disabled={telegramUserId == null || fantikiAmount == null || fantikiAmount < 1}
+            onClick={() => {
+              if (telegramUserId == null || fantikiAmount == null) return
+              takeFantikiMut.mutate({ uid: telegramUserId, amount: fantikiAmount })
+            }}
+          >
+            Take fantiki
           </Button>
         </Space>
 

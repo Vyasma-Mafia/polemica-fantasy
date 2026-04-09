@@ -1,7 +1,7 @@
 # Active Context
 
 ## Текущий фокус
-**Маркетплейс (TMA M7–M11 + доработки API):** спецификация [`docs/features/DESIGN-MARKETPLACE.md`](docs/features/DESIGN-MARKETPLACE.md). TMA: `/marketplace` (лента `GET /marketplace/feed`, фильтры, покупка), `/marketplace/my`, навигация «Маркетплейс»; коллекция — «Продать» и модалка цены; провенанс — `CardOwnershipHistoryBlock` в модалках коллекции и лидерборда (`LeaderboardPlayerTeamPage`). Backend: `GET /api/v1/user-cards/{id}/ownership-history`; в `EconomyInfoDto` — `marketplaceCommissionPercent` (из `economy_config`). REST маркетплейса и Telegram продавцу без изменений по смыслу.
+**Маркетплейс (TMA M7–M11 + доработки API):** спецификация [`docs/features/DESIGN-MARKETPLACE.md`](docs/features/DESIGN-MARKETPLACE.md). TMA: `/marketplace` (лента `GET /marketplace/feed`, фильтры, покупка), `/marketplace/my`, навигация «Маркетплейс»; коллекция — «Продать» и модалка цены; провенанс — `CardOwnershipHistoryBlock` в модалках коллекции и лидерборда (`LeaderboardPlayerTeamPage`). Backend: `GET /api/v1/user-cards/{id}/ownership-history`; в `EconomyInfoDto` — `marketplaceCommissionPercent`, `marketplaceMaxPrices`, `minPackOpensBeforeMarketplacePurchase`; в `GET /me` — `packOpensCount`. **Анти-перелив:** потолок цены листинга по редкости (`marketplace.max_price.*`), покупка на маркетплейсе только после N открытых паков (`pack_opens_count`, порог из `economy_config`). Flyway **V23**.
 
 **Исключение из пула пака:** колонка `tournament_player.excluded_from_pack_pool` (Flyway **V20**), API `PATCH /api/v1/admin/tournaments/{id}/players/{playerId}` с телом `{"excludedFromPackPool": boolean}`; `CardPackService.buildFantasyPlayerPool` и валидация паков учитывают флаг. Админка: страница турнира, колонка «Пул пака» (Switch).
 

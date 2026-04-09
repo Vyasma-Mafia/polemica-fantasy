@@ -122,6 +122,18 @@ class UserService(
         return toProfileDto(fresh)
     }
 
+    @Transactional
+    fun confiscateFantikiByTelegramId(telegramUserId: Long, amount: Long): UserProfileDto {
+        val user = telegramUserRepository.findByTelegramId(telegramUserId)
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "User with telegram id $telegramUserId not found",
+            )
+        deductBalance(user.id!!, amount, FantikiTransactionReason.ADMIN_CONFISCATE)
+        val fresh = telegramUserRepository.findById(user.id!!).get()
+        return toProfileDto(fresh)
+    }
+
     companion object {
         private const val MAX_DISPLAY_NAME_LENGTH = 255
     }

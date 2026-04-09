@@ -6,3 +6,8 @@ data class GiveFantikiRequest(
     @field:Positive
     val amount: Long,
 )
+
+data class TakeFantikiRequest(
+    @field:Positive
+    val amount: Long,
+)

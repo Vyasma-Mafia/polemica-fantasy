@@ -46,6 +46,8 @@ export function StorePage() {
       void queryClient.invalidateQueries({ queryKey: ['me'] })
       void queryClient.invalidateQueries({ queryKey: ['cards'] })
       void queryClient.invalidateQueries({ queryKey: ['store-packs'] })
+      void queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
+      void queryClient.invalidateQueries({ queryKey: ['marketplace-feed'] })
     },
     onError: (e: Error) => {
       setBuyError(e instanceof ApiError ? e.message : String(e))

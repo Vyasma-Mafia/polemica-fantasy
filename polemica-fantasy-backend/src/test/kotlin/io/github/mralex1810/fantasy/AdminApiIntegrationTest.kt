@@ -419,6 +419,66 @@ class AdminApiIntegrationTest {
         assertEquals(1000L, (row["fantiki"] as Number).toLong())
     }
 
+    @Test
+    @Order(13)
+    fun `admin take fantiki decreases balance`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tid = 778001L
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/give-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":50}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantiki").value(1050))
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/take-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":50}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.telegramId").value(tid))
+            .andExpect(jsonPath("$.fantiki").value(1000))
+    }
+
+    @Test
+    @Order(14)
+    fun `admin take fantiki insufficient balance returns 400`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tid = 778002L
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/give-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":1}"""),
+        )
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/take-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":999999}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(15)
+    fun `admin take fantiki unknown telegram user returns 404`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(
+            post("/api/v1/admin/users/999888777/take-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":1}"""),
+        )
+            .andExpect(status().isNotFound)
+    }
+
     companion object {
         @JvmField
         @Container

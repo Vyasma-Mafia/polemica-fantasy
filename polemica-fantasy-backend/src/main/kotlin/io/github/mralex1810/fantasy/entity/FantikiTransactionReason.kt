@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.entity
 enum class FantikiTransactionReason {
     INITIAL,
     ADMIN_GRANT,
+    ADMIN_CONFISCATE,
     PACK_PURCHASE,
     SERIES_REWARD,
     CARD_RECYCLE,

@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.GiveFantikiRequest
+import io.github.mralex1810.fantasy.dto.admin.request.TakeFantikiRequest
 import io.github.mralex1810.fantasy.dto.admin.response.AdminUserListItemDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.service.AdminUserListService
@@ -32,4 +33,10 @@ class UserAdminController(
         @PathVariable telegramUserId: Long,
         @Valid @RequestBody body: GiveFantikiRequest,
     ): UserProfileDto = userService.grantFantikiByTelegramId(telegramUserId, body.amount)
+
+    @PostMapping("/{telegramUserId}/take-fantiki")
+    fun takeFantiki(
+        @PathVariable telegramUserId: Long,
+        @Valid @RequestBody body: TakeFantikiRequest,
+    ): UserProfileDto = userService.confiscateFantikiByTelegramId(telegramUserId, body.amount)
 }
