@@ -21,6 +21,7 @@ import io.github.mralex1810.fantasy.event.MarketplaceSaleNotificationEvent
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -43,6 +44,7 @@ class MarketplaceService(
     private val cardTemplateRepository: CardTemplateRepository,
     private val userCardOwnershipService: UserCardOwnershipService,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val telegramUserRepository: TelegramUserRepository,
 ) {
 
     @Transactional
@@ -63,6 +65,10 @@ class MarketplaceService(
         if (request.price < minPrice) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price below minimum for this rarity")
         }
+        val maxPrice = economyConfigService.getMaxListingPrice(rarity)
+        if (request.price > maxPrice) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price above maximum for this rarity")
+        }
         val listing = marketplaceListingRepository.save(
             MarketplaceListing(
                 seller = user,
@@ -75,7 +81,15 @@ class MarketplaceService(
         val tid = uc.cardTemplate!!.id!!
         val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
-        return toListingEntryDto(listing, uc, tpl, viewer = user, forSellerOwnListing = true)
+        return toListingEntryDto(
+            listing,
+            uc,
+            tpl,
+            viewer = user,
+            forSellerOwnListing = true,
+            minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
+            viewerPackOpens = user.packOpensCount,
+        )
     }
 
     @Transactional
@@ -106,6 +120,17 @@ class MarketplaceService(
         }
         if (userCardOwnershipHistoryRepository.existsByUserCard_IdAndTelegramUser_Id(uc.id!!, buyerId)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot buy a card you previously owned")
+        }
+        val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
+        val buyerPackOpens =
+            telegramUserRepository.findById(buyerId).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+            }.packOpensCount
+        if (buyerPackOpens < minPackOpens) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Open at least $minPackOpens pack(s) before buying on the marketplace",
+            )
         }
         val price = listing.price
         try {
@@ -158,6 +183,8 @@ class MarketplaceService(
             tpl,
             viewer = buyer,
             forSellerOwnListing = false,
+            minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
+            viewerPackOpens = buyer.packOpensCount,
             canBuyOverride = false to null,
         )
         return BuyCardResultDto(
@@ -183,6 +210,11 @@ class MarketplaceService(
     ): MarketplaceListingsPageDto {
         val sort = parseListingSort(sortBy)
         val pageable = PageRequest.of(page, size.coerceAtLeast(1).coerceAtMost(100), sort)
+        val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
+        val viewerPackOpens =
+            telegramUserRepository.findById(viewer.id!!).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+            }.packOpensCount
         val result = marketplaceListingRepository.findAllActiveFiltered(
             MarketplaceListingStatus.ACTIVE,
             fantasyPlayerId,
@@ -199,7 +231,15 @@ class MarketplaceService(
             val uc = ml.userCard!!
             val tid = uc.cardTemplate!!.id!!
             val tpl = templatesById[tid] ?: uc.cardTemplate!!
-            toListingEntryDto(ml, uc, tpl, viewer = viewer, forSellerOwnListing = ml.seller!!.id == viewer.id)
+            toListingEntryDto(
+                ml,
+                uc,
+                tpl,
+                viewer = viewer,
+                forSellerOwnListing = ml.seller!!.id == viewer.id,
+                minPackOpensRequired = minPackOpens,
+                viewerPackOpens = viewerPackOpens,
+            )
         }
         return MarketplaceListingsPageDto(
             content = content,
@@ -217,12 +257,25 @@ class MarketplaceService(
             MarketplaceListingStatus.ACTIVE,
         )
         if (listings.isEmpty()) return emptyList()
+        val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
+        val viewerPackOpens =
+            telegramUserRepository.findById(user.id!!).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+            }.packOpensCount
         val templateIds = listings.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
         val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
         return listings.map { ml ->
             val uc = ml.userCard!!
             val tpl = templatesById[uc.cardTemplate!!.id!!] ?: uc.cardTemplate!!
-            toListingEntryDto(ml, uc, tpl, viewer = user, forSellerOwnListing = true)
+            toListingEntryDto(
+                ml,
+                uc,
+                tpl,
+                viewer = user,
+                forSellerOwnListing = true,
+                minPackOpensRequired = minPackOpens,
+                viewerPackOpens = viewerPackOpens,
+            )
         }
     }
 
@@ -268,11 +321,20 @@ class MarketplaceService(
         template: CardTemplate,
         viewer: TelegramUser,
         forSellerOwnListing: Boolean,
+        minPackOpensRequired: Int,
+        viewerPackOpens: Int,
         canBuyOverride: Pair<Boolean, String?>? = null,
     ): MarketplaceListingEntryDto {
         val seller = listing.seller!!
         val (canBuy, reason) = canBuyOverride
-            ?: computeCanBuy(listing, uc, viewer, forSellerOwnListing)
+            ?: computeCanBuy(
+                listing,
+                uc,
+                viewer,
+                forSellerOwnListing,
+                minPackOpensRequired,
+                viewerPackOpens,
+            )
         return MarketplaceListingEntryDto(
             listingId = listing.id!!,
             price = listing.price,
@@ -289,6 +351,8 @@ class MarketplaceService(
         uc: UserCard,
         viewer: TelegramUser,
         forSellerOwnListing: Boolean,
+        minPackOpensRequired: Int,
+        viewerPackOpens: Int,
     ): Pair<Boolean, String?> {
         if (forSellerOwnListing || listing.seller!!.id == viewer.id) {
             return false to "This is your listing"
@@ -297,6 +361,9 @@ class MarketplaceService(
         val viewerId = viewer.id!!
         if (userCardOwnershipHistoryRepository.existsByUserCard_IdAndTelegramUser_Id(cardId, viewerId)) {
             return false to "You have already owned this card"
+        }
+        if (viewerPackOpens < minPackOpensRequired) {
+            return false to "Open at least $minPackOpensRequired pack(s) before buying on the marketplace"
         }
         val balance = userService.getBalance(viewerId)
         if (balance < listing.price) {

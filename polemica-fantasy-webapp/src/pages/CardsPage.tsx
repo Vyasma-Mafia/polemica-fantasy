@@ -678,7 +678,8 @@ export function CardsPage() {
             <p className="pf-muted">{sellModalCard.playerNickname}</p>
             <label className="pf-field">
               <span className="pf-field__label">
-                Цена (мин. {economyQ.data.renewalCosts[sellModalCard.rarity]}₣)
+                Цена (мин. {economyQ.data.renewalCosts[sellModalCard.rarity]}₣, макс.{' '}
+                {economyQ.data.marketplaceMaxPrices[sellModalCard.rarity]}₣)
               </span>
               <input
                 className="pf-input"
@@ -714,9 +715,14 @@ export function CardsPage() {
                 disabled={sellMut.isPending}
                 onClick={() => {
                   const min = economyQ.data!.renewalCosts[sellModalCard.rarity]
+                  const max = economyQ.data!.marketplaceMaxPrices[sellModalCard.rarity]
                   const price = Number(sellPrice)
                   if (!Number.isFinite(price) || price < min) {
                     window.alert(`Минимальная цена для этой редкости: ${min}₣`)
+                    return
+                  }
+                  if (!Number.isFinite(price) || price > max) {
+                    window.alert(`Максимальная цена для этой редкости: ${max}₣`)
                     return
                   }
                   sellMut.mutate()

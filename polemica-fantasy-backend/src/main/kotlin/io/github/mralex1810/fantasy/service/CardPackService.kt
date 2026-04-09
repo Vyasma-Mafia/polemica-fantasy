@@ -24,6 +24,7 @@ import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
@@ -47,6 +48,7 @@ class CardPackService(
     private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
     private val userCardRepository: UserCardRepository,
     private val userService: UserService,
+    private val telegramUserRepository: TelegramUserRepository,
     private val economyConfigService: EconomyConfigService,
     private val userCardOwnershipService: UserCardOwnershipService,
 ) {
@@ -227,6 +229,7 @@ class CardPackService(
                 drawn.add(saved)
             }
         }
+        telegramUserRepository.incrementPackOpensCount(user.id!!)
         return OpenPackResultDto(userCards = drawn.map { it.toUserCardDto() })
     }
 

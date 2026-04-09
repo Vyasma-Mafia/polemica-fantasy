@@ -111,6 +111,7 @@ class UserService(
             displayName = user.displayName,
             createdAt = user.createdAt,
             fantiki = user.fantiki,
+            packOpensCount = user.packOpensCount,
         )
 
     @Transactional

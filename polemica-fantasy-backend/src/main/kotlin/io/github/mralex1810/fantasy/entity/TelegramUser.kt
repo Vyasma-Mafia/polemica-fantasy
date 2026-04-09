@@ -34,6 +34,10 @@ class TelegramUser(
     @Column(name = "fantiki", nullable = false)
     var fantiki: Long = 1000L,
 
+    /** Успешные открытия паков (магазин / admin openPack). */
+    @Column(name = "pack_opens_count", nullable = false)
+    var packOpensCount: Int = 0,
+
     @OneToMany(mappedBy = "telegramUser")
     var userCards: MutableList<UserCard> = mutableListOf(),
 

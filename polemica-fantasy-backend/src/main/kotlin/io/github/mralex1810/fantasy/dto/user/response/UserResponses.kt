@@ -15,6 +15,8 @@ data class UserProfileDto(
     val displayName: String?,
     val createdAt: Instant,
     val fantiki: Long,
+    /** Успешные открытия паков (магазин). */
+    val packOpensCount: Int,
 )
 
 data class UserTournamentDto(

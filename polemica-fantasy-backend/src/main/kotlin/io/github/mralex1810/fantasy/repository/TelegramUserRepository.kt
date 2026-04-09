@@ -28,6 +28,10 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     )
     fun deductFantikiIfSufficient(@Param("id") id: Long, @Param("amount") amount: Long): Int
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE TelegramUser u SET u.packOpensCount = u.packOpensCount + 1 WHERE u.id = :id")
+    fun incrementPackOpensCount(@Param("id") id: Long): Int
+
     /**
      * All telegram users with count of user_card rows whose template's fantasy_player
      * is on this series (same rule as [io.github.mralex1810.fantasy.repository.UserCardRepository.findAllForUserFiltered]).

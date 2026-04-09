@@ -22,6 +22,8 @@ export interface UserProfile {
   displayName: string | null
   createdAt: string
   fantiki: number
+  /** Успешные открытия паков (магазин). */
+  packOpensCount: number
 }
 
 export interface StorePackRaritySlot {
@@ -204,6 +206,10 @@ export interface EconomyInfo {
   seriesRewards: RewardTier[]
   /** Комиссия маркетплейса при продаже карты, % (экономика). */
   marketplaceCommissionPercent: number
+  /** Максимальная цена листинга по редкости. */
+  marketplaceMaxPrices: Record<Rarity, number>
+  /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */
+  minPackOpensBeforeMarketplacePurchase: number
 }
 
 export interface RecycleResult {

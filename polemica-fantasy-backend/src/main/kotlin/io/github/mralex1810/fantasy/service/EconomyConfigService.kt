@@ -66,6 +66,10 @@ class EconomyConfigService(
 
     fun getMarketplaceCommissionPercent(): Int = getInt("marketplace.commission_percent")
 
+    fun getMaxListingPrice(rarity: Rarity): Long = getLong("marketplace.max_price.$rarity")
+
+    fun getMinPackOpensBeforeMarketplacePurchase(): Int = getInt("marketplace.min_pack_opens_before_purchase")
+
     /**
      * @param position 1-based rank on the series leaderboard (same order as [io.github.mralex1810.fantasy.repository.FantasyTeamRepository.findLeaderboardForSeries]).
      */
@@ -86,6 +90,7 @@ class EconomyConfigService(
         val uses = Rarity.entries.associateWith { getUsesForRarity(it) }
         val recycle = Rarity.entries.associateWith { getRecycleValue(it) }
         val renewal = Rarity.entries.associateWith { getRenewalCost(it) }
+        val marketplaceMax = Rarity.entries.associateWith { getMaxListingPrice(it) }
         val tiers = seriesRewardKeysInOrder.map { key ->
             val row = economyConfigRepository.findById(key).orElseThrow {
                 ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Economy config row missing: $key")
@@ -100,6 +105,8 @@ class EconomyConfigService(
             maxRenewals = getMaxRenewals(),
             seriesRewards = tiers,
             marketplaceCommissionPercent = getMarketplaceCommissionPercent(),
+            marketplaceMaxPrices = marketplaceMax,
+            minPackOpensBeforeMarketplacePurchase = getMinPackOpensBeforeMarketplacePurchase(),
         )
     }
 }
