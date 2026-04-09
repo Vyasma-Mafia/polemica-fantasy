@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param
 
 interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long> {
 
+    fun deleteAllByUserCard_Id(userCardId: Long)
+
     fun existsByUserCard_IdAndStatus(userCardId: Long, status: MarketplaceListingStatus): Boolean
 
     fun findBySeller_IdAndStatusOrderByCreatedAtDesc(

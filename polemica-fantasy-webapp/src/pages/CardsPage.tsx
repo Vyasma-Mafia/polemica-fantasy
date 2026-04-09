@@ -627,16 +627,14 @@ export function CardsPage() {
                   Продать
                 </button>
               )}
-              {detailCard.usesRemaining > 0 && (
-                <button
-                  type="button"
-                  className="pf-btn pf-btn--small"
-                  disabled={recycleMut.isPending}
-                  onClick={() => runRecycle(detailCard)}
-                >
-                  Переработать
-                </button>
-              )}
+              <button
+                type="button"
+                className="pf-btn pf-btn--small"
+                disabled={recycleMut.isPending}
+                onClick={() => runRecycle(detailCard)}
+              >
+                Переработать
+              </button>
               {detailCard.usesRemaining <= 0 && economyQ.data && (
                 <button
                   type="button"

@@ -45,6 +45,7 @@ class CardLifecycleService(
         val internalId = user.id!!
         fantasyTeamCardRepository.deleteAllByUserCard_Id(userCardId)
         userCardOwnershipHistoryRepository.deleteAllByUserCard_Id(userCardId)
+        marketplaceListingRepository.deleteAllByUserCard_Id(userCardId)
         userCardRepository.delete(uc)
         userService.addBalance(internalId, earned, FantikiTransactionReason.CARD_RECYCLE)
         val balance = userService.getBalance(internalId)

@@ -1,10 +1,14 @@
-import { App, Button, Card, Form, Input, Modal, Typography } from 'antd'
-import { useState } from 'react'
+import { App, Alert, Button, Card, Form, Input, Modal, Typography } from 'antd'
+import { useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { TelegramMarkdownV2Preview } from '../components/telegramMarkdownV2Preview'
 import { broadcastMessage } from '../api/notifications'
+import {
+  TELEGRAM_MESSAGE_MAX_LENGTH,
+  validateTelegramMarkdownV2,
+} from '../lib/validateTelegramMarkdownV2'
 
-const MAX_LEN = 4096
+const MAX_LEN = TELEGRAM_MESSAGE_MAX_LENGTH
 
 export function BroadcastPage() {
   const { message } = App.useApp()
@@ -22,8 +26,15 @@ export function BroadcastPage() {
   })
 
   const trimmed = text.trim()
+  const mdValidation = useMemo(
+    () => validateTelegramMarkdownV2(trimmed),
+    [trimmed],
+  )
   const canSend =
-    trimmed.length > 0 && trimmed.length <= MAX_LEN && !mut.isPending
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_LEN &&
+    mdValidation.ok &&
+    !mut.isPending
 
   const submit = () => {
     if (!canSend) return
@@ -76,6 +87,30 @@ export function BroadcastPage() {
             showCount
           />
         </Form.Item>
+        {trimmed.length > 0 ? (
+          mdValidation.ok ? (
+            <Alert
+              type="success"
+              showIcon
+              message="Сообщение пройдёт проверку MarkdownV2 (как у Telegram API)."
+              style={{ marginBottom: 16 }}
+            />
+          ) : (
+            <Alert
+              type="error"
+              showIcon
+              message="Текст не отправится: ошибка разметки или длины"
+              description={
+                <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                  {mdValidation.issues.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              }
+              style={{ marginBottom: 16 }}
+            />
+          )
+        ) : null}
         <Form.Item label="Preview (approximate)">
           <Card size="small" styles={{ body: { background: '#fafafa' } }}>
             {trimmed.length > 0 ? (

@@ -93,6 +93,7 @@ class CardLifecycleServiceTest {
         assertEquals(10L, result.fantikiEarned)
         assertEquals(1010L, result.newBalance)
         verify(userCardOwnershipHistoryRepository).deleteAllByUserCard_Id(50L)
+        verify(marketplaceListingRepository).deleteAllByUserCard_Id(50L)
         verify(userService).addBalance(10L, 10L, FantikiTransactionReason.CARD_RECYCLE)
         verify(userCardRepository).delete(uc)
     }
