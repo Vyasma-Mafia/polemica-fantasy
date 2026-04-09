@@ -16,12 +16,21 @@ class TelegramBotApiClient(
     /**
      * @throws IllegalStateException when Telegram returns ok=false or body cannot be parsed
      */
-    fun sendMessage(botToken: String, chatId: Long, text: String, messageThreadId: Int? = null) {
+    fun sendMessage(
+        botToken: String,
+        chatId: Long,
+        text: String,
+        messageThreadId: Int? = null,
+        parseMode: String? = null,
+    ) {
         val body = buildMap {
             put("chat_id", chatId)
             put("text", text)
             if (messageThreadId != null) {
                 put("message_thread_id", messageThreadId)
+            }
+            if (parseMode != null) {
+                put("parse_mode", parseMode)
             }
         }
         val tree = apiPost(botToken, "sendMessage", body)
@@ -116,5 +125,8 @@ class TelegramBotApiClient(
 
     companion object {
         private const val MAX_FORUM_TOPIC_NAME_LENGTH = 128
+
+        /** Bot API `parse_mode` for [sendMessage]. */
+        const val PARSE_MODE_MARKDOWN_V2 = "MarkdownV2"
     }
 }

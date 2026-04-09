@@ -39,8 +39,8 @@
 - [x] **Тесты:** `FantasyTeamRosterPruningServiceTest`
 
 ### Рассылка в Telegram из админки
-- [x] **Backend:** `POST /api/v1/admin/notifications/broadcast`, `AdminBroadcastNotificationService`, `TelegramBroadcastAsyncSender`, `TelegramUserRepository.findAllTelegramIds`; тесты `AdminBroadcastNotificationServiceTest`, `AdminBroadcastApiIntegrationTest`
-- [x] **Админка:** маршрут `/broadcast`, меню Broadcast, `api/notifications.ts`
+- [x] **Backend:** `POST /api/v1/admin/notifications/broadcast`, `AdminBroadcastNotificationService`, `TelegramBroadcastAsyncSender`, `TelegramUserRepository.findAllTelegramIds`; тесты `AdminBroadcastNotificationServiceTest`, `AdminBroadcastApiIntegrationTest`; рассылка с `parse_mode` **MarkdownV2** в `TelegramBroadcastAsyncSender`
+- [x] **Админка:** маршрут `/broadcast`, меню Broadcast, `api/notifications.ts`; подсказка по MarkdownV2 и блок preview (`telegramMarkdownV2Preview.tsx`)
 
 ### Бесплатные открытия паков (per user, per pack)
 - [x] **Flyway V16:** `card_pack.free_opens_per_user`; таблица `user_card_pack_free_usage` (счётчик использованных бесплатных открытий на пару user+pack)

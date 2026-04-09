@@ -17,7 +17,12 @@ class TelegramBroadcastAsyncSender(
     fun sendToAllChats(botToken: String, chatIds: List<Long>, text: String) {
         for (chatId in chatIds) {
             try {
-                telegramBotApiClient.sendMessage(botToken, chatId, text)
+                telegramBotApiClient.sendMessage(
+                    botToken,
+                    chatId,
+                    text,
+                    parseMode = TelegramBotApiClient.PARSE_MODE_MARKDOWN_V2,
+                )
             } catch (e: Exception) {
                 log.warn("Failed to send broadcast Telegram message to chatId={}", chatId, e)
             }
