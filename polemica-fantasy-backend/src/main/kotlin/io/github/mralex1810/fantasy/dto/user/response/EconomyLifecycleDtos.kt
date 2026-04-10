@@ -30,6 +30,8 @@ data class EconomyInfoDto(
     val maxRenewals: Int,
     val seriesRewards: List<RewardTierDto>,
     val marketplaceCommissionPercent: Int,
+    /** Минимальная цена листинга по редкости (маркетплейс). */
+    val marketplaceMinPrices: Map<Rarity, Long>,
     /** Максимальная цена листинга по редкости (маркетплейс). */
     val marketplaceMaxPrices: Map<Rarity, Long>,
     /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */

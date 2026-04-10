@@ -676,7 +676,7 @@ export function CardsPage() {
             <p className="pf-muted">{sellModalCard.playerNickname}</p>
             <label className="pf-field">
               <span className="pf-field__label">
-                Цена (мин. {economyQ.data.renewalCosts[sellModalCard.rarity]}₣, макс.{' '}
+                Цена (мин. {economyQ.data.marketplaceMinPrices[sellModalCard.rarity]}₣, макс.{' '}
                 {economyQ.data.marketplaceMaxPrices[sellModalCard.rarity]}₣)
               </span>
               <input

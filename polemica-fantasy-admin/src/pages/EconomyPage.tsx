@@ -9,6 +9,7 @@ function categoryForKey(key: string): string {
   if (key.startsWith('recycle.value.')) return 'Recycle'
   if (key.startsWith('renewal.')) return 'Renewal'
   if (key.startsWith('series.reward.')) return 'Series rewards'
+  if (key.startsWith('marketplace.')) return 'Marketplace'
   return 'Other'
 }
 

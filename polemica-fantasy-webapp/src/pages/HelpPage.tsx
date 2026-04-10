@@ -235,14 +235,14 @@ export function HelpPage() {
                   открытия паков).
                 </p>
                 <p className="pf-muted">
-                  Цена листинга по редкости не ниже стоимости продления и не выше максимума (таблица ниже; числа из
-                  экономики сервера).
+                  Диапазон цены листинга по редкости задаётся экономикой сервера (минимум и максимум в таблице ниже; не
+                  зависят от стоимости продления контракта).
                 </p>
                 <table className="pf-economy__table">
                   <thead>
                     <tr>
                       <th>Редкость</th>
-                      <th>Мин. цена (как продление)</th>
+                      <th>Мин. цена</th>
                       <th>Макс. цена</th>
                     </tr>
                   </thead>
@@ -250,7 +250,7 @@ export function HelpPage() {
                     {RARITIES.map((r) => (
                       <tr key={r}>
                         <td>{r}</td>
-                        <td>{economyQ.data!.renewalCosts[r]}₣</td>
+                        <td>{economyQ.data!.marketplaceMinPrices[r]}₣</td>
                         <td>{economyQ.data!.marketplaceMaxPrices[r]}₣</td>
                       </tr>
                     ))}

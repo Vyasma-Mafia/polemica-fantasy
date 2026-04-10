@@ -8,6 +8,9 @@ import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
+import io.github.mralex1810.fantasy.event.SeriesRosterReplacementNotificationEvent
+import io.github.mralex1810.fantasy.event.SeriesRosterReplacementRecipient
+import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMessage
 import io.github.mralex1810.fantasy.polemica.GameSyncService
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
@@ -15,6 +18,7 @@ import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
 import io.github.mralex1810.fantasy.scoring.ScoringService
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -31,6 +35,7 @@ class SeriesService(
     private val scoringService: ScoringService,
     private val seriesFinalizationService: SeriesFinalizationService,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -145,16 +150,65 @@ class SeriesService(
                     "Tournament player $tpId is not part of tournament $tournamentId",
                 )
         }
+        val previousTpIds = seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId)
+            .map { it.tournamentPlayer!!.id!! }
+            .toSet()
         seriesPlayerRepository.deleteAllBySeries_Id(seriesId)
         seriesPlayerRepository.flush()
         ids.forEach { tpId ->
             val tp = tournamentPlayerRepository.findById(tpId).get()
             seriesPlayerRepository.save(SeriesPlayer(series = series, tournamentPlayer = tp))
         }
-        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
+        val newTpIds = ids.toSet()
+        val removedTpIds = previousTpIds - newTpIds
+        val addedTpIds = newTpIds - previousTpIds
+        val replacementByRemovedFantasyPlayerId =
+            replacementNicknameByRemovedFantasyPlayerId(removedTpIds, addedTpIds)
+        val pruneResult = fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
+        if (pruneResult.prunedCards.isNotEmpty()) {
+            val tournamentName = series.tournament!!.name
+            val seriesName = series.name
+            val recipients = pruneResult.prunedCards
+                .groupBy { it.telegramChatId }
+                .map { (chatId, cards) ->
+                    SeriesRosterReplacementRecipient(
+                        telegramChatId = chatId,
+                        messageText = buildSeriesRosterReplacementTelegramMessage(
+                            tournamentName = tournamentName,
+                            seriesName = seriesName,
+                            prunedCardsForUser = cards,
+                            replacementNicknameByRemovedFantasyPlayerId = replacementByRemovedFantasyPlayerId,
+                        ),
+                    )
+                }
+            applicationEventPublisher.publishEvent(SeriesRosterReplacementNotificationEvent(recipients))
+        }
         val counts = gameCountsForSeriesIds(listOf(seriesId))[seriesId] ?: (0L to 0L)
         return seriesRepository.findById(seriesId).get()
             .toDto(tournamentPlayerIdsForSeries(seriesId), counts.first, counts.second)
+    }
+
+    /**
+     * When the same number of players were removed and added, pairs them by sorted [tournament_player] id (zip).
+     */
+    private fun replacementNicknameByRemovedFantasyPlayerId(
+        removedTpIds: Set<Long>,
+        addedTpIds: Set<Long>,
+    ): Map<Long, String> {
+        if (removedTpIds.size != addedTpIds.size || removedTpIds.isEmpty()) {
+            return emptyMap()
+        }
+        val removedSorted = removedTpIds.sorted()
+        val addedSorted = addedTpIds.sorted()
+        val out = LinkedHashMap<Long, String>()
+        for (i in removedSorted.indices) {
+            val r = tournamentPlayerRepository.findById(removedSorted[i]).orElse(null) ?: continue
+            val a = tournamentPlayerRepository.findById(addedSorted[i]).orElse(null) ?: continue
+            val rFpId = r.fantasyPlayer?.id ?: continue
+            val nick = a.fantasyPlayer?.nickname?.trim()?.takeIf { it.isNotEmpty() } ?: continue
+            out[rFpId] = nick
+        }
+        return out
     }
 
     @Transactional(readOnly = true)

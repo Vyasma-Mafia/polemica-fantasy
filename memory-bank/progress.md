@@ -5,6 +5,7 @@
 ### Маркетплейс карт (backend M1–M6)
 - [x] **Flyway V22:** `marketplace_listing`, `user_card_ownership_history`, индексы (в т.ч. лента продаж), ключ `economy_config.marketplace.commission_percent`, бэкфилл провенанса из `user_card` как `PACK_OPENING`
 - [x] **Flyway V23:** потолок цены листинга `marketplace.max_price.{RARITY}`, порог покупок `marketplace.min_pack_opens_before_purchase` (3); `telegram_user.pack_opens_count` (инкремент в `CardPackService.openPack`); бэкфилл: всем пользователям `pack_opens_count = 3`, активные листинги с ценой выше потолка урезаны до max по редкости
+- [x] **Flyway V25:** минимальная цена листинга `marketplace.min_price.{RARITY}` (дефолты = `renewal.cost.*`); `EconomyConfigService.getMinListingPrice`, `EconomyInfoDto.marketplaceMinPrices`; валидация листинга и справка TMA используют отдельные минимумы
 - [x] **Сущности и репозитории:** `MarketplaceListing`, `UserCardOwnershipHistory`, `MarketplaceListingRepository` (фильтры активных листингов, `PESSIMISTIC_WRITE` на покупку, лента SOLD), `UserCardOwnershipHistoryRepository.existsBy…`; причины фантиков `MARKETPLACE_PURCHASE` / `MARKETPLACE_SALE`; `EconomyConfigService.getMarketplaceCommissionPercent()`
 - [x] **`UserCardOwnershipService`:** запись при выдаче карт из **CardPackService.openPack** (`PACK_OPENING`) и **CardService.giveCards** (`ADMIN_GRANT`); при покупке на маркетплейсе — `MARKETPLACE_PURCHASE`
 - [x] **`MarketplaceService`:** листинг / снятие / покупка (комиссия `⌊price×pct/100⌋`, сброс контракта покупателю), каталог с `canBuy`/`canBuyReason`, мои листинги, лента; событие **после** успешной покупки
@@ -18,7 +19,7 @@
 - [x] **TMA:** `MarketplacePage` (`/marketplace`) — лента сделок, фильтры (редкость, сортировка, цена, **игрок из справочника** `GET /api/v1/fantasy-players`, **турнир / серия** без обязательного выбора игрока — query `tournamentId`/`seriesId` в `GET /marketplace/listings`), пагинация, покупка; `MyListingsPage` (`/marketplace/my`); `api/marketplace.ts` + типы в `api/types.ts`; навигация в `App.tsx`
 - [x] **Коллекция:** кнопка «Продать» (тулбар и модалка карты), модалка цены с превью комиссии; условия: `uses_remaining > 0`, нет активного листинга (`GET my-listings`), карта не в команде серии со статусом ≠ `FINISHED` (загрузка статусов серий по `fantasy-teams`)
 - [x] **Провенанс в UI:** `CardOwnershipHistoryBlock` + `GET /api/v1/user-cards/{userCardId}/ownership-history` (`UserCardOwnershipController`, `UserCardOwnershipService.listOwnershipHistory`, репозиторий `findAllByUserCard_IdOrderByAcquiredAtAsc`); подписи `acquisitionLabel` на русском
-- [x] **Economy info:** в `EconomyInfoDto` поля `marketplaceCommissionPercent`, `marketplaceMaxPrices`, `minPackOpensBeforeMarketplacePurchase`; в `UserProfileDto` — `packOpensCount`; интеграционный тест `UserApiIntegrationTest` проверяет комиссию и новые поля economy-info
+- [x] **Economy info:** в `EconomyInfoDto` поля `marketplaceCommissionPercent`, `marketplaceMinPrices`, `marketplaceMaxPrices`, `minPackOpensBeforeMarketplacePurchase`; в `UserProfileDto` — `packOpensCount`; интеграционный тест `UserApiIntegrationTest` проверяет комиссию и поля economy-info маркетплейса
 
 ### Награды лидерборда серии: топ-25 и топ-50
 - [x] **Flyway V21:** ключи `economy_config` `series.reward.top25`, `series.reward.top50`; подпись участия — «51+ место»
@@ -50,11 +51,12 @@
 - [x] **TMA:** `SeriesPickerPage` — бейдж номера серии не зависит от порядка в списке (`gameNumFrom` или порядок по `id`)
 
 ### Очистка «призрачных» карт при смене ростера серии
-- [x] **`FantasyTeamRosterPruningService.pruneInvalidCardsForSeries`:** удаляет `fantasy_team_card`, если `card_template.fantasy_player_id` больше не в `series_player` для этой серии; только пока `now <= team_deadline`; уплотняет слоты 1..n; при отсутствии карт удаляет `fantasy_team`
+- [x] **`FantasyTeamRosterPruningService.pruneInvalidCardsForSeries`:** удаляет `fantasy_team_card`, если `card_template.fantasy_player_id` больше не в `series_player` для этой серии; только пока `now <= team_deadline`; уплотняет слоты 1..n; при отсутствии карт удаляет `fantasy_team`; возвращает **`FantasyTeamRosterPruneResult`** (снятые карты по пользователям для уведомлений)
 - [x] Вызовы: после **`SeriesService.assignPlayers`**; в начале **`UserFantasyTeamService`** — `getTeamForSeries`, `getTeamDetailsForSeries`, `getPublicTeamForSeries`, `getPublicTeamDetailsForSeries` (методы переведены с `readOnly` на обычную `@Transactional` из-за prune)
-- [x] **`FantasyTeamRepository.findAllBySeries_IdWithCards`**
+- [x] **`FantasyTeamRepository.findAllBySeries_IdWithCards`** (+ `JOIN FETCH telegram_user` для prune)
 - [x] **Flyway V17** — одноразовая data-migration для **`series_id = 5`** (тот же алгоритм, только пока дедлайн не прошёл)
-- [x] **Тесты:** `FantasyTeamRosterPruningServiceTest`
+- [x] **Тесты:** `FantasyTeamRosterPruningServiceTest`, `SeriesRosterReplacementTelegramMessageTest`
+- [x] **Telegram:** при **`assignPlayers`**, если у пользователей срезаны карты — **`SeriesRosterReplacementNotificationEvent`** + **`SeriesRosterReplacementNotificationListener`** (как финализация серии); текст с именами убранного и нового игрока при zip пар `tournament_player` (см. `systemPatterns.md`)
 
 ### Рассылка в Telegram из админки
 - [x] **Backend:** `POST /api/v1/admin/notifications/broadcast`, `AdminBroadcastNotificationService`, `TelegramBroadcastAsyncSender`, `TelegramUserRepository.findAllTelegramIds`; тесты `AdminBroadcastNotificationServiceTest`, `AdminBroadcastApiIntegrationTest`; рассылка с `parse_mode` **MarkdownV2** в `TelegramBroadcastAsyncSender`

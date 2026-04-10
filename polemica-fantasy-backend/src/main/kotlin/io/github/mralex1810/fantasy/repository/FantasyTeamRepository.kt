@@ -68,6 +68,7 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
     @Query(
         """
         SELECT DISTINCT ft FROM FantasyTeam ft
+        JOIN FETCH ft.telegramUser
         LEFT JOIN FETCH ft.cards c
         LEFT JOIN FETCH c.userCard uc
         LEFT JOIN FETCH uc.cardTemplate ct

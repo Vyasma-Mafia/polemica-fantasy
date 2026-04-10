@@ -61,11 +61,17 @@ class MarketplaceService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card is already listed")
         }
         val rarity = uc.cardTemplate!!.rarity
-        val minPrice = economyConfigService.getRenewalCost(rarity)
+        val minPrice = economyConfigService.getMinListingPrice(rarity)
+        val maxPrice = economyConfigService.getMaxListingPrice(rarity)
+        if (minPrice > maxPrice) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Marketplace min price exceeds max for this rarity (economy config)",
+            )
+        }
         if (request.price < minPrice) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price below minimum for this rarity")
         }
-        val maxPrice = economyConfigService.getMaxListingPrice(rarity)
         if (request.price > maxPrice) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price above maximum for this rarity")
         }

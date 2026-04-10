@@ -206,6 +206,8 @@ export interface EconomyInfo {
   seriesRewards: RewardTier[]
   /** Комиссия маркетплейса при продаже карты, % (экономика). */
   marketplaceCommissionPercent: number
+  /** Минимальная цена листинга по редкости. */
+  marketplaceMinPrices: Record<Rarity, number>
   /** Максимальная цена листинга по редкости. */
   marketplaceMaxPrices: Record<Rarity, number>
   /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */

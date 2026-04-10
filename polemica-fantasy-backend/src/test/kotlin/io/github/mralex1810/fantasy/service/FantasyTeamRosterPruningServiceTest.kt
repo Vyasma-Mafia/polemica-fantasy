@@ -14,6 +14,7 @@ import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
@@ -60,7 +61,8 @@ class FantasyTeamRosterPruningServiceTest {
         ).apply { id = seriesId }
         `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
 
-        service.pruneInvalidCardsForSeries(seriesId)
+        val result = service.pruneInvalidCardsForSeries(seriesId)
+        assertTrue(result.prunedCards.isEmpty())
 
         verify(fantasyTeamRepository, never()).findAllBySeries_IdWithCards(ArgumentMatchers.anyLong())
     }
@@ -81,7 +83,8 @@ class FantasyTeamRosterPruningServiceTest {
         val uc2 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp2), usesRemaining = 1).apply { id = 102L }
         val uc3 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp3), usesRemaining = 1).apply { id = 103L }
 
-        val team = FantasyTeam().apply { id = 7L }
+        val owner = TelegramUser(telegramId = 900L).apply { id = 50L }
+        val team = FantasyTeam(telegramUser = owner).apply { id = 7L }
         val c1 = FantasyTeamCard(fantasyTeam = team, userCard = uc1, slot = 1)
         val c2 = FantasyTeamCard(fantasyTeam = team, userCard = uc2, slot = 2)
         val c3 = FantasyTeamCard(fantasyTeam = team, userCard = uc3, slot = 3)
@@ -92,7 +95,11 @@ class FantasyTeamRosterPruningServiceTest {
         `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 2L)).thenReturn(false)
         `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 3L)).thenReturn(true)
 
-        service.pruneInvalidCardsForSeries(seriesId)
+        val result = service.pruneInvalidCardsForSeries(seriesId)
+        assertEquals(1, result.prunedCards.size)
+        assertEquals(900L, result.prunedCards[0].telegramChatId)
+        assertEquals(2L, result.prunedCards[0].fantasyPlayerId)
+        assertEquals("p2", result.prunedCards[0].playerNickname)
 
         verify(fantasyTeamCardRepository).delete(c2)
         verify(fantasyTeamCardRepository).saveAndFlush(c3)
@@ -117,7 +124,8 @@ class FantasyTeamRosterPruningServiceTest {
         val uc2 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp2), usesRemaining = 1).apply { id = 102L }
         val uc3 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp3), usesRemaining = 1).apply { id = 103L }
 
-        val team = FantasyTeam().apply { id = 7L }
+        val owner = TelegramUser(telegramId = 901L).apply { id = 51L }
+        val team = FantasyTeam(telegramUser = owner).apply { id = 7L }
         val c1 = FantasyTeamCard(fantasyTeam = team, userCard = uc1, slot = 1)
         val c2 = FantasyTeamCard(fantasyTeam = team, userCard = uc2, slot = 2)
         val c3 = FantasyTeamCard(fantasyTeam = team, userCard = uc3, slot = 3)
@@ -128,7 +136,10 @@ class FantasyTeamRosterPruningServiceTest {
         `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 2L)).thenReturn(true)
         `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 3L)).thenReturn(true)
 
-        service.pruneInvalidCardsForSeries(seriesId)
+        val result = service.pruneInvalidCardsForSeries(seriesId)
+        assertEquals(1, result.prunedCards.size)
+        assertEquals(901L, result.prunedCards[0].telegramChatId)
+        assertEquals(1L, result.prunedCards[0].fantasyPlayerId)
 
         verify(fantasyTeamCardRepository).delete(c1)
         val ord = inOrder(fantasyTeamCardRepository)
@@ -150,14 +161,17 @@ class FantasyTeamRosterPruningServiceTest {
 
         val fp1 = fp(1L)
         val uc1 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp1), usesRemaining = 1).apply { id = 101L }
-        val team = FantasyTeam().apply { id = 7L }
+        val owner = TelegramUser(telegramId = 902L).apply { id = 52L }
+        val team = FantasyTeam(telegramUser = owner).apply { id = 7L }
         val c1 = FantasyTeamCard(fantasyTeam = team, userCard = uc1, slot = 1)
         team.cards = mutableListOf(c1)
 
         `when`(fantasyTeamRepository.findAllBySeries_IdWithCards(seriesId)).thenReturn(listOf(team))
         `when`(seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, 1L)).thenReturn(false)
 
-        service.pruneInvalidCardsForSeries(seriesId)
+        val result = service.pruneInvalidCardsForSeries(seriesId)
+        assertEquals(1, result.prunedCards.size)
+        assertEquals(902L, result.prunedCards[0].telegramChatId)
 
         verify(fantasyTeamCardRepository).delete(c1)
         verify(fantasyTeamRepository).delete(team)

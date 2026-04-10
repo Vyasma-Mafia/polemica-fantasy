@@ -22,19 +22,26 @@ class FantasyTeamRosterPruningService(
      * Removes fantasy team slots whose card's fantasy player is no longer in [series_player],
      * renumbers remaining slots to 1..n, deletes [FantasyTeam] if no cards left.
      * No-op if the series team deadline has passed (locked teams).
+     *
+     * @return each removed card per user (same chat may appear multiple times if several slots pruned).
      */
     @Transactional
-    fun pruneInvalidCardsForSeries(seriesId: Long) {
-        val series = seriesRepository.findById(seriesId).orElse(null) ?: return
-        if (Instant.now().isAfter(series.teamDeadline)) return
+    fun pruneInvalidCardsForSeries(seriesId: Long): FantasyTeamRosterPruneResult {
+        val series = seriesRepository.findById(seriesId).orElse(null)
+            ?: return FantasyTeamRosterPruneResult(emptyList())
+        if (Instant.now().isAfter(series.teamDeadline)) {
+            return FantasyTeamRosterPruneResult(emptyList())
+        }
 
+        val pruned = mutableListOf<FantasyRosterPrunedCard>()
         val teams = fantasyTeamRepository.findAllBySeries_IdWithCards(seriesId)
         for (team in teams) {
-            pruneTeam(team, seriesId)
+            pruneTeam(team, seriesId, pruned)
         }
+        return FantasyTeamRosterPruneResult(pruned)
     }
 
-    private fun pruneTeam(team: FantasyTeam, seriesId: Long) {
+    private fun pruneTeam(team: FantasyTeam, seriesId: Long, pruned: MutableList<FantasyRosterPrunedCard>) {
         val cards = team.cards.sortedBy { it.slot }
         val toRemove = cards.filter { ftc ->
             val fpId = ftc.userCard!!.cardTemplate!!.fantasyPlayer!!.id!!
@@ -42,7 +49,16 @@ class FantasyTeamRosterPruningService(
         }
         if (toRemove.isEmpty()) return
 
+        val chatId = team.telegramUser!!.telegramId
         for (ftc in toRemove) {
+            val fp = ftc.userCard!!.cardTemplate!!.fantasyPlayer!!
+            pruned.add(
+                FantasyRosterPrunedCard(
+                    telegramChatId = chatId,
+                    fantasyPlayerId = fp.id!!,
+                    playerNickname = fp.nickname,
+                ),
+            )
             fantasyTeamCardRepository.delete(ftc)
             team.cards.remove(ftc)
         }
