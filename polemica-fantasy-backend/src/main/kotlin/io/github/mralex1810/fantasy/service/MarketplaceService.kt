@@ -163,6 +163,7 @@ class MarketplaceService(
         listing.status = MarketplaceListingStatus.SOLD
         listing.soldAt = Instant.now()
         listing.buyer = buyer
+        listing.soldCardTemplate = uc.cardTemplate
         marketplaceListingRepository.save(listing)
 
         val newBalance = userService.getBalance(buyerId)
@@ -296,12 +297,15 @@ class MarketplaceService(
         val sold = marketplaceListingRepository.findRecentSold(MarketplaceListingStatus.SOLD, pageable)
         if (sold.isEmpty()) return MarketplaceFeedDto(items = emptyList())
 
-        val templateIds = sold.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
+        val templateIds = sold.map { ml ->
+            ml.soldCardTemplate?.id ?: ml.userCard!!.cardTemplate!!.id!!
+        }.distinct()
         val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
 
         val items = sold.map { ml ->
             val uc = ml.userCard!!
-            val tpl = templatesById[uc.cardTemplate!!.id!!] ?: uc.cardTemplate!!
+            val effectiveTemplateId = ml.soldCardTemplate?.id ?: uc.cardTemplate!!.id!!
+            val tpl = templatesById[effectiveTemplateId] ?: uc.cardTemplate!!
             val fp = tpl.fantasyPlayer!!
             val seller = ml.seller!!
             val buyer = ml.buyer!!

@@ -232,6 +232,8 @@
 - Время сделки
 - Ник покупателя (displayName)
 
+Редкость и превью достижений берутся из **снимка шаблона на момент продажи** (`marketplace_listing.sold_card_template_id` → `card_template`), а не из текущего `user_card.card_template`: иначе после апгрейда EPIC→LEGENDARY in-place лента ошибочно показывала бы легенду для сделки, где продавали эпик. Старые строки без снимка (до появления колонки) используют fallback на текущий шаблон карты.
+
 **Не** показываются: ник продавца (приватность), внутренние id.
 
 ### 6.2 Уведомления продавцу
@@ -265,6 +267,7 @@ CREATE TABLE marketplace_listing (
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
     sold_at         TIMESTAMP,
     buyer_id        BIGINT REFERENCES telegram_user(id),
+    sold_card_template_id BIGINT REFERENCES card_template(id),
 
     CONSTRAINT marketplace_listing_price_positive CHECK (price > 0),
     CONSTRAINT marketplace_listing_status_check

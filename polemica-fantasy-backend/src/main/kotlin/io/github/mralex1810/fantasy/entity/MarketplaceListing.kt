@@ -44,4 +44,9 @@ class MarketplaceListing(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "buyer_id")
     var buyer: TelegramUser? = null,
+
+    /** Snapshot of [CardTemplate] at sale time; feed uses this so rarity/preview stay correct after EPIC→LEGENDARY upgrade. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sold_card_template_id")
+    var soldCardTemplate: CardTemplate? = null,
 )
