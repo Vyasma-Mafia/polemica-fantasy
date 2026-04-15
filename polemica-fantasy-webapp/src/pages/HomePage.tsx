@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { SeriesOpenForTeam, UserTournament } from '../api/types'
 import { TournamentStatusBadge } from '../components/StatusBadge'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { useInitData } from '../context/useInitData'
 import { formatDateShortWithTime } from '../lib/tournamentDates'
 
@@ -20,11 +21,7 @@ export function HomePage() {
   })
 
   if (!initData) {
-    return (
-      <div className="pf-card pf-card--notice">
-        <p>Нет Telegram initData. Откройте приложение в Telegram или задайте переменную окружения VITE_DEV_INIT_DATA для локальной разработки.</p>
-      </div>
-    )
+    return <MissingInitDataNotice />
   }
 
   /** v5: `isLoading` is only pending+fetching; avoid rendering with no data during the brief pending+idle gap. */

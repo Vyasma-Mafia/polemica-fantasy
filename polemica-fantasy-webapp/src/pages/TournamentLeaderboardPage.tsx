@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { LeaderboardEntry, UserTournamentDetail } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { aggregateTournamentLeaderboards } from '../lib/aggregateLeaderboard'
@@ -38,7 +39,7 @@ export function TournamentLeaderboardPage() {
     return aggregateTournamentLeaderboards(boards)
   }, [leaderboardQueries])
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (tq.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (tq.isError) return <p className="pf-err">{(tq.error as Error).message}</p>
 

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserSeriesDetail } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
@@ -17,7 +18,7 @@ export function SeriesPage() {
     enabled: !!initData && Number.isFinite(id),
   })
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (q.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
   const s = q.data!

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { LeaderboardEntry, UserSeriesDetail } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { useInitData } from '../context/useInitData'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
@@ -23,7 +24,7 @@ export function LeaderboardPage() {
     enabled: !!initData && Number.isFinite(id),
   })
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (q.isLoading || seriesMeta.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
 

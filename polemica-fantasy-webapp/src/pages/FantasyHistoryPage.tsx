@@ -9,6 +9,7 @@ import type {
   UserCardItem,
   UserTournamentDetail,
 } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
@@ -90,7 +91,7 @@ export function FantasyHistoryPage() {
     return highlightMaxes(d.columns, d.games.length)
   }, [detailsQ.data])
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (tq.isLoading || teamsQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (tq.isError) return <p className="pf-err">{(tq.error as Error).message}</p>
   if (teamsQ.isError) return <p className="pf-err">{(teamsQ.error as Error).message}</p>

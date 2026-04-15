@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserTournamentDetail } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { formatDateShortWithTime } from '../lib/tournamentDates'
@@ -19,7 +20,14 @@ export function SeriesPickerPage() {
   })
   const now = useNow()
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  const seriesChronologicalIndex = useMemo(() => {
+    const series = q.data?.series
+    if (!series) return new Map<number, number>()
+    const sorted = [...series].sort((a, b) => a.id - b.id)
+    return new Map(sorted.map((s, i) => [s.id, i + 1]))
+  }, [q.data?.series])
+
+  if (!initData) return <MissingInitDataNotice />
   if (!Number.isFinite(id)) {
     return <p className="pf-err">Некорректная ссылка на турнир.</p>
   }
@@ -29,10 +37,6 @@ export function SeriesPickerPage() {
 
   const t = q.data
   const back = `/tournaments/${t.id}`
-  const seriesChronologicalIndex = useMemo(() => {
-    const sorted = [...t.series].sort((a, b) => a.id - b.id)
-    return new Map(sorted.map((s, i) => [s.id, i + 1]))
-  }, [t.series])
 
   return (
     <div className="pf-page">

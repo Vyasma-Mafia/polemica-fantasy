@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { apiGet, apiSend, ApiError } from '../api/client'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
@@ -150,7 +151,7 @@ export function TeamPage() {
     [selected, cardById],
   )
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (seriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (seriesQ.isError) return <p className="pf-err">{(seriesQ.error as Error).message}</p>
 

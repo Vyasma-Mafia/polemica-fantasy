@@ -12,6 +12,7 @@ import type {
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { modalImgFrameClass } from '../lib/cardFrameClasses'
@@ -84,7 +85,7 @@ export function LeaderboardPlayerTeamPage() {
     return [...slots].sort((a, b) => a.slot - b.slot)
   }, [teamQ.data])
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
   if (seriesMeta.isLoading || teamQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (seriesMeta.isError) return <p className="pf-err">{(seriesMeta.error as Error).message}</p>
   if (teamQ.isError) {

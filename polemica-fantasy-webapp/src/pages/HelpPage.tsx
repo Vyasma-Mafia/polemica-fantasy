@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { fetchLegendaryUpgradeInfo } from '../api/legendaryUpgrade'
@@ -40,7 +41,7 @@ export function HelpPage() {
     enabled: !!initData,
   })
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
 
   return (
     <div className="pf-page">

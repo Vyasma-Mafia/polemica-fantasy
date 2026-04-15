@@ -16,6 +16,7 @@ import type {
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
@@ -343,7 +344,7 @@ export function CardsPage() {
     setSearchParams(next, { replace: true })
   }, [legendaryParam, initData, searchParams, setSearchParams])
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
 
   const teamsSortedForHistory = [...teamsWithCard].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),

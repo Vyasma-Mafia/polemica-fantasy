@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, apiGet, apiSend } from '../api/client'
 import type { BuyPackResponse, StorePackItem, UserProfile } from '../api/types'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PackOpening } from '../components/PackOpening'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -57,7 +58,7 @@ export function StorePage() {
   const balance = meQ.data?.fantiki ?? 0
   const confirmingPack = packsQ.data?.find((p) => p.id === confirmPackId)
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
 
   return (
     <div className="pf-page">

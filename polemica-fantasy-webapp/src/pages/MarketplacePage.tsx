@@ -15,6 +15,7 @@ import type {
   UserTournamentDetail,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -112,7 +113,7 @@ export function MarketplacePage() {
     },
   })
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
 
   const totalPages = listingsQ.data?.totalPages ?? 0
 

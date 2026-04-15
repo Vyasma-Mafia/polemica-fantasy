@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { cancelMarketplaceListing, fetchMyMarketplaceListings } from '../api/marketplace'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -29,7 +30,7 @@ export function MyListingsPage() {
     onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
   })
 
-  if (!initData) return <p className="pf-muted">Нужен initData.</p>
+  if (!initData) return <MissingInitDataNotice />
 
   return (
     <div className="pf-page">

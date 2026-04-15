@@ -1,3 +1,9 @@
 import { createContext } from 'react'
 
-export const InitDataContext = createContext<string | undefined>(undefined)
+export type InitDataStatus = {
+  initData: string | undefined
+  error: string | null
+  pending: boolean
+}
+
+export const InitDataContext = createContext<InitDataStatus | null>(null)
