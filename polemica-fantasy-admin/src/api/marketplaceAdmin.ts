@@ -1,5 +1,7 @@
 import type {
+  BanPairPreviewDto,
   BanPairResultDto,
+  PagedPairSanctionHistoryDto,
   PairAnalysisDto,
   PairTradesResultDto,
 } from './types'
@@ -12,6 +14,18 @@ export function getPairAnalysis() {
 export function getPairTrades(userA: number, userB: number) {
   const q = new URLSearchParams({ userA: String(userA), userB: String(userB) })
   return apiJson<PairTradesResultDto>(`/v1/admin/marketplace/pair-trades?${q.toString()}`)
+}
+
+export function getBanPairPreview(userA: number, userB: number) {
+  const q = new URLSearchParams({ userA: String(userA), userB: String(userB) })
+  return apiJson<BanPairPreviewDto>(`/v1/admin/marketplace/ban-pair/preview?${q.toString()}`)
+}
+
+export function getBanPairHistory(options?: { page?: number; size?: number }) {
+  const page = options?.page ?? 0
+  const size = options?.size ?? 20
+  const q = new URLSearchParams({ page: String(page), size: String(size) })
+  return apiJson<PagedPairSanctionHistoryDto>(`/v1/admin/marketplace/ban-pair/history?${q.toString()}`)
 }
 
 export function banPair(body: {

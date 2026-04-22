@@ -3,9 +3,13 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
 import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairConfiscatedCardDto
+import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewDto
+import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewUserDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairUserResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedPairSanctionHistoryDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairAnalysisDto
+import io.github.mralex1810.fantasy.dto.admin.response.PairSanctionHistoryItemDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradeDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesUserBriefDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
@@ -14,16 +18,19 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.MarketplacePairClearance
 import io.github.mralex1810.fantasy.entity.MarketplacePairClearanceId
+import io.github.mralex1810.fantasy.entity.MarketplacePairSanctionHistory
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.event.PairBanNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.MarketplacePairClearanceRepository
+import io.github.mralex1810.fantasy.repository.MarketplacePairSanctionHistoryRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -44,6 +51,7 @@ class MarketplaceAdminService(
     private val telegramUserRepository: TelegramUserRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val marketplacePairClearanceRepository: MarketplacePairClearanceRepository,
+    private val marketplacePairSanctionHistoryRepository: MarketplacePairSanctionHistoryRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -153,13 +161,7 @@ class MarketplaceAdminService(
 
     @Transactional(readOnly = true)
     fun getPairTrades(telegramIdA: Long, telegramIdB: Long): PairTradesResultDto {
-        if (telegramIdA == telegramIdB) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "userA and userB must be different")
-        }
-        val userA = telegramUserRepository.findByTelegramId(telegramIdA)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User A not found")
-        val userB = telegramUserRepository.findByTelegramId(telegramIdB)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User B not found")
+        val (userA, userB) = loadPairUsers(telegramIdA, telegramIdB)
         val idA = userA.id!!
         val idB = userB.id!!
 
@@ -213,19 +215,63 @@ class MarketplaceAdminService(
             fantiki = u.fantiki,
         )
 
+    @Transactional(readOnly = true)
+    fun getBanPairPreview(telegramA: Long, telegramB: Long): BanPairPreviewDto {
+        val (userA, userB) = loadPairUsers(telegramA, telegramB)
+        val idA = userA.id!!
+        val idB = userB.id!!
+        val sold = MarketplaceListingStatus.SOLD
+        val pct = economyConfigService.getMarketplaceCommissionPercent()
+        val takeA = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idA, idB, pct).coerceAtLeast(0L)
+        val takeB = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idB, idA, pct).coerceAtLeast(0L)
+        return BanPairPreviewDto(
+            userA = toBanPairPreviewUser(userA, takeA, listConfiscatedCardsForPreview(userA, userB, sold)),
+            userB = toBanPairPreviewUser(userB, takeB, listConfiscatedCardsForPreview(userB, userA, sold)),
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getBanPairHistory(pageable: Pageable): PagedPairSanctionHistoryDto {
+        val page = marketplacePairSanctionHistoryRepository.findAllByOrderByCreatedAtDesc(pageable)
+        val userIds = page.content.flatMap { listOf(it.userIdLow, it.userIdHigh) }.distinct()
+        val users = if (userIds.isEmpty()) {
+            emptyMap()
+        } else {
+            telegramUserRepository.findAllById(userIds).associateBy { it.id!! }
+        }
+        val content = page.content.map { h ->
+            val uLo = requireNotNull(users[h.userIdLow]) { "User low ${h.userIdLow} not found for sanction history" }
+            val uHi = requireNotNull(users[h.userIdHigh]) { "User high ${h.userIdHigh} not found for sanction history" }
+            PairSanctionHistoryItemDto(
+                id = h.id!!,
+                createdAt = h.createdAt,
+                reason = h.reason,
+                userLowTelegramId = uLo.telegramId,
+                userHighTelegramId = uHi.telegramId,
+                userLowDisplayName = uLo.publicDisplayName(),
+                userHighDisplayName = uHi.publicDisplayName(),
+                fantikiTakenLow = h.fantikiTakenLow,
+                fantikiTakenHigh = h.fantikiTakenHigh,
+                cardsCountLow = h.cardsCountLow,
+                cardsCountHigh = h.cardsCountHigh,
+            )
+        }
+        return PagedPairSanctionHistoryDto(
+            content = content,
+            page = page.number,
+            size = page.size,
+            totalElements = page.totalElements,
+            totalPages = page.totalPages,
+        )
+    }
+
     @Transactional
     fun banPair(request: BanPairRequest): BanPairResultDto {
         val tga = request.telegramIdA ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdA is required")
         val tgb = request.telegramIdB ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdB is required")
         val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reason is required")
-        if (tga == tgb) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdA and telegramIdB must be different")
-        }
-        val userA = telegramUserRepository.findByTelegramId(tga)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User A not found")
-        val userB = telegramUserRepository.findByTelegramId(tgb)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User B not found")
+        val (userA, userB) = loadPairUsers(tga, tgb)
         val idA = userA.id!!
         val idB = userB.id!!
 
@@ -260,6 +306,30 @@ class MarketplaceAdminService(
             userA = partA,
             userB = partB,
             reason = reason,
+        )
+        val lo = minOf(idA, idB)
+        val hi = maxOf(idA, idB)
+        val (fantikiLow, fantikiHigh) = if (idA < idB) {
+            partA.fantikiConfiscated to partB.fantikiConfiscated
+        } else {
+            partB.fantikiConfiscated to partA.fantikiConfiscated
+        }
+        val (countLow, countHigh) = if (idA < idB) {
+            partA.cardsConfiscated.size to partB.cardsConfiscated.size
+        } else {
+            partB.cardsConfiscated.size to partA.cardsConfiscated.size
+        }
+        marketplacePairSanctionHistoryRepository.save(
+            MarketplacePairSanctionHistory(
+                createdAt = Instant.now(),
+                userIdLow = lo,
+                userIdHigh = hi,
+                reason = reason,
+                fantikiTakenLow = fantikiLow,
+                fantikiTakenHigh = fantikiHigh,
+                cardsCountLow = countLow,
+                cardsCountHigh = countHigh,
+            ),
         )
         applicationEventPublisher.publishEvent(
             PairBanNotificationEvent(
@@ -397,6 +467,63 @@ class MarketplaceAdminService(
             cardsConfiscated = cardPayload,
             listingsCancelled = 0,
         )
+    }
+
+    private fun loadPairUsers(telegramIdA: Long, telegramIdB: Long): Pair<TelegramUser, TelegramUser> {
+        if (telegramIdA == telegramIdB) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "userA and userB must be different")
+        }
+        val userA = telegramUserRepository.findByTelegramId(telegramIdA)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User A not found")
+        val userB = telegramUserRepository.findByTelegramId(telegramIdB)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User B not found")
+        return userA to userB
+    }
+
+    private fun toBanPairPreviewUser(
+        u: TelegramUser,
+        fantikiToConfiscate: Long,
+        cards: List<BanPairConfiscatedCardDto>,
+    ): BanPairPreviewUserDto {
+        val bal = u.fantiki
+        return BanPairPreviewUserDto(
+            telegramId = u.telegramId,
+            displayName = u.publicDisplayName(),
+            balance = bal,
+            fantikiToConfiscate = fantikiToConfiscate,
+            balanceAfter = (bal - fantikiToConfiscate).coerceAtLeast(0L),
+            cardsToConfiscate = cards,
+        )
+    }
+
+    private fun listConfiscatedCardsForPreview(
+        self: TelegramUser,
+        partner: TelegramUser,
+        sold: MarketplaceListingStatus,
+    ): List<BanPairConfiscatedCardDto> {
+        val selfId = self.id!!
+        val partnerId = partner.id!!
+        val rows = userCardRepository.findUserCardsBoughtOnMarketplaceFromPartner(
+            currentOwnerId = selfId,
+            partnerId = partnerId,
+            sold = sold,
+        )
+        val out = ArrayList<BanPairConfiscatedCardDto>()
+        for (uc in rows) {
+            if (uc.telegramUser!!.id != selfId) {
+                continue
+            }
+            val template = uc.cardTemplate!!
+            val fp = template.fantasyPlayer!!
+            out.add(
+                BanPairConfiscatedCardDto(
+                    userCardId = uc.id!!,
+                    playerName = fp.nickname,
+                    rarity = template.rarity,
+                ),
+            )
+        }
+        return out
     }
 
     private fun toLongId(v: Any?): Long = when (v) {

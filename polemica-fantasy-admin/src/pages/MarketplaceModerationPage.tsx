@@ -4,6 +4,8 @@ import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import {
   banPair,
+  getBanPairHistory,
+  getBanPairPreview,
   getPairAnalysis,
   getPairTrades,
   markPairCleared,
@@ -12,7 +14,9 @@ import {
 } from '../api/marketplaceAdmin'
 import type {
   BanPairResultDto,
+  BanPairPreviewUserDto,
   PairAnalysisDto,
+  PairSanctionHistoryItemDto,
   PairTradeDto,
   PairTradesUserBriefDto,
 } from '../api/types'
@@ -43,6 +47,8 @@ export function MarketplaceModerationPage() {
   const [markClearOpen, setMarkClearOpen] = useState(false)
   const [markClearFor, setMarkClearFor] = useState<PairAnalysisDto | null>(null)
   const [markNote, setMarkNote] = useState('')
+  const [historyPage, setHistoryPage] = useState(0)
+  const historyPageSize = 20
 
   const analysisQ = useQuery({
     queryKey: ['admin', 'marketplace', 'pair-analysis'],
@@ -53,6 +59,17 @@ export function MarketplaceModerationPage() {
     queryKey: ['admin', 'marketplace', 'pair-trades', selectedPair?.userA, selectedPair?.userB],
     queryFn: () => getPairTrades(selectedPair!.userA, selectedPair!.userB),
     enabled: selectedPair != null,
+  })
+
+  const banPreviewQ = useQuery({
+    queryKey: ['admin', 'marketplace', 'ban-pair-preview', selectedPair?.userA, selectedPair?.userB],
+    queryFn: () => getBanPairPreview(selectedPair!.userA, selectedPair!.userB),
+    enabled: banOpen && selectedPair != null,
+  })
+
+  const historyQ = useQuery({
+    queryKey: ['admin', 'marketplace', 'ban-pair-history', historyPage],
+    queryFn: () => getBanPairHistory({ page: historyPage, size: historyPageSize }),
   })
 
   const banMut = useMutation({
@@ -251,6 +268,108 @@ export function MarketplaceModerationPage() {
     [],
   )
 
+  const banPreviewUserColumns = useMemo(
+    () => [
+      {
+        title: 'Роль',
+        key: 'role',
+        width: 90,
+        render: (_: unknown, r: { label: string; p: BanPairPreviewUserDto }) => r.label,
+      },
+      {
+        title: 'Telegram',
+        key: 'tg',
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.telegramId,
+      },
+      {
+        title: 'Имя',
+        key: 'dn',
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.displayName,
+      },
+      {
+        title: 'Баланс, ₣',
+        key: 'bal',
+        align: 'right' as const,
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.balance.toLocaleString('ru-RU'),
+      },
+      {
+        title: 'Изъять, ₣',
+        key: 'take',
+        align: 'right' as const,
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.fantikiToConfiscate.toLocaleString('ru-RU'),
+      },
+      {
+        title: 'Станет, ₣',
+        key: 'after',
+        align: 'right' as const,
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.balanceAfter.toLocaleString('ru-RU'),
+      },
+      {
+        title: 'Карт',
+        key: 'cards',
+        width: 70,
+        align: 'right' as const,
+        render: (_: unknown, r: { p: BanPairPreviewUserDto }) => r.p.cardsToConfiscate.length,
+      },
+    ],
+    [],
+  )
+
+  const sanctionHistoryColumns = useMemo(
+    () => [
+      {
+        title: 'Когда',
+        key: 'when',
+        width: 170,
+        render: (_: unknown, r: PairSanctionHistoryItemDto) =>
+          dayjs(r.createdAt).format('YYYY-MM-DD HH:mm'),
+      },
+      {
+        title: 'Участник (низ. id в БД)',
+        key: 'ul',
+        width: 200,
+        render: (_: unknown, r: PairSanctionHistoryItemDto) => (
+          <span>
+            {r.userLowDisplayName} — TG {r.userLowTelegramId}
+          </span>
+        ),
+      },
+      {
+        title: 'Участник (верх. id в БД)',
+        key: 'uh',
+        width: 200,
+        render: (_: unknown, r: PairSanctionHistoryItemDto) => (
+          <span>
+            {r.userHighDisplayName} — TG {r.userHighTelegramId}
+          </span>
+        ),
+      },
+      {
+        title: '₣ (низ.) / карт',
+        key: 'fl',
+        width: 110,
+        align: 'right' as const,
+        render: (_: unknown, r: PairSanctionHistoryItemDto) =>
+          `${r.fantikiTakenLow.toLocaleString('ru-RU')} / ${r.cardsCountLow}`,
+      },
+      {
+        title: '₣ (верх.) / карт',
+        key: 'fh',
+        width: 110,
+        align: 'right' as const,
+        render: (_: unknown, r: PairSanctionHistoryItemDto) =>
+          `${r.fantikiTakenHigh.toLocaleString('ru-RU')} / ${r.cardsCountHigh}`,
+      },
+      {
+        title: 'Причина',
+        dataIndex: 'reason' as const,
+        key: 're',
+        ellipsis: true,
+      },
+    ],
+    [],
+  )
+
   const tradeColumns = useMemo(
     () => [
       {
@@ -364,6 +483,28 @@ export function MarketplaceModerationPage() {
               ),
             },
             {
+              key: 'sanction-history',
+              label: 'История санкций',
+              children: (
+                <Table<PairSanctionHistoryItemDto>
+                  rowKey="id"
+                  size="small"
+                  loading={historyQ.isLoading}
+                  dataSource={historyQ.data?.content ?? []}
+                  columns={sanctionHistoryColumns}
+                  pagination={{
+                    current: historyPage + 1,
+                    pageSize: historyPageSize,
+                    total: historyQ.data?.totalElements ?? 0,
+                    showSizeChanger: false,
+                    onChange: (p) => {
+                      setHistoryPage(p - 1)
+                    },
+                  }}
+                />
+              ),
+            },
+            {
               key: 'pair-trades',
               label: 'Pair trades',
               children: selectedPair == null ? (
@@ -429,15 +570,26 @@ export function MarketplaceModerationPage() {
 
       <Modal
         open={banOpen}
-        title="Confirm pair sanctions (overflow)"
-        okText="Confirm"
-        okButtonProps={{ danger: true, loading: banMut.isPending }}
-        onCancel={() => setBanOpen(false)}
+        title="Подтверждение парных санкций (перелив)"
+        okText="Подтвердить"
+        cancelText="Отмена"
+        okButtonProps={{
+          danger: true,
+          loading: banMut.isPending,
+          disabled: !banPreviewQ.isSuccess,
+        }}
+        onCancel={() => {
+          setBanOpen(false)
+        }}
         onOk={() => {
           if (selectedPair == null) return
+          if (!banPreviewQ.isSuccess) {
+            message.error('Дождитесь превью изъятий')
+            return
+          }
           const r = banReason.trim()
           if (r.length === 0) {
-            message.error('Reason is required')
+            message.error('Укажите причину')
             return
           }
           banMut.mutate({
@@ -446,15 +598,36 @@ export function MarketplaceModerationPage() {
             reason: r,
           })
         }}
+        width={860}
       >
         {selectedPair && (
           <Typography.Paragraph>
-            Recovers the seller's net from each sale between these users, and removes only cards the original
-            buyer still holds (resold cards are not removed). Marketplace access is not suspended, active listings
-            are not cancelled.
-            Telegram: <strong>{selectedPair.userA}</strong> and <strong>{selectedPair.userB}</strong>.
+            Возвращается чистая сумма продавцу по сделкам внутри пары; снимаются карты, если покупатель всё ещё владеет
+            ими. Активные лоты и доступ к маркету отдельно не отключаются.
+            <br />
+            Telegram: <strong>{selectedPair.userA}</strong> и <strong>{selectedPair.userB}</strong>.
           </Typography.Paragraph>
         )}
+        {banPreviewQ.isLoading && <Typography.Text type="secondary">Загрузка превью…</Typography.Text>}
+        {banPreviewQ.isError && (
+          <Typography.Text type="danger">{(banPreviewQ.error as Error).message}</Typography.Text>
+        )}
+        {banPreviewQ.data && (
+          <Table<{ label: string; p: BanPairPreviewUserDto; key: string }>
+            style={{ marginBottom: 16, maxWidth: 820 }}
+            size="small"
+            pagination={false}
+            rowKey="key"
+            columns={banPreviewUserColumns}
+            dataSource={[
+              { key: 'a', label: 'User A (запрос)', p: banPreviewQ.data.userA },
+              { key: 'b', label: 'User B (запрос)', p: banPreviewQ.data.userB },
+            ]}
+          />
+        )}
+        <Typography.Text strong type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+          Причина
+        </Typography.Text>
         <Input.TextArea rows={4} value={banReason} onChange={(e) => setBanReason(e.target.value)} />
       </Modal>
 

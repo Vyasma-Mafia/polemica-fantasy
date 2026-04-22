@@ -17,6 +17,11 @@
 - [x] **Тесты:** расширен `CardLifecycleServiceTest` (mock `MarketplaceListingRepository`, сценарий «карта в листинге»); полный `test` с Testcontainers в CI/локально при доступном Docker; `UserApiIntegrationTest` — лента маркетплейса после покупки EPIC и апгрейда до LEGENDARY остаётся EPIC в `GET /api/v1/marketplace/feed`
 
 ### Маркетплейс: админ-антимод (перелив фантиков/карт между парами)
+- [x] **Flyway V28:** `marketplace_pair_clearance` — пометка пары «проверена» (модерация, не санкция)
+- [x] **Flyway V29:** `marketplace_pair_sanction_history` — одна строка на событие `ban-pair` (каноническая пара `user_id_low` < `user_id_high`, причина, изъято фантиков и число снятых карт на low/high); `MarketplacePairSanctionHistory` + `MarketplacePairSanctionHistoryRepository`
+- [x] **API (история + превью):** `GET /api/v1/admin/marketplace/ban-pair/preview?userA&userB` (`BanPairPreviewDto`), `GET /api/v1/admin/marketplace/ban-pair/history` (`PagedPairSanctionHistoryDto`, `Pageable`, по умолчанию 20 на страницу)
+- [x] **`MarketplaceAdminService`:** `loadPairUsers`, `getBanPairPreview`, `getBanPairHistory`, сохранение истории в `banPair` (в той же `@Transactional`); `getPairTrades` использует `loadPairUsers`
+- [x] **Админка:** `getBanPairPreview` / `getBanPairHistory` в `api/marketplaceAdmin.ts`, типы в `types.ts`; `MarketplaceModerationPage` — таб **История санкций**, модалка санкции с превью (кнопка подтверждения после загрузки превью)
 - [x] **Flyway V27:** `telegram_user.marketplace_banned` (по умолчанию `false`); JPA-поле `TelegramUser.marketplaceBanned`
 - [x] **`UserService` / `TelegramUserRepository`:** `forceDeductBalance` / `forceDeductFantiki` — списание без требования `fantiki >= amount` (допускается отрицательный баланс при санкциях)
 - [x] **`MarketplaceService`:** при `marketplace_banned` — 403 и выставление листинга, и покупка

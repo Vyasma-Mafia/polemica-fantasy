@@ -71,3 +71,39 @@ data class BanPairResultDto(
     val userB: BanPairUserResultDto,
     val reason: String,
 )
+
+data class BanPairPreviewUserDto(
+    val telegramId: Long,
+    val displayName: String,
+    val balance: Long,
+    val fantikiToConfiscate: Long,
+    val balanceAfter: Long,
+    val cardsToConfiscate: List<BanPairConfiscatedCardDto>,
+)
+
+data class BanPairPreviewDto(
+    val userA: BanPairPreviewUserDto,
+    val userB: BanPairPreviewUserDto,
+)
+
+data class PairSanctionHistoryItemDto(
+    val id: Long,
+    val createdAt: Instant,
+    val reason: String,
+    val userLowTelegramId: Long,
+    val userHighTelegramId: Long,
+    val userLowDisplayName: String,
+    val userHighDisplayName: String,
+    val fantikiTakenLow: Long,
+    val fantikiTakenHigh: Long,
+    val cardsCountLow: Int,
+    val cardsCountHigh: Int,
+)
+
+data class PagedPairSanctionHistoryDto(
+    val content: List<PairSanctionHistoryItemDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)

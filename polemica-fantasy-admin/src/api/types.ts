@@ -228,3 +228,39 @@ export interface BanPairResultDto {
   userB: BanPairUserResultDto
   reason: string
 }
+
+export interface BanPairPreviewUserDto {
+  telegramId: number
+  displayName: string
+  balance: number
+  fantikiToConfiscate: number
+  balanceAfter: number
+  cardsToConfiscate: BanPairConfiscatedCardDto[]
+}
+
+export interface BanPairPreviewDto {
+  userA: BanPairPreviewUserDto
+  userB: BanPairPreviewUserDto
+}
+
+export interface PairSanctionHistoryItemDto {
+  id: number
+  createdAt: string
+  reason: string
+  userLowTelegramId: number
+  userHighTelegramId: number
+  userLowDisplayName: string
+  userHighDisplayName: string
+  fantikiTakenLow: number
+  fantikiTakenHigh: number
+  cardsCountLow: number
+  cardsCountHigh: number
+}
+
+export interface PagedPairSanctionHistoryDto {
+  content: PairSanctionHistoryItemDto[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
