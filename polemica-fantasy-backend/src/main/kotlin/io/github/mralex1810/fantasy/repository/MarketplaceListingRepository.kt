@@ -126,13 +126,6 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
     @Query(
         """
         SELECT ml FROM MarketplaceListing ml
-        JOIN FETCH ml.seller
-        JOIN FETCH ml.buyer
-        JOIN FETCH ml.userCard uc
-        JOIN FETCH uc.cardTemplate ct
-        JOIN FETCH ct.fantasyPlayer fp
-        LEFT JOIN FETCH ml.soldCardTemplate st
-        JOIN FETCH uc.telegramUser currentOwner
         WHERE ml.status = :sold
         AND (
             (ml.seller.id = :idA AND ml.buyer.id = :idB)

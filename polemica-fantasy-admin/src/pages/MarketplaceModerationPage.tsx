@@ -52,7 +52,7 @@ export function MarketplaceModerationPage() {
   const banMut = useMutation({
     mutationFn: banPair,
     onSuccess: (data) => {
-      message.success('Pair ban applied')
+      message.success('Pair sanctions applied')
       setBanOpen(false)
       setBanResultPreview(data)
       void qc.invalidateQueries({ queryKey: ['admin', 'marketplace'] })
@@ -210,8 +210,8 @@ export function MarketplaceModerationPage() {
     <div>
       <Typography.Title level={3}>Marketplace moderation</Typography.Title>
       <Typography.Paragraph type="secondary">
-        Pair analysis of completed marketplace sales, per-pair trade history, ban pair, and unban by Telegram
-        user id.
+        Pair analysis of completed marketplace sales, per-pair trade history, apply pair sanctions, and unban
+        (legacy) marketplace access by Telegram user id.
       </Typography.Paragraph>
 
       <Space direction="vertical" size="large" style={{ display: 'flex' }}>
@@ -333,8 +333,8 @@ export function MarketplaceModerationPage() {
 
       <Modal
         open={banOpen}
-        title="Confirm marketplace ban (pair)"
-        okText="Confirm ban"
+        title="Confirm pair sanctions (overflow)"
+        okText="Confirm"
         okButtonProps={{ danger: true, loading: banMut.isPending }}
         onCancel={() => setBanOpen(false)}
         onOk={() => {
@@ -353,8 +353,9 @@ export function MarketplaceModerationPage() {
       >
         {selectedPair && (
           <Typography.Paragraph>
-            Bans both users, recovers the seller's net from each sale between them, cancels their active
-            listings, and deletes only cards that the original buyer still holds (resold cards are not removed).
+            Recovers the seller's net from each sale between these users, and removes only cards the original
+            buyer still holds (resold cards are not removed). Marketplace access is not suspended, active listings
+            are not cancelled.
             Telegram: <strong>{selectedPair.userA}</strong> and <strong>{selectedPair.userB}</strong>.
           </Typography.Paragraph>
         )}
@@ -363,7 +364,7 @@ export function MarketplaceModerationPage() {
 
       <Modal
         open={banResultPreview != null}
-        title="Ban completed"
+        title="Sanctions completed"
         footer={<Button onClick={() => setBanResultPreview(null)}>Close</Button>}
         onCancel={() => setBanResultPreview(null)}
       >

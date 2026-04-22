@@ -182,24 +182,29 @@ class MarketplaceAdminService(
 
         val pct = economyConfigService.getMarketplaceCommissionPercent()
         val sold = MarketplaceListingStatus.SOLD
-        val active = MarketplaceListingStatus.ACTIVE
-        val cancelled = MarketplaceListingStatus.CANCELLED
+
+        // Money first for both, then cards/listings. Otherwise the first pass removes SOLD rows (e.g. partner A received
+        // a card in a B→A sale) and the second pass under-counts the seller’s net in sumSellerReceivedForSalesTo.
+        val takeA = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idA, idB, pct).coerceAtLeast(0L)
+        val takeB = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idB, idA, pct).coerceAtLeast(0L)
+        if (takeA > 0) {
+            userService.forceDeductBalance(idA, takeA, FantikiTransactionReason.ADMIN_PAIR_BAN)
+        }
+        if (takeB > 0) {
+            userService.forceDeductBalance(idB, takeB, FantikiTransactionReason.ADMIN_PAIR_BAN)
+        }
 
         val partA = sanctionsForOneUserInPair(
             self = userA,
             partner = userB,
-            pct = pct,
+            confiscateFantiki = takeA,
             sold = sold,
-            active = active,
-            cancelled = cancelled,
         )
         val partB = sanctionsForOneUserInPair(
             self = userB,
             partner = userA,
-            pct = pct,
+            confiscateFantiki = takeB,
             sold = sold,
-            active = active,
-            cancelled = cancelled,
         )
 
         val result = BanPairResultDto(
@@ -239,27 +244,11 @@ class MarketplaceAdminService(
     private fun sanctionsForOneUserInPair(
         self: TelegramUser,
         partner: TelegramUser,
-        pct: Int,
+        confiscateFantiki: Long,
         sold: MarketplaceListingStatus,
-        active: MarketplaceListingStatus,
-        cancelled: MarketplaceListingStatus,
     ): BanPairUserResultDto {
         val selfId = self.id!!
         val partnerId = partner.id!!
-
-        val confiscateFantiki = marketplaceListingRepository.sumSellerReceivedForSalesTo(
-            sold,
-            selfId,
-            partnerId,
-            pct,
-        ).coerceAtLeast(0L)
-        if (confiscateFantiki > 0) {
-            userService.forceDeductBalance(
-                selfId,
-                confiscateFantiki,
-                FantikiTransactionReason.ADMIN_PAIR_BAN,
-            )
-        }
 
         val toRemove = userCardRepository.findUserCardsBoughtOnMarketplaceFromPartner(
             currentOwnerId = selfId,
@@ -295,13 +284,9 @@ class MarketplaceAdminService(
             userCardRepository.delete(uc)
         }
 
-        self.marketplaceBanned = true
-        telegramUserRepository.save(self)
-
-        val cancelledN = marketplaceListingRepository.cancelAllActiveBySellerId(selfId, active, cancelled)
-
+        // Re-load: [self] may be detached with stale [fantiki] after forceDeduct in [banPair].
         val fresh = telegramUserRepository.findById(selfId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found after ban")
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found after pair sanctions")
         }
         return BanPairUserResultDto(
             telegramId = fresh.telegramId,
@@ -309,7 +294,7 @@ class MarketplaceAdminService(
             fantikiConfiscated = confiscateFantiki,
             newBalance = fresh.fantiki,
             cardsConfiscated = cardPayload,
-            listingsCancelled = cancelledN,
+            listingsCancelled = 0,
         )
     }
 

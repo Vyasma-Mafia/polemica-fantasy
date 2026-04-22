@@ -16,6 +16,15 @@
 - [x] **Telegram:** `MarketplaceSaleNotificationListener` — `AFTER_COMMIT` + `@Async`, plain-text сообщение продавцу (`TelegramBotApiClient`), баланс после коммита через `UserService.getBalance`; `telegram.bot.notifications.enabled` / токен как у финализации серии
 - [x] **Тесты:** расширен `CardLifecycleServiceTest` (mock `MarketplaceListingRepository`, сценарий «карта в листинге»); полный `test` с Testcontainers в CI/локально при доступном Docker; `UserApiIntegrationTest` — лента маркетплейса после покупки EPIC и апгрейда до LEGENDARY остаётся EPIC в `GET /api/v1/marketplace/feed`
 
+### Маркетплейс: админ-антимод (перелив фантиков/карт между парами)
+- [x] **Flyway V27:** `telegram_user.marketplace_banned` (по умолчанию `false`); JPA-поле `TelegramUser.marketplaceBanned`
+- [x] **`UserService` / `TelegramUserRepository`:** `forceDeductBalance` / `forceDeductFantiki` — списание без требования `fantiki >= amount` (допускается отрицательный баланс при санкциях)
+- [x] **`MarketplaceService`:** при `marketplace_banned` — 403 и выставление листинга, и покупка
+- [x] **Причины `fantiki_transaction`:** `ADMIN_PAIR_BAN`, `ADMIN_CARD_CONFISCATE` (нулевые строки на зафиксированную карту; привязка `user_card_id` в леджер не ведётся)
+- [x] **`MarketplaceAdminService` + `MarketplaceAdminController`:** `GET /api/v1/admin/marketplace/pair-analysis`, `GET /pair-trades?userA&userB`, `POST /ban-pair`, `POST /unban/{telegramId}`; репозитории: `aggregateSoldTradesBySellerBuyer`, `findSoldListingsBetweenUsers`, `sumSellerReceivedForSalesTo`, `cancelAllActiveBySellerId`, `UserCardRepository.findUserCardsBoughtOnMarketplaceFromPartner` (в JPQL-`EXISTS` — `ml.buyer.id = uc.telegramUser.id`, чтобы не забирать карты, уже перепроданные с парного лота третьим лицам; **фантики** с продавца взыскиваются за **все** такие SOLD, независимо от перепродажи)
+- [x] **Telegram:** `PairBanNotificationEvent` + `PairBanNotificationListener` (`AFTER_COMMIT`, `@Async`), как у продажи/финализации
+- [x] **Админка:** `MarketplaceModerationPage`, `api/marketplaceAdmin.ts`, маршрут и меню **Marketplace**; в сделках пары — `PairTradeDto.buyerStillOwnsCard` и колонка **Seize card at ban**; модалка санкции: фантики по всем взаимным продажам, изъятие карт — только у исходного покупателя, если карта ещё у него
+
 ### Маркетплейс TMA (M7–M11) и чтение провенанса
 - [x] **TMA:** `MarketplacePage` (`/marketplace`) — лента сделок, фильтры (редкость, сортировка, цена, **игрок из справочника** `GET /api/v1/fantasy-players`, **турнир / серия** без обязательного выбора игрока — query `tournamentId`/`seriesId` в `GET /marketplace/listings`), пагинация, покупка; `MyListingsPage` (`/marketplace/my`); `api/marketplace.ts` + типы в `api/types.ts`; навигация в `App.tsx`
 - [x] **Коллекция:** кнопка «Продать» (тулбар и модалка карты), модалка цены с превью комиссии; условия: `uses_remaining > 0`, нет активного листинга (`GET my-listings`), карта не в команде серии со статусом ≠ `FINISHED` (загрузка статусов серий по `fantasy-teams`)

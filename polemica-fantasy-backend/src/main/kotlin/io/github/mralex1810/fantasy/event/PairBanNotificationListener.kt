@@ -35,7 +35,8 @@ class PairBanNotificationListener(
                 event.cardsConfiscated.joinToString("\n")
             }
         val text = buildString {
-            append("Ваш аккаунт заблокирован на маркетплейсе.\n\n")
+            append("По отношению к вашему аккаунту применена санкция за нарушение правил (перелив). ")
+            append("Доступ к маркетплейсу не блокируется, ваши текущие лоты остаются активными.\n\n")
             append("Причина: ${event.reason}\n\n")
             append("Конфискованы фантики: ${event.fantikiConfiscated} ₣\n")
             append("Конфискованы карты:\n$cardsText\n\n")

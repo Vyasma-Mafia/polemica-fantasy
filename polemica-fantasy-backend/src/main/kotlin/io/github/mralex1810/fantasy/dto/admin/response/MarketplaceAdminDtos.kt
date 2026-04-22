@@ -27,7 +27,7 @@ data class PairTradeDto(
     val playerName: String,
     val rarity: Rarity,
     val currentOwnerTelegramId: Long,
-    /** If false, the card is not deleted at pair ban; seller net for this sale is still recovered via fantiki. */
+    /** If false, the card is not removed at pair sanction; seller net for this sale is still recovered via fantiki. */
     val buyerStillOwnsCard: Boolean,
 )
 

@@ -27,7 +27,7 @@ Controller → Service → Repository → PostgreSQL
 - **Polemica layer** — обёртка над polemica-library для fetch + cache
 
 ### Key Patterns
-- **Маркетплейс карт:** таблицы `marketplace_listing`, `user_card_ownership_history`; комиссия из `economy_config.marketplace.commission_percent`; диапазон цены листинга — `marketplace.min_price.*` / `marketplace.max_price.*` (`EconomyConfigService`, валидация в `MarketplaceService.createListing`); покупка с `PESSIMISTIC_WRITE` на листинг; уведомление продавцу в Telegram — `MarketplaceSaleNotificationEvent` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` + `TelegramBotApiClient` (как финализация серии). Карта в **ACTIVE**-листинге заблокирована для команды, recycle, renew, legendary upgrade.
+- **Маркетплейс карт:** таблицы `marketplace_listing`, `user_card_ownership_history`; комиссия из `economy_config.marketplace.commission_percent`; диапазон цены листинга — `marketplace.min_price.*` / `marketplace.max_price.*` (`EconomyConfigService`, валидация в `MarketplaceService.createListing`); покупка с `PESSIMISTIC_WRITE` на листинг; уведомление продавцу в Telegram — `MarketplaceSaleNotificationEvent` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` + `TelegramBotApiClient` (как финализация серии). Карта в **ACTIVE**-листинге заблокирована для команды, recycle, renew, legendary upgrade. **Админ-антимодерация (перелив):** `telegram_user.marketplace_banned` (V27); `MarketplaceAdminService` — анализ пар, сделки между двумя пользователями, `ban-pair` (снятие **полного** нетто продавца по **всем** SOLD в паре через `sumSellerReceivedForSalesTo` — **включая** сделки, после которых карта ушла третьему лицу; отзыв `user_card` **только** у того, кто **ещё** держит карту после сделки с партнёром: `findUserCardsBoughtOnMarketplaceFromPartner` с `ml.buyer.id = uc.telegramUser.id` в `EXISTS`; бан, отмена листингов) и `unban`; `PairBanNotificationEvent` + listener — уведомление в Telegram. Эндпоинты: `/api/v1/admin/marketplace/*` (Basic Auth).
 - **DTO separation:** entity-классы не выходят за пределы service layer; контроллеры работают с DTO
 - **JSONB caching:** полные данные игр из Полемики кэшируются в PostgreSQL JSONB для оффлайн-скоринга
 - **Strategy pattern для достижений:** каждый детектор реализует `AchievementDetector` с полем `type: String` (совпадает с `achievement.id` в БД) и методом `matchCount(game, player)`; справочник — таблица `achievement` (каталог после Flyway V10: `sniper`, `voteForBlack`, …)
@@ -55,6 +55,7 @@ Controller → Service → Repository → PostgreSQL
 - React Router для навигации
 - TanStack Query для data fetching
 - Страница **Broadcast** (`/broadcast`) — рассылка всем пользователям через бота (MarkdownV2, подсказка по ссылкам, приблизительный preview; подтверждение перед отправкой)
+- Страница **Marketplace** (`/marketplace-moderation`) — анализ пар сделок, сделки между двумя Telegram id, бан пары (`ban-pair`), разбан (`/api/v1/admin/marketplace/unban/{telegramId}`)
 
 ## Структура пакетов бэкенда
 
