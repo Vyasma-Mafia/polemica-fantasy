@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairUserResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairAnalysisDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradeDto
+import io.github.mralex1810.fantasy.dto.admin.response.PairTradesUserBriefDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
@@ -130,26 +131,38 @@ class MarketplaceAdminService(
             val tpl = ml.soldCardTemplate ?: ml.userCard!!.cardTemplate!!
             val fp = tpl.fantasyPlayer!!
             val ownerTg = ml.userCard!!.telegramUser!!.telegramId
+            val buyerTg = ml.buyer!!.telegramId
             PairTradeDto(
                 listingId = ml.id!!,
                 price = price,
                 sellerReceived = sellerReceived,
                 soldAt = ml.soldAt,
                 sellerTelegramId = ml.seller!!.telegramId,
-                buyerTelegramId = ml.buyer!!.telegramId,
+                buyerTelegramId = buyerTg,
                 userCardId = ml.userCard!!.id!!,
                 playerName = fp.nickname,
                 rarity = tpl.rarity,
                 currentOwnerTelegramId = ownerTg,
+                buyerStillOwnsCard = ownerTg == buyerTg,
             )
         }
         return PairTradesResultDto(
+            userA = toPairTradesUserBrief(userA),
+            userB = toPairTradesUserBrief(userB),
             trades = items,
             totalTrades = items.size,
             totalGrossFantiki = totalGross,
             totalSellerReceived = totalNet,
         )
     }
+
+    private fun toPairTradesUserBrief(u: TelegramUser): PairTradesUserBriefDto =
+        PairTradesUserBriefDto(
+            username = u.username,
+            telegramId = u.telegramId,
+            displayName = u.publicDisplayName(),
+            fantiki = u.fantiki,
+        )
 
     @Transactional
     fun banPair(request: BanPairRequest): BanPairResultDto {
@@ -255,6 +268,9 @@ class MarketplaceAdminService(
         )
         val cardPayload = mutableListOf<BanPairConfiscatedCardDto>()
         for (uc in toRemove) {
+            if (uc.telegramUser!!.id != selfId) {
+                continue
+            }
             val ucId = uc.id!!
             val template = uc.cardTemplate!!
             val fp = template.fantasyPlayer!!

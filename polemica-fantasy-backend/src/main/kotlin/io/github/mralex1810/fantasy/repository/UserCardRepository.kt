@@ -80,7 +80,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
             WHERE ml.userCard.id = uc.id
             AND ml.status = :sold
             AND ml.seller.id = :partnerId
-            AND ml.buyer.id = :currentOwnerId
+            AND ml.buyer.id = uc.telegramUser.id
         )
         """,
     )

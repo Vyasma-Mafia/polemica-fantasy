@@ -185,9 +185,20 @@ export interface PairTradeDto {
   playerName: string
   rarity: Rarity
   currentOwnerTelegramId: number
+  /** False if the card was resold: not deleted at pair ban; seller net is still recovered. */
+  buyerStillOwnsCard: boolean
+}
+
+export interface PairTradesUserBriefDto {
+  username: string | null
+  telegramId: number
+  displayName: string
+  fantiki: number
 }
 
 export interface PairTradesResultDto {
+  userA: PairTradesUserBriefDto
+  userB: PairTradesUserBriefDto
   trades: PairTradeDto[]
   totalTrades: number
   totalGrossFantiki: number

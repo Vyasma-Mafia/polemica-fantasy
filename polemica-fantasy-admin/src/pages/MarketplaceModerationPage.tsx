@@ -8,7 +8,12 @@ import {
   getPairTrades,
   unbanMarketplace,
 } from '../api/marketplaceAdmin'
-import type { BanPairResultDto, PairAnalysisDto, PairTradeDto } from '../api/types'
+import type {
+  BanPairResultDto,
+  PairAnalysisDto,
+  PairTradeDto,
+  PairTradesUserBriefDto,
+} from '../api/types'
 
 const DEFAULT_BAN_REASON = 'Перелив фантиков между аккаунтами'
 
@@ -129,6 +134,39 @@ export function MarketplaceModerationPage() {
     [],
   )
 
+  const pairUserColumns = useMemo(
+    () => [
+      {
+        title: 'Role',
+        key: 'role',
+        width: 80,
+        render: (_: unknown, r: { label: string; u: PairTradesUserBriefDto }) => r.label,
+      },
+      {
+        title: 'Username',
+        key: 'username',
+        render: (_: unknown, r: { u: PairTradesUserBriefDto }) => r.u.username ?? '—',
+      },
+      {
+        title: 'Telegram ID',
+        key: 'tg',
+        render: (_: unknown, r: { u: PairTradesUserBriefDto }) => r.u.telegramId,
+      },
+      {
+        title: 'Display name',
+        key: 'dn',
+        render: (_: unknown, r: { u: PairTradesUserBriefDto }) => r.u.displayName,
+      },
+      {
+        title: 'Fantiki',
+        key: 'f',
+        align: 'right' as const,
+        render: (_: unknown, r: { u: PairTradesUserBriefDto }) => r.u.fantiki.toLocaleString('ru-RU'),
+      },
+    ],
+    [],
+  )
+
   const tradeColumns = useMemo(
     () => [
       {
@@ -158,6 +196,12 @@ export function MarketplaceModerationPage() {
         render: (v: number) => v.toLocaleString('ru-RU'),
       },
       { title: 'Current owner TG', dataIndex: 'currentOwnerTelegramId' as const, key: 'own' },
+      {
+        title: 'Seize card at ban',
+        key: 'seize',
+        width: 130,
+        render: (_: unknown, t: PairTradeDto) => (t.buyerStillOwnsCard ? 'Yes' : 'No'),
+      },
     ],
     [],
   )
@@ -230,11 +274,21 @@ export function MarketplaceModerationPage() {
                 <Typography.Text type="secondary">Select a row on Pair analysis or use View trades.</Typography.Text>
               ) : (
                 <>
-                  <Typography.Paragraph>
-                    Users <strong>{selectedPair.userA}</strong> and <strong>{selectedPair.userB}</strong>
-                  </Typography.Paragraph>
                   {tradesQ.isError && (
                     <Typography.Text type="danger">{(tradesQ.error as Error).message}</Typography.Text>
+                  )}
+                  {tradesQ.data && (
+                    <Table<{ label: string; u: PairTradesUserBriefDto; key: string }>
+                      style={{ marginBottom: 16, maxWidth: 900 }}
+                      size="small"
+                      pagination={false}
+                      rowKey="key"
+                      columns={pairUserColumns}
+                      dataSource={[
+                        { key: 'a', label: 'User A', u: tradesQ.data.userA },
+                        { key: 'b', label: 'User B', u: tradesQ.data.userB },
+                      ]}
+                    />
                   )}
                   {tradesQ.data && (
                     <div style={{ marginBottom: 12 }}>
@@ -299,8 +353,9 @@ export function MarketplaceModerationPage() {
       >
         {selectedPair && (
           <Typography.Paragraph>
-            This will ban both users, confiscate related fantiki and cards, and cancel their listings. Telegram:{' '}
-            <strong>{selectedPair.userA}</strong> and <strong>{selectedPair.userB}</strong>.
+            Bans both users, recovers the seller's net from each sale between them, cancels their active
+            listings, and deletes only cards that the original buyer still holds (resold cards are not removed).
+            Telegram: <strong>{selectedPair.userA}</strong> and <strong>{selectedPair.userB}</strong>.
           </Typography.Paragraph>
         )}
         <Input.TextArea rows={4} value={banReason} onChange={(e) => setBanReason(e.target.value)} />
