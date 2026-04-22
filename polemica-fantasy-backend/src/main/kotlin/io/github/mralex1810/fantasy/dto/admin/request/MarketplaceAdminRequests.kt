@@ -11,3 +11,11 @@ data class BanPairRequest(
     @field:NotBlank
     val reason: String? = null,
 )
+
+data class MarkPairClearedRequest(
+    @field:NotNull
+    val telegramIdA: Long? = null,
+    @field:NotNull
+    val telegramIdB: Long? = null,
+    val note: String? = null,
+)

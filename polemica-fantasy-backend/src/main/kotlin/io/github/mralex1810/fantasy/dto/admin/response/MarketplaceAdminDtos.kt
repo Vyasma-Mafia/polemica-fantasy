@@ -14,6 +14,10 @@ data class PairAnalysisDto(
     /** Суммарно получено продавцом A от покупок B, минус суммарно получено B от A (в ₣, после комиссии). */
     val netTransfer: Long,
     val bidirectional: Boolean,
+    /** Модератор отметил пару как проверенную (не требует повторного просмотра). */
+    val cleared: Boolean = false,
+    val clearedAt: Instant? = null,
+    val clearedNote: String? = null,
 )
 
 data class PairTradeDto(

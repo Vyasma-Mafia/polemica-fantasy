@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
+import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
 import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.MarketplaceListing
@@ -14,6 +15,8 @@ import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -170,6 +173,34 @@ class MarketplacePairBanFantikiIntegrationTest {
         val banR = ban(tgA, tgB)
         assertEquals(sumAtoB, banR.userA.fantikiConfiscated)
         assertEquals(sumBtoA, banR.userB.fantikiConfiscated)
+    }
+
+    @Test
+    @Transactional
+    fun `pair clearance mark and unmark appear in getPairAnalysis`() {
+        val tgA = 881_000_601L
+        val tgB = 881_000_602L
+        val a = newUser(tgA)
+        val b = newUser(tgB)
+        soldListingFromAToB(a, b, 100L, 701L)
+
+        fun findRow() = marketplaceAdminService.getPairAnalysis()
+            .find { row ->
+                (row.userATelegramId == tgA && row.userBTelegramId == tgB) ||
+                    (row.userATelegramId == tgB && row.userBTelegramId == tgA)
+            }!!
+
+        assertEquals(false, findRow().cleared)
+
+        marketplaceAdminService.markPairCleared(
+            MarkPairClearedRequest(telegramIdA = tgA, telegramIdB = tgB, note = "ok"),
+        )
+        val afterMark = findRow()
+        assertTrue(afterMark.cleared)
+        assertEquals("ok", afterMark.clearedNote)
+
+        marketplaceAdminService.unmarkPairCleared(tgA, tgB)
+        assertFalse(findRow().cleared)
     }
 
     @Test

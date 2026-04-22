@@ -30,3 +30,25 @@ export function unbanMarketplace(telegramId: number) {
     method: 'POST',
   })
 }
+
+export function markPairCleared(body: {
+  telegramIdA: number
+  telegramIdB: number
+  note?: string
+}) {
+  return apiVoid('/v1/admin/marketplace/pair-analysis/clear', {
+    method: 'POST',
+    body: JSON.stringify({
+      telegramIdA: body.telegramIdA,
+      telegramIdB: body.telegramIdB,
+      note: body.note,
+    }),
+  })
+}
+
+export function unmarkPairCleared(userA: number, userB: number) {
+  const q = new URLSearchParams({ userA: String(userA), userB: String(userB) })
+  return apiVoid(`/v1/admin/marketplace/pair-analysis/clear?${q.toString()}`, {
+    method: 'DELETE',
+  })
+}

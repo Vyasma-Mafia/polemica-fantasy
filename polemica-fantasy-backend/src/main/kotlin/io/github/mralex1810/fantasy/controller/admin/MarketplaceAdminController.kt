@@ -1,12 +1,14 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
+import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairAnalysisDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
 import io.github.mralex1810.fantasy.service.MarketplaceAdminService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -33,6 +35,21 @@ class MarketplaceAdminController(
 
     @PostMapping("/ban-pair")
     fun banPair(@Valid @RequestBody body: BanPairRequest): BanPairResultDto = marketplaceAdminService.banPair(body)
+
+    @PostMapping("/pair-analysis/clear")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun markPairCleared(@Valid @RequestBody body: MarkPairClearedRequest) {
+        marketplaceAdminService.markPairCleared(body)
+    }
+
+    @DeleteMapping("/pair-analysis/clear")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun unmarkPairCleared(
+        @RequestParam("userA") userA: Long,
+        @RequestParam("userB") userB: Long,
+    ) {
+        marketplaceAdminService.unmarkPairCleared(userA, userB)
+    }
 
     @PostMapping("/unban/{telegramId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

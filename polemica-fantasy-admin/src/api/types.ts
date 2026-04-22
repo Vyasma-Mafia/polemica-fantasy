@@ -172,6 +172,9 @@ export interface PairAnalysisDto {
   tradesTotalBtoA: number
   netTransfer: number
   bidirectional: boolean
+  cleared: boolean
+  clearedAt: string | null
+  clearedNote: string | null
 }
 
 export interface PairTradeDto {

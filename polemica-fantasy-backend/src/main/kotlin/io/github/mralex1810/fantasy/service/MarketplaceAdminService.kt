@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
+import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairConfiscatedCardDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairUserResultDto
@@ -11,11 +12,14 @@ import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
+import io.github.mralex1810.fantasy.entity.MarketplacePairClearance
+import io.github.mralex1810.fantasy.entity.MarketplacePairClearanceId
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.event.PairBanNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.MarketplacePairClearanceRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
@@ -26,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.time.Instant
 
 @Service
 class MarketplaceAdminService(
@@ -38,6 +43,7 @@ class MarketplaceAdminService(
     private val userService: UserService,
     private val telegramUserRepository: TelegramUserRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val marketplacePairClearanceRepository: MarketplacePairClearanceRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -63,7 +69,19 @@ class MarketplaceAdminService(
         val byId = telegramUserRepository.findAllById(distinctIds).associateBy { it.id!! }
 
         val seenPairs = mutableSetOf<String>()
-        val out = ArrayList<PairAnalysisDto>()
+        data class PairInter(
+            val lo: Long,
+            val hi: Long,
+            val userATelegramId: Long,
+            val userBTelegramId: Long,
+            val countAtoB: Long,
+            val grossAtoB: Long,
+            val countBtoA: Long,
+            val grossBtoA: Long,
+            val netTransfer: Long,
+            val bidirectional: Boolean,
+        )
+        val out = ArrayList<PairInter>()
         for ((s, b) in directed.keys) {
             val lo = minOf(s, b)
             val hi = maxOf(s, b)
@@ -86,20 +104,51 @@ class MarketplaceAdminService(
             val uB = byId[bId] ?: continue
             seenPairs.add(key)
             out.add(
-                PairAnalysisDto(
+                PairInter(
+                    lo = aId,
+                    hi = bId,
                     userATelegramId = uA.telegramId,
                     userBTelegramId = uB.telegramId,
-                    tradesAtoB = countAtoB,
-                    tradesTotalAtoB = grossAtoB,
-                    tradesBtoA = countBtoA,
-                    tradesTotalBtoA = grossBtoA,
+                    countAtoB = countAtoB,
+                    grossAtoB = grossAtoB,
+                    countBtoA = countBtoA,
+                    grossBtoA = grossBtoA,
                     netTransfer = netTransfer,
                     bidirectional = countAtoB > 0 && countBtoA > 0,
                 ),
             )
         }
-        return out.sortedWith(compareByDescending<PairAnalysisDto> { it.tradesAtoB + it.tradesBtoA }
-            .thenByDescending { it.tradesTotalAtoB + it.tradesTotalBtoA })
+        val keySet = out.map { it.lo to it.hi }.toSet()
+        val byKey: Map<Pair<Long, Long>, MarketplacePairClearance> = if (keySet.isEmpty()) {
+            emptyMap()
+        } else {
+            val lows = keySet.map { it.first }.toSet()
+            marketplacePairClearanceRepository.findByUserIdLowIn(lows)
+                .asSequence()
+                .filter { (it.userIdLow to it.userIdHigh) in keySet }
+                .associateBy { it.userIdLow to it.userIdHigh }
+        }
+        return out
+            .sortedWith(
+                compareByDescending<PairInter> { it.countAtoB + it.countBtoA }
+                    .thenByDescending { it.grossAtoB + it.grossBtoA },
+            )
+            .map { p ->
+                val c = byKey[p.lo to p.hi]
+                PairAnalysisDto(
+                    userATelegramId = p.userATelegramId,
+                    userBTelegramId = p.userBTelegramId,
+                    tradesAtoB = p.countAtoB,
+                    tradesTotalAtoB = p.grossAtoB,
+                    tradesBtoA = p.countBtoA,
+                    tradesTotalBtoA = p.grossBtoA,
+                    netTransfer = p.netTransfer,
+                    bidirectional = p.bidirectional,
+                    cleared = c != null,
+                    clearedAt = c?.createdAt,
+                    clearedNote = c?.note,
+                )
+            }
     }
 
     @Transactional(readOnly = true)
@@ -231,6 +280,58 @@ class MarketplaceAdminService(
             ),
         )
         return result
+    }
+
+    @Transactional
+    fun markPairCleared(request: MarkPairClearedRequest) {
+        val tga = request.telegramIdA ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdA is required")
+        val tgb = request.telegramIdB ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdB is required")
+        if (tga == tgb) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdA and telegramIdB must be different")
+        }
+        val userA = telegramUserRepository.findByTelegramId(tga)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User A not found")
+        val userB = telegramUserRepository.findByTelegramId(tgb)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User B not found")
+        val idA = userA.id!!
+        val idB = userB.id!!
+        val lo = minOf(idA, idB)
+        val hi = maxOf(idA, idB)
+        val note = request.note?.trim()?.takeIf { it.isNotEmpty() }
+        val id = MarketplacePairClearanceId(userIdLow = lo, userIdHigh = hi)
+        if (marketplacePairClearanceRepository.existsById(id)) {
+            val existing = marketplacePairClearanceRepository.findById(id).orElseThrow()
+            if (note != null) {
+                existing.note = note
+                marketplacePairClearanceRepository.save(existing)
+            }
+        } else {
+            marketplacePairClearanceRepository.save(
+                MarketplacePairClearance(
+                    userIdLow = lo,
+                    userIdHigh = hi,
+                    createdAt = Instant.now(),
+                    note = note,
+                ),
+            )
+        }
+    }
+
+    @Transactional
+    fun unmarkPairCleared(telegramIdA: Long, telegramIdB: Long) {
+        if (telegramIdA == telegramIdB) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "userA and userB must be different")
+        }
+        val userA = telegramUserRepository.findByTelegramId(telegramIdA)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User A not found")
+        val userB = telegramUserRepository.findByTelegramId(telegramIdB)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User B not found")
+        val lo = minOf(userA.id!!, userB.id!!)
+        val hi = maxOf(userA.id!!, userB.id!!)
+        val n = marketplacePairClearanceRepository.deleteByUserIdPair(low = lo, high = hi)
+        if (n == 0) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "No clearance for this pair")
+        }
     }
 
     @Transactional

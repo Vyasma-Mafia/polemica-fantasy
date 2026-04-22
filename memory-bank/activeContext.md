@@ -1,5 +1,8 @@
 # Active Context
 
+## Changelog
+- **2026-04-22:** Санкция за перелив `POST /api/v1/admin/marketplace/ban-pair` **не** выставляет `telegram_user.marketplace_banned` и **не** отменяет ACTIVE-листинги. Обновлены `PairBanNotificationListener` (текст в Telegram: маркет не блокируется, лоты остаются) и `polemica-fantasy-admin` / `MarketplaceModerationPage` (pair sanctions, не «marketplace ban»). В `BanPairUserResultDto` поле `listingsCancelled` всегда **0**. `POST /unban/{telegramId}` снимает только `marketplace_banned` (насле­дие или сценарии, где флаг задан вне `ban-pair`). Реализация: `MarketplaceAdminService.sanctionsForOneUserInPair`.
+
 ## Текущий фокус
 **Маркетплейс (TMA M7–M11 + доработки API):** спецификация [`docs/features/DESIGN-MARKETPLACE.md`](docs/features/DESIGN-MARKETPLACE.md). TMA: `/marketplace` (лента `GET /marketplace/feed`, фильтры, покупка), `/marketplace/my`, навигация «Маркетплейс»; коллекция — «Продать» и модалка цены; провенанс — `CardOwnershipHistoryBlock` в модалках коллекции и лидерборда (`LeaderboardPlayerTeamPage`). Backend: `GET /api/v1/user-cards/{id}/ownership-history`; в `EconomyInfoDto` — `marketplaceCommissionPercent`, `marketplaceMinPrices`, `marketplaceMaxPrices`, `minPackOpensBeforeMarketplacePurchase`; в `GET /me` — `packOpensCount`. **Лента продаж:** при успешной покупке в `marketplace_listing` сохраняется снимок `sold_card_template_id` (редкость и ачивки превью не «плывут» после EPIC→LEGENDARY апгрейда карты). **Анти-перелив (настройка экономики):** нижняя граница цены листинга по редкости (`marketplace.min_price.*`), потолок (`marketplace.max_price.*`), покупка на маркетплейсе только после N открытых паков (`pack_opens_count`, порог из `economy_config`). Flyway **V23** (потолок и паки), **V25** — отдельные минимальные цены листинга, **V26** — снимок шаблона на сделку. Разовый откат сверхдохода по продажам дороже потолка (до появления лимита): **V24** — списание с продавцов по формуле как в `MarketplaceService.buyCard` (комиссия из `economy_config`), транзакции `ADMIN_CONFISCATE`, не ниже нуля на балансе.
 
@@ -67,7 +70,7 @@
 - Нет критичных блокеров
 
 ## Недавние правки UI (админка)
-- **Маркетплейс — антимодерация:** страница `/marketplace-moderation`: таблица `pair-analysis`, детализация сделок пары (колонка **Seize card at ban** = `buyerStillOwnsCard` в `PairTradeDto`), модалка `ban-pair` с причиной по умолчанию, превью результата, поле **Unban** по `telegramId` (POST unban). API см. абзац «Антимодерация перелива» выше.
+- **Маркетплейс — антимодерация:** страница `/marketplace-moderation`: таблица `pair-analysis`, детализация сделок пары (колонка **Seize card at ban** = `buyerStillOwnsCard` в `PairTradeDto`), модалка санкции пары (`ban-pair`) с причиной по умолчанию, превью результата, поле **Unban** по `telegramId` (POST unban, в т.ч. снятие унаследованного `marketplace_banned`). Тексты в UI: pair sanctions, без обещания бана маркетплейса и mass-cancel. API см. абзац «Антимодерация перелива» выше.
 
 - **User tools — списание фантиков:** `POST /api/v1/admin/users/{telegramUserId}/take-fantiki` с телом `{"amount": positive}`; причина транзакции `ADMIN_CONFISCATE`; пользователь должен существовать (иначе 404), при недостаточном балансе — 400. Кнопка «Take fantiki» на `/user-tools` (тот же amount, что и для grant).
 

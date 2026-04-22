@@ -1,4 +1,4 @@
-import { App, Button, Input, Modal, Space, Table, Tabs, Typography } from 'antd'
+import { App, Button, Checkbox, Input, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography } from 'antd'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
@@ -6,7 +6,9 @@ import {
   banPair,
   getPairAnalysis,
   getPairTrades,
+  markPairCleared,
   unbanMarketplace,
+  unmarkPairCleared,
 } from '../api/marketplaceAdmin'
 import type {
   BanPairResultDto,
@@ -37,6 +39,10 @@ export function MarketplaceModerationPage() {
   const [banOpen, setBanOpen] = useState(false)
   const [banReason, setBanReason] = useState(DEFAULT_BAN_REASON)
   const [unbanTg, setUnbanTg] = useState('')
+  const [hideCleared, setHideCleared] = useState(false)
+  const [markClearOpen, setMarkClearOpen] = useState(false)
+  const [markClearFor, setMarkClearFor] = useState<PairAnalysisDto | null>(null)
+  const [markNote, setMarkNote] = useState('')
 
   const analysisQ = useQuery({
     queryKey: ['admin', 'marketplace', 'pair-analysis'],
@@ -69,7 +75,36 @@ export function MarketplaceModerationPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const markClearMut = useMutation({
+    mutationFn: (args: { telegramIdA: number; telegramIdB: number; note?: string }) => markPairCleared(args),
+    onSuccess: () => {
+      message.success('Пара отмечена как проверенная')
+      setMarkClearOpen(false)
+      setMarkClearFor(null)
+      setMarkNote('')
+      void qc.invalidateQueries({ queryKey: ['admin', 'marketplace'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const unmarkClearMut = useMutation({
+    mutationFn: (pair: [number, number]) => unmarkPairCleared(pair[0], pair[1]),
+    onSuccess: () => {
+      message.success('Пометка снята')
+      void qc.invalidateQueries({ queryKey: ['admin', 'marketplace'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
   const [banResultPreview, setBanResultPreview] = useState<BanPairResultDto | null>(null)
+
+  const analysisRows = useMemo(() => {
+    const d = analysisQ.data ?? []
+    if (!hideCleared) {
+      return d
+    }
+    return d.filter((r) => !(r.cleared ?? false))
+  }, [analysisQ.data, hideCleared])
 
   const analysisColumns = useMemo(
     () => [
@@ -114,24 +149,73 @@ export function MarketplaceModerationPage() {
         render: (v: boolean) => (v ? 'Yes' : '—'),
       },
       {
+        title: 'Проверено',
+        key: 'cl',
+        width: 110,
+        render: (_: unknown, r: PairAnalysisDto) => {
+          if (!(r.cleared ?? false)) {
+            return '—'
+          }
+          const t = r.clearedAt
+          return (
+            <span title={t != null ? new Date(t).toLocaleString('ru-RU') : undefined}>
+              <Tag color="success">Да</Tag>
+            </span>
+          )
+        },
+      },
+      {
         title: 'Actions',
         key: 'act',
-        width: 120,
+        width: 300,
         render: (_: unknown, r: PairAnalysisDto) => (
-          <Button
-            type="link"
-            onClick={() => {
-              const [a, b] = sortPair(r)
-              setSelectedPair({ userA: a, userB: b })
-              setActiveTab('pair-trades')
+          <Space
+            size="small"
+            wrap
+            onClick={(e) => {
+              e.stopPropagation()
             }}
           >
-            View trades
-          </Button>
+            <Button
+              type="link"
+              onClick={() => {
+                const [a, b] = sortPair(r)
+                setSelectedPair({ userA: a, userB: b })
+                setActiveTab('pair-trades')
+              }}
+            >
+              View trades
+            </Button>
+            {r.cleared ?? false ? (
+              <Popconfirm
+                title="Снять пометку «проверено» с этой пары?"
+                okButtonProps={{ loading: unmarkClearMut.isPending }}
+                onConfirm={() => {
+                  unmarkClearMut.mutate(sortPair(r))
+                }}
+              >
+                <Button type="link" size="small">
+                  Снять
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => {
+                  setMarkClearFor(r)
+                  setMarkNote('')
+                  setMarkClearOpen(true)
+                }}
+              >
+                Пометить
+              </Button>
+            )}
+          </Space>
         ),
       },
     ],
-    [],
+    [unmarkClearMut.isPending],
   )
 
   const pairUserColumns = useMemo(
@@ -248,23 +332,35 @@ export function MarketplaceModerationPage() {
               key: 'analysis',
               label: 'Pair analysis',
               children: (
-                <Table<PairAnalysisDto>
-                  rowKey={(r) => pairKey(r.userATelegramId, r.userBTelegramId)}
-                  rowClassName={(r) => (r.bidirectional ? 'ant-table-row-bidirectional' : '')}
-                  loading={analysisQ.isLoading}
-                  dataSource={analysisQ.data ?? []}
-                  columns={analysisColumns}
-                  pagination={false}
-                  onRow={(record) => ({
-                    onClick: (e) => {
-                      if ((e.target as HTMLElement).closest('button,a')) return
-                      const [a, b] = sortPair(record)
-                      setSelectedPair({ userA: a, userB: b })
-                      setActiveTab('pair-trades')
-                    },
-                    style: { cursor: 'pointer' },
-                  })}
-                />
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <Checkbox
+                      checked={hideCleared}
+                      onChange={(e) => {
+                        setHideCleared(e.target.checked)
+                      }}
+                    >
+                      Скрыть проверенные пары
+                    </Checkbox>
+                  </div>
+                  <Table<PairAnalysisDto>
+                    rowKey={(r) => pairKey(r.userATelegramId, r.userBTelegramId)}
+                    rowClassName={(r) => (r.bidirectional ? 'ant-table-row-bidirectional' : '')}
+                    loading={analysisQ.isLoading}
+                    dataSource={analysisRows}
+                    columns={analysisColumns}
+                    pagination={false}
+                    onRow={(record) => ({
+                      onClick: (e) => {
+                        if ((e.target as HTMLElement).closest('button,a')) return
+                        const [a, b] = sortPair(record)
+                        setSelectedPair({ userA: a, userB: b })
+                        setActiveTab('pair-trades')
+                      },
+                      style: { cursor: 'pointer' },
+                    })}
+                  />
+                </>
               ),
             },
             {
@@ -372,6 +468,47 @@ export function MarketplaceModerationPage() {
           <div style={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap' }}>
             {JSON.stringify(banResultPreview, null, 2)}
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={markClearOpen}
+        title="Пометить пару как проверенную (не перелив)"
+        okText="Сохранить"
+        okButtonProps={{ loading: markClearMut.isPending }}
+        onCancel={() => {
+          setMarkClearOpen(false)
+          setMarkClearFor(null)
+        }}
+        onOk={() => {
+          if (markClearFor == null) return
+          const [a, b] = sortPair(markClearFor)
+          const note = markNote.trim()
+          markClearMut.mutate({
+            telegramIdA: a,
+            telegramIdB: b,
+            note: note.length > 0 ? note : undefined,
+          })
+        }}
+      >
+        {markClearFor && (
+          <>
+            <Typography.Paragraph>
+              Пара: <strong>{markClearFor.userATelegramId}</strong> /{' '}
+              <strong>{markClearFor.userBTelegramId}</strong> (Telegram id).
+            </Typography.Paragraph>
+            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+              Комментарий (по желанию)
+            </Typography.Text>
+            <Input.TextArea
+              rows={3}
+              value={markNote}
+              onChange={(e) => {
+                setMarkNote(e.target.value)
+              }}
+              placeholder="Напр. согласовано, близкие играют"
+            />
+          </>
         )}
       </Modal>
     </div>
