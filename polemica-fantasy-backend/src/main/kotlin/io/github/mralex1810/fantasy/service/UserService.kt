@@ -102,6 +102,24 @@ class UserService(
         )
     }
 
+    @Transactional
+    fun forceDeductBalance(internalUserId: Long, amount: Long, reason: FantikiTransactionReason) {
+        require(amount >= 0) { "amount must be non-negative" }
+        if (amount == 0L) return
+        val updated = telegramUserRepository.forceDeductFantiki(internalUserId, amount)
+        if (updated == 0) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalUserId not found")
+        }
+        val user = telegramUserRepository.getReferenceById(internalUserId)
+        fantikiTransactionRepository.save(
+            FantikiTransaction(
+                telegramUser = user,
+                amount = -amount,
+                reason = reason,
+            ),
+        )
+    }
+
     fun toProfileDto(user: TelegramUser): UserProfileDto =
         UserProfileDto(
             id = user.id!!,

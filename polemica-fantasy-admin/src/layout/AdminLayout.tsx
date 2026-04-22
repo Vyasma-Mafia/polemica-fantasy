@@ -19,6 +19,10 @@ const menuItems = [
   { key: '/broadcast', label: <Link to="/broadcast">Broadcast</Link> },
   { key: '/user-tools', label: <Link to="/user-tools">User tools</Link> },
   { key: '/economy', label: <Link to="/economy">Economy</Link> },
+  {
+    key: '/marketplace-moderation',
+    label: <Link to="/marketplace-moderation">Marketplace</Link>,
+  },
 ]
 
 export function AdminLayout() {

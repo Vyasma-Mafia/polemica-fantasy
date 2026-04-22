@@ -29,6 +29,10 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     fun deductFantikiIfSufficient(@Param("id") id: Long, @Param("amount") amount: Long): Int
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE TelegramUser u SET u.fantiki = u.fantiki - :amount WHERE u.id = :id")
+    fun forceDeductFantiki(@Param("id") id: Long, @Param("amount") amount: Long): Int
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE TelegramUser u SET u.packOpensCount = u.packOpensCount + 1 WHERE u.id = :id")
     fun incrementPackOpensCount(@Param("id") id: Long): Int
 

@@ -162,3 +162,55 @@ export interface UserCardDto {
 export interface OpenPackResultDto {
   userCards: UserCardDto[]
 }
+
+export interface PairAnalysisDto {
+  userATelegramId: number
+  userBTelegramId: number
+  tradesAtoB: number
+  tradesTotalAtoB: number
+  tradesBtoA: number
+  tradesTotalBtoA: number
+  netTransfer: number
+  bidirectional: boolean
+}
+
+export interface PairTradeDto {
+  listingId: number
+  price: number
+  sellerReceived: number
+  soldAt: string | null
+  sellerTelegramId: number
+  buyerTelegramId: number
+  userCardId: number
+  playerName: string
+  rarity: Rarity
+  currentOwnerTelegramId: number
+}
+
+export interface PairTradesResultDto {
+  trades: PairTradeDto[]
+  totalTrades: number
+  totalGrossFantiki: number
+  totalSellerReceived: number
+}
+
+export interface BanPairConfiscatedCardDto {
+  userCardId: number
+  playerName: string
+  rarity: Rarity
+}
+
+export interface BanPairUserResultDto {
+  telegramId: number
+  displayName: string
+  fantikiConfiscated: number
+  newBalance: number
+  cardsConfiscated: BanPairConfiscatedCardDto[]
+  listingsCancelled: number
+}
+
+export interface BanPairResultDto {
+  userA: BanPairUserResultDto
+  userB: BanPairUserResultDto
+  reason: string
+}

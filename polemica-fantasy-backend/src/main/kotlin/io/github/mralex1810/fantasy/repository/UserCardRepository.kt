@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.repository
 
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
 import org.springframework.data.jpa.repository.JpaRepository
@@ -67,4 +68,25 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("id") id: Long,
         @Param("telegramUserId") telegramUserId: Long,
     ): UserCard?
+
+    @Query(
+        """
+        SELECT DISTINCT uc FROM UserCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        WHERE uc.telegramUser.id = :currentOwnerId
+        AND EXISTS (
+            SELECT 1 FROM MarketplaceListing ml
+            WHERE ml.userCard.id = uc.id
+            AND ml.status = :sold
+            AND ml.seller.id = :partnerId
+            AND ml.buyer.id = :currentOwnerId
+        )
+        """,
+    )
+    fun findUserCardsBoughtOnMarketplaceFromPartner(
+        @Param("currentOwnerId") currentOwnerId: Long,
+        @Param("partnerId") partnerId: Long,
+        @Param("sold") sold: MarketplaceListingStatus,
+    ): List<UserCard>
 }

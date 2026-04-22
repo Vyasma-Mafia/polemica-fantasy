@@ -49,6 +49,15 @@ class MarketplaceService(
 
     @Transactional
     fun createListing(user: TelegramUser, request: CreateMarketplaceListingRequest): MarketplaceListingEntryDto {
+        val me = telegramUserRepository.findById(user.id!!).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        }
+        if (me.marketplaceBanned) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Your marketplace access is suspended",
+            )
+        }
         val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(request.userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.usesRemaining <= 0) {
@@ -128,10 +137,16 @@ class MarketplaceService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot buy a card you previously owned")
         }
         val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
-        val buyerPackOpens =
-            telegramUserRepository.findById(buyerId).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
-            }.packOpensCount
+        val buyerRow = telegramUserRepository.findById(buyerId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        }
+        if (buyerRow.marketplaceBanned) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Your marketplace access is suspended",
+            )
+        }
+        val buyerPackOpens = buyerRow.packOpensCount
         if (buyerPackOpens < minPackOpens) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -191,7 +206,7 @@ class MarketplaceService(
             viewer = buyer,
             forSellerOwnListing = false,
             minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
-            viewerPackOpens = buyer.packOpensCount,
+            viewerPackOpens = buyerRow.packOpensCount,
             canBuyOverride = false to null,
         )
         return BuyCardResultDto(

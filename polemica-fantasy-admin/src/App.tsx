@@ -11,6 +11,7 @@ import { EconomyPage } from './pages/EconomyPage'
 import { BroadcastPage } from './pages/BroadcastPage'
 import { UserToolsPage } from './pages/UserToolsPage'
 import { UsersOverviewPage } from './pages/UsersOverviewPage'
+import { MarketplaceModerationPage } from './pages/MarketplaceModerationPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="broadcast" element={<BroadcastPage />} />
         <Route path="users" element={<UsersOverviewPage />} />
         <Route path="economy" element={<EconomyPage />} />
+        <Route path="marketplace-moderation" element={<MarketplaceModerationPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

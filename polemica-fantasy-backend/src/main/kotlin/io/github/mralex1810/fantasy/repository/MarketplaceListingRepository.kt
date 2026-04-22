@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
@@ -104,4 +105,73 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         """,
     )
     fun findRecentSold(@Param("sold") sold: MarketplaceListingStatus, pageable: Pageable): List<MarketplaceListing>
+
+    @Query(
+        value =
+            """
+            SELECT ml.seller_id, ml.buyer_id,
+                COUNT(*)::bigint,
+                COALESCE(SUM(ml.price), 0)::bigint,
+                COALESCE(SUM(ml.price - (ml.price * :pct) / 100), 0)::bigint
+            FROM marketplace_listing ml
+            WHERE ml.status = 'SOLD' AND ml.buyer_id IS NOT NULL
+            GROUP BY ml.seller_id, ml.buyer_id
+            """,
+        nativeQuery = true,
+    )
+    fun aggregateSoldTradesBySellerBuyer(
+        @Param("pct") pct: Int,
+    ): List<Array<Any>>
+
+    @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.seller
+        JOIN FETCH ml.buyer
+        JOIN FETCH ml.userCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH ml.soldCardTemplate st
+        JOIN FETCH uc.telegramUser currentOwner
+        WHERE ml.status = :sold
+        AND (
+            (ml.seller.id = :idA AND ml.buyer.id = :idB)
+            OR (ml.seller.id = :idB AND ml.buyer.id = :idA)
+        )
+        ORDER BY ml.soldAt ASC, ml.id ASC
+        """,
+    )
+    fun findSoldListingsBetweenUsers(
+        @Param("sold") sold: MarketplaceListingStatus,
+        @Param("idA") idA: Long,
+        @Param("idB") idB: Long,
+    ): List<MarketplaceListing>
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(ml.price - (ml.price * :pct) / 100), 0)
+        FROM MarketplaceListing ml
+        WHERE ml.status = :sold AND ml.seller.id = :sellerId AND ml.buyer.id = :buyerId
+        """,
+    )
+    fun sumSellerReceivedForSalesTo(
+        @Param("sold") sold: MarketplaceListingStatus,
+        @Param("sellerId") sellerId: Long,
+        @Param("buyerId") buyerId: Long,
+        @Param("pct") pct: Int,
+    ): Long
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        """
+        UPDATE MarketplaceListing ml
+        SET ml.status = :cancelled
+        WHERE ml.seller.id = :sellerId AND ml.status = :active
+        """,
+    )
+    fun cancelAllActiveBySellerId(
+        @Param("sellerId") sellerId: Long,
+        @Param("active") active: MarketplaceListingStatus,
+        @Param("cancelled") cancelled: MarketplaceListingStatus,
+    ): Int
 }

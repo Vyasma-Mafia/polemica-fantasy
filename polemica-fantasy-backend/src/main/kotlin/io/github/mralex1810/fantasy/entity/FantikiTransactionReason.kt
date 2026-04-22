@@ -11,4 +11,6 @@ enum class FantikiTransactionReason {
     LEGENDARY_UPGRADE,
     MARKETPLACE_PURCHASE,
     MARKETPLACE_SALE,
+    ADMIN_PAIR_BAN,
+    ADMIN_CARD_CONFISCATE,
 }

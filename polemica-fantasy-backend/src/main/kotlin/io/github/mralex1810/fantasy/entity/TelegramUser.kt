@@ -38,6 +38,9 @@ class TelegramUser(
     @Column(name = "pack_opens_count", nullable = false)
     var packOpensCount: Int = 0,
 
+    @Column(name = "marketplace_banned", nullable = false)
+    var marketplaceBanned: Boolean = false,
+
     @OneToMany(mappedBy = "telegramUser")
     var userCards: MutableList<UserCard> = mutableListOf(),
 
