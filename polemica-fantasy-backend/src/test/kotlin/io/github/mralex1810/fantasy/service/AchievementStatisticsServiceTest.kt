@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import com.github.mafia.vyasma.polemica.library.client.GamePointsService
 import io.github.mralex1810.fantasy.entity.Achievement
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
@@ -19,6 +20,7 @@ class AchievementStatisticsServiceTest {
         val achievementRepository = mock(AchievementRepository::class.java)
         val achievementRegistry = mock(AchievementDetectorRegistry::class.java)
         val polemicaIntegrationService = mock(PolemicaIntegrationService::class.java)
+        val gamePointsService = mock(GamePointsService::class.java)
 
         `when`(fantasyPlayerRepository.findAllPolemicaUserIds()).thenReturn(emptyList())
         val a = Achievement().apply {
@@ -33,6 +35,7 @@ class AchievementStatisticsServiceTest {
             achievementRepository,
             achievementRegistry,
             polemicaIntegrationService,
+            gamePointsService,
         )
 
         val report = service.collectReport()

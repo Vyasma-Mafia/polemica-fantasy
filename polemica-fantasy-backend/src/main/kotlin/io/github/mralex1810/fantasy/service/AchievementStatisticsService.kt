@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import com.github.mafia.vyasma.polemica.library.client.GamePointsService
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import io.github.mralex1810.fantasy.dto.admin.response.AchievementFrequencyRowDto
 import io.github.mralex1810.fantasy.dto.admin.response.AchievementStatisticsReportDto
@@ -9,6 +10,7 @@ import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
 import io.github.mralex1810.fantasy.repository.AchievementRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.scoring.achievement.AchievementDetectorRegistry
+import io.github.mralex1810.fantasy.scoring.achievement.ScoringContext
 import io.github.mralex1810.fantasy.scoring.appliedOccurrences
 import io.github.mralex1810.fantasy.scoring.isRoleApplicable
 import org.slf4j.LoggerFactory
@@ -22,6 +24,7 @@ class AchievementStatisticsService(
     private val achievementRepository: AchievementRepository,
     private val achievementRegistry: AchievementDetectorRegistry,
     private val polemicaIntegrationService: PolemicaIntegrationService,
+    private val gamePointsService: GamePointsService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -61,7 +64,14 @@ class AchievementStatisticsService(
                 continue
             }
             gamesLoaded++
-            accumulateForGame(game, achievements, aggregates)
+            val pointsByPosition =
+                try {
+                    gamePointsService.fetchPlayerStats(matchId).associate { it.position to it.points }
+                } catch (e: Exception) {
+                    log.warn("fetchPlayerStats failed for matchId={}: {}", matchId, e.message)
+                    null
+                }
+            accumulateForGame(game, achievements, aggregates, pointsByPosition)
         }
 
         val catalogIds = achievements.map { it.id }.sorted()
@@ -93,14 +103,21 @@ class AchievementStatisticsService(
         game: PolemicaGame,
         achievements: List<Achievement>,
         aggregates: Map<String, MutableAchievementAggregate>,
+        pointsByPosition: Map<Int, Double>?,
     ) {
         val players = game.players.orEmpty()
         for (player in players) {
+            val basePoints =
+                when (pointsByPosition) {
+                    null -> Double.NaN
+                    else -> pointsByPosition[player.position.value] ?: 0.0
+                }
+            val scoringContext = ScoringContext(basePoints = basePoints)
             for (ach in achievements) {
                 val det = achievementRegistry.detector(ach.id) ?: continue
                 if (!isRoleApplicable(ach, player)) continue
                 val agg = aggregates.getValue(ach.id)
-                val raw = det.matchCount(game, player)
+                val raw = det.matchCount(game, player, scoringContext)
                 val applied = appliedOccurrences(raw, ach.occurrenceType)
                 agg.applicableSlots++
                 agg.sumRawMatchCount += raw.toLong()
