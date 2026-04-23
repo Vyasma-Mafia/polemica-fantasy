@@ -557,6 +557,58 @@ export function CardsPage() {
               ))}
             </ul>
 
+            <div className="pf-modal__economy-actions">
+              {isEligibleEpicForLegendary(detailCard) && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  onClick={() => {
+                    setLegendaryWizardInitialCardId(detailCard.id)
+                    setLegendaryWizardOpen(true)
+                    closeModal()
+                  }}
+                >
+                  Улучшить до легендарной
+                </button>
+              )}
+              {canOfferCardOnMarketplace(detailCard) && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  onClick={() => {
+                    setSellModalCard(detailCard)
+                    const min = economyQ.data?.renewalCosts[detailCard.rarity] ?? 0
+                    setSellPrice(String(min))
+                  }}
+                >
+                  Продать
+                </button>
+              )}
+              <button
+                type="button"
+                className="pf-btn pf-btn--small"
+                disabled={recycleMut.isPending}
+                onClick={() => runRecycle(detailCard)}
+              >
+                Переработать
+              </button>
+              {detailCard.usesRemaining <= 0 && economyQ.data && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--primary"
+                  disabled={
+                    renewMut.isPending || detailCard.timesRenewed >= economyQ.data.maxRenewals
+                  }
+                  title={
+                    detailCard.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
+                  }
+                  onClick={() => runRenew(detailCard)}
+                >
+                  Продлить контракт ({economyQ.data.renewalCosts[detailCard.rarity]}₣)
+                </button>
+              )}
+            </div>
+
             <CardOwnershipHistoryBlock userCardId={detailCard.id} />
 
             {teamsWithCard.length > 0 && (
@@ -647,58 +699,6 @@ export function CardsPage() {
                 </ul>
               </div>
             )}
-
-            <div className="pf-modal__economy-actions">
-              {isEligibleEpicForLegendary(detailCard) && (
-                <button
-                  type="button"
-                  className="pf-btn pf-btn--small pf-btn--primary"
-                  onClick={() => {
-                    setLegendaryWizardInitialCardId(detailCard.id)
-                    setLegendaryWizardOpen(true)
-                    closeModal()
-                  }}
-                >
-                  Улучшить до легендарной
-                </button>
-              )}
-              {canOfferCardOnMarketplace(detailCard) && (
-                <button
-                  type="button"
-                  className="pf-btn pf-btn--small pf-btn--primary"
-                  onClick={() => {
-                    setSellModalCard(detailCard)
-                    const min = economyQ.data?.renewalCosts[detailCard.rarity] ?? 0
-                    setSellPrice(String(min))
-                  }}
-                >
-                  Продать
-                </button>
-              )}
-              <button
-                type="button"
-                className="pf-btn pf-btn--small"
-                disabled={recycleMut.isPending}
-                onClick={() => runRecycle(detailCard)}
-              >
-                Переработать
-              </button>
-              {detailCard.usesRemaining <= 0 && economyQ.data && (
-                <button
-                  type="button"
-                  className="pf-btn pf-btn--small pf-btn--primary"
-                  disabled={
-                    renewMut.isPending || detailCard.timesRenewed >= economyQ.data.maxRenewals
-                  }
-                  title={
-                    detailCard.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
-                  }
-                  onClick={() => runRenew(detailCard)}
-                >
-                  Продлить контракт ({economyQ.data.renewalCosts[detailCard.rarity]}₣)
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}
