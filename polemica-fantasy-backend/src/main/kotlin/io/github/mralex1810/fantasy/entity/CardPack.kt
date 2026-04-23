@@ -38,6 +38,10 @@ class CardPack(
     @Column(name = "free_opens_per_user", nullable = false)
     var freeOpensPerUser: Int = 0,
 
+    /** Max total pack opens per user (incl. free); 0 = unlimited. */
+    @Column(name = "max_opens_per_user", nullable = false)
+    var maxOpensPerUser: Int = 0,
+
     @Column(name = "use_all_tournament_players", nullable = false)
     var useAllTournamentPlayers: Boolean = false,
 

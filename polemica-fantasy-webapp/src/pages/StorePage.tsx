@@ -57,6 +57,9 @@ export function StorePage() {
 
   const balance = meQ.data?.fantiki ?? 0
   const confirmingPack = packsQ.data?.find((p) => p.id === confirmPackId)
+  const confirmMax = confirmingPack?.maxOpensPerUser ?? 0
+  const confirmUsed = confirmingPack?.packOpensUsed ?? 0
+  const confirmAtLimit = confirmMax > 0 && confirmUsed >= confirmMax
 
   if (!initData) return <MissingInitDataNotice />
 
@@ -90,7 +93,11 @@ export function StorePage() {
         {(packsQ.data ?? []).map((pack) => {
           const freeLeft = pack.freeOpensRemaining ?? 0
           const nextIsFree = pack.priceFantiki > 0 && freeLeft > 0
-          const affordable = pack.priceFantiki === 0 || nextIsFree || balance >= pack.priceFantiki
+          const maxOpens = pack.maxOpensPerUser ?? 0
+          const packUsed = pack.packOpensUsed ?? 0
+          const atPackLimit = maxOpens > 0 && packUsed >= maxOpens
+          const affordable =
+            !atPackLimit && (pack.priceFantiki === 0 || nextIsFree || balance >= pack.priceFantiki)
           return (
             <li key={pack.id} className="pf-store-card">
               <div className="pf-store-card__head">
@@ -122,10 +129,18 @@ export function StorePage() {
               >
                 Купить
               </button>
-              {!affordable && pack.priceFantiki > 0 && (
+              {atPackLimit && (
+                <p className="pf-store-hint pf-muted">Лимит открытий исчерпан</p>
+              )}
+              {!atPackLimit && !affordable && pack.priceFantiki > 0 && (
                 <p className="pf-store-hint pf-muted">Недостаточно фантиков</p>
               )}
-              {pack.priceFantiki > 0 && freeLeft > 0 && (
+              {maxOpens > 0 && !atPackLimit && (
+                <p className="pf-store-hint pf-muted">
+                  Осталось открытий: {Math.max(0, maxOpens - packUsed)} / {maxOpens}
+                </p>
+              )}
+              {pack.priceFantiki > 0 && freeLeft > 0 && !atPackLimit && (
                 <p className="pf-store-hint pf-muted">Бесплатных открытий: {freeLeft}</p>
               )}
             </li>
@@ -163,12 +178,19 @@ export function StorePage() {
             <h3 className="pf-modal__title">Купить пак?</h3>
             <p className="pf-muted">
               {confirmingPack.name} —{' '}
-              {confirmingPack.priceFantiki === 0
-                ? 'бесплатно'
-                : (confirmingPack.freeOpensRemaining ?? 0) > 0
-                  ? 'бесплатно (квота)'
-                  : `${confirmingPack.priceFantiki.toLocaleString('ru-RU')} фантиков`}
+              {confirmAtLimit
+                ? 'лимит открытий'
+                : confirmingPack.priceFantiki === 0
+                  ? 'бесплатно'
+                  : (confirmingPack.freeOpensRemaining ?? 0) > 0
+                    ? 'бесплатно (квота)'
+                    : `${confirmingPack.priceFantiki.toLocaleString('ru-RU')} фантиков`}
             </p>
+            {confirmAtLimit && (
+              <p className="pf-err" style={{ marginTop: 8 }}>
+                Лимит открытий исчерпан
+              </p>
+            )}
             <div className="pf-modal__actions">
               <button type="button" className="pf-btn pf-btn--ghost" onClick={() => setConfirmPackId(null)}>
                 Отмена
@@ -176,7 +198,7 @@ export function StorePage() {
               <button
                 type="button"
                 className="pf-btn"
-                disabled={buyM.isPending}
+                disabled={buyM.isPending || confirmAtLimit}
                 onClick={() => buyM.mutate(confirmingPack.id)}
               >
                 {buyM.isPending ? 'Покупка…' : 'Купить'}

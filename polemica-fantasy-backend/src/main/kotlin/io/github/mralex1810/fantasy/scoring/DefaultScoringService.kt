@@ -12,6 +12,7 @@ import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.scoring.achievement.AchievementDetectorRegistry
+import io.github.mralex1810.fantasy.scoring.achievement.ScoringContext
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -105,13 +106,14 @@ class DefaultScoringService(
             val basePoints = pointsByTablePositionByGameId[sg.polemicaGameId]
                 ?.get(player.position.value)
                 ?: 0.0
+            val scoringContext = ScoringContext(basePoints = basePoints)
             val bonusByAchievementId = LinkedHashMap<String, Double>()
 
             for (cta in templateAchievements) {
                 val ach = cta.achievement ?: continue
                 if (!isRoleApplicable(ach, player)) continue
                 val det = achievementRegistry.detector(ach.id) ?: continue
-                val raw = det.matchCount(polemicaGame, player)
+                val raw = det.matchCount(polemicaGame, player, scoringContext)
                 val applied = appliedOccurrences(raw, ach.occurrenceType)
                 if (applied <= 0) continue
                 val effectiveBonus = cta.bonusPoints ?: ach.bonusPoints

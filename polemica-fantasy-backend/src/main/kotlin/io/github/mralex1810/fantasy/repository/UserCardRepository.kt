@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param
 
 interface UserCardRepository : JpaRepository<UserCard, Long> {
 
+    fun countByTelegramUser_IdAndSourceCardPack_Id(telegramUserId: Long, sourceCardPackId: Long): Long
+
     fun findByIdAndTelegramUser_Id(id: Long, telegramUserId: Long): UserCard?
 
     @Query(

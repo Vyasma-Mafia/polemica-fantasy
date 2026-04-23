@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Паки турниров: лимит открытий, пул ачивок, новые достижения
+- [x] **Flyway V30:** `card_pack.max_opens_per_user` (0 = без лимита), `card_pack_achievement` (пул ачивок на пак), ачивки `ninja`, `crowned`, `lastHeroGuess` + роли
+- [x] **Scoring:** `ScoringContext(basePoints)` в `AchievementDetector`, `DefaultScoringService` передаёт базовые баллы; детекторы Ninja / Crowned / Last Hero
+- [x] **Паки:** `CardPackAchievement` + репозиторий, `openPack` берёт пул из `card_pack_achievement` или глобальный; админ/магазин DTO, лимит покупок в `UserStoreService`
+- [x] **Админка / TMA:** поля max opens + multi-select пула; магазин — «осталось X/Y», отключение «Купить» при лимите
+
 ### Маркетплейс карт (backend M1–M6)
 - [x] **Flyway V22:** `marketplace_listing`, `user_card_ownership_history`, индексы (в т.ч. лента продаж), ключ `economy_config.marketplace.commission_percent`, бэкфилл провенанса из `user_card` как `PACK_OPENING`
 - [x] **Flyway V23:** потолок цены листинга `marketplace.max_price.{RARITY}`, порог покупок `marketplace.min_pack_opens_before_purchase` (3); `telegram_user.pack_opens_count` (инкремент в `CardPackService.openPack`); бэкфилл: всем пользователям `pack_opens_count = 3`, активные листинги с ценой выше потолка урезаны до max по редкости

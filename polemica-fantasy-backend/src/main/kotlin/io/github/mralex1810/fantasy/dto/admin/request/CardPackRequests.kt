@@ -25,6 +25,9 @@ data class CreateCardPackRequest(
     val priceFantiki: Long = 0L,
     @field:PositiveOrZero
     val freeOpensPerUser: Int = 0,
+    @field:PositiveOrZero
+    val maxOpensPerUser: Int = 0,
+    val achievementIds: List<String> = emptyList(),
     val useAllTournamentPlayers: Boolean = false,
     val playerIds: List<Long>? = null,
     @field:Valid
@@ -40,6 +43,9 @@ data class UpdateCardPackRequest(
     val priceFantiki: Long? = null,
     @field:PositiveOrZero
     val freeOpensPerUser: Int? = null,
+    @field:PositiveOrZero
+    val maxOpensPerUser: Int? = null,
+    val achievementIds: List<String>? = null,
     val useAllTournamentPlayers: Boolean? = null,
     val playerIds: List<Long>? = null,
     @field:Valid

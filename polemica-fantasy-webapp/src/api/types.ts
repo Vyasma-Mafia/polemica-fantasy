@@ -37,6 +37,10 @@ export interface StorePackItem {
   priceFantiki: number
   /** Remaining free opens for current user; 0 when not applicable. */
   freeOpensRemaining: number
+  /** Max total opens per user; 0 = unlimited. */
+  maxOpensPerUser: number
+  /** Cards already received from this pack (opens used). */
+  packOpensUsed: number
   rarityLayout: StorePackRaritySlot[]
 }
 

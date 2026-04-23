@@ -12,6 +12,7 @@ import com.github.mafia.vyasma.polemica.library.utils.getKickedFromTable
 import com.github.mafia.vyasma.polemica.library.utils.getKilled
 import com.github.mafia.vyasma.polemica.library.utils.getRealComKiller
 import com.github.mafia.vyasma.polemica.library.utils.getRole
+import com.github.mafia.vyasma.polemica.library.utils.playersOnTable
 import com.github.mafia.vyasma.polemica.library.utils.isBlack
 import com.github.mafia.vyasma.polemica.library.utils.isBlackWin
 import com.github.mafia.vyasma.polemica.library.utils.isRed
@@ -139,4 +140,45 @@ class WinWithoutCriticAchievementDetector : AchievementDetector {
             assert { game.isRedWin() }
             return boolToInt(game.getCriticDay() == null)
         }
+}
+
+/** Ровно 0 базовых баллов с Polemica — [ninja]. */
+@Component
+class NinjaAchievementDetector : AchievementDetector {
+    override val type = "ninja"
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int = 0
+
+    override fun matchCount(
+        game: PolemicaGame,
+        player: PolemicaPlayer,
+        context: ScoringContext,
+    ): Int = boolToInt(context.basePoints == 0.0)
+}
+
+/**
+ * Кого-то назвали «рулевым» (vice) в угадайке — [crowned].
+ */
+@Component
+class CrownedAchievementDetector : AchievementDetector {
+    override val type = "crowned"
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
+        for (p in game.players.orEmpty()) {
+            val guess = p.guess ?: continue
+            val vice = guess.vice ?: continue
+            if (vice == player.position) return 1
+        }
+        return 0
+    }
+}
+
+/**
+ * На столу остались ровно два игрока, текущий всё ещё в игре (угадайка) — [lastHeroGuess].
+ */
+@Component
+class LastHeroGuessAchievementDetector : AchievementDetector {
+    override val type = "lastHeroGuess"
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
+        val onTable = game.playersOnTable(null)
+        return boolToInt(onTable.size == 2 && onTable.contains(player.position))
+    }
 }

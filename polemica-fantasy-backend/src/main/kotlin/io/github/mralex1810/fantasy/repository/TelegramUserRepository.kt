@@ -15,6 +15,10 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     fun findByTelegramId(telegramId: Long): TelegramUser?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM TelegramUser u WHERE u.id = :id")
+    fun findByIdForUpdate(@Param("id") id: Long): TelegramUser?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM TelegramUser u WHERE u.telegramId = :telegramId")
     fun findByTelegramIdForUpdate(@Param("telegramId") telegramId: Long): TelegramUser?
 

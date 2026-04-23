@@ -7,6 +7,7 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackFreeUsageRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import kotlin.math.max
@@ -23,6 +24,7 @@ class UserStoreService(
     private val userCardRepository: UserCardRepository,
     private val cardTemplateRepository: CardTemplateRepository,
     private val userCardPackFreeUsageRepository: UserCardPackFreeUsageRepository,
+    private val telegramUserRepository: TelegramUserRepository,
     private val imageStorageService: ImageStorageService,
 ) {
 
@@ -46,11 +48,15 @@ class UserStoreService(
                 } else {
                     max(0, pack.freeOpensPerUser - used)
                 }
+            val packId = pack.id!!
+            val packOpensUsed = userCardRepository.countByTelegramUser_IdAndSourceCardPack_Id(internalId, packId).toInt()
             StorePackItemDto(
-                id = pack.id!!,
+                id = packId,
                 name = pack.name,
                 priceFantiki = pack.priceFantiki,
                 freeOpensRemaining = freeRemaining,
+                maxOpensPerUser = pack.maxOpensPerUser,
+                packOpensUsed = packOpensUsed,
                 rarityLayout =
                     pack.rarityConfigs
                         .sortedBy { it.rarity.ordinal }
@@ -74,6 +80,16 @@ class UserStoreService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card pack is not active")
         }
         val internalId = user.id!!
+        if (pack.maxOpensPerUser > 0) {
+            // Pessimistic lock: serialize purchases for this user so the count + openPack cannot
+            // race with another request (REQUIRED joins the same transaction as openPack).
+            telegramUserRepository.findByIdForUpdate(internalId)
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalId not found")
+            val totalUsed = userCardRepository.countByTelegramUser_IdAndSourceCardPack_Id(internalId, packId)
+            if (totalUsed >= pack.maxOpensPerUser) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Pack purchase limit reached")
+            }
+        }
         val price = pack.priceFantiki
         if (price > 0L) {
             val limit = pack.freeOpensPerUser

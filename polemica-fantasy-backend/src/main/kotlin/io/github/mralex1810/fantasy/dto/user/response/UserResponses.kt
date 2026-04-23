@@ -180,6 +180,10 @@ data class StorePackItemDto(
     val priceFantiki: Long,
     /** Remaining free opens for the current user; 0 when not applicable. */
     val freeOpensRemaining: Int,
+    /** Max total opens per user for this pack; 0 = unlimited. */
+    val maxOpensPerUser: Int,
+    /** How many cards the user already got from this pack (opens used). */
+    val packOpensUsed: Int,
     val rarityLayout: List<StorePackRaritySlotDto>,
 )
 
