@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
-import { cancelMarketplaceListing, fetchMyMarketplaceListings } from '../api/marketplace'
+import {
+  cancelMarketplaceListing,
+  fetchMyMarketplaceListings,
+  updateMarketplaceListingPrice,
+} from '../api/marketplace'
+import { fetchEconomyInfo } from '../api/userEconomy'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
@@ -13,6 +19,8 @@ import { rarityScoreModifierLabel } from '../lib/rarity'
 export function MyListingsPage() {
   const initData = useInitData()
   const qc = useQueryClient()
+  const [editListingId, setEditListingId] = useState<number | null>(null)
+  const [editPriceDraft, setEditPriceDraft] = useState('')
 
   const q = useQuery({
     queryKey: ['my-marketplace-listings', initData],
@@ -20,9 +28,27 @@ export function MyListingsPage() {
     enabled: !!initData,
   })
 
+  const economyQ = useQuery({
+    queryKey: ['economy-info', initData],
+    queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+
+  const updatePriceM = useMutation({
+    mutationFn: ({ listingId, price }: { listingId: number; price: number }) =>
+      updateMarketplaceListingPrice(initData, listingId, { price }),
+    onSuccess: () => {
+      setEditListingId(null)
+      void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
+    },
+    onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
+  })
+
   const cancelM = useMutation({
     mutationFn: (listingId: number) => cancelMarketplaceListing(initData, listingId),
-    onSuccess: () => {
+    onSuccess: (_, listingId) => {
+      setEditListingId((id) => (id === listingId ? null : id))
       void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
       void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
       void qc.invalidateQueries({ queryKey: ['cards'] })
@@ -75,10 +101,115 @@ export function MyListingsPage() {
                   </div>
                 </div>
                 <div className="pf-marketplace-card__meta">
-                  <div className="pf-marketplace-card__price">{row.price}₣</div>
+                  {editListingId === row.listingId && !economyQ.data && (
+                    <>
+                      <p className="pf-muted" style={{ fontSize: '0.75rem' }}>
+                        {economyQ.isError
+                          ? 'Не удалось загрузить лимиты цен. Попробуйте позже.'
+                          : 'Загрузка…'}
+                      </p>
+                      <button
+                        type="button"
+                        className="pf-btn pf-btn--small"
+                        onClick={() => {
+                          setEditListingId(null)
+                          setEditPriceDraft('')
+                        }}
+                      >
+                        Отмена
+                      </button>
+                    </>
+                  )}
+                  {editListingId === row.listingId && economyQ.data ? (
+                    <>
+                      <label className="pf-field" style={{ marginBottom: 6 }}>
+                        <span className="pf-field__label" style={{ fontSize: '0.75rem' }}>
+                          Цена (мин. {economyQ.data.marketplaceMinPrices[c.rarity]}₣, макс.{' '}
+                          {economyQ.data.marketplaceMaxPrices[c.rarity]}₣)
+                        </span>
+                        <input
+                          className="pf-input"
+                          inputMode="numeric"
+                          value={editPriceDraft}
+                          onChange={(e) => setEditPriceDraft(e.target.value)}
+                          disabled={updatePriceM.isPending}
+                        />
+                      </label>
+                      {(() => {
+                        const price = Number(editPriceDraft)
+                        const pct = economyQ.data.marketplaceCommissionPercent ?? 10
+                        const commission = Number.isFinite(price) ? Math.floor((price * pct) / 100) : 0
+                        const youGet = Number.isFinite(price) ? price - commission : 0
+                        return (
+                          <p className="pf-muted" style={{ fontSize: '0.7rem', margin: '0 0 6px' }}>
+                            Комиссия {pct}%: {Number.isFinite(price) ? `${commission}₣` : '—'}. Вы получите:{' '}
+                            <strong>
+                              {Number.isFinite(price) && price > 0 ? `${youGet}₣` : '—'}
+                            </strong>
+                          </p>
+                        )
+                      })()}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="pf-btn pf-btn--small pf-btn--primary"
+                          disabled={updatePriceM.isPending || !economyQ.data}
+                          onClick={() => {
+                            if (!economyQ.data) return
+                            const min = economyQ.data.marketplaceMinPrices[c.rarity]
+                            const max = economyQ.data.marketplaceMaxPrices[c.rarity]
+                            const price = Number(editPriceDraft)
+                            if (!Number.isFinite(price) || price < min) {
+                              window.alert(`Минимальная цена для этой редкости: ${min}₣`)
+                              return
+                            }
+                            if (!Number.isFinite(price) || price > max) {
+                              window.alert(`Максимальная цена для этой редкости: ${max}₣`)
+                              return
+                            }
+                            if (price === row.price) {
+                              setEditListingId(null)
+                              return
+                            }
+                            updatePriceM.mutate({ listingId: row.listingId, price })
+                          }}
+                        >
+                          {updatePriceM.isPending ? 'Сохранение…' : 'Сохранить'}
+                        </button>
+                        <button
+                          type="button"
+                          className="pf-btn pf-btn--small"
+                          disabled={updatePriceM.isPending}
+                          onClick={() => {
+                            setEditListingId(null)
+                            setEditPriceDraft('')
+                          }}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </>
+                  ) : editListingId !== row.listingId ? (
+                    <div className="pf-marketplace-card__price">{row.price}₣</div>
+                  ) : null}
                   <p className="pf-muted" style={{ fontSize: '0.75rem', margin: '4px 0' }}>
                     Выставлено: {new Date(row.createdAt).toLocaleString()}
                   </p>
+                  {editListingId !== row.listingId && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      <button
+                        type="button"
+                        className="pf-btn pf-btn--small"
+                        disabled={cancelM.isPending || updatePriceM.isPending || !economyQ.data}
+                        onClick={() => {
+                          setEditListingId(row.listingId)
+                          setEditPriceDraft(String(row.price))
+                        }}
+                      >
+                        Изменить цену
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="pf-btn pf-btn--small"

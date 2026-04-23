@@ -108,6 +108,63 @@ class MarketplaceService(
     }
 
     @Transactional
+    fun updateListingPrice(
+        user: TelegramUser,
+        listingId: Long,
+        newPrice: Long,
+    ): MarketplaceListingEntryDto {
+        val me = telegramUserRepository.findById(user.id!!).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        }
+        if (me.marketplaceBanned) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Your marketplace access is suspended",
+            )
+        }
+        val listing = marketplaceListingRepository.findByIdAndStatusForUpdate(
+            listingId,
+            MarketplaceListingStatus.ACTIVE,
+        ) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found")
+        if (listing.seller!!.id != user.id) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found")
+        }
+        val uc = listing.userCard!!
+        if (uc.usesRemaining <= 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot sell an expired card")
+        }
+        val rarity = uc.cardTemplate!!.rarity
+        val minPrice = economyConfigService.getMinListingPrice(rarity)
+        val maxPrice = economyConfigService.getMaxListingPrice(rarity)
+        if (minPrice > maxPrice) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Marketplace min price exceeds max for this rarity (economy config)",
+            )
+        }
+        if (newPrice < minPrice) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price below minimum for this rarity")
+        }
+        if (newPrice > maxPrice) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price above maximum for this rarity")
+        }
+        listing.price = newPrice
+        marketplaceListingRepository.save(listing)
+        val tid = uc.cardTemplate!!.id!!
+        val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
+            ?: uc.cardTemplate!!
+        return toListingEntryDto(
+            listing,
+            uc,
+            tpl,
+            viewer = user,
+            forSellerOwnListing = true,
+            minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
+            viewerPackOpens = me.packOpensCount,
+        )
+    }
+
+    @Transactional
     fun cancelListing(user: TelegramUser, listingId: Long) {
         val listing = marketplaceListingRepository.findById(listingId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found")

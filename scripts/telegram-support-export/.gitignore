@@ -1,0 +1,10 @@
+# Локальные секреты и сессия Telethon
+config.yml
+*.session
+*.session-journal
+
+# Виртуальное окружение
+.venv/
+
+# Скачанные чаты
+out/

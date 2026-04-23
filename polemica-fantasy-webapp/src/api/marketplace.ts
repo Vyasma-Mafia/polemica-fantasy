@@ -60,6 +60,19 @@ export function createMarketplaceListing(
   return apiSend<MarketplaceListingEntry>('POST', '/api/v1/marketplace/listings', initData, body)
 }
 
+export function updateMarketplaceListingPrice(
+  initData: string | undefined,
+  listingId: number,
+  body: { price: number },
+) {
+  return apiSend<MarketplaceListingEntry>(
+    'PATCH',
+    `/api/v1/marketplace/listings/${listingId}`,
+    initData,
+    body,
+  )
+}
+
 export function cancelMarketplaceListing(initData: string | undefined, listingId: number) {
   return apiSend<void>('DELETE', `/api/v1/marketplace/listings/${listingId}`, initData)
 }

@@ -1,0 +1,19 @@
+# Скопируйте в config.yml и подставьте api_id / api_hash с https://my.telegram.org/apps
+#
+# Чат поддержки (супергруппа-форум): id обычно отрицательный, формат -100…
+# Его видно в веб-версии t.me, в ссылке на чат, или в конфиге бэкенда (forum-chat-id).
+#
+# Сессия: при первом запуске run.sh откроется окно/запрос кода — войдите аккаунтом,
+# у которого есть доступ к группе поддержки.
+#
+# Форум: каждый топик — отдельный subchat. Весь супергрупповой чат: один идентификатор
+# (см. доку popstas/telegram-download-chat). Топик: --subchat <message_thread_id или URL>.
+
+settings:
+  api_id: 18442708
+  api_hash: 72cf2c0dfa15679f1a96e3fab43728a5
+  session_name: polemica_support_export
+  request_delay: 1
+  max_retries: 5
+  log_level: INFO
+  log_file: app.log

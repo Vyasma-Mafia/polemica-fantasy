@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.controller.user
 
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceListingRequest
+import io.github.mralex1810.fantasy.dto.user.request.UpdateMarketplaceListingPriceRequest
 import io.github.mralex1810.fantasy.dto.user.response.BuyCardResultDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingEntryDto
@@ -13,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -61,6 +63,13 @@ class MarketplaceController(
         @AuthenticationPrincipal user: TelegramUser,
         @RequestBody body: CreateMarketplaceListingRequest,
     ): MarketplaceListingEntryDto = marketplaceService.createListing(user, body)
+
+    @PatchMapping("/listings/{id}")
+    fun updateListingPrice(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable id: Long,
+        @RequestBody body: UpdateMarketplaceListingPriceRequest,
+    ): MarketplaceListingEntryDto = marketplaceService.updateListingPrice(user, id, body.price)
 
     @DeleteMapping("/listings/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

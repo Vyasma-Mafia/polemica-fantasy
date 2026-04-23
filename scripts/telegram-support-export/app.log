@@ -1,0 +1,8 @@
+2026-04-22 21:23:17 - INFO - No session found, starting interactive login
+2026-04-22 21:24:05 - INFO - Successfully connected as MrAlex18
+2026-04-22 21:24:05 - INFO - Starting new download
+2026-04-22 21:24:05 - INFO - Fetched: 100 (batch: 100 new)
+2026-04-22 21:24:05 - INFO - Fetched: 112 (batch: 12 new)
+2026-04-22 21:24:05 - INFO - Saved 112 new messages to partial file in 0.02s
+2026-04-22 21:24:06 - INFO - Saved 112 messages to /Users/chulkov-alex/personal/mafia/polemica-fantasy/scripts/telegram-support-export/out/support.txt
+2026-04-22 21:24:06 - INFO - Saved 112 messages to /Users/chulkov-alex/personal/mafia/polemica-fantasy/scripts/telegram-support-export/out/support.json
