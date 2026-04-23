@@ -20,6 +20,7 @@ class UserSeriesService(
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val seriesGameRepository: SeriesGameRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
@@ -34,7 +35,7 @@ class UserSeriesService(
                 tournamentPlayerId = tp.id!!,
                 fantasyPlayerId = fp.id!!,
                 nickname = fp.nickname,
-                photoUrl = fp.photoUrl,
+                photoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             )
         }
         val games = seriesGameRepository.findAllBySeries_Id(seriesId).map { g ->

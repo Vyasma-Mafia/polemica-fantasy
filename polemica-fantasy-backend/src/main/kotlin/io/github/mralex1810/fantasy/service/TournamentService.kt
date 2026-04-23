@@ -240,7 +240,7 @@ class TournamentService(
             fantasyPlayerId = fp.id!!,
             polemicaUserId = fp.polemicaUserId,
             nickname = fp.nickname,
-            photoUrl = fp.photoUrl,
+            photoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             excludedFromPackPool = excludedFromPackPool,
         )
     }

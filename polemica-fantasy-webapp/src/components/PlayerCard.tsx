@@ -1,7 +1,6 @@
-import { Fragment } from 'react'
 import type { Rarity, UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { collectionCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
+import { collectionCardRootClass } from '../lib/cardFrameClasses'
 import { pickBestUserCard } from '../lib/collectionByPlayer'
 import { compareRarityDesc, rarityScoreModifierLabel } from '../lib/rarity'
 import { CardAchievementChips } from './CardAchievementChips'
@@ -49,7 +48,7 @@ export type PlayerCardProps = PlayerCardEmptyProps | PlayerCardWithProps
 
 /**
  * Ячейка сетки «по игрокам»: стопка с лучшей картой или плейсхолдер без карт;
- * при mode=with — строка-аккордеон со скроллом миниатюр.
+ * при раскрытии — одна строка на всю ширину сетки с полноразмерными карточками и прокруткой.
  */
 export function PlayerCard(props: PlayerCardProps) {
   if (props.mode === 'empty') {
@@ -81,76 +80,111 @@ export function PlayerCard(props: PlayerCardProps) {
   const maxU = maxUsesForCard(best, usesPerRarity)
   const strip = sortCardsForStrip(cards)
 
-  return (
-    <Fragment>
-      <li
-        className={`pf-player-cell ${collectionCardRootClass(best, { expired })}`}
-        onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onToggle()
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="pf-player-cell__stack">
-          {layers >= 2 && <div className="pf-player-cell__stack-layer pf-player-cell__stack-layer--2" aria-hidden />}
-          {layers >= 1 && <div className="pf-player-cell__stack-layer pf-player-cell__stack-layer--1" aria-hidden />}
-          <div className="pf-collection-card__frame">
-            <div className="pf-collection-card__open">
-              {imgSrc ? (
-                <img src={imgSrc} alt="" className="pf-collection-card__img" />
-              ) : (
-                <div className="pf-collection-card__ph">{best.rarity}</div>
-              )}
-              <span className="pf-player-card-count" title="Карт в коллекции">
-                ×{n}
-              </span>
-              <span className="pf-uses-badge" title="Осталось использований (лучшая карта)">
-                ⚡{best.usesRemaining}/{maxU}
-              </span>
-              {expired && <span className="pf-expired-badge">Истекла</span>}
-              <div className="pf-collection-card__cap">
-                <span className="pf-collection-card__name">{nickname}</span>
-                <span className="pf-collection-card__rarity">
-                  {best.rarity}{' '}
-                  <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
-                    {rarityScoreModifierLabel(best.rarity)}
-                  </span>
-                </span>
-                <CardAchievementChips achievements={best.achievements} max={4} />
+  if (expanded) {
+    return (
+      <li className="pf-player-cell-expand" style={{ gridColumn: '1 / -1' }}>
+        <div className="pf-player-cell-expand__head">
+          <span className="pf-player-cell-expand__title">{nickname}</span>
+          <button type="button" className="pf-player-cell-expand__collapse" onClick={onToggle}>
+            Свернуть
+          </button>
+        </div>
+        <div
+          className="pf-player-cell-expand__scroller pf-player-cell-expand__scroller--full"
+          role="region"
+          aria-label={`Карты игрока ${nickname}`}
+        >
+          {strip.map((c) => {
+            const s = cardDisplayImageUrl(c)
+            const ex = c.usesRemaining <= 0
+            const maxFor = maxUsesForCard(c, usesPerRarity)
+            return (
+              <div key={c.id} className={`pf-player-cell-expand__tile ${collectionCardRootClass(c, { expired: ex })}`}>
+                <div className="pf-collection-card__frame">
+                  <div
+                    className="pf-collection-card__open"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenCard(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onOpenCard(c.id)
+                      }
+                    }}
+                  >
+                    {s ? (
+                      <img src={s} alt="" className="pf-collection-card__img" />
+                    ) : (
+                      <div className="pf-collection-card__ph">{c.rarity}</div>
+                    )}
+                    <span className="pf-uses-badge" title="Осталось использований">
+                      ⚡{c.usesRemaining}/{maxFor}
+                    </span>
+                    {ex && <span className="pf-expired-badge">Истекла</span>}
+                    <div className="pf-collection-card__cap">
+                      <span className="pf-collection-card__name">{c.playerNickname}</span>
+                      <span className="pf-collection-card__rarity">
+                        {c.rarity}{' '}
+                        <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                          {rarityScoreModifierLabel(c.rarity)}
+                        </span>
+                      </span>
+                      <CardAchievementChips achievements={c.achievements} max={4} />
+                    </div>
+                  </div>
+                </div>
               </div>
+            )
+          })}
+        </div>
+      </li>
+    )
+  }
+
+  return (
+    <li
+      className={`pf-player-cell ${collectionCardRootClass(best, { expired })}`}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onToggle()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="pf-player-cell__stack">
+        {layers >= 2 && <div className="pf-player-cell__stack-layer pf-player-cell__stack-layer--2" aria-hidden />}
+        {layers >= 1 && <div className="pf-player-cell__stack-layer pf-player-cell__stack-layer--1" aria-hidden />}
+        <div className="pf-collection-card__frame">
+          <div className="pf-collection-card__open">
+            {imgSrc ? (
+              <img src={imgSrc} alt="" className="pf-collection-card__img" />
+            ) : (
+              <div className="pf-collection-card__ph">{best.rarity}</div>
+            )}
+            <span className="pf-player-card-count" title="Карт в коллекции">
+              ×{n}
+            </span>
+            <span className="pf-uses-badge" title="Осталось использований (лучшая карта)">
+              ⚡{best.usesRemaining}/{maxU}
+            </span>
+            {expired && <span className="pf-expired-badge">Истекла</span>}
+            <div className="pf-collection-card__cap">
+              <span className="pf-collection-card__name">{nickname}</span>
+              <span className="pf-collection-card__rarity">
+                {best.rarity}{' '}
+                <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                  {rarityScoreModifierLabel(best.rarity)}
+                </span>
+              </span>
+              <CardAchievementChips achievements={best.achievements} max={4} />
             </div>
           </div>
         </div>
-      </li>
-      {expanded && (
-        <li className="pf-player-cell-expand" style={{ gridColumn: '1 / -1' }}>
-          <div className="pf-player-cell-expand__scroller" role="region" aria-label="Карты игрока">
-            {strip.map((c) => {
-              const s = cardDisplayImageUrl(c)
-              const ex = c.usesRemaining <= 0
-              return (
-                <button
-                  type="button"
-                  key={c.id}
-                  className={`${miniCardClass(c)} pf-player-cell-expand__mini`}
-                  onClick={() => onOpenCard(c.id)}
-                >
-                  {s ? (
-                    <img src={s} alt="" />
-                  ) : (
-                    <div className="pf-mini-card__ph" />
-                  )}
-                  {ex && <span className="pf-expired-badge">Истекла</span>}
-                </button>
-              )
-            })}
-          </div>
-        </li>
-      )}
-    </Fragment>
+      </div>
+    </li>
   )
 }

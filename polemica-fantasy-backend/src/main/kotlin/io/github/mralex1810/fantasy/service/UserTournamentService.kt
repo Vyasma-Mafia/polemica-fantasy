@@ -22,6 +22,7 @@ class UserTournamentService(
     private val tournamentRepository: TournamentRepository,
     private val seriesRepository: SeriesRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
@@ -92,7 +93,7 @@ class UserTournamentService(
                 tournamentPlayerId = tp.id!!,
                 fantasyPlayerId = fp.id!!,
                 nickname = fp.nickname,
-                photoUrl = fp.photoUrl,
+                photoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             )
         }
     }

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '../api/client'
 import type { FantasyPlayerBrief, Rarity, UserCardItem } from '../api/types'
@@ -117,19 +117,18 @@ export function PlayerGroupedView({
       {withRows.length > 0 && (
         <ul className="pf-collection-grid">
           {withRows.map((row) => (
-            <Fragment key={row.id}>
-              <PlayerCard
-                mode="with"
-                fantasyPlayerId={row.id}
-                nickname={row.nickname}
-                photoUrl={row.photoUrl}
-                cards={row.cards}
-                expanded={expandedId === row.id}
-                onToggle={() => toggle(row.id)}
-                onOpenCard={onOpenCard}
-                usesPerRarity={usesPerRarity}
-              />
-            </Fragment>
+            <PlayerCard
+              key={row.id}
+              mode="with"
+              fantasyPlayerId={row.id}
+              nickname={row.nickname}
+              photoUrl={row.photoUrl}
+              cards={row.cards}
+              expanded={expandedId === row.id}
+              onToggle={() => toggle(row.id)}
+              onOpenCard={onOpenCard}
+              usesPerRarity={usesPerRarity}
+            />
           ))}
         </ul>
       )}

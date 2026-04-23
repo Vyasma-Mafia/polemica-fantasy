@@ -45,6 +45,7 @@ class MarketplaceService(
     private val userCardOwnershipService: UserCardOwnershipService,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val telegramUserRepository: TelegramUserRepository,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional
@@ -255,7 +256,7 @@ class MarketplaceService(
         val tid = uc.cardTemplate!!.id!!
         val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
-        val cardDto = uc.toUserCardItemDto(tpl)
+        val cardDto = uc.toUserCardItemDto(tpl, imageStorageService)
         val entry = toListingEntryDto(
             listing,
             uc,
@@ -477,7 +478,7 @@ class MarketplaceService(
             userCardId = uc.id!!,
             fantasyPlayerId = fp.id!!,
             playerName = fp.nickname,
-            playerPhotoUrl = fp.photoUrl,
+            playerPhotoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             rarity = template.rarity,
             achievements = achievements,
         )

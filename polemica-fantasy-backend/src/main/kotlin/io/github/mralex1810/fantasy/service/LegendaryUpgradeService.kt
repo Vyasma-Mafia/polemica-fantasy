@@ -26,6 +26,7 @@ class LegendaryUpgradeService(
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
@@ -101,6 +102,6 @@ class LegendaryUpgradeService(
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to reload upgraded card")
         val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(fresh.cardTemplate!!.id!!))
             .firstOrNull() ?: fresh.cardTemplate!!
-        return fresh.toUserCardItemDto(tpl)
+        return fresh.toUserCardItemDto(tpl, imageStorageService)
     }
 }

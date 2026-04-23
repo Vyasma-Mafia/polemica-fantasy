@@ -52,8 +52,20 @@ class ImageStorageService(
         return if (idx >= 0) urlOrKey.substring(idx + marker.length) else urlOrKey.removePrefix("/")
     }
 
+    /**
+     * Returns a URL clients can open (browser, sync script). Re-applies the configured public base,
+     * so rows that still store an internal host (e.g. `http://minio:9000/bucket/...`) are rewritten.
+     */
+    fun publicObjectUrl(stored: String?): String? {
+        if (stored.isNullOrBlank()) return stored
+        val marker = "${s3Properties.bucket}/"
+        if (!stored.contains(marker)) return stored
+        val key = keyFromUrlOrKey(stored)
+        return publicUrlForKey(key)
+    }
+
     private fun publicUrlForKey(key: String): String {
-        val base = s3Properties.endpoint.trimEnd('/')
+        val base = s3Properties.effectivePublicBaseUrl().trimEnd('/')
         val bucket = s3Properties.bucket
         return "$base/$bucket/$key"
     }

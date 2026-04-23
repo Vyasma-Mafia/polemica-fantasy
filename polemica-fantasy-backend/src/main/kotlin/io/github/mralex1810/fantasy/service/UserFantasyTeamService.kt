@@ -49,6 +49,7 @@ class UserFantasyTeamService(
     private val economyConfigService: EconomyConfigService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val entityManager: EntityManager,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
@@ -100,7 +101,7 @@ class UserFantasyTeamService(
             PublicFantasyTeamSlotDto(
                 slot = ftc.slot,
                 score = ftc.score,
-                card = uc.toUserCardItemDto(template),
+                card = uc.toUserCardItemDto(template, imageStorageService),
             )
         }
         return PublicFantasyTeamDto(

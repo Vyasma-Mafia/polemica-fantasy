@@ -1533,6 +1533,45 @@ button.pf-mini-card:disabled {
   width: 100%;
 }
 
+.pf-player-cell-expand__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--pf-border);
+}
+
+.pf-player-cell-expand__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pf-text-heading);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-player-cell-expand__collapse {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pf-player-cell-expand__collapse:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .pf-player-cell-expand__scroller {
   display: flex;
   flex-direction: row;
@@ -1543,35 +1582,18 @@ button.pf-mini-card:disabled {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
-  border-top: 1px solid var(--pf-border);
 }
 
-.pf-player-cell-expand__mini {
-  position: relative;
-  flex: 0 0 auto;
+.pf-player-cell-expand__scroller--full {
+  border-top: none;
+  padding-top: 12px;
+}
+
+.pf-player-cell-expand__tile {
+  flex: 0 0 calc(50% - 5px);
   min-width: 0;
+  display: flex;
   flex-direction: column;
-  padding: 6px;
-  gap: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  margin-bottom: 4px;
-}
-
-.pf-player-cell-expand__mini img,
-.pf-player-cell-expand__mini .pf-mini-card__ph {
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-}
-
-.pf-player-cell-expand__mini .pf-expired-badge {
-  position: static;
-  display: block;
-  margin-top: 4px;
-  font-size: 0.58rem;
-  padding: 2px 5px;
 }
 
 .pf-collection-card--legendary-crafted .pf-collection-card__frame {

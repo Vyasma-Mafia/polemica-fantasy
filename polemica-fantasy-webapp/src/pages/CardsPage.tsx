@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
 import { createMarketplaceListing, fetchMyMarketplaceListings } from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
@@ -197,6 +197,9 @@ export function CardsPage() {
 
   const filtered = useMemo(() => {
     let list = q.data ?? []
+    if (collectionView === 'players') {
+      return list
+    }
     if (playerFilter.trim()) {
       list = list.filter((c) =>
         c.playerNickname.toLowerCase().includes(playerFilter.trim().toLowerCase()),
@@ -210,7 +213,7 @@ export function CardsPage() {
       list = [...list].sort((a, b) => b.usesRemaining - a.usesRemaining)
     }
     return list
-  }, [q.data, playerFilter, lifeFilter, sortUses])
+  }, [q.data, collectionView, playerFilter, lifeFilter, sortUses])
 
   const detailCard = detailCardId != null ? q.data?.find((c) => c.id === detailCardId) : undefined
 
@@ -368,10 +371,6 @@ export function CardsPage() {
     <div className="pf-page">
       <PageHeader title="Моя коллекция" backTo={backTo} backLabel={tournamentFromQuery ? 'К турниру' : 'Турниры'} />
 
-      <p className="pf-footer-link" style={{ marginBottom: 12 }}>
-        <Link to="/help">Справка: очки, достижения, экономика</Link>
-      </p>
-
       <div className="pf-view-toggle" role="group" aria-label="Вид коллекции">
         <button
           type="button"
@@ -408,45 +407,49 @@ export function CardsPage() {
             ))}
           </select>
         </label>
-        <label className="pf-field">
-          <span className="pf-field__label">Игрок</span>
-          <select
-            className="pf-input"
-            value={playerFilter}
-            onChange={(e) => setPlayerFilter(e.target.value)}
-          >
-            <option value="">Все</option>
-            {players.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="pf-field">
-          <span className="pf-field__label">Статус</span>
-          <select
-            className="pf-input"
-            value={lifeFilter}
-            onChange={(e) => setLifeFilter(e.target.value as LifecycleFilter)}
-          >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="expired">Истёкшие</option>
-          </select>
-        </label>
-        <label className="pf-field">
-          <span className="pf-field__label">Сортировка по использованиям</span>
-          <select
-            className="pf-input"
-            value={sortUses}
-            onChange={(e) => setSortUses(e.target.value as 'none' | 'asc' | 'desc')}
-          >
-            <option value="none">Нет</option>
-            <option value="asc">Меньше сначала</option>
-            <option value="desc">Больше сначала</option>
-          </select>
-        </label>
+        {collectionView === 'cards' && (
+          <>
+            <label className="pf-field">
+              <span className="pf-field__label">Игрок</span>
+              <select
+                className="pf-input"
+                value={playerFilter}
+                onChange={(e) => setPlayerFilter(e.target.value)}
+              >
+                <option value="">Все</option>
+                {players.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="pf-field">
+              <span className="pf-field__label">Статус</span>
+              <select
+                className="pf-input"
+                value={lifeFilter}
+                onChange={(e) => setLifeFilter(e.target.value as LifecycleFilter)}
+              >
+                <option value="all">Все</option>
+                <option value="active">Активные</option>
+                <option value="expired">Истёкшие</option>
+              </select>
+            </label>
+            <label className="pf-field">
+              <span className="pf-field__label">Сортировка по использованиям</span>
+              <select
+                className="pf-input"
+                value={sortUses}
+                onChange={(e) => setSortUses(e.target.value as 'none' | 'asc' | 'desc')}
+              >
+                <option value="none">Нет</option>
+                <option value="asc">Меньше сначала</option>
+                <option value="desc">Больше сначала</option>
+              </select>
+            </label>
+          </>
+        )}
       </div>
 
       <div className="pf-rarity-tabs">
@@ -521,7 +524,7 @@ export function CardsPage() {
           initData={initData}
           filteredCards={filtered}
           serverScopedCards={q.data ?? []}
-          playerFilter={playerFilter}
+          playerFilter=""
           onOpenCard={setDetailCardId}
           usesPerRarity={usesPerRarity}
         />

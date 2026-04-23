@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException
 class UserCardCollectionService(
     private val userCardRepository: UserCardRepository,
     private val seriesRepository: SeriesRepository,
+    private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
@@ -32,6 +33,6 @@ class UserCardCollectionService(
             seriesId = seriesId,
             rarity = rarity,
         )
-        return rows.map { it.toUserCardItemDto() }
+        return rows.map { it.toUserCardItemDto(imageStorage = imageStorageService) }
     }
 }

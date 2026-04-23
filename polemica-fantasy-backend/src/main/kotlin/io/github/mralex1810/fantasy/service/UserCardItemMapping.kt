@@ -9,7 +9,10 @@ import io.github.mralex1810.fantasy.entity.UserCard
  * @param templateOverride optional template loaded in the same transaction with achievements FETCH
  * (see [io.github.mralex1810.fantasy.repository.CardTemplateRepository.findAllByIdWithAchievementsLoaded]).
  */
-fun UserCard.toUserCardItemDto(templateOverride: CardTemplate? = null): UserCardItemDto {
+fun UserCard.toUserCardItemDto(
+    templateOverride: CardTemplate? = null,
+    imageStorage: ImageStorageService,
+): UserCardItemDto {
     val ct = templateOverride ?: cardTemplate!!
     val fp = ct.fantasyPlayer!!
     return UserCardItemDto(
@@ -18,10 +21,10 @@ fun UserCard.toUserCardItemDto(templateOverride: CardTemplate? = null): UserCard
         cardTemplateId = ct.id!!,
         fantasyPlayerId = fp.id!!,
         rarity = ct.rarity,
-        imageUrl = ct.imageUrl,
+        imageUrl = imageStorage.publicObjectUrl(ct.imageUrl),
         description = ct.description,
         playerNickname = fp.nickname,
-        playerPhotoUrl = fp.photoUrl,
+        playerPhotoUrl = imageStorage.publicObjectUrl(fp.photoUrl),
         achievements = ct.achievements
             .distinctBy { it.achievement!!.id }
             .map { a ->

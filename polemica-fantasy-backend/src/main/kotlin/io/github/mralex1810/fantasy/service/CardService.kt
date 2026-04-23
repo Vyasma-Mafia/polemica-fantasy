@@ -154,7 +154,7 @@ class CardService(
             id = id!!,
             fantasyPlayerId = fantasyPlayer!!.id!!,
             rarity = rarity,
-            imageUrl = imageUrl,
+            imageUrl = imageStorageService.publicObjectUrl(imageUrl),
             description = description,
             achievements = ach,
         )

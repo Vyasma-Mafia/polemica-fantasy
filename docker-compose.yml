@@ -32,6 +32,26 @@ services:
       retries: 5
       timeout: 5s
 
+  # One-shot: MinIO UI often stays «Private» until anonymous policy is applied; mc is more reliable than S3 PutBucketPolicy alone.
+  minio-anonymous:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      BUCKET: ${S3_BUCKET:-polemica-fantasy-images}
+      ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$$ROOT_USER" "$$ROOT_PASSWORD"
+        mc mb -p "local/$$BUCKET" 2>/dev/null || true
+        mc anonymous set download "local/$$BUCKET"
+        echo "mc: anonymous download set for bucket $$BUCKET"
+
   fantasy-backend:
     build: ./polemica-fantasy-backend
     ports:
@@ -42,8 +62,10 @@ services:
       DATABASE_USER: ${DB_USER:-fantasy}
       DATABASE_PASSWORD: ${DB_PASSWORD:-fantasy}
       S3_ENDPOINT: http://minio:9000
+      # Host/browser URL; must not be empty (project .env with S3_PUBLIC_BASE_URL= breaks substitution).
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:9000}
       S3_REGION: us-east-1
-      S3_BUCKET: polemica-fantasy-images
+      S3_BUCKET: ${S3_BUCKET:-polemica-fantasy-images}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -51,11 +73,14 @@ services:
       POLEMICA_PASSWORD: ${POLEMICA_PASSWORD:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-defaultPassword123}
       SPRING_PROFILES_ACTIVE: dev
+      S3_ENSURE_BUCKET: "true"
     depends_on:
       fantasy-db:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-anonymous:
+        condition: service_completed_successfully
     logging:
       driver: "json-file"
       options:
