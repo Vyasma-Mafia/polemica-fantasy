@@ -15,6 +15,7 @@ import type {
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
+import { PlayerGroupedView } from '../components/PlayerGroupedView'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
@@ -47,6 +48,19 @@ export function CardsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tournamentFromQuery = searchParams.get('tournamentId') ?? ''
   const backTo = tournamentFromQuery ? `/tournaments/${tournamentFromQuery}` : '/'
+  const collectionView: 'cards' | 'players' = searchParams.get('view') === 'players' ? 'players' : 'cards'
+
+  function setCollectionView(next: 'cards' | 'players') {
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (next === 'players') n.set('view', 'players')
+        else n.delete('view')
+        return n
+      },
+      { replace: true },
+    )
+  }
 
   const [tournamentId, setTournamentId] = useState(tournamentFromQuery)
   useEffect(() => {
@@ -358,6 +372,23 @@ export function CardsPage() {
         <Link to="/help">Справка: очки, достижения, экономика</Link>
       </p>
 
+      <div className="pf-view-toggle" role="group" aria-label="Вид коллекции">
+        <button
+          type="button"
+          className={`pf-view-toggle__btn ${collectionView === 'cards' ? 'pf-view-toggle__btn--active' : ''}`}
+          onClick={() => setCollectionView('cards')}
+        >
+          Карты
+        </button>
+        <button
+          type="button"
+          className={`pf-view-toggle__btn ${collectionView === 'players' ? 'pf-view-toggle__btn--active' : ''}`}
+          onClick={() => setCollectionView('players')}
+        >
+          По игрокам
+        </button>
+      </div>
+
       <div className="pf-filters">
         <label className="pf-field">
           <span className="pf-field__label">Турнир</span>
@@ -434,54 +465,67 @@ export function CardsPage() {
       {q.isLoading && <p className="pf-muted">Загрузка…</p>}
       {q.isError && <p className="pf-err">{(q.error as Error).message}</p>}
 
-      <ul className="pf-collection-grid">
-        {filtered.map((c) => {
-          const imgSrc = cardDisplayImageUrl(c)
-          const maxU = maxUsesForCard(c, usesPerRarity)
-          const expired = c.usesRemaining <= 0
-          return (
-            <li
-              key={c.id}
-              className={collectionCardRootClass(c, { expired })}
-            >
-              <div className="pf-collection-card__frame">
-                <div
-                  className="pf-collection-card__open"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDetailCardId(c.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setDetailCardId(c.id)
-                    }
-                  }}
-                >
-                  {imgSrc ? (
-                    <img src={imgSrc} alt="" className="pf-collection-card__img" />
-                  ) : (
-                    <div className="pf-collection-card__ph">{c.rarity}</div>
-                  )}
-                  <span className="pf-uses-badge" title="Осталось использований">
-                    ⚡{c.usesRemaining}/{maxU}
-                  </span>
-                  {expired && <span className="pf-expired-badge">Истекла</span>}
-                  <div className="pf-collection-card__cap">
-                    <span className="pf-collection-card__name">{c.playerNickname}</span>
-                    <span className="pf-collection-card__rarity">
-                      {c.rarity}{' '}
-                      <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
-                        {rarityScoreModifierLabel(c.rarity)}
-                      </span>
+      {!q.isLoading && !q.isError && collectionView === 'cards' && (
+        <ul className="pf-collection-grid">
+          {filtered.map((c) => {
+            const imgSrc = cardDisplayImageUrl(c)
+            const maxU = maxUsesForCard(c, usesPerRarity)
+            const expired = c.usesRemaining <= 0
+            return (
+              <li
+                key={c.id}
+                className={collectionCardRootClass(c, { expired })}
+              >
+                <div className="pf-collection-card__frame">
+                  <div
+                    className="pf-collection-card__open"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailCardId(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setDetailCardId(c.id)
+                      }
+                    }}
+                  >
+                    {imgSrc ? (
+                      <img src={imgSrc} alt="" className="pf-collection-card__img" />
+                    ) : (
+                      <div className="pf-collection-card__ph">{c.rarity}</div>
+                    )}
+                    <span className="pf-uses-badge" title="Осталось использований">
+                      ⚡{c.usesRemaining}/{maxU}
                     </span>
-                    <CardAchievementChips achievements={c.achievements} max={4} />
+                    {expired && <span className="pf-expired-badge">Истекла</span>}
+                    <div className="pf-collection-card__cap">
+                      <span className="pf-collection-card__name">{c.playerNickname}</span>
+                      <span className="pf-collection-card__rarity">
+                        {c.rarity}{' '}
+                        <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
+                          {rarityScoreModifierLabel(c.rarity)}
+                        </span>
+                      </span>
+                      <CardAchievementChips achievements={c.achievements} max={4} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {!q.isLoading && !q.isError && collectionView === 'players' && initData && (
+        <PlayerGroupedView
+          initData={initData}
+          filteredCards={filtered}
+          serverScopedCards={q.data ?? []}
+          playerFilter={playerFilter}
+          onOpenCard={setDetailCardId}
+          usesPerRarity={usesPerRarity}
+        />
+      )}
 
       {detailCard && (
         <div

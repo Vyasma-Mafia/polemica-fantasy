@@ -237,6 +237,8 @@ export interface FantasyTeamDto {
 export interface FantasyPlayerBrief {
   id: number
   nickname: string
+  /** Фото в масти (Polemica), может отсутствовать. */
+  photoUrl: string | null
 }
 
 /** GET /api/v1/marketplace/listings */

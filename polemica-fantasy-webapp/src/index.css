@@ -1126,6 +1126,32 @@ button.pf-mini-card:disabled {
   font-size: 0.92rem;
 }
 
+.pf-view-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border-radius: 10px;
+  border: 1px solid var(--pf-border);
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.pf-view-toggle__btn {
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--pf-text-muted);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pf-view-toggle__btn--active {
+  background: rgba(124, 58, 237, 0.45);
+  color: #fff;
+}
+
 .pf-rarity-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1355,6 +1381,197 @@ button.pf-mini-card:disabled {
 .pf-collection-card--expired .pf-collection-card__ph {
   opacity: 0.45;
   filter: grayscale(0.35);
+}
+
+/* ——— Коллекция: вид «по игрокам» ——— */
+.pf-player-group-heading {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pf-text-muted);
+  margin: 8px 0 12px;
+  font-weight: 700;
+}
+
+.pf-player-cell,
+.pf-player-cell--empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pf-player-cell[role='button'] {
+  cursor: pointer;
+}
+
+.pf-player-cell[role='button']:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 3px;
+}
+
+.pf-player-cell--empty {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pf-player-cell__stack {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.pf-player-cell__stack-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  box-sizing: border-box;
+  border: 2px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background: var(--pf-bg-elevated);
+}
+
+.pf-player-cell__stack-layer--1 {
+  transform: translate(2px, 2px);
+  z-index: 1;
+}
+
+.pf-player-cell__stack-layer--2 {
+  transform: translate(4px, 4px);
+  z-index: 0;
+}
+
+.pf-player-cell[role='button'] .pf-collection-card__frame {
+  position: relative;
+  z-index: 2;
+}
+
+.pf-player-card-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.pf-player-cell[role='button'] .pf-uses-badge {
+  top: 34px;
+}
+
+.pf-player-cell__empty-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  border-radius: var(--pf-radius-sm);
+  border: 2px dashed var(--pf-border);
+  background: var(--pf-bg-elevated);
+  overflow: hidden;
+}
+
+.pf-player-cell__empty-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.2);
+  opacity: 0.7;
+}
+
+.pf-player-cell__empty-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #1e1e22 0%, #121214 100%);
+}
+
+.pf-player-cell__empty-ico {
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--pf-border);
+  background: #2a2a2f;
+  opacity: 0.5;
+}
+
+.pf-player-cell__cap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 2.5em;
+}
+
+.pf-player-cell__name {
+  font-size: 1.05rem;
+  color: #fff;
+  display: block;
+  line-height: 1.2;
+}
+
+.pf-player-cell__hint {
+  font-size: 0.72rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.pf-player-cell-expand {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  width: 100%;
+}
+
+.pf-player-cell-expand__scroller {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 10px 0 2px;
+  margin: 0 0 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-player-cell-expand__mini {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  padding: 6px;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.pf-player-cell-expand__mini img,
+.pf-player-cell-expand__mini .pf-mini-card__ph {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+}
+
+.pf-player-cell-expand__mini .pf-expired-badge {
+  position: static;
+  display: block;
+  margin-top: 4px;
+  font-size: 0.58rem;
+  padding: 2px 5px;
 }
 
 .pf-collection-card--legendary-crafted .pf-collection-card__frame {

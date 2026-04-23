@@ -19,6 +19,7 @@ class FantasyPlayerController(
             FantasyPlayerBriefDto(
                 id = fp.id!!,
                 nickname = fp.nickname,
+                photoUrl = fp.photoUrl,
             )
         }
 }

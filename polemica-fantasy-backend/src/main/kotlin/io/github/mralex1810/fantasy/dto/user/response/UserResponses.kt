@@ -74,6 +74,7 @@ data class SeriesPlayerEntryDto(
 data class FantasyPlayerBriefDto(
     val id: Long,
     val nickname: String,
+    val photoUrl: String?,
 )
 
 data class SeriesGameEntryDto(
