@@ -723,6 +723,22 @@ a.pf-lb-row--link:focus-visible {
   text-transform: lowercase;
 }
 
+.pf-lb-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: 8px;
+  background: var(--pf-bg-elevated);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.pf-lb-pinned .pf-lb-row {
+  border-bottom: none;
+}
+
 /* --- Prose --- */
 .pf-prose {
   font-size: 0.92rem;
