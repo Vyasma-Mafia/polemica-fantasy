@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.scoring.achievement
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGameResult
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
+import com.github.mafia.vyasma.polemica.library.model.game.Position
 import com.github.mafia.vyasma.polemica.library.model.game.Role
 import com.github.mafia.vyasma.polemica.library.utils.check
 import com.github.mafia.vyasma.polemica.library.utils.getBlacksOnTable
@@ -20,6 +21,24 @@ import com.github.mafia.vyasma.polemica.library.utils.isRedWin
 import org.springframework.stereotype.Component
 
 private fun boolToInt(value: Boolean): Int = if (value) 1 else 0
+
+/** Цепочка «руль» по полю [PolemicaPlayer.guess] / vice; промежуточные звенья — любая роль, старт только с красного. */
+private fun redViceChainReachCount(game: PolemicaGame, target: PolemicaPlayer): Int {
+    val byPosition = game.players.orEmpty().associateBy { it.position }
+    fun redStartsChainToPlayer(start: PolemicaPlayer): Boolean {
+        if (!start.role.isRed()) return false
+        var current: Position? = start.guess?.vice ?: return false
+        val visited = mutableSetOf<Position>()
+        while (current != null) {
+            if (current == target.position) return true
+            if (!visited.add(current)) return false
+            val holder = byPosition[current] ?: return false
+            current = holder.guess?.vice
+        }
+        return false
+    }
+    return game.players.orEmpty().count(::redStartsChainToPlayer)
+}
 
 /** Отстрелите шерифа в первую ночь — [polemica-achivement-service SniperAchievement] */
 @Component
@@ -156,19 +175,14 @@ class NinjaAchievementDetector : AchievementDetector {
 }
 
 /**
- * Кого-то назвали «рулевым» (vice) в угадайке — [crowned].
+ * «Рулевой» (vice) в угадайке: считаются цепочки, начинающиеся с мирного или шерифа.
+ * Транзитивно: если A дал руль B, а B — С, то С получает и от A, и от B (дона/мафия не стартуют цепочку).
  */
 @Component
 class CrownedAchievementDetector : AchievementDetector {
     override val type = "crowned"
-    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
-        for (p in game.players.orEmpty()) {
-            val guess = p.guess ?: continue
-            val vice = guess.vice ?: continue
-            if (vice == player.position) return 1
-        }
-        return 0
-    }
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int =
+        redViceChainReachCount(game, player)
 }
 
 /**
