@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.CardValueInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.EconomyInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.RewardTierDto
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -72,6 +73,19 @@ class EconomyConfigService(
 
     fun getMinPackOpensBeforeMarketplacePurchase(): Int = getInt("marketplace.min_pack_opens_before_purchase")
 
+    fun getCardBaseValue(rarity: Rarity): Long = getLong("card.value.$rarity")
+
+    fun getCardAchievementBonus(): Long = getLong("card.value.achievement_bonus")
+
+    fun buildCardValueInfo(): CardValueInfoDto {
+        val cardBaseValues = Rarity.entries.associateWith { getCardBaseValue(it) }
+        val cardAchievementBonus = getCardAchievementBonus()
+        return CardValueInfoDto(
+            baseValues = cardBaseValues,
+            achievementBonus = cardAchievementBonus,
+        )
+    }
+
     /**
      * @param position 1-based rank on the series leaderboard (same order as [io.github.mralex1810.fantasy.repository.FantasyTeamRepository.findLeaderboardForSeries]).
      */
@@ -111,6 +125,7 @@ class EconomyConfigService(
             marketplaceMinPrices = marketplaceMin,
             marketplaceMaxPrices = marketplaceMax,
             minPackOpensBeforeMarketplacePurchase = getMinPackOpensBeforeMarketplacePurchase(),
+            cardValues = buildCardValueInfo(),
         )
     }
 }

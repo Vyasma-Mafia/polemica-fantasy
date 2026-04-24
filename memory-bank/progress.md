@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### Ценность карты (card value, backend)
+- [x] **Flyway V33:** ключи `economy_config` `card.value.{RARITY}` и `card.value.achievement_bonus` (сид по плану)
+- [x] **`CardValueService`:** `base + achievementCount * bonus` по шаблону (уникальные ачивки), без хранения в БД
+- [x] **`UserCardItemDto.value`**, `MarketplaceListingCardDto.value`; `EconomyInfoDto.cardValues` (`CardValueInfoDto`: `baseValues`, `achievementBonus`); `GET /api/v1/card-value/info` = `buildCardValueInfo()`
+
 ### Паки турниров: лимит открытий, пул ачивок, новые достижения
 - [x] **Flyway V30:** `card_pack.max_opens_per_user` (0 = без лимита), `card_pack_achievement` (пул ачивок на пак), ачивки `ninja`, `crowned`, `lastHeroGuess` + роли
 - [x] **Scoring:** `ScoringContext(basePoints)` в `AchievementDetector`, `DefaultScoringService` передаёт базовые баллы; детекторы Ninja / Crowned / Last Hero

@@ -15,6 +15,7 @@ import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
 import { MarketplacePage } from './pages/MarketplacePage'
 import { MyListingsPage } from './pages/MyListingsPage'
+import { RatingPage } from './pages/RatingPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
@@ -44,6 +45,7 @@ function Shell() {
             Турниры
           </NavLink>
           <NavLink to="/cards">Коллекция</NavLink>
+          <NavLink to="/rating">Рейтинг</NavLink>
           <NavLink to="/help">Справка</NavLink>
           <NavLink to="/marketplace">Маркетплейс</NavLink>
           <NavLink to="/store" className="nav__store">
@@ -68,6 +70,7 @@ function Shell() {
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/rating" element={<RatingPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/economy" element={<Navigate to="/help" replace />} />
           <Route path="/store" element={<StorePage />} />

@@ -15,6 +15,7 @@ class UserCardCollectionService(
     private val userCardRepository: UserCardRepository,
     private val seriesRepository: SeriesRepository,
     private val imageStorageService: ImageStorageService,
+    private val cardValueService: CardValueService,
 ) {
 
     @Transactional(readOnly = true)
@@ -33,6 +34,11 @@ class UserCardCollectionService(
             seriesId = seriesId,
             rarity = rarity,
         )
-        return rows.map { it.toUserCardItemDto(imageStorage = imageStorageService) }
+        return rows.map {
+            it.toUserCardItemDto(
+                imageStorage = imageStorageService,
+                cardValueService = cardValueService,
+            )
+        }
     }
 }

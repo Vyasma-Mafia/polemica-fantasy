@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { fetchAchievementCatalog } from '../api/achievementsCatalog'
@@ -48,6 +49,28 @@ export function HelpPage() {
       <PageHeader title="Справка" backTo="/" />
 
       <div className="pf-help">
+        <section className="pf-help__section pf-help__anchor" id="global-rating">
+          <h2 className="pf-help__section-title">Глобальный рейтинг</h2>
+          <article className="pf-prose">
+            <p>
+              <strong>Глобальный рейтинг</strong> сортирует игроков по суммарной ценности:{' '}
+              <strong>баланс фантиков (₣) + сумма ценностей всех ваших карт (₱)</strong>.
+            </p>
+            <p>
+              Учитываются <strong>все</strong> карты — в коллекции, в использованных заявках, в переработанных, выставленных
+              на маркетплейсе и т.д. Итог в ₱ — это «стоимость портфеля» по правилам ценности (см. раздел «Ценность
+              карты»).
+            </p>
+            <p>
+              На величину влияют: открытие паков, награды в сериях, переработка, покупка и продажа на маркетплейсе и другие
+              операции, меняющие баланс или состав карт.
+            </p>
+            <p>
+              <Link to="/rating">Открыть таблицу рейтинга</Link>
+            </p>
+          </article>
+        </section>
+
         <section className="pf-help__section pf-help__anchor" id="scoring">
           <h2 className="pf-help__section-title">Подсчёт баллов</h2>
           <article className="pf-prose">
@@ -143,6 +166,66 @@ export function HelpPage() {
               В одной фэнтези-команде на серию допускается <strong>не больше одной</strong> легендарной карты.
             </p>
           </article>
+        </section>
+
+        <section className="pf-help__section pf-help__anchor" id="card-value">
+          <h2 className="pf-help__section-title">Ценность карты</h2>
+          <article className="pf-prose">
+            <p>
+              <strong>Ценность</strong> считается по формуле:{' '}
+              <strong>базовая величина по редкости + число достижений на карточке × бонус за достижение</strong>. База и
+              бонус задаются в экономике сервера и могут меняться.
+            </p>
+            <p className="pf-muted">
+              Ценность <strong>не равна</strong> цене на маркетплейсе (фантики) и <strong>не равна</strong> награде за
+              переработку — это отдельные величины.
+            </p>
+          </article>
+          {economyQ.isLoading && <p className="pf-muted">Загрузка таблицы…</p>}
+          {economyQ.isError && <p className="pf-err">{(economyQ.error as Error).message}</p>}
+          {economyQ.data?.cardValues && (
+            <div className="pf-economy">
+              <section className="pf-economy__section">
+                <h3 className="pf-economy__h">База и примеры итого (₱)</h3>
+                <p className="pf-muted" style={{ marginBottom: 8 }}>
+                  Бонус за одно достижение: <strong>{economyQ.data.cardValues.achievementBonus}₱</strong>. В колонке «Ач.»
+                  — суммарный бонус за указанное число достижений; итог = база + эта сумма.
+                </p>
+                <table className="pf-economy__table">
+                  <thead>
+                    <tr>
+                      <th>Редкость</th>
+                      <th>База (₱)</th>
+                      <th>Ач. (пример)</th>
+                      <th>Итого (₱)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RARITIES.map((r, i) => {
+                      const base = economyQ.data!.cardValues.baseValues[r] ?? 0
+                      const achCount = i
+                      const achPart = achCount * economyQ.data!.cardValues.achievementBonus
+                      const total = base + achPart
+                      return (
+                        <tr key={r}>
+                          <td>{r}</td>
+                          <td>{base}</td>
+                          <td>
+                            {achCount === 0
+                              ? '0'
+                              : `${achPart} (${achCount} ${achCount === 1 ? 'достиж.' : 'дост.'})`}
+                          </td>
+                          <td>
+                            <strong>{total}</strong>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          )}
         </section>
 
         <section className="pf-help__section pf-help__anchor" id="economy">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -68,6 +68,14 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
     }
   }, [phase, cards.length])
 
+  const totalPulledValue = useMemo(
+    () =>
+      cards.length === 0
+        ? 0
+        : cards.reduce((sum, x) => sum + (Number.isFinite(x.value) ? x.value : 0), 0),
+    [cards],
+  )
+
   if (cards.length === 0) {
     return null
   }
@@ -108,6 +116,7 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
       {phase === 'summary' && (
         <div className="pf-pack-open__summary">
           <h3 className="pf-pack-open__summary-title">Вы получили</h3>
+          <p className="pf-pack-open__summary-total-value">Суммарная ценность: {totalPulledValue}₱</p>
           <ul className="pf-pack-open__summary-grid">
             {cards.map((c) => {
               const img = cardDisplayImageUrl(c)

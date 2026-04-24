@@ -23,6 +23,11 @@ data class RewardTierDto(
     val fantiki: Long,
 )
 
+data class CardValueInfoDto(
+    val baseValues: Map<Rarity, Long>,
+    val achievementBonus: Long,
+)
+
 data class EconomyInfoDto(
     val usesPerRarity: Map<Rarity, Int>,
     val recycleValues: Map<Rarity, Long>,
@@ -36,4 +41,5 @@ data class EconomyInfoDto(
     val marketplaceMaxPrices: Map<Rarity, Long>,
     /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */
     val minPackOpensBeforeMarketplacePurchase: Int,
+    val cardValues: CardValueInfoDto,
 )

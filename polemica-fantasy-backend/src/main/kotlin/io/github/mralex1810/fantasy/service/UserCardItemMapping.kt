@@ -12,6 +12,7 @@ import io.github.mralex1810.fantasy.entity.UserCard
 fun UserCard.toUserCardItemDto(
     templateOverride: CardTemplate? = null,
     imageStorage: ImageStorageService,
+    cardValueService: CardValueService,
 ): UserCardItemDto {
     val ct = templateOverride ?: cardTemplate!!
     val fp = ct.fantasyPlayer!!
@@ -39,5 +40,6 @@ fun UserCard.toUserCardItemDto(
         timesRenewed = timesRenewed,
         sourceCardPackId = sourceCardPack?.id,
         craftedByTelegramUserId = craftedBy?.telegramId,
+        value = cardValueService.calculateValue(ct),
     )
 }

@@ -91,4 +91,20 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("partnerId") partnerId: Long,
         @Param("sold") sold: MarketplaceListingStatus,
     ): List<UserCard>
+
+    /**
+     * All user cards (including [io.github.mralex1810.fantasy.entity.UserCard.usesRemaining] = 0 and active listings).
+     * For global rating portfolio value.
+     */
+    @Query(
+        """
+        SELECT DISTINCT uc FROM UserCard uc
+        JOIN FETCH uc.telegramUser tu
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH ct.achievements ach
+        LEFT JOIN FETCH ach.achievement
+        """,
+    )
+    fun findAllForGlobalRating(): List<UserCard>
 }

@@ -20,6 +20,7 @@ data class MarketplaceListingCardDto(
     val playerPhotoUrl: String?,
     val rarity: Rarity,
     val achievements: List<MarketplaceCardAchievementDto>,
+    val value: Long,
 )
 
 data class MarketplaceListingEntryDto(

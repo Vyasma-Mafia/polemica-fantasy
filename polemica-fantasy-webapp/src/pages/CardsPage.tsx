@@ -14,6 +14,7 @@ import type {
   UserTournament,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardValueBadge } from '../components/CardValueBadge'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { PlayerGroupedView } from '../components/PlayerGroupedView'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
@@ -40,6 +41,16 @@ function teamsContainingCard(teams: FantasyTeamDto[] | undefined, userCardId: nu
 function slotScoreForCard(team: FantasyTeamDto, userCardId: number): number | null {
   const slot = team.slots.find((s) => s.userCardId === userCardId)
   return slot?.score ?? null
+}
+
+function ruAchievementsLabel(n: number): string {
+  if (n === 0) return 'достижений'
+  const m = n % 100
+  if (m >= 11 && m <= 14) return 'достижений'
+  const m10 = n % 10
+  if (m10 === 1) return 'достижение'
+  if (m10 >= 2 && m10 <= 4) return 'достижения'
+  return 'достижений'
 }
 
 export function CardsPage() {
@@ -501,6 +512,7 @@ export function CardsPage() {
                       ⚡{c.usesRemaining}/{maxU}
                     </span>
                     {expired && <span className="pf-expired-badge">Истекла</span>}
+                    <CardValueBadge value={c.value} layout="collection" expired={expired} />
                     <div className="pf-collection-card__cap">
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
@@ -549,6 +561,22 @@ export function CardsPage() {
             )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
+            {economyQ.data?.cardValues ? (
+              <p className="pf-card-value-breakdown">
+                {(() => {
+                  const cv = economyQ.data!.cardValues
+                  const base = cv.baseValues[detailCard.rarity] ?? 0
+                  const n = detailCard.achievements.length
+                  const fromAch = n * cv.achievementBonus
+                  if (fromAch === 0) {
+                    return `Ценность: ${base} (редкость) = ${detailCard.value}₱`
+                  }
+                  return `Ценность: ${base} (редкость) + ${fromAch} (${n} ${ruAchievementsLabel(n)}) = ${detailCard.value}₱`
+                })()}
+              </p>
+            ) : (
+              <p className="pf-card-value-breakdown">Ценность: {detailCard.value}₱</p>
+            )}
             <ul className="pf-modal__ach">
               {detailCard.achievements.map((a) => (
                 <li key={a.achievementId}>

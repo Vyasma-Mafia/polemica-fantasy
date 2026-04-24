@@ -147,12 +147,22 @@ a {
 
 .nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 14px;
+  gap: 10px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  margin-bottom: -2px;
+  scrollbar-width: thin;
+}
+
+.nav::-webkit-scrollbar {
+  height: 4px;
 }
 
 .nav a {
+  flex-shrink: 0;
   color: var(--pf-text-muted);
   text-decoration: none;
   font-size: 0.9rem;
@@ -737,6 +747,133 @@ a.pf-lb-row--link:focus-visible {
 
 .pf-lb-pinned .pf-lb-row {
   border-bottom: none;
+}
+
+/* --- Global rating (GET /api/v1/rating) --- */
+.pf-rating-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -2px 12px;
+  padding: 0 2px;
+}
+
+.pf-rating-table {
+  width: 100%;
+  min-width: 300px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.pf-rating-table thead th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pf-text-muted);
+  padding: 6px 6px 10px;
+  border-bottom: 1px solid var(--pf-border);
+  white-space: nowrap;
+}
+
+.pf-rating__th--rank {
+  width: 40px;
+}
+
+.pf-rating__th--num {
+  text-align: right;
+}
+
+.pf-rating-row td {
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--pf-border);
+  vertical-align: middle;
+}
+
+.pf-rating__cell--rank {
+  font-family: var(--pf-display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--pf-gold);
+}
+
+.pf-rating__cell--name {
+  font-weight: 600;
+  color: var(--pf-text-heading);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-rating__num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-text);
+}
+
+.pf-rating__cell--total {
+  font-weight: 700;
+  color: #ddd6fe;
+}
+
+.pf-rating__sym {
+  margin-right: 1px;
+  color: var(--pf-text-muted);
+  font-size: 0.85em;
+}
+
+.pf-rating-row--current {
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.pf-rating-row--current .pf-rating__cell--name {
+  font-weight: 700;
+}
+
+.pf-rating-pinned--bottom {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  z-index: 4;
+  width: 100%;
+  max-width: 430px;
+  padding: 0 16px calc(8px + var(--pf-safe-bottom));
+  box-sizing: border-box;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--pf-bg) 65%, rgba(10, 10, 12, 0));
+  padding-top: 20px;
+}
+
+.pf-rating-pinned--bottom .pf-lb-pinned {
+  position: relative;
+  top: auto;
+  pointer-events: auto;
+}
+
+.pf-rating-pinned__row {
+  display: grid;
+  grid-template-columns: 40px 1fr minmax(0, 56px) minmax(0, 56px) minmax(0, 64px);
+  gap: 6px;
+  align-items: center;
+  padding: 10px 10px;
+  font-size: 0.88rem;
+  border: none;
+}
+
+.pf-rating__name-truncate {
+  min-width: 0;
+  font-weight: 700;
+  color: var(--pf-text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-page--rating-pinned {
+  padding-bottom: 100px;
 }
 
 /* --- Prose --- */
@@ -1377,6 +1514,61 @@ button.pf-mini-card:disabled {
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.pf-card-value-badge {
+  position: absolute;
+  z-index: 5;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #a5f3fc;
+  border: 1px solid rgba(103, 232, 249, 0.4);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.pf-card-value-badge--layout-collection,
+.pf-card-value-badge--layout-player-stack {
+  top: 8px;
+  left: 8px;
+}
+
+.pf-card-value-badge--layout-collection.pf-card-value-badge--nudge-down,
+.pf-card-value-badge--layout-player-stack.pf-card-value-badge--nudge-down {
+  top: 36px;
+}
+
+.pf-card-value-badge--layout-team {
+  top: 6px;
+  left: 6px;
+}
+
+.pf-card-value-badge--layout-team.pf-card-value-badge--nudge-down {
+  top: 34px;
+}
+
+.pf-player-cell[role='button'] .pf-card-value-badge--layout-player-stack {
+  top: 8px;
+  left: 8px;
+}
+
+.pf-player-cell[role='button'] .pf-card-value-badge--layout-player-stack.pf-card-value-badge--nudge-down {
+  top: 36px;
+}
+
+.pf-card-value-breakdown {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--pf-text);
+  padding: 10px 12px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  background: rgba(103, 232, 249, 0.06);
 }
 
 .pf-expired-badge {
@@ -3057,6 +3249,14 @@ button.pf-mini-card:disabled {
   color: var(--pf-text);
 }
 
+.pf-pack-open__summary-total-value {
+  margin: -4px 0 16px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #a5f3fc;
+  font-variant-numeric: tabular-nums;
+}
+
 .pf-pack-open__summary-grid {
   list-style: none;
   margin: 0 0 18px;
@@ -3468,6 +3668,28 @@ button.pf-mini-card:disabled {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--pf-gold);
+}
+
+.pf-marketplace-card__price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.pf-marketplace-card__price-fantiki {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--pf-gold);
+}
+
+.pf-marketplace-card__value-pill {
+  font-weight: 600;
+  color: #67e8f9;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pf-marketplace-card__seller {

@@ -329,7 +329,19 @@ export function MarketplacePage() {
                   </div>
                 </div>
                 <div className="pf-marketplace-card__meta">
-                  <div className="pf-marketplace-card__price">{row.price}₣</div>
+                  <div className="pf-marketplace-card__price-row" aria-label="Цена в фантиках и ценность карты">
+                    <span>
+                      <span className="pf-muted">Цена: </span>
+                      <span className="pf-marketplace-card__price-fantiki">{row.price}₣</span>
+                    </span>
+                    <span className="pf-muted" aria-hidden>
+                      ·
+                    </span>
+                    <span>
+                      <span className="pf-muted">Ценность: </span>
+                      <span className="pf-marketplace-card__value-pill">{c.value}₱</span>
+                    </span>
+                  </div>
                   <div className="pf-muted pf-marketplace-card__seller">Продавец: {row.seller.displayName}</div>
                   {row.canBuy ? (
                     <button

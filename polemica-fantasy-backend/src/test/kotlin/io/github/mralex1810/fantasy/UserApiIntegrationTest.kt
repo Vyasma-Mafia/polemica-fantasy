@@ -283,6 +283,27 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.marketplaceMaxPrices.COMMON").value(150))
             .andExpect(jsonPath("$.marketplaceMaxPrices.LEGENDARY").value(1500))
             .andExpect(jsonPath("$.minPackOpensBeforeMarketplacePurchase").value(3))
+            .andExpect(jsonPath("$.cardValues.achievementBonus").value(10))
+            .andExpect(jsonPath("$.cardValues.baseValues.COMMON").value(25))
+            .andExpect(jsonPath("$.cardValues.baseValues.RARE").value(40))
+            .andExpect(jsonPath("$.cardValues.baseValues.EPIC").value(80))
+            .andExpect(jsonPath("$.cardValues.baseValues.LEGENDARY").value(370))
+    }
+
+    @Test
+    fun `GET card-value info matches economy cardValues section`() {
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":888905,"first_name":"CardValueInfo"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/card-value/info").header("Authorization", "tma $initData"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.achievementBonus").value(10))
+            .andExpect(jsonPath("$.baseValues.COMMON").value(25))
+            .andExpect(jsonPath("$.baseValues.LEGENDARY").value(370))
     }
 
     @Test

@@ -28,6 +28,7 @@ class UserStoreService(
     private val userCardPackOpenCountRepository: UserCardPackOpenCountRepository,
     private val telegramUserRepository: TelegramUserRepository,
     private val imageStorageService: ImageStorageService,
+    private val cardValueService: CardValueService,
 ) {
 
     @Transactional(readOnly = true)
@@ -136,7 +137,7 @@ class UserStoreService(
                             HttpStatus.INTERNAL_SERVER_ERROR,
                             "Card template $tid not found",
                         )
-                uc.toUserCardItemDto(ct, imageStorageService)
+                uc.toUserCardItemDto(ct, imageStorageService, cardValueService)
             }
         val balance = userService.getBalance(internalId)
         return BuyPackResponseDto(fantiki = balance, cards = cards)

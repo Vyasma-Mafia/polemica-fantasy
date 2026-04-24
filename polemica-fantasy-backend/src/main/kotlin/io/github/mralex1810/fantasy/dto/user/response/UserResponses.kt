@@ -132,6 +132,8 @@ data class UserCardItemDto(
     val sourceCardPackId: Long?,
     /** Telegram user id of the crafter (platform id); null for admin-issued cards. */
     val craftedByTelegramUserId: Long?,
+    /** Вычисляемая ценность карты (см. economy card.value.*). */
+    val value: Long,
 )
 
 data class LegendaryUpgradeInfoDto(

@@ -10,6 +10,7 @@ import { useInitData } from '../context/useInitData'
 import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardValueBadge } from '../components/CardValueBadge'
 import { compareRarityDesc, RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 import { useNow } from '../lib/useNow'
 
@@ -290,6 +291,7 @@ export function TeamPage() {
                   )}
                   <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
                   {dead && <span className="pf-team-dead-label">Истекла</span>}
+                  <CardValueBadge value={c.value} layout="team" dead={dead} />
                   <div className="pf-team-card__cap">
                     <span className="pf-team-card__name">{c.playerNickname}</span>
                     <span className="pf-team-card__meta">

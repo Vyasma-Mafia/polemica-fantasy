@@ -149,6 +149,21 @@ export interface UserPublic {
   displayName: string | null
 }
 
+/** GET /api/v1/rating — строка глобального рейтинга */
+export interface RatingEntry {
+  rank: number
+  user: UserPublic
+  fantikiBalance: number
+  cardsValue: number
+  totalValue: number
+  cardsCount: number
+}
+
+export interface GlobalRating {
+  entries: RatingEntry[]
+  currentUser: RatingEntry | null
+}
+
 export interface LeaderboardEntry {
   rank: number
   totalScore: number | null
@@ -188,6 +203,8 @@ export interface UserCardItem {
   sourceCardPackId?: number | null
   /** Telegram user id of the crafter; set after legendary upgrade from a pack card */
   craftedByTelegramUserId?: number | null
+  /** Вычисляемая ценность (база по редкости + бонус за достижения). */
+  value: number
 }
 
 /** GET /api/v1/legendary-upgrade/info */
@@ -216,6 +233,10 @@ export interface EconomyInfo {
   marketplaceMaxPrices: Record<Rarity, number>
   /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */
   minPackOpensBeforeMarketplacePurchase: number
+  cardValues: {
+    baseValues: Record<Rarity, number>
+    achievementBonus: number
+  }
 }
 
 export interface RecycleResult {
@@ -261,6 +282,7 @@ export interface MarketplaceListingCard {
   playerPhotoUrl: string | null
   rarity: Rarity
   achievements: MarketplaceCardAchievement[]
+  value: number
 }
 
 export interface MarketplaceListingEntry {

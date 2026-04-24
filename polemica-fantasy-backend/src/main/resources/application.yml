@@ -21,6 +21,11 @@ spring:
     clean-disabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+  cache:
+    type: caffeine
+    cache-names: globalRating
+    caffeine:
+      spec: maximumSize=1, expireAfterWrite=5m
   servlet:
     multipart:
       max-file-size: 5MB
