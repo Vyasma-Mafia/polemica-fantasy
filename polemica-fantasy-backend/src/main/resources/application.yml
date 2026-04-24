@@ -63,6 +63,9 @@ app:
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:defaultPassword123}
+  rating:
+    # Excluded from global rating (e.g. admins). Override: APP_RATING_EXCLUDEDTELEGRAMIDS=1,2,3
+    excluded-telegram-ids: []
 
 management:
   endpoints:
