@@ -45,6 +45,7 @@ services:
       POLEMICA_USERNAME: ${POLEMICA_USERNAME:-}
       POLEMICA_PASSWORD: ${POLEMICA_PASSWORD:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-defaultPassword123}
+      APP_RATING_EXCLUDEDTELEGRAMIDS: ${APP_RATING_EXCLUDEDTELEGRAMIDS:-}
     depends_on:
       fantasy-db:
         condition: service_healthy
