@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.ActiveMarketplaceListingBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.CardAchievementBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
 import io.github.mralex1810.fantasy.entity.CardTemplate
@@ -13,6 +14,7 @@ fun UserCard.toUserCardItemDto(
     templateOverride: CardTemplate? = null,
     imageStorage: ImageStorageService,
     cardValueService: CardValueService,
+    activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
 ): UserCardItemDto {
     val ct = templateOverride ?: cardTemplate!!
     val fp = ct.fantasyPlayer!!
@@ -41,5 +43,6 @@ fun UserCard.toUserCardItemDto(
         sourceCardPackId = sourceCardPack?.id,
         craftedByTelegramUserId = craftedBy?.telegramId,
         value = cardValueService.calculateValue(ct),
+        activeMarketplaceListing = activeMarketplaceListing,
     )
 }

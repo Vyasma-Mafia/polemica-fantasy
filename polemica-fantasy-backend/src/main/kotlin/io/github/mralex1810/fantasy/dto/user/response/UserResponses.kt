@@ -116,6 +116,11 @@ data class CardAchievementBriefDto(
     val bonusPoints: Double,
 )
 
+data class ActiveMarketplaceListingBriefDto(
+    val listingId: Long,
+    val price: Long,
+)
+
 data class UserCardItemDto(
     val id: Long,
     val acquiredAt: Instant,
@@ -134,6 +139,8 @@ data class UserCardItemDto(
     val craftedByTelegramUserId: Long?,
     /** Вычисляемая ценность карты (см. economy card.value.*). */
     val value: Long,
+    /** Активный лот на маркетплейсе для этой user_card; null если не выставлена. */
+    val activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
 )
 
 data class LegendaryUpgradeInfoDto(

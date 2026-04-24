@@ -11,6 +11,7 @@ import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { CardValueBadge } from '../components/CardValueBadge'
+import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { compareRarityDesc, RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 import { useNow } from '../lib/useNow'
 
@@ -257,14 +258,18 @@ export function TeamPage() {
             selected.some((sid) => cardById.get(sid)?.fantasyPlayerId === c.fantasyPlayerId)
           const secondLegendaryBlocked =
             c.rarity === 'LEGENDARY' && !selected.includes(c.id) && legendarySlotsUsed >= 1
-          const gridDisabled = deadlinePassed || dead || playerAlreadyPicked || secondLegendaryBlocked
+          const listed = Boolean(c.activeMarketplaceListing)
+          const gridDisabled =
+            deadlinePassed || dead || playerAlreadyPicked || secondLegendaryBlocked || listed
           const gridTitle = dead
             ? 'Контракт истёк — продлите в коллекции'
             : playerAlreadyPicked
               ? 'Этот игрок уже в команде'
               : secondLegendaryBlocked
                 ? 'В команде не больше одной легендарной карты за серию'
-                : undefined
+                : listed
+                  ? 'Снимите карту с продажи, чтобы поставить в команду'
+                  : undefined
           return (
             <li key={c.id}>
               <button
@@ -275,6 +280,7 @@ export function TeamPage() {
                     selected.includes(c.id) ? 'pf-team-card--picked' : '',
                     dead ? 'pf-team-card--dead' : '',
                     playerAlreadyPicked && !dead ? 'pf-team-card--blocked' : '',
+                    listed && !dead ? 'pf-team-card--listed' : '',
                   ]
                     .filter(Boolean)
                     .join(' '),
@@ -291,6 +297,9 @@ export function TeamPage() {
                   )}
                   <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
                   {dead && <span className="pf-team-dead-label">Истекла</span>}
+                  {c.activeMarketplaceListing && (
+                    <MarketplaceListedBadge listing={c.activeMarketplaceListing} layout="team" />
+                  )}
                   <CardValueBadge value={c.value} layout="team" dead={dead} />
                   <div className="pf-team-card__cap">
                     <span className="pf-team-card__name">{c.playerNickname}</span>

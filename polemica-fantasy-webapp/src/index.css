@@ -1585,6 +1585,49 @@ button.pf-mini-card:disabled {
   color: #fecaca;
 }
 
+.pf-marketplace-listed-badge {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  z-index: 5;
+  font-size: 0.64rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(20, 83, 45, 0.92);
+  color: #bbf7d0;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  max-width: calc(100% - 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pf-marketplace-listed-badge--inline {
+  position: static;
+  display: inline-block;
+  margin: 0 0 6px;
+  pointer-events: auto;
+}
+
+.pf-marketplace-listed-badge--team {
+  top: 28px;
+  right: 6px;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+}
+
+.pf-team-card--listed {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pf-team-card--listed:disabled {
+  pointer-events: none;
+}
+
 .pf-collection-card--expired .pf-collection-card__img,
 .pf-collection-card--expired .pf-collection-card__ph {
   opacity: 0.45;

@@ -2,7 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
-import { createMarketplaceListing, fetchMyMarketplaceListings } from '../api/marketplace'
+import { createMarketplaceListing } from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type {
   FantasyTeamDto,
@@ -14,6 +14,7 @@ import type {
   UserTournament,
 } from '../api/types'
 import { CardAchievementChips } from '../components/CardAchievementChips'
+import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { CardValueBadge } from '../components/CardValueBadge'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { PlayerGroupedView } from '../components/PlayerGroupedView'
@@ -144,12 +145,6 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
-  const myListingsQ = useQuery({
-    queryKey: ['my-marketplace-listings', initData],
-    queryFn: () => fetchMyMarketplaceListings(initData),
-    enabled: !!initData,
-  })
-
   const teamSeriesIds = useMemo(
     () => [...new Set((teamsQ.data ?? []).map((t) => t.seriesId))],
     [teamsQ.data],
@@ -172,11 +167,6 @@ export function CardsPage() {
     return m
   }, [teamSeriesIds, seriesMetaForTeams])
 
-  const listedUserCardIds = useMemo(
-    () => new Set((myListingsQ.data ?? []).map((l) => l.card.userCardId)),
-    [myListingsQ.data],
-  )
-
   const usesPerRarity = economyQ.data?.usesPerRarity
 
   function cardBlockedForMarketplaceByTeam(cardId: number): boolean {
@@ -191,7 +181,7 @@ export function CardsPage() {
 
   function canOfferCardOnMarketplace(c: UserCardItem): boolean {
     if (c.usesRemaining <= 0) return false
-    if (listedUserCardIds.has(c.id)) return false
+    if (c.activeMarketplaceListing) return false
     if (cardBlockedForMarketplaceByTeam(c.id)) return false
     return true
   }
@@ -512,6 +502,9 @@ export function CardsPage() {
                       ⚡{c.usesRemaining}/{maxU}
                     </span>
                     {expired && <span className="pf-expired-badge">Истекла</span>}
+                    {c.activeMarketplaceListing && (
+                      <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
+                    )}
                     <CardValueBadge value={c.value} layout="collection" expired={expired} />
                     <div className="pf-collection-card__cap">
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
@@ -561,6 +554,11 @@ export function CardsPage() {
             )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
+            {detailCard.activeMarketplaceListing && (
+              <p>
+                <MarketplaceListedBadge listing={detailCard.activeMarketplaceListing} layout="inline" />
+              </p>
+            )}
             {economyQ.data?.cardValues ? (
               <p className="pf-card-value-breakdown">
                 {(() => {

@@ -205,6 +205,8 @@ export interface UserCardItem {
   craftedByTelegramUserId?: number | null
   /** Вычисляемая ценность (база по редкости + бонус за достижения). */
   value: number
+  /** Активный лот на маркетплейсе; null/undefined если карта не выставлена. */
+  activeMarketplaceListing?: { listingId: number; price: number } | null
 }
 
 /** GET /api/v1/legendary-upgrade/info */

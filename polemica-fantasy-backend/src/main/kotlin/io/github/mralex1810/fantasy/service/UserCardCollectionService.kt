@@ -1,8 +1,11 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.ActiveMarketplaceListingBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
@@ -14,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException
 class UserCardCollectionService(
     private val userCardRepository: UserCardRepository,
     private val seriesRepository: SeriesRepository,
+    private val marketplaceListingRepository: MarketplaceListingRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
 ) {
@@ -34,10 +38,26 @@ class UserCardCollectionService(
             seriesId = seriesId,
             rarity = rarity,
         )
+        val userCardIds = rows.mapNotNull { it.id }
+        val activeListingByCardId: Map<Long, ActiveMarketplaceListingBriefDto> =
+            if (userCardIds.isEmpty()) {
+                emptyMap()
+            } else {
+                marketplaceListingRepository
+                    .findAllByUserCard_IdInAndStatus(userCardIds, MarketplaceListingStatus.ACTIVE)
+                    .associate { ml ->
+                        val ucId = ml.userCard!!.id!!
+                        ucId to ActiveMarketplaceListingBriefDto(
+                            listingId = ml.id!!,
+                            price = ml.price,
+                        )
+                    }
+            }
         return rows.map {
             it.toUserCardItemDto(
                 imageStorage = imageStorageService,
                 cardValueService = cardValueService,
+                activeMarketplaceListing = activeListingByCardId[it.id],
             )
         }
     }

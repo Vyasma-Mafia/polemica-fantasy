@@ -5,6 +5,7 @@ import { pickBestUserCard } from '../lib/collectionByPlayer'
 import { compareRarityDesc, rarityScoreModifierLabel } from '../lib/rarity'
 import { CardAchievementChips } from './CardAchievementChips'
 import { CardValueBadge } from './CardValueBadge'
+import { MarketplaceListedBadge } from './MarketplaceListedBadge'
 
 function maxUsesForCard(c: UserCardItem, usesPerRarity: Record<Rarity, number> | undefined): number {
   if (!usesPerRarity) return Math.max(c.usesRemaining, 1)
@@ -123,6 +124,9 @@ export function PlayerCard(props: PlayerCardProps) {
                       ⚡{c.usesRemaining}/{maxFor}
                     </span>
                     {ex && <span className="pf-expired-badge">Истекла</span>}
+                    {c.activeMarketplaceListing && (
+                      <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
+                    )}
                     <CardValueBadge value={c.value} layout="collection" expired={ex} />
                     <div className="pf-collection-card__cap">
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
@@ -174,6 +178,9 @@ export function PlayerCard(props: PlayerCardProps) {
               ⚡{best.usesRemaining}/{maxU}
             </span>
             {expired && <span className="pf-expired-badge">Истекла</span>}
+            {best.activeMarketplaceListing && (
+              <MarketplaceListedBadge listing={best.activeMarketplaceListing} />
+            )}
             <CardValueBadge value={best.value} layout="playerStack" expired={expired} />
             <div className="pf-collection-card__cap">
               <span className="pf-collection-card__name">{nickname}</span>

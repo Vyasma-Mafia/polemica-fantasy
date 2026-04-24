@@ -23,6 +23,18 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         status: MarketplaceListingStatus,
     ): List<MarketplaceListing>
 
+    @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        JOIN ml.userCard uc
+        WHERE uc.id IN :userCardIds AND ml.status = :status
+        """,
+    )
+    fun findAllByUserCard_IdInAndStatus(
+        @Param("userCardIds") userCardIds: Collection<Long>,
+        @Param("status") status: MarketplaceListingStatus,
+    ): List<MarketplaceListing>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
         """
