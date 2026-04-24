@@ -22,6 +22,10 @@ ROLE_PRIORS = {
 }
 
 ACHIEVEMENT_APPLICABLE_ROLES = {
+    # 10/10 seats (report uses same count as all players in game)
+    "crowned": ["PEACE", "MAFIA", "DON", "SHERIFF"],
+    "lastHeroGuess": ["PEACE", "MAFIA", "DON", "SHERIFF"],
+    "ninja": ["PEACE", "MAFIA", "DON", "SHERIFF"],
     "sniper": ["DON", "MAFIA"],
     "winThreeToThree": ["DON", "MAFIA"],
     "findSheriff": ["DON"],

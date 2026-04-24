@@ -29,6 +29,7 @@ import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
+import io.github.mralex1810.fantasy.repository.UserCardPackOpenCountRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -50,6 +51,7 @@ class CardPackService(
     private val cardTemplateRepository: CardTemplateRepository,
     private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
     private val userCardRepository: UserCardRepository,
+    private val userCardPackOpenCountRepository: UserCardPackOpenCountRepository,
     private val userService: UserService,
     private val telegramUserRepository: TelegramUserRepository,
     private val economyConfigService: EconomyConfigService,
@@ -252,6 +254,7 @@ class CardPackService(
                 drawn.add(saved)
             }
         }
+        userCardPackOpenCountRepository.incrementOpenCount(user.id!!, packId)
         telegramUserRepository.incrementPackOpensCount(user.id!!)
         return OpenPackResultDto(userCards = drawn.map { it.toUserCardDto() })
     }

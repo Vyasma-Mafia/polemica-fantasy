@@ -9,6 +9,7 @@ import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackFreeUsageRepository
+import io.github.mralex1810.fantasy.repository.UserCardPackOpenCountRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import kotlin.math.max
 import org.springframework.http.HttpStatus
@@ -24,6 +25,7 @@ class UserStoreService(
     private val userCardRepository: UserCardRepository,
     private val cardTemplateRepository: CardTemplateRepository,
     private val userCardPackFreeUsageRepository: UserCardPackFreeUsageRepository,
+    private val userCardPackOpenCountRepository: UserCardPackOpenCountRepository,
     private val telegramUserRepository: TelegramUserRepository,
     private val imageStorageService: ImageStorageService,
 ) {
@@ -40,6 +42,10 @@ class UserStoreService(
             userCardPackFreeUsageRepository
                 .findAllByTelegramUser_IdAndCardPack_IdIn(internalId, packIds)
                 .associate { it.cardPack!!.id!! to it.freeOpensUsed }
+        val opensByPackId =
+            userCardPackOpenCountRepository
+                .findAllByTelegramUser_IdAndCardPack_IdIn(internalId, packIds)
+                .associate { it.cardPack!!.id!! to it.openCount }
         return packs.map { pack ->
             val used = usedByPackId[pack.id!!] ?: 0
             val freeRemaining =
@@ -49,7 +55,7 @@ class UserStoreService(
                     max(0, pack.freeOpensPerUser - used)
                 }
             val packId = pack.id!!
-            val packOpensUsed = userCardRepository.countByTelegramUser_IdAndSourceCardPack_Id(internalId, packId).toInt()
+            val packOpensUsed = opensByPackId[packId] ?: 0
             StorePackItemDto(
                 id = packId,
                 name = pack.name,
@@ -85,8 +91,12 @@ class UserStoreService(
             // race with another request (REQUIRED joins the same transaction as openPack).
             telegramUserRepository.findByIdForUpdate(internalId)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalId not found")
-            val totalUsed = userCardRepository.countByTelegramUser_IdAndSourceCardPack_Id(internalId, packId)
-            if (totalUsed >= pack.maxOpensPerUser) {
+            val opensUsed =
+                userCardPackOpenCountRepository
+                    .findByTelegramUser_IdAndCardPack_Id(internalId, packId)
+                    ?.openCount
+                    ?: 0
+            if (opensUsed >= pack.maxOpensPerUser) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Pack purchase limit reached")
             }
         }
