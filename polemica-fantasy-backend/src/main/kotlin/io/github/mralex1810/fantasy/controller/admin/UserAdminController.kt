@@ -26,7 +26,8 @@ class UserAdminController(
     fun listUsers(
         @RequestParam(required = false) tournamentId: Long?,
         @RequestParam(required = false) seriesId: Long?,
-    ): List<AdminUserListItemDto> = adminUserListService.listForAdmin(tournamentId, seriesId)
+        @RequestParam(required = false) q: String?,
+    ): List<AdminUserListItemDto> = adminUserListService.listForAdmin(tournamentId, seriesId, q)
 
     @PostMapping("/{telegramUserId}/give-fantiki")
     fun giveFantiki(

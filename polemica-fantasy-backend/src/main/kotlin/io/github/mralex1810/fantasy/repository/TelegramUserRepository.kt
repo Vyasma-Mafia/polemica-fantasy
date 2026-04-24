@@ -63,4 +63,47 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
         nativeQuery = true,
     )
     fun findAllWithCardsInSeriesCount(@Param("seriesId") seriesId: Long): List<Array<Any>>
+
+    @Query(
+        value =
+            """
+            SELECT u.id, u.telegram_id, u.username, u.first_name, u.display_name, u.created_at, u.fantiki,
+              u.pack_opens_count, u.marketplace_banned
+            FROM telegram_user u
+            WHERE
+              (u.username IS NOT NULL AND u.username ILIKE :pattern ESCAPE '!')
+              OR (u.display_name IS NOT NULL AND u.display_name ILIKE :pattern ESCAPE '!')
+              OR (CAST(u.telegram_id AS text) ILIKE :pattern ESCAPE '!')
+            ORDER BY u.id
+            """,
+        nativeQuery = true,
+    )
+    fun findAllMatchingQOrderedById(@Param("pattern") pattern: String): List<TelegramUser>
+
+    @Query(
+        value =
+            """
+            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
+            FROM telegram_user tu
+            LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
+              AND EXISTS (
+                SELECT 1 FROM card_template ct
+                INNER JOIN series_player sp ON sp.series_id = :seriesId
+                INNER JOIN tournament_player tp ON tp.id = sp.tournament_player_id
+                WHERE ct.id = uc.card_template_id
+                  AND tp.fantasy_player_id = ct.fantasy_player_id
+              )
+            WHERE
+              (tu.username IS NOT NULL AND tu.username ILIKE :pattern ESCAPE '!')
+              OR (tu.display_name IS NOT NULL AND tu.display_name ILIKE :pattern ESCAPE '!')
+              OR (CAST(tu.telegram_id AS text) ILIKE :pattern ESCAPE '!')
+            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki
+            ORDER BY tu.id
+            """,
+        nativeQuery = true,
+    )
+    fun findAllWithCardsInSeriesCountMatching(
+        @Param("seriesId") seriesId: Long,
+        @Param("pattern") pattern: String,
+    ): List<Array<Any>>
 }

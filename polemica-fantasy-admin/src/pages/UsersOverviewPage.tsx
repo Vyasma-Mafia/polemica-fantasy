@@ -1,6 +1,6 @@
-import { Select, Space, Table, Typography } from 'antd'
+import { Input, Select, Space, Table, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { listSeriesByTournament } from '../api/series'
 import { listTournaments } from '../api/tournaments'
 import type { AdminUserListItemDto } from '../api/types'
@@ -13,6 +13,15 @@ function dash(v: string | null | undefined) {
 export function UsersOverviewPage() {
   const [tournamentId, setTournamentId] = useState<number | undefined>()
   const [seriesId, setSeriesId] = useState<number | undefined>()
+  const [userSearch, setUserSearch] = useState('')
+  const [userSearchDebounced, setUserSearchDebounced] = useState('')
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setUserSearchDebounced(userSearch.trim())
+    }, 300)
+    return () => clearTimeout(t)
+  }, [userSearch])
 
   const tournamentsQ = useQuery({
     queryKey: ['admin', 'tournaments'],
@@ -25,13 +34,15 @@ export function UsersOverviewPage() {
     enabled: tournamentId != null,
   })
 
+  const qParam = userSearchDebounced || undefined
+
   const usersQ = useQuery({
-    queryKey: ['admin', 'users', tournamentId, seriesId],
+    queryKey: ['admin', 'users', tournamentId, seriesId, qParam],
     queryFn: () => {
       if (tournamentId != null && seriesId != null) {
-        return listAdminUsers({ tournamentId, seriesId })
+        return listAdminUsers({ tournamentId, seriesId, q: qParam })
       }
-      return listAdminUsers()
+      return listAdminUsers({ q: qParam })
     },
   })
 
@@ -80,6 +91,13 @@ export function UsersOverviewPage() {
       </Typography.Paragraph>
 
       <Space wrap style={{ marginBottom: 16 }}>
+        <Input
+          allowClear
+          placeholder="Search username, Telegram ID, or display name"
+          value={userSearch}
+          onChange={(e) => setUserSearch(e.target.value)}
+          style={{ minWidth: 300 }}
+        />
         <Select
           allowClear
           placeholder="Tournament"

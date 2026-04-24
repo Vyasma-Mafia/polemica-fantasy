@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import com.jayway.jsonpath.JsonPath
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -477,6 +478,37 @@ class AdminApiIntegrationTest {
                 .content("""{"amount":1}"""),
         )
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    @Order(16)
+    fun `list admin users with q matches telegramId`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val listJson = mockMvc.perform(
+            get("/api/v1/admin/users")
+                .param("q", "777001")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val rows = JsonPath.parse(listJson).read<List<Map<String, Any?>>>("$")
+        val hit = rows.first { (it["telegramId"] as Number).toLong() == 777001L }
+        assertEquals(777001L, (hit["telegramId"] as Number).toLong())
+    }
+
+    @Test
+    @Order(17)
+    fun `list admin users with q no match returns empty`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val listJson = mockMvc.perform(
+            get("/api/v1/admin/users")
+                .param("q", "__no_such_user_match_zq9k2m7__")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val rows = JsonPath.parse(listJson).read<List<Any>>("$")
+        assertTrue(rows.isEmpty())
     }
 
     companion object {
