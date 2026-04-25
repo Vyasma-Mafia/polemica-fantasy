@@ -60,7 +60,7 @@ polemica:
     password: ${POLEMICA_PASSWORD:}
 
 app:
-  webapp-base-url: ${WEBAPP_BASE_URL:https://fantasy.polemica.ru}
+  webapp-base-url: ${WEBAPP_BASE_URL:https://fantasy.maftourbot.ru}
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:defaultPassword123}
