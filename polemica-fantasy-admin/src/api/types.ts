@@ -116,6 +116,24 @@ export interface SeriesFinalizationResultDto {
   cardsDecremented: number
 }
 
+export interface StartedSeriesEntryDto {
+  seriesId: number
+  name: string
+  tournamentName: string
+  previousStatus: string
+}
+
+export interface SkippedSeriesEntryDto {
+  seriesId: number
+  reason: string
+}
+
+export interface BatchStartSeriesResponseDto {
+  startedSeries: StartedSeriesEntryDto[]
+  skipped: SkippedSeriesEntryDto[]
+  notificationRecipientCount: number
+}
+
 export interface CardTemplateAchievementDto {
   id: number
   achievementId: string

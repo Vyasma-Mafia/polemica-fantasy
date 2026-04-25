@@ -24,6 +24,7 @@ import {
   uploadPlayerPhoto,
 } from '../api/tournaments'
 import {
+  batchStartSeries as batchStartSeriesApi,
   createSeries as createSeriesApi,
   listSeriesByTournament,
 } from '../api/series'
@@ -122,11 +123,34 @@ export function TournamentDetailPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const batchStartMut = useMutation({
+    mutationFn: (seriesIds: number[]) => batchStartSeriesApi({ seriesIds }),
+    onSuccess: (res) => {
+      const started = res.startedSeries.length
+      const skipped = res.skipped.length
+      if (started > 0) {
+        message.success(
+          `Started ${started} series${skipped > 0 ? `; skipped ${skipped}` : ''}`,
+        )
+      } else {
+        message.info('No series were started')
+      }
+      void qc.invalidateQueries({
+        queryKey: ['admin', 'series', 'tournament', tournamentId],
+      })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
   if (!Number.isFinite(tournamentId)) {
     return <Typography.Text type="danger">Invalid tournament id</Typography.Text>
   }
 
   const t = tq.data
+  const upcomingSeriesIds = (sq.data ?? [])
+    .filter((series) => series.status === 'UPCOMING')
+    .map((series) => series.id)
 
   return (
     <div>
@@ -152,14 +176,25 @@ export function TournamentDetailPage() {
       )}
 
       <Typography.Title level={4}>Series</Typography.Title>
-      <Button
-        type="primary"
-        style={{ marginBottom: 8 }}
-        disabled={!t}
-        onClick={() => setSeriesOpen(true)}
-      >
-        New series
-      </Button>
+      <Space style={{ marginBottom: 8 }}>
+        <Button type="primary" disabled={!t} onClick={() => setSeriesOpen(true)}>
+          New series
+        </Button>
+        <Button
+          disabled={!t || upcomingSeriesIds.length === 0}
+          loading={batchStartMut.isPending}
+          onClick={() =>
+            Modal.confirm({
+              title: 'Start all UPCOMING series?',
+              content: `This will move ${upcomingSeriesIds.length} series to ACTIVE and send one aggregated notification to users.`,
+              okText: 'Start all',
+              onOk: () => batchStartMut.mutate(upcomingSeriesIds),
+            })
+          }
+        >
+          Start all UPCOMING
+        </Button>
+      </Space>
       <Table
         rowKey="id"
         loading={sq.isLoading}

@@ -1,15 +1,21 @@
 import type {
   AssignSeriesPlayersRequest,
+  BatchStartSeriesRequest,
   CreateSeriesRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
-import type { SeriesDto, SeriesFinalizationResultDto } from './types'
+import type {
+  BatchStartSeriesResponseDto,
+  SeriesDto,
+  SeriesFinalizationResultDto,
+} from './types'
 import { apiJson, apiVoid } from './client'
 
 export type {
   CreateSeriesRequest,
   UpdateSeriesRequest,
   AssignSeriesPlayersRequest,
+  BatchStartSeriesRequest,
 } from './seriesRequests'
 
 export function listSeriesByTournament(tournamentId: number) {
@@ -38,6 +44,13 @@ export function updateSeries(id: number, body: UpdateSeriesRequest) {
 
 export function assignSeriesPlayers(id: number, body: AssignSeriesPlayersRequest) {
   return apiJson<SeriesDto>(`/v1/admin/series/${id}/players`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function batchStartSeries(body: BatchStartSeriesRequest) {
+  return apiJson<BatchStartSeriesResponseDto>('/v1/admin/series/batch-start', {
     method: 'POST',
     body: JSON.stringify(body),
   })

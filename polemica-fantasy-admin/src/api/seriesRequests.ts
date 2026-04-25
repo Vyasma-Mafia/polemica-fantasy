@@ -23,3 +23,7 @@ export interface UpdateSeriesRequest {
 export interface AssignSeriesPlayersRequest {
   tournamentPlayerIds: number[]
 }
+
+export interface BatchStartSeriesRequest {
+  seriesIds: number[]
+}
