@@ -20,7 +20,7 @@ class MarketplaceWatchNotificationListener(
 ) {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onListingCreated(event: MarketplaceListingCreatedEvent) {
         val tournamentIds = event.tournamentIds.ifEmpty { listOf(-1L) }
         val matchingUserIds = marketplaceWatchFilterRepository.findMatchingUserIds(
