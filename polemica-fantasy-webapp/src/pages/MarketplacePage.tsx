@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
+import { useCreateMarketplaceWatch } from '../api/notifications'
 import {
   buyMarketplaceListing,
   fetchMarketplaceFeed,
@@ -31,6 +32,7 @@ const SORT_OPTIONS: { value: MarketplaceSortBy; label: string }[] = [
 export function MarketplacePage() {
   const initData = useInitData()
   const qc = useQueryClient()
+  const createWatchM = useCreateMarketplaceWatch()
 
   const [rarity, setRarity] = useState<Rarity | ''>('')
   const [sortBy, setSortBy] = useState<MarketplaceSortBy>('created_at_desc')
@@ -43,6 +45,8 @@ export function MarketplacePage() {
 
   const [buyConfirm, setBuyConfirm] = useState<MarketplaceListingEntry | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
+  const [watchState, setWatchState] = useState<'idle' | 'saving' | 'tracked' | 'duplicate' | 'limit' | 'error'>('idle')
+  const [watchMessage, setWatchMessage] = useState<string | null>(null)
 
   const tournamentsQ = useQuery({
     queryKey: ['tournaments', initData],
@@ -84,6 +88,28 @@ export function MarketplacePage() {
     }
   }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, sortBy, page])
 
+  const watchPayload = useMemo(() => {
+    const hasCriteria = playerFilterId !== '' || tournamentId !== '' || rarity !== ''
+    if (!hasCriteria) return null
+    const parsedMaxPrice = maxPrice.trim() === '' ? null : Number(maxPrice)
+    return {
+      fantasyPlayerId: playerFilterId === '' ? null : playerFilterId,
+      tournamentId: tournamentId === '' ? null : Number(tournamentId),
+      rarity: rarity || null,
+      maxPrice:
+        parsedMaxPrice != null && Number.isFinite(parsedMaxPrice) && parsedMaxPrice > 0
+          ? Math.floor(parsedMaxPrice)
+          : null,
+    }
+  }, [playerFilterId, tournamentId, rarity, maxPrice])
+
+  const watchPayloadKey = useMemo(() => JSON.stringify(watchPayload), [watchPayload])
+
+  useEffect(() => {
+    setWatchState('idle')
+    setWatchMessage(null)
+  }, [watchPayloadKey])
+
   const listingsQ = useQuery({
     queryKey: ['marketplace-listings', initData, listingsParams],
     queryFn: () => fetchMarketplaceListings(initData, listingsParams),
@@ -116,6 +142,44 @@ export function MarketplacePage() {
   if (!initData) return <MissingInitDataNotice />
 
   const totalPages = listingsQ.data?.totalPages ?? 0
+
+  const watchButtonLabel =
+    watchState === 'saving'
+      ? 'Сохраняем…'
+      : watchState === 'tracked'
+        ? '✓ Отслеживается'
+        : watchState === 'duplicate'
+          ? 'Уже отслеживается'
+          : watchState === 'limit'
+            ? 'Достигнут лимит фильтров'
+            : watchState === 'error'
+              ? 'Повторить отслеживание'
+              : '🔔 Отслеживать этот фильтр'
+
+  async function handleCreateWatch() {
+    if (!watchPayload) return
+    setWatchState('saving')
+    setWatchMessage(null)
+    try {
+      await createWatchM.mutateAsync(watchPayload)
+      setWatchState('tracked')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setWatchState('duplicate')
+        return
+      }
+      if (
+        error instanceof ApiError &&
+        error.status === 400 &&
+        error.message.toLowerCase().includes('maximum')
+      ) {
+        setWatchState('limit')
+        return
+      }
+      setWatchState('error')
+      setWatchMessage(error instanceof ApiError ? error.message : String(error))
+    }
+  }
 
   return (
     <div className="pf-page">
@@ -276,6 +340,20 @@ export function MarketplacePage() {
           />
         </label>
       </div>
+
+      {watchPayload && (
+        <div className="pf-marketplace-watch-cta">
+          <button
+            type="button"
+            className="pf-btn pf-btn--small pf-btn--outline"
+            onClick={handleCreateWatch}
+            disabled={watchState === 'saving' || watchState === 'tracked' || watchState === 'duplicate' || watchState === 'limit'}
+          >
+            {watchButtonLabel}
+          </button>
+          {watchMessage && <p className="pf-err pf-err--inline">{watchMessage}</p>}
+        </div>
+      )}
 
       <div className="pf-rarity-tabs">
         {RARITY_UI.map((tab) => (

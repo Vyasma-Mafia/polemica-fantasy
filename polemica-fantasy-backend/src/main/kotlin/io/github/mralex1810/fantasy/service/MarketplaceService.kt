@@ -17,11 +17,13 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.event.MarketplaceListingCreatedEvent
 import io.github.mralex1810.fantasy.event.MarketplaceSaleNotificationEvent
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
+import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -45,6 +47,7 @@ class MarketplaceService(
     private val userCardOwnershipService: UserCardOwnershipService,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val telegramUserRepository: TelegramUserRepository,
+    private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
 ) {
@@ -93,6 +96,19 @@ class MarketplaceService(
                 price = request.price,
                 status = MarketplaceListingStatus.ACTIVE,
                 createdAt = Instant.now(),
+            ),
+        )
+        val fantasyPlayer = uc.cardTemplate!!.fantasyPlayer!!
+        val tournamentIds = tournamentPlayerRepository.findDistinctTournamentIdsByFantasyPlayerId(fantasyPlayer.id!!)
+        applicationEventPublisher.publishEvent(
+            MarketplaceListingCreatedEvent(
+                listingId = listing.id!!,
+                sellerId = me.id!!,
+                fantasyPlayerId = fantasyPlayer.id!!,
+                tournamentIds = tournamentIds,
+                rarity = uc.cardTemplate!!.rarity,
+                price = listing.price,
+                playerName = fantasyPlayer.nickname,
             ),
         )
         val tid = uc.cardTemplate!!.id!!

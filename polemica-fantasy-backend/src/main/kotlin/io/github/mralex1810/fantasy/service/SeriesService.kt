@@ -3,15 +3,22 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.dto.admin.response.SkippedSeriesEntry
+import io.github.mralex1810.fantasy.dto.admin.response.StartedSeriesEntry
+import io.github.mralex1810.fantasy.entity.DeadlineReminder
 import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
+import io.github.mralex1810.fantasy.event.SeriesBatchStartedEvent
 import io.github.mralex1810.fantasy.event.SeriesRosterReplacementNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesRosterReplacementRecipient
+import io.github.mralex1810.fantasy.event.StartedSeriesInfo
 import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMessage
 import io.github.mralex1810.fantasy.polemica.GameSyncService
+import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -23,6 +30,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 class SeriesService(
@@ -31,6 +40,7 @@ class SeriesService(
     private val seriesGameRepository: SeriesGameRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
+    private val deadlineReminderRepository: DeadlineReminderRepository,
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
     private val seriesFinalizationService: SeriesFinalizationService,
@@ -56,6 +66,7 @@ class SeriesService(
                 teamDeadline = request.teamDeadline,
             ),
         )
+        upsertDeadlineReminder(s)
         if (s.status == SeriesStatus.FINISHED && !s.finalized) {
             seriesFinalizationService.finalizeSeries(s.id!!)
         }
@@ -68,6 +79,7 @@ class SeriesService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
         }
         val kind = s.tournament!!.kind
+        val previousStatus = s.status
         request.name?.let { s.name = it.trim() }
         request.status?.let { s.status = it }
         request.startsAt?.let { s.startsAt = it }
@@ -102,12 +114,58 @@ class SeriesService(
             }
         }
         val saved = seriesRepository.save(s)
+        upsertDeadlineReminder(saved)
         if (saved.status == SeriesStatus.FINISHED && !saved.finalized) {
             seriesFinalizationService.finalizeSeries(saved.id!!)
+        }
+        if (previousStatus == SeriesStatus.UPCOMING && saved.status == SeriesStatus.ACTIVE) {
+            applicationEventPublisher.publishEvent(
+                SeriesBatchStartedEvent(startedSeries = listOf(saved.toStartedSeriesInfo())),
+            )
         }
         val result = seriesRepository.findById(id).get()
         val counts = gameCountsForSeriesIds(listOf(id))[id] ?: (0L to 0L)
         return result.toDto(tournamentPlayerIdsForSeries(id), counts.first, counts.second)
+    }
+
+    @Transactional
+    fun batchStartSeries(seriesIds: List<Long>): BatchStartSeriesResponse {
+        val started = mutableListOf<StartedSeriesEntry>()
+        val skipped = mutableListOf<SkippedSeriesEntry>()
+        val startedInfos = mutableListOf<StartedSeriesInfo>()
+
+        for (seriesId in seriesIds.distinct()) {
+            val series = seriesRepository.findById(seriesId).orElse(null)
+            if (series == null) {
+                skipped.add(SkippedSeriesEntry(seriesId = seriesId, reason = "Not found"))
+                continue
+            }
+            if (series.status != SeriesStatus.UPCOMING) {
+                skipped.add(SkippedSeriesEntry(seriesId = seriesId, reason = "Already ${series.status.name}"))
+                continue
+            }
+            val previousStatus = series.status
+            series.status = SeriesStatus.ACTIVE
+            val saved = seriesRepository.save(series)
+            started.add(
+                StartedSeriesEntry(
+                    seriesId = saved.id!!,
+                    name = saved.name,
+                    tournamentName = saved.tournament!!.name,
+                    previousStatus = previousStatus.name,
+                ),
+            )
+            startedInfos.add(saved.toStartedSeriesInfo())
+        }
+
+        if (startedInfos.isNotEmpty()) {
+            applicationEventPublisher.publishEvent(SeriesBatchStartedEvent(startedSeries = startedInfos))
+        }
+        return BatchStartSeriesResponse(
+            startedSeries = started,
+            skipped = skipped,
+            notificationRecipientCount = 0,
+        )
     }
 
     private fun validatedSeriesFields(
@@ -247,6 +305,28 @@ class SeriesService(
         scoringService.calculateScores(seriesId)
     }
 
+    private fun upsertDeadlineReminder(series: Series) {
+        val seriesId = series.id ?: return
+        val remindAt = series.teamDeadline.minus(1, ChronoUnit.HOURS)
+        val existing = deadlineReminderRepository.findBySeries_Id(seriesId)
+        if (existing != null) {
+            existing.remindAt = remindAt
+            if (remindAt.isAfter(Instant.now()) && existing.sent) {
+                existing.sent = false
+                existing.sentAt = null
+                existing.recipientCount = null
+            }
+            deadlineReminderRepository.save(existing)
+            return
+        }
+        deadlineReminderRepository.save(
+            DeadlineReminder(
+                series = series,
+                remindAt = remindAt,
+            ),
+        )
+    }
+
     private fun tournamentPlayerIdsForSeries(seriesId: Long): List<Long> =
         seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId).map { it.tournamentPlayer!!.id!! }
 
@@ -268,6 +348,14 @@ class SeriesService(
             Pair(totals[id] ?: 0L, scored[id] ?: 0L)
         }
     }
+
+    private fun Series.toStartedSeriesInfo(): StartedSeriesInfo = StartedSeriesInfo(
+        seriesId = id!!,
+        seriesName = name,
+        tournamentId = tournament!!.id!!,
+        tournamentName = tournament!!.name,
+        teamDeadline = teamDeadline,
+    )
 
     private fun Series.toDto(
         tournamentPlayerIds: List<Long>,

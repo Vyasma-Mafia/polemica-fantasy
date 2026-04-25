@@ -28,7 +28,7 @@ class AdminBroadcastNotificationService(
         if (ids.isEmpty()) {
             return 0L
         }
-        telegramBroadcastAsyncSender.sendToAllChats(token, ids, text)
+        telegramBroadcastAsyncSender.sendToAllChats(text)
         return ids.size.toLong()
     }
 }

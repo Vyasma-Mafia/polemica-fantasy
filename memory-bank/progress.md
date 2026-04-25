@@ -2,6 +2,49 @@
 
 ## Что реализовано
 
+### Инфраструктура уведомлений (Plan notify/01)
+- [x] **Flyway V34:** `notification_preference`, `tournament_subscription`, `telegram_user.bot_blocked` (default `false`), `deadline_reminder`, `marketplace_watch_filter`, `marketplace_watch_pending`
+- [x] **Сущности/репозитории:** `NotificationCategory`, `NotificationPreference`, `TournamentSubscription`, `NotificationPreferenceRepository`, `TournamentSubscriptionRepository`
+- [x] **Telegram infra:** `InlineKeyboardMarkup`/`InlineKeyboardButton`, `TelegramSendResult`, `TelegramBotApiClient.sendMessageSafe` + поддержка `replyMarkup` в `sendMessage`
+- [x] **Delivery layer:** `NotificationDeliveryService` (`deliver`/`deliverToMany`/`broadcast`) с проверкой `telegram.bot.notifications.enabled` + token, фильтрацией `bot_blocked`, учётом user preferences, retry на 429, mark `bot_blocked=true` на 403, delay 50ms в batch
+- [x] **Миграция listeners:** `SeriesFinalizedNotificationListener`, `MarketplaceSaleNotificationListener`, `PairBanNotificationListener`, `SeriesRosterReplacementNotificationListener` переведены на `NotificationDeliveryService`; добавлен `NotificationButtonFactory` (кнопки в Mini App)
+- [x] **Broadcast:** `TelegramBroadcastAsyncSender` использует `NotificationDeliveryService.broadcast`; `AdminBroadcastNotificationService` отправляет только текст
+- [x] **Series finalization:** `SeriesFinalizedNotificationEvent` расширен `seriesId` (для кнопки leaderboard)
+- [x] **Сброс bot-block:** `UserService.getOrCreateAndUpdateProfile` сбрасывает `botBlocked=false` при входе пользователя в TMA
+
+### Пользовательские настройки и старт серии (Plan notify/02)
+- [x] **User settings API:** `NotificationSettingsController` под `/api/v1/settings` с эндпоинтами `GET/PUT /notifications` и `GET/PUT /tournament-subscriptions`
+- [x] **DTO + сервисы настроек:** `NotificationSettingsDtos`, `TournamentSubscriptionDtos`, запросы update; сервисы `NotificationSettingsService`, `TournamentSubscriptionService`
+- [x] **Категории уведомлений:** `NotificationCategory` получил `description` для пользовательского API настроек
+- [x] **Batch start API:** `POST /api/v1/admin/series/batch-start`, DTO `BatchStartSeriesRequest` и `BatchStartSeriesResponse`
+- [x] **Событие старта:** `SeriesBatchStartedEvent` + `StartedSeriesInfo`; `SeriesService.updateSeries` публикует event при переходе `UPCOMING -> ACTIVE`, `SeriesService.batchStartSeries` публикует общий event на батч
+- [x] **Уведомление о старте серии:** `SeriesStartNotificationListener` (агрегация по пользователю, фильтрация по `SERIES_START`/`bot_blocked`/подпискам на турниры, fallback «без подписок = все турниры», inline-кнопка подачи команды для одиночного старта)
+
+### Дедлайн-напоминания по командам (Plan notify/03)
+- [x] **Сущность и репозиторий:** `DeadlineReminder`, `DeadlineReminderRepository` (`findBySeries_Id`, выбор pending по `remind_at` и `sent=false`)
+- [x] **Upsert при изменении серии:** `SeriesService.createSeries` / `updateSeries` обновляют `deadline_reminder` (`remind_at = teamDeadline - 1h`); при переносе дедлайна в будущее после отправки — сбрасываются `sent`, `sentAt`, `recipientCount`
+- [x] **Выборка получателей:** `TelegramUserRepository.findDeadlineReminderRecipients` (native SQL: `bot_blocked=false`, preference `TEAM_DEADLINE_REMINDER` не отключён, нет команды в серии, фильтр подписок турниров с fallback «нет подписок = все турниры»)
+- [x] **Сервис отправки:** `DeadlineReminderService` (skip для `FINISHED`/`SCORING`, mark sent при пустом списке, сообщение с дедлайном в МСК + кнопка `submitTeamButton`, сохранение фактически доставленного `recipientCount`)
+- [x] **Планировщик:** `DeadlineReminderScheduler` (`@Scheduled(fixedRate=60000)`, обработка pending reminders, логирование ошибки по reminder id без падения цикла)
+- [x] **Тесты:** `DeadlineReminderServiceTest` и интеграционный сценарий в `AdminApiIntegrationTest` (create/update upsert + reset sent-state)
+
+### Отслеживание карт на маркетплейсе (Plan notify/04)
+- [x] **Сущности/репозитории:** `MarketplaceWatchFilter`, `MarketplaceWatchPending`, `MarketplaceWatchFilterRepository`, `MarketplaceWatchPendingRepository`
+- [x] **Публикация события:** `MarketplaceService.createListing` публикует `MarketplaceListingCreatedEvent` после сохранения листинга; турниры игрока берутся через `TournamentPlayerRepository.findDistinctTournamentIdsByFantasyPlayerId`
+- [x] **Matching + pending:** `MarketplaceWatchNotificationListener` (`@TransactionalEventListener(AFTER_COMMIT)` + `@Async`) матчинг по `player/tournament/rarity/maxPrice`, исключение продавца, фильтры `bot_blocked` + preference `MARKETPLACE_WATCH`, запись в pending
+- [x] **Батч-рассылка:** `MarketplaceWatchScheduler` (`@Scheduled(fixedRate=300000)`) агрегирует pending в одно сообщение на пользователя, добавляет кнопку открытия маркетплейса, очищает pending после попытки отправки
+- [x] **User API CRUD:** `GET/POST/DELETE /api/v1/settings/marketplace-watches` в `NotificationSettingsController` через `MarketplaceWatchService` (валидация: ≥1 критерий из `fantasyPlayerId/tournamentId/rarity`, `maxPrice > 0`, лимит 10 фильтров, удаление только своих, duplicate → 409)
+- [x] **Тесты:** unit `MarketplaceWatchServiceTest`
+
+### TMA UI уведомлений (Plan notify/05)
+- [x] **Типы + API-хуки:** `src/types/notifications.ts`, `src/api/notifications.ts` (`useNotificationSettings`, `useUpdateNotificationSettings`, `useTournamentSubscriptions`, `useUpdateTournamentSubscriptions`, `useMarketplaceWatches`, `useCreateMarketplaceWatch`, `useDeleteMarketplaceWatch`) с optimistic update для настроек категорий и подписок
+- [x] **Top bar + роутинг:** в `src/App.tsx` добавлен 🔔-линк на `/notifications`; подключены маршруты `/notifications`, `/notifications/tournaments`, `/notifications/marketplace-watches`
+- [x] **Страница категорий:** `NotificationSettingsPage` — 8 категорий по группам (Турниры/Маркетплейс/Системные), toggleable/non-toggleable состояния, переходы на подписки турниров и watch-фильтры
+- [x] **Страница подписок:** `TournamentSubscriptionsPage` — чекбоксы активных турниров и сохранение через `PUT /settings/tournament-subscriptions` (пустой выбор = уведомления по всем турнирам)
+- [x] **Страница watch-фильтров:** `MarketplaceWatchesPage` — список фильтров, удаление, счётчик `N из max`, форма добавления (игрок/турнир/редкость/maxPrice) и клиентская валидация
+- [x] **Контекстная кнопка на маркетплейсе:** в `MarketplacePage` добавлено создание watch из текущих фильтров (без max-only сценария), UX-обработка `409` («Уже отслеживается») и `400` лимита («Достигнут лимит фильтров»)
+- [x] **Стилизация:** расширен `index.css` для экрана уведомлений, switch/checkbox-элементов, списка watch-фильтров и CTA блока на маркетплейсе
+
 ### Ценность карты (card value, backend)
 - [x] **Flyway V33:** ключи `economy_config` `card.value.{RARITY}` и `card.value.achievement_bonus` (сид по плану)
 - [x] **`CardValueService`:** `base + achievementCount * bonus` по шаблону (уникальные ачивки), без хранения в БД

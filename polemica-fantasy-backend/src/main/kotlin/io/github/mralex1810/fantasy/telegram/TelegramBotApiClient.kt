@@ -2,6 +2,7 @@ package io.github.mralex1810.fantasy.telegram
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
@@ -22,8 +23,9 @@ class TelegramBotApiClient(
         text: String,
         messageThreadId: Int? = null,
         parseMode: String? = null,
+        replyMarkup: InlineKeyboardMarkup? = null,
     ) {
-        val body = buildMap {
+        val body = buildMap<String, Any> {
             put("chat_id", chatId)
             put("text", text)
             if (messageThreadId != null) {
@@ -32,9 +34,47 @@ class TelegramBotApiClient(
             if (parseMode != null) {
                 put("parse_mode", parseMode)
             }
+            if (replyMarkup != null) {
+                put("reply_markup", replyMarkup.toMap())
+            }
         }
         val tree = apiPost(botToken, "sendMessage", body)
         requireTelegramOk(tree, "sendMessage")
+    }
+
+    fun sendMessageSafe(
+        botToken: String,
+        chatId: Long,
+        text: String,
+        parseMode: String? = null,
+        replyMarkup: InlineKeyboardMarkup? = null,
+    ): TelegramSendResult {
+        val body = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("text", text)
+            if (parseMode != null) {
+                put("parse_mode", parseMode)
+            }
+            if (replyMarkup != null) {
+                put("reply_markup", replyMarkup.toMap())
+            }
+        }
+        return try {
+            val tree = apiPostAllowErrors(botToken, "sendMessage", body)
+            if (tree.path("ok").asBoolean()) {
+                TelegramSendResult.Success
+            } else {
+                val code = tree.path("error_code").asInt(0)
+                val desc = tree.path("description").asText("")
+                when (code) {
+                    403 -> TelegramSendResult.BotBlocked(desc)
+                    429 -> TelegramSendResult.RateLimited(tree.path("parameters").path("retry_after").asInt(5))
+                    else -> TelegramSendResult.OtherError(code, desc)
+                }
+            }
+        } catch (_: Exception) {
+            TelegramSendResult.OtherError(0, "Failed to call Telegram sendMessage")
+        }
     }
 
     /**
@@ -107,6 +147,19 @@ class TelegramBotApiClient(
             .retrieve()
             .body(String::class.java)
             ?: throw IllegalStateException("Telegram $method: empty response body")
+        return objectMapper.readTree(responseBody)
+    }
+
+    private fun apiPostAllowErrors(botToken: String, method: String, body: Map<String, Any>): JsonNode {
+        val token = requireBotToken(botToken)
+        val uri = URI.create("https://api.telegram.org/bot$token/$method")
+        val responseBody = restClient.method(HttpMethod.POST)
+            .uri(uri)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(body)
+            .exchange { _, response ->
+                response.bodyTo(String::class.java) ?: """{"ok":false,"error_code":0,"description":"empty response body"}"""
+            }
         return objectMapper.readTree(responseBody)
     }
 

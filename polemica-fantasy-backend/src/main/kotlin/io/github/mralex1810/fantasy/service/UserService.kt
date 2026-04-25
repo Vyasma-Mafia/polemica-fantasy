@@ -23,6 +23,9 @@ class UserService(
     fun getOrCreateAndUpdateProfile(telegramId: Long, username: String?, firstName: String?): TelegramUser {
         val existing = telegramUserRepository.findByTelegramId(telegramId)
         if (existing != null) {
+            if (existing.botBlocked) {
+                existing.botBlocked = false
+            }
             applyTelegramProfileFields(existing, username, firstName)
             return telegramUserRepository.save(existing)
         }

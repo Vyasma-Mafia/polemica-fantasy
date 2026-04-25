@@ -1,10 +1,12 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
+import io.github.mralex1810.fantasy.dto.admin.request.BatchStartSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
-import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
 import io.github.mralex1810.fantasy.service.SeriesService
 import jakarta.validation.Valid
@@ -41,6 +43,11 @@ class SeriesAdminController(
         @PathVariable id: Long,
         @Valid @RequestBody body: UpdateSeriesRequest,
     ): SeriesDto = seriesService.updateSeries(id, body)
+
+    @PostMapping("/series/batch-start")
+    fun batchStartSeries(
+        @RequestBody body: BatchStartSeriesRequest,
+    ): BatchStartSeriesResponse = seriesService.batchStartSeries(body.seriesIds)
 
     @PostMapping("/series/{id}/players")
     fun assignPlayers(

@@ -15,9 +15,12 @@ import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
 import { MarketplacePage } from './pages/MarketplacePage'
 import { MyListingsPage } from './pages/MyListingsPage'
+import { MarketplaceWatchesPage } from './pages/MarketplaceWatchesPage'
+import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
 import { RatingPage } from './pages/RatingPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
+import { TournamentSubscriptionsPage } from './pages/TournamentSubscriptionsPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
 import { TournamentPage } from './pages/TournamentPage'
 
@@ -39,6 +42,13 @@ function Shell() {
           <div className="top__balance">
             <FantikiBalance />
           </div>
+          <NavLink
+            to="/notifications"
+            className={({ isActive }) => `top__notifications${isActive ? ' active' : ''}`}
+            aria-label="Уведомления"
+          >
+            🔔
+          </NavLink>
         </div>
         <nav className="nav" aria-label="Основное меню">
           <NavLink to="/" end>
@@ -76,6 +86,9 @@ function Shell() {
           <Route path="/store" element={<StorePage />} />
           <Route path="/marketplace" element={<MarketplacePage />} />
           <Route path="/marketplace/my" element={<MyListingsPage />} />
+          <Route path="/notifications" element={<NotificationSettingsPage />} />
+          <Route path="/notifications/tournaments" element={<TournamentSubscriptionsPage />} />
+          <Route path="/notifications/marketplace-watches" element={<MarketplaceWatchesPage />} />
         </Routes>
       </main>
     </div>

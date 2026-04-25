@@ -74,6 +74,7 @@ class SeriesFinalizationService(
         seriesRepository.save(series)
         applicationEventPublisher.publishEvent(
             SeriesFinalizedNotificationEvent(
+                seriesId = seriesId,
                 tournamentName = tournamentName,
                 seriesName = seriesName,
                 winnerPublicName = winnerPublicName,

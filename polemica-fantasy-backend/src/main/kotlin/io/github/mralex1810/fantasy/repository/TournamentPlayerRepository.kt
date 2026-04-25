@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy.repository
 
 import io.github.mralex1810.fantasy.entity.TournamentPlayer
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 
 interface TournamentPlayerRepository : JpaRepository<TournamentPlayer, Long> {
     fun findByIdAndTournament_Id(id: Long, tournamentId: Long): TournamentPlayer?
@@ -18,4 +20,7 @@ interface TournamentPlayerRepository : JpaRepository<TournamentPlayer, Long> {
     fun countByTournament_Id(tournamentId: Long): Long
 
     fun countByTournament_IdAndExcludedFromPackPoolIsFalse(tournamentId: Long): Long
+
+    @Query("SELECT DISTINCT tp.tournament.id FROM TournamentPlayer tp WHERE tp.fantasyPlayer.id = :fantasyPlayerId")
+    fun findDistinctTournamentIdsByFantasyPlayerId(@Param("fantasyPlayerId") fantasyPlayerId: Long): List<Long>
 }

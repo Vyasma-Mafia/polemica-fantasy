@@ -37,3 +37,8 @@ data class AssignSeriesPlayersRequest(
     @field:NotNull
     val tournamentPlayerIds: List<Long>,
 )
+
+data class BatchStartSeriesRequest(
+    @field:NotNull
+    val seriesIds: List<Long>,
+)

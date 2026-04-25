@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy
 
+import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
@@ -19,10 +20,12 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import com.jayway.jsonpath.JsonPath
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Instant
 import java.util.Base64
 
 @SpringBootTest
@@ -34,6 +37,9 @@ class AdminApiIntegrationTest {
 
     @Autowired
     private lateinit var mockMvc: MockMvc
+
+    @Autowired
+    private lateinit var deadlineReminderRepository: DeadlineReminderRepository
 
     @Test
     @Order(1)
@@ -509,6 +515,65 @@ class AdminApiIntegrationTest {
             .andReturn().response.contentAsString
         val rows = JsonPath.parse(listJson).read<List<Any>>("$")
         assertTrue(rows.isEmpty())
+    }
+
+    @Test
+    @Order(18)
+    fun `deadline reminder upsert on create and update resets sent state for future deadline`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val initialDeadline = Instant.parse("2099-08-10T12:00:00Z")
+        val updatedDeadline = Instant.parse("2099-08-12T15:00:00Z")
+
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Reminder Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Reminder Round","namePrefix":"RR","status":"UPCOMING",
+                    "startsAt":"2099-08-01T12:00:00Z","teamDeadline":"$initialDeadline"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        val createdReminder = deadlineReminderRepository.findBySeries_Id(seriesId)
+        assertNotNull(createdReminder)
+        assertEquals(initialDeadline.minusSeconds(3600), createdReminder!!.remindAt)
+        assertEquals(false, createdReminder.sent)
+
+        createdReminder.sent = true
+        createdReminder.sentAt = Instant.parse("2099-08-01T00:00:00Z")
+        createdReminder.recipientCount = 9
+        deadlineReminderRepository.save(createdReminder)
+
+        mockMvc.perform(
+            put("/api/v1/admin/series/$seriesId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"teamDeadline":"$updatedDeadline"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.teamDeadline").value(updatedDeadline.toString()))
+
+        val updatedReminder = deadlineReminderRepository.findBySeries_Id(seriesId)
+        assertNotNull(updatedReminder)
+        assertEquals(updatedDeadline.minusSeconds(3600), updatedReminder!!.remindAt)
+        assertEquals(false, updatedReminder.sent)
+        assertEquals(null, updatedReminder.sentAt)
+        assertEquals(null, updatedReminder.recipientCount)
     }
 
     companion object {

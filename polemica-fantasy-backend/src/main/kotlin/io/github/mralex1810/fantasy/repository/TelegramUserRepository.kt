@@ -68,7 +68,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
         value =
             """
             SELECT u.id, u.telegram_id, u.username, u.first_name, u.display_name, u.created_at, u.fantiki,
-              u.pack_opens_count, u.marketplace_banned
+              u.pack_opens_count, u.marketplace_banned, u.bot_blocked
             FROM telegram_user u
             WHERE
               (u.username IS NOT NULL AND u.username ILIKE :pattern ESCAPE '!')
@@ -106,4 +106,65 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
         @Param("seriesId") seriesId: Long,
         @Param("pattern") pattern: String,
     ): List<Array<Any>>
+
+    @Query(
+        value =
+            """
+            SELECT tu.*
+            FROM telegram_user tu
+            WHERE tu.bot_blocked = FALSE
+              AND NOT EXISTS (
+                  SELECT 1 FROM notification_preference np
+                  WHERE np.telegram_user_id = tu.id
+                    AND np.category = 'SERIES_START'
+                    AND np.enabled = FALSE
+              )
+              AND (
+                  NOT EXISTS (
+                      SELECT 1 FROM tournament_subscription ts WHERE ts.telegram_user_id = tu.id
+                  )
+                  OR EXISTS (
+                      SELECT 1 FROM tournament_subscription ts
+                      WHERE ts.telegram_user_id = tu.id AND ts.tournament_id IN (:tournamentIds)
+                  )
+              )
+            ORDER BY tu.id
+            """,
+        nativeQuery = true,
+    )
+    fun findAllEligibleForSeriesStart(@Param("tournamentIds") tournamentIds: Collection<Long>): List<TelegramUser>
+
+    @Query(
+        value =
+            """
+            SELECT DISTINCT tu.telegram_id
+            FROM telegram_user tu
+            WHERE tu.bot_blocked = FALSE
+              AND NOT EXISTS (
+                  SELECT 1 FROM notification_preference np
+                  WHERE np.telegram_user_id = tu.id
+                    AND np.category = 'TEAM_DEADLINE_REMINDER'
+                    AND np.enabled = FALSE
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM fantasy_team ft
+                  WHERE ft.telegram_user_id = tu.id AND ft.series_id = :seriesId
+              )
+              AND (
+                  NOT EXISTS (
+                      SELECT 1 FROM tournament_subscription ts WHERE ts.telegram_user_id = tu.id
+                  )
+                  OR EXISTS (
+                      SELECT 1 FROM tournament_subscription ts
+                      WHERE ts.telegram_user_id = tu.id AND ts.tournament_id = :tournamentId
+                  )
+              )
+            ORDER BY tu.id
+            """,
+        nativeQuery = true,
+    )
+    fun findDeadlineReminderRecipients(
+        @Param("seriesId") seriesId: Long,
+        @Param("tournamentId") tournamentId: Long,
+    ): List<Long>
 }

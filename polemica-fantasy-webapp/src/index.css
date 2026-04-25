@@ -106,6 +106,26 @@ a {
   flex-shrink: 0;
 }
 
+.top__notifications {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--pf-text-heading);
+  transition: background 0.15s ease;
+}
+
+.top__notifications:hover,
+.top__notifications.active {
+  background: var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.08));
+}
+
 .pf-fantiki {
   display: inline-flex;
   align-items: center;
@@ -476,6 +496,197 @@ a {
 .pf-link-row__badge {
   font-size: 0.8rem;
   font-weight: 400;
+}
+
+/* --- Notifications settings --- */
+.pf-notify-group {
+  margin-bottom: 16px;
+}
+
+.pf-notify-group__title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pf-text-muted);
+  margin: 0 0 8px;
+}
+
+.pf-notify-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  background: var(--pf-bg-elevated);
+}
+
+.pf-notify-list__item + .pf-notify-list__item {
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+
+.pf-notify-row__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.pf-notify-row__label {
+  color: var(--pf-text-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.pf-notify-row__lock {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--pf-text-muted);
+}
+
+.pf-notify-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px 12px;
+  font-size: 0.82rem;
+  color: #c4b5fd;
+  text-decoration: none;
+}
+
+.pf-notify-link-row:hover {
+  color: #ddd6fe;
+}
+
+.pf-notify-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.pf-notify-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pf-notify-switch__track {
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--pf-border);
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pf-notify-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.pf-notify-switch input:checked + .pf-notify-switch__track {
+  background: var(--tg-theme-button-color, #7c3aed);
+  border-color: transparent;
+}
+
+.pf-notify-switch input:checked + .pf-notify-switch__track::after {
+  transform: translateX(18px);
+}
+
+.pf-notify-switch input:disabled + .pf-notify-switch__track {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pf-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  font-size: 0.92rem;
+  color: var(--pf-text-heading);
+}
+
+.pf-checkbox-row input {
+  width: 16px;
+  height: 16px;
+}
+
+.pf-notify-watch-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  background: var(--pf-bg-elevated);
+}
+
+.pf-notify-watch {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+}
+
+.pf-notify-watch + .pf-notify-watch {
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-notify-watch__text {
+  color: var(--pf-text-heading);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.pf-notify-watch__meta {
+  margin-top: 4px;
+  color: var(--pf-text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.pf-notify-watch__remove {
+  border: 1px solid var(--pf-border);
+  background: transparent;
+  color: var(--pf-text-muted);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.pf-notify-watch__remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pf-notify-form {
+  margin-top: 12px;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  background: var(--pf-bg-elevated);
+  padding: 12px;
+}
+
+.pf-notify-form__title {
+  font-size: 0.95rem;
+  margin: 0 0 10px;
 }
 
 .pf-game-row {
@@ -3690,6 +3901,10 @@ button.pf-mini-card:disabled {
 
 .pf-marketplace-filters {
   margin-bottom: 12px;
+}
+
+.pf-marketplace-watch-cta {
+  margin-bottom: 14px;
 }
 
 .pf-marketplace-card__open {
