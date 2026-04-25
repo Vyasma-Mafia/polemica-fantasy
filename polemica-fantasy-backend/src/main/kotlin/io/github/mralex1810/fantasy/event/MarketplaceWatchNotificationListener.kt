@@ -7,11 +7,10 @@ import io.github.mralex1810.fantasy.repository.MarketplaceWatchPendingRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 
 @Component
 class MarketplaceWatchNotificationListener(
