@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActiveSeriesBriefDto } from '../api/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { batchStartSeries as batchStartSeriesApi } from '../api/series'
 import {
   createTournament,
   listTournaments,
@@ -52,7 +53,28 @@ export function TournamentsPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const batchStartMut = useMutation({
+    mutationFn: (seriesIds: number[]) => batchStartSeriesApi({ seriesIds }),
+    onSuccess: (res) => {
+      const started = res.startedSeries.length
+      const skipped = res.skipped.length
+      if (started > 0) {
+        message.success(
+          `Started ${started} series${skipped > 0 ? `; skipped ${skipped}` : ''}`,
+        )
+      } else {
+        message.info('No series were started')
+      }
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
   const editing = data?.find((t) => t.id === editId)
+  const upcomingSeriesIds = (data ?? [])
+    .flatMap((t) => t.activeSeries ?? [])
+    .filter((s) => s.status === 'UPCOMING')
+    .map((s) => s.id)
 
   return (
     <div>
@@ -62,6 +84,20 @@ export function TournamentsPage() {
         </Typography.Title>
         <Button type="primary" onClick={() => setCreateOpen(true)}>
           New tournament
+        </Button>
+        <Button
+          disabled={upcomingSeriesIds.length === 0}
+          loading={batchStartMut.isPending}
+          onClick={() =>
+            Modal.confirm({
+              title: 'Start all UPCOMING series?',
+              content: `This will move ${upcomingSeriesIds.length} series to ACTIVE across all tournaments and send one aggregated notification to users.`,
+              okText: 'Start all',
+              onOk: () => batchStartMut.mutate(upcomingSeriesIds),
+            })
+          }
+        >
+          Start all UPCOMING
         </Button>
       </Space>
 
