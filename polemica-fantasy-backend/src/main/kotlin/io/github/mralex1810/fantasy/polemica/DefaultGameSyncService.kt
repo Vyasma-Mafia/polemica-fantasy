@@ -116,11 +116,14 @@ class DefaultGameSyncService(
         if (from > to) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "game_num_from must be <= game_num_to")
         }
+        val phaseFilter = series.gamePhase
         val refs = integration.listCompetitionGameReferences(competitionId)
         val result = mutableListOf<PreparedSeriesGame>()
         for (ref in refs) {
             if (ref.num < from || ref.num > to) continue
+            if (!matchesSeriesPhaseFilter(phaseFilter, ref.phase.toInt())) continue
             val game = integration.loadGameFromCompetition(competitionId, ref.id, ref.version)
+            if (!matchesSeriesPhaseFilter(phaseFilter, game.phase)) continue
             val name = game.name?.trim() ?: ""
             val gid = game.id ?: continue
             result.add(
@@ -175,6 +178,9 @@ class DefaultGameSyncService(
         val n = game.num
         return if (n != null) "Игра $n" else "Игра #${game.id}"
     }
+
+    private fun matchesSeriesPhaseFilter(seriesPhaseFilter: Int?, gamePhase: Int?): Boolean =
+        seriesPhaseFilter == null || gamePhase == seriesPhaseFilter
 
     private companion object {
         /**

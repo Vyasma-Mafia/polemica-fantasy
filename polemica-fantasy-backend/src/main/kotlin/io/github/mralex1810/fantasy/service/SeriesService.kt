@@ -59,14 +59,15 @@ class SeriesService(
         val tournament = tournamentRepository.findById(tournamentId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
         }
-        val (namePrefix, gameFrom, gameTo) = validatedSeriesFields(tournament.kind, request)
+        val validated = validatedSeriesFields(tournament.kind, request)
         val s = seriesRepository.save(
             Series(
                 tournament = tournament,
                 name = request.name.trim(),
-                namePrefix = namePrefix,
-                gameNumFrom = gameFrom,
-                gameNumTo = gameTo,
+                namePrefix = validated.namePrefix,
+                gameNumFrom = validated.gameNumFrom,
+                gameNumTo = validated.gameNumTo,
+                gamePhase = validated.gamePhase,
                 status = request.status,
                 startsAt = request.startsAt,
                 teamDeadline = request.teamDeadline,
@@ -103,6 +104,10 @@ class SeriesService(
                 if (request.gameNumFrom != null || request.gameNumTo != null) {
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "game numbers are not used for STANDALONE tournaments")
                 }
+                if (request.gamePhaseSpecified && request.gamePhase != null) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gamePhase is not used for STANDALONE tournaments")
+                }
+                s.gamePhase = null
             }
             TournamentKind.POLEMICA_COMPETITION -> {
                 val from = request.gameNumFrom ?: s.gameNumFrom
@@ -118,6 +123,9 @@ class SeriesService(
                     s.gameNumTo = to
                 }
                 request.namePrefix?.let { s.namePrefix = it.trim().takeIf { x -> x.isNotEmpty() } }
+                if (request.gamePhaseSpecified) {
+                    s.gamePhase = request.gamePhase
+                }
             }
         }
         val saved = seriesRepository.save(s)
@@ -178,7 +186,7 @@ class SeriesService(
     private fun validatedSeriesFields(
         kind: TournamentKind,
         request: CreateSeriesRequest,
-    ): Triple<String?, Long?, Long?> =
+    ): ValidatedSeriesFields =
         when (kind) {
             TournamentKind.STANDALONE -> {
                 val p = request.namePrefix?.trim()?.takeIf { it.isNotEmpty() }
@@ -186,7 +194,12 @@ class SeriesService(
                 if (request.gameNumFrom != null || request.gameNumTo != null) {
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "game numbers are not used for STANDALONE tournaments")
                 }
-                Triple(p, null, null)
+                ValidatedSeriesFields(
+                    namePrefix = p,
+                    gameNumFrom = null,
+                    gameNumTo = null,
+                    gamePhase = null,
+                )
             }
             TournamentKind.POLEMICA_COMPETITION -> {
                 val from = request.gameNumFrom
@@ -197,7 +210,12 @@ class SeriesService(
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gameNumFrom must be <= gameNumTo")
                 }
                 val prefix = request.namePrefix?.trim()?.takeIf { it.isNotEmpty() }
-                Triple(prefix, from, to)
+                ValidatedSeriesFields(
+                    namePrefix = prefix,
+                    gameNumFrom = from,
+                    gameNumTo = to,
+                    gamePhase = request.gamePhase,
+                )
             }
         }
 
@@ -392,6 +410,7 @@ class SeriesService(
         namePrefix = namePrefix,
         gameNumFrom = gameNumFrom,
         gameNumTo = gameNumTo,
+        gamePhase = gamePhase,
         status = status,
         startsAt = startsAt,
         teamDeadline = teamDeadline,
@@ -399,5 +418,12 @@ class SeriesService(
         syncedGamesCount = syncedGamesCount,
         scoredGamesCount = scoredGamesCount,
         tournamentPlayerIds = tournamentPlayerIds,
+    )
+
+    private data class ValidatedSeriesFields(
+        val namePrefix: String?,
+        val gameNumFrom: Long?,
+        val gameNumTo: Long?,
+        val gamePhase: Int?,
     )
 }

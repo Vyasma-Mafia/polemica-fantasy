@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Фильтр фаз для POLEMICA_COMPETITION серий
+- [x] **Flyway V36:** `series.game_phase` (`INT NULL`), CHECK-ограничение `0..2` или `NULL`, бэкфилл `game_phase = 0` для существующих серий турниров `POLEMICA_COMPETITION`
+- [x] **Backend API и модель:** в `Series`/`SeriesDto`/`CreateSeriesRequest`/`UpdateSeriesRequest` добавлено поле `gamePhase`; create default для competition = `0`, update поддерживает явное `null` через флаг `gamePhaseSpecified`; для `STANDALONE` значение принудительно `null`
+- [x] **Sync игр:** `DefaultGameSyncService.fetchCompetitionPrepared` фильтрует игры по phase (0/1/2), `null` в серии = учитывать все фазы
+- [x] **Админка:** в `SeriesFormModal` и `SeriesDetailPage` добавлен выбор phase (`0`, `1`, `2`, `All phases/null`), обновлены TS-типы `SeriesDto` и запросы create/update серии
+
 ### Лиги (frontend, Plan 06)
 - [x] **Типы и контракты TMA:** `SeriesLeagueInfo`/`SeriesLeagueBrief`, `FantasyTeamDto`/`PublicFantasyTeam.leagueCode`, `UserCardItem.leaguesInSeries/canJoinMoreLeagues`, `EconomyInfo.leagues`, `UserSeriesDetail`/`UserSeriesSummary.leagues`
 - [x] **API-клиент лиг:** `src/api/leagues.ts` (`fetchSeriesLeagues`, `fetchLeagueLeaderboard`, `submitLeagueTeam`, `updateLeagueTeam`) на новых endpoint'ах `/api/v1/series/{id}/leagues/{code}/*`

@@ -85,6 +85,8 @@ export interface SeriesDto {
   namePrefix: string | null
   gameNumFrom: number | null
   gameNumTo: number | null
+  /** POLEMICA_COMPETITION filter: 0/1/2, null = all phases. */
+  gamePhase: number | null
   status: SeriesStatus
   startsAt: string
   teamDeadline: string

@@ -37,6 +37,9 @@ class Series(
     @Column(name = "game_num_to")
     var gameNumTo: Long? = null,
 
+    @Column(name = "game_phase")
+    var gamePhase: Int? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     var status: SeriesStatus = SeriesStatus.UPCOMING,

@@ -8,6 +8,7 @@ interface Values {
   namePrefix: string
   gameNumFrom: number | null
   gameNumTo: number | null
+  gamePhase: number | 'ALL'
   status: SeriesStatus
   startsAt: ReturnType<typeof dayjs>
   teamDeadline: ReturnType<typeof dayjs>
@@ -32,6 +33,7 @@ export function SeriesFormModal({
         namePrefix: '',
         gameNumFrom: null,
         gameNumTo: null,
+        gamePhase: 0,
         status: 'UPCOMING',
         startsAt: dayjs(),
         teamDeadline: dayjs().add(7, 'day'),
@@ -48,6 +50,7 @@ export function SeriesFormModal({
             ...base,
             gameNumFrom: v.gameNumFrom ?? undefined,
             gameNumTo: v.gameNumTo ?? undefined,
+            gamePhase: v.gamePhase === 'ALL' ? null : v.gamePhase,
             namePrefix: v.namePrefix?.trim() || undefined,
           })
         } else {
@@ -81,6 +84,16 @@ export function SeriesFormModal({
             rules={[{ required: true, message: 'Required for competition tournament' }]}
           >
             <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="gamePhase" label="Phase filter">
+            <Select
+              options={[
+                { value: 0, label: 'Phase 0 (default)' },
+                { value: 1, label: 'Phase 1 (semifinal)' },
+                { value: 2, label: 'Phase 2 (final)' },
+                { value: 'ALL', label: 'All phases (null)' },
+              ]}
+            />
           </Form.Item>
           <Form.Item name="namePrefix" label="Display label (optional)">
             <Input placeholder="Not used for sync" />

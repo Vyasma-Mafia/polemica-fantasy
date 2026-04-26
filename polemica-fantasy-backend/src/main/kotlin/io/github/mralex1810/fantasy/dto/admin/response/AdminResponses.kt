@@ -54,6 +54,8 @@ data class SeriesDto(
     val namePrefix: String?,
     val gameNumFrom: Long?,
     val gameNumTo: Long?,
+    /** POLEMICA_COMPETITION filter: 0/1/2, null = all phases. */
+    val gamePhase: Int?,
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,

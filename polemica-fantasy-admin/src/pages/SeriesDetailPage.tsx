@@ -37,6 +37,7 @@ export function SeriesDetailPage() {
     namePrefix: string
     gameNumFrom: number | null
     gameNumTo: number | null
+    gamePhase: number | 'ALL'
     status: SeriesStatus
     startsAt: ReturnType<typeof dayjs>
     teamDeadline: ReturnType<typeof dayjs>
@@ -68,6 +69,7 @@ export function SeriesDetailPage() {
       namePrefix: s.namePrefix ?? '',
       gameNumFrom: s.gameNumFrom ?? null,
       gameNumTo: s.gameNumTo ?? null,
+      gamePhase: s.gamePhase == null ? 'ALL' : s.gamePhase,
       status: s.status,
       startsAt: dayjs(s.startsAt),
       teamDeadline: dayjs(s.teamDeadline),
@@ -174,6 +176,7 @@ export function SeriesDetailPage() {
               ...base,
               gameNumFrom: v.gameNumFrom ?? undefined,
               gameNumTo: v.gameNumTo ?? undefined,
+              gamePhase: v.gamePhase === 'ALL' ? null : v.gamePhase,
               namePrefix: v.namePrefix?.trim() || undefined,
             })
           } else {
@@ -208,6 +211,16 @@ export function SeriesDetailPage() {
               rules={[{ required: true }]}
             >
               <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="gamePhase" label="Phase filter">
+              <Select
+                options={[
+                  { value: 0, label: 'Phase 0 (default)' },
+                  { value: 1, label: 'Phase 1 (semifinal)' },
+                  { value: 2, label: 'Phase 2 (final)' },
+                  { value: 'ALL', label: 'All phases (null)' },
+                ]}
+              />
             </Form.Item>
             <Form.Item name="namePrefix" label="Display label (optional)">
               <Input />

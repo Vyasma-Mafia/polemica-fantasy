@@ -1,6 +1,10 @@
 package io.github.mralex1810.fantasy.dto.admin.request
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonSetter
 import io.github.mralex1810.fantasy.entity.SeriesStatus
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
@@ -13,6 +17,8 @@ data class CreateSeriesRequest(
     val namePrefix: String? = null,
     val gameNumFrom: Long? = null,
     val gameNumTo: Long? = null,
+    @field:Min(0) @field:Max(2)
+    val gamePhase: Int? = 0,
     @field:NotNull
     val status: SeriesStatus = SeriesStatus.UPCOMING,
     @field:NotNull
@@ -21,17 +27,35 @@ data class CreateSeriesRequest(
     val teamDeadline: Instant,
 )
 
-data class UpdateSeriesRequest(
+class UpdateSeriesRequest {
     @field:Size(max = 512)
-    val name: String? = null,
+    var name: String? = null
+
     @field:Size(max = 512)
-    val namePrefix: String? = null,
-    val gameNumFrom: Long? = null,
-    val gameNumTo: Long? = null,
-    val status: SeriesStatus? = null,
-    val startsAt: Instant? = null,
-    val teamDeadline: Instant? = null,
-)
+    var namePrefix: String? = null
+
+    var gameNumFrom: Long? = null
+
+    var gameNumTo: Long? = null
+
+    @field:Min(0) @field:Max(2)
+    var gamePhase: Int? = null
+        @JsonSetter("gamePhase")
+        set(value) {
+            field = value
+            gamePhaseSpecified = true
+        }
+
+    var status: SeriesStatus? = null
+
+    var startsAt: Instant? = null
+
+    var teamDeadline: Instant? = null
+
+    @get:JsonIgnore
+    var gamePhaseSpecified: Boolean = false
+        private set
+}
 
 data class AssignSeriesPlayersRequest(
     @field:NotNull
