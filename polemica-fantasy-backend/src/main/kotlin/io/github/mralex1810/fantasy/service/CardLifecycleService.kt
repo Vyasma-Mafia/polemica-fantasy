@@ -34,12 +34,6 @@ class CardLifecycleService(
                 "Cannot recycle a card that is in a team for a series that is not finalized yet",
             )
         }
-        if (marketplaceListingRepository.existsByUserCard_IdAndStatus(userCardId, MarketplaceListingStatus.ACTIVE)) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Cannot recycle a card that is listed on the marketplace",
-            )
-        }
         val rarity = uc.cardTemplate!!.rarity
         val earned = economyConfigService.getRecycleValue(rarity)
         val internalId = user.id!!

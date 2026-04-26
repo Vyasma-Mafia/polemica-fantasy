@@ -230,6 +230,98 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `POST recycle succeeds for card listed on marketplace`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Recycle listed card T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":700202,"nickname":"RecycleListedPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fpId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val ctResponse = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fpId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctResponse)!!.groupValues[1].toLong()
+
+        val telegramUserId = 888_777_202L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"RecycleListedUser"}""",
+        )
+        val tma = "tma $initData"
+
+        val listingJson = mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"price":30}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val listingId = Regex("\"listingId\"\\s*:\\s*(\\d+)").find(listingJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            get("/api/v1/marketplace/my-listings")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].listingId").value(listingId))
+
+        mockMvc.perform(
+            post("/api/v1/me/cards/$userCardId/recycle")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantikiEarned").value(greaterThan(0)))
+            .andExpect(jsonPath("$.newBalance").value(greaterThan(1000)))
+
+        mockMvc.perform(
+            get("/api/v1/me/cards?tournamentId=$tournamentId")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(0)))
+
+        mockMvc.perform(
+            get("/api/v1/marketplace/my-listings")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(0)))
+    }
+
+    @Test
     fun `GET fantasy team details without team returns 404`() {
         val initData = buildSignedInitData(
             botToken = "test-token",

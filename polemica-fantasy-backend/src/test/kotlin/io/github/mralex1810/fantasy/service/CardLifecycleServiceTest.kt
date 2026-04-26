@@ -3,7 +3,6 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
-import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserCard
@@ -65,26 +64,11 @@ class CardLifecycleServiceTest {
     }
 
     @Test
-    fun `recycle throws when card is listed on marketplace`() {
+    fun `recycle succeeds and grants fantiki even with marketplace listing`() {
         val user = TelegramUser(telegramId = 1L).apply { id = 10L }
         val uc = UserCard(telegramUser = user, cardTemplate = commonTemplate(), usesRemaining = 2).apply { id = 50L }
         `when`(userCardRepository.findByIdAndTelegramUser_Id(50L, 10L)).thenReturn(uc)
         `when`(fantasyTeamCardRepository.countInNonFinalizedSeries(50L)).thenReturn(0L)
-        `when`(marketplaceListingRepository.existsByUserCard_IdAndStatus(50L, MarketplaceListingStatus.ACTIVE)).thenReturn(true)
-
-        val ex = assertThrows(ResponseStatusException::class.java) {
-            service.recycleCard(user, 50L)
-        }
-        assertEquals(400, ex.statusCode.value())
-    }
-
-    @Test
-    fun `recycle succeeds and grants fantiki`() {
-        val user = TelegramUser(telegramId = 1L).apply { id = 10L }
-        val uc = UserCard(telegramUser = user, cardTemplate = commonTemplate(), usesRemaining = 2).apply { id = 50L }
-        `when`(userCardRepository.findByIdAndTelegramUser_Id(50L, 10L)).thenReturn(uc)
-        `when`(fantasyTeamCardRepository.countInNonFinalizedSeries(50L)).thenReturn(0L)
-        `when`(marketplaceListingRepository.existsByUserCard_IdAndStatus(50L, MarketplaceListingStatus.ACTIVE)).thenReturn(false)
         `when`(economyConfigService.getRecycleValue(Rarity.COMMON)).thenReturn(10L)
         `when`(userService.getBalance(10L)).thenReturn(1010L)
 
