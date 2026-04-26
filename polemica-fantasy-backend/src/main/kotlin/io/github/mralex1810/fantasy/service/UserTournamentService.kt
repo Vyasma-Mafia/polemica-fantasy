@@ -2,12 +2,16 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.SeriesOpenForTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
+import io.github.mralex1810.fantasy.dto.user.response.SeriesLeagueBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.UserSeriesSummaryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDto
 import io.github.mralex1810.fantasy.entity.SeriesStatus
+import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.TournamentStatus
+import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
@@ -21,7 +25,10 @@ import java.time.Instant
 class UserTournamentService(
     private val tournamentRepository: TournamentRepository,
     private val seriesRepository: SeriesRepository,
+    private val seriesLeagueRepository: SeriesLeagueRepository,
+    private val fantasyTeamRepository: FantasyTeamRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
+    private val leagueService: LeagueService,
     private val imageStorageService: ImageStorageService,
 ) {
 
@@ -53,10 +60,11 @@ class UserTournamentService(
     }
 
     @Transactional(readOnly = true)
-    fun getTournament(id: Long): UserTournamentDetailDto {
+    fun getTournament(id: Long, user: TelegramUser): UserTournamentDetailDto {
         val t = tournamentRepository.findById(id).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $id not found")
         }
+        val userId = user.id!!
         val seriesList = seriesRepository.findAllByTournament_IdOrderByIdDesc(id).map { s ->
             UserSeriesSummaryDto(
                 id = s.id!!,
@@ -68,6 +76,7 @@ class UserTournamentService(
                 status = s.status,
                 startsAt = s.startsAt,
                 teamDeadline = s.teamDeadline,
+                leagues = listSeriesLeagueBriefs(s.id!!, userId),
             )
         }
         return UserTournamentDetailDto(
@@ -81,6 +90,17 @@ class UserTournamentService(
             series = seriesList,
         )
     }
+
+    private fun listSeriesLeagueBriefs(seriesId: Long, userId: Long): List<SeriesLeagueBriefDto> =
+        seriesLeagueRepository.findAllEnabledBySeriesIdWithLeague(seriesId).map { sl ->
+            val league = sl.league!!
+            SeriesLeagueBriefDto(
+                code = league.code,
+                name = league.name,
+                hasTeam = fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(userId, sl.id!!) != null,
+                valueCap = leagueService.getEffectiveValueCap(sl),
+            )
+        }
 
     @Transactional(readOnly = true)
     fun listParticipants(tournamentId: Long): List<SeriesPlayerEntryDto> {

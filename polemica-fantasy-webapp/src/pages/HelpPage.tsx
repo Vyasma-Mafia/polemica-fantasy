@@ -120,6 +120,46 @@ export function HelpPage() {
           </table>
         </section>
 
+        <section className="pf-help__section pf-help__anchor" id="leagues">
+          <h2 className="pf-help__section-title">Лиги</h2>
+          <article className="pf-prose">
+            <p>
+              В серии есть как минимум <strong>Основная</strong> и <strong>Бюджетная</strong> лига. У каждой лиги отдельный
+              лидерборд и отдельные награды, а итоговые выплаты по лигам суммируются.
+            </p>
+            <p>
+              <strong>Основная лига</strong> — базовые правила без ограничения по ценности команды.{' '}
+              <strong>Бюджетная лига</strong> ограничивает суммарную ценность карт.
+            </p>
+            <p>
+              Одна и та же карта может играть в нескольких лигах серии, но тратит по <strong>1 использованию за каждую
+              лигу</strong>. Если использований не хватает, карта будет недоступна для дополнительной лиги.
+            </p>
+          </article>
+          {economyQ.isLoading && <p className="pf-muted">Загрузка параметров лиг…</p>}
+          {economyQ.isError && <p className="pf-err">{(economyQ.error as Error).message}</p>}
+          {economyQ.data && (
+            <table className="pf-economy__table">
+              <thead>
+                <tr>
+                  <th>Лига</th>
+                  <th>Кэп ценности</th>
+                  <th>Множитель награды</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(economyQ.data.leagues).map(([code, cfg]) => (
+                  <tr key={code}>
+                    <td>{code === 'MAIN' ? 'Основная' : code === 'BUDGET' ? 'Бюджетная' : code}</td>
+                    <td>{cfg.valueCap != null ? `${cfg.valueCap}₱` : 'без ограничения'}</td>
+                    <td>{cfg.rewardScale}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
         <section className="pf-help__section pf-help__anchor" id="achievements">
           <h2 className="pf-help__section-title">Достижения</h2>
           <p className="pf-muted pf-help__roles-note">

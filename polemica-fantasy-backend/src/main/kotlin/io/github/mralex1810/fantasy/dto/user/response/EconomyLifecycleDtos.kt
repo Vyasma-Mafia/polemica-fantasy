@@ -28,6 +28,11 @@ data class CardValueInfoDto(
     val achievementBonus: Long,
 )
 
+data class LeagueEconomyInfoDto(
+    val valueCap: Long?,
+    val rewardScale: Int,
+)
+
 data class EconomyInfoDto(
     val usesPerRarity: Map<Rarity, Int>,
     val recycleValues: Map<Rarity, Long>,
@@ -42,4 +47,5 @@ data class EconomyInfoDto(
     /** Сколько паков нужно открыть до первой покупки на маркетплейсе. */
     val minPackOpensBeforeMarketplacePurchase: Int,
     val cardValues: CardValueInfoDto,
+    val leagues: Map<String, LeagueEconomyInfoDto> = emptyMap(),
 )

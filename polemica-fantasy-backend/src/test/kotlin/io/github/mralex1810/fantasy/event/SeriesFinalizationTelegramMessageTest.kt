@@ -8,9 +8,16 @@ class SeriesFinalizationTelegramMessageTest {
 
     private val sampleRecipient = SeriesFinalizedRecipient(
         telegramId = 42L,
-        place = 3,
-        total = 15,
-        reward = 50L,
+        leagueResults = listOf(
+            LeagueResult(
+                leagueName = "Основная лига",
+                winnerPublicName = "Alice",
+                place = 3,
+                total = 15,
+                reward = 50L,
+            ),
+        ),
+        totalReward = 50L,
         balanceAfter = 200L,
     )
 
@@ -19,7 +26,6 @@ class SeriesFinalizationTelegramMessageTest {
         val text = buildSeriesFinalizedTelegramMessage(
             tournamentName = "Spring Cup",
             seriesName = "Round 1",
-            winnerPublicName = "Alice",
             recipient = sampleRecipient,
         )
         assertTrue(text.contains("Spring Cup"))
@@ -34,10 +40,20 @@ class SeriesFinalizationTelegramMessageTest {
         val text = buildSeriesFinalizedTelegramMessage(
             tournamentName = "T",
             seriesName = "S",
-            winnerPublicName = "ПобедительНик",
-            recipient = sampleRecipient,
+            recipient = sampleRecipient.copy(
+                leagueResults = listOf(
+                    LeagueResult(
+                        leagueName = "Main",
+                        winnerPublicName = "ПобедительНик",
+                        place = 1,
+                        total = 10,
+                        reward = 100L,
+                    ),
+                ),
+                totalReward = 100L,
+            ),
         )
-        assertTrue(text.contains("Победитель серии: ПобедительНик."))
+        assertTrue(text.contains("Победитель серии: ПобедительНик (Main)."))
     }
 
     @Test
@@ -45,20 +61,51 @@ class SeriesFinalizationTelegramMessageTest {
         val text = buildSeriesFinalizedTelegramMessage(
             tournamentName = "T",
             seriesName = "S",
-            winnerPublicName = null,
-            recipient = sampleRecipient,
+            recipient = sampleRecipient.copy(
+                leagueResults = listOf(
+                    LeagueResult(
+                        leagueName = "Main",
+                        winnerPublicName = null,
+                        place = 4,
+                        total = 10,
+                        reward = 0L,
+                    ),
+                ),
+                totalReward = 0L,
+            ),
         )
         assertFalse(text.contains("Победитель серии:"))
     }
 
     @Test
-    fun `message omits winner line when winner name blank`() {
+    fun `message renders multi league sections and total reward`() {
         val text = buildSeriesFinalizedTelegramMessage(
             tournamentName = "T",
             seriesName = "S",
-            winnerPublicName = "   ",
-            recipient = sampleRecipient,
+            recipient = SeriesFinalizedRecipient(
+                telegramId = 42L,
+                leagueResults = listOf(
+                    LeagueResult(
+                        leagueName = "Основная",
+                        winnerPublicName = "Winner A",
+                        place = 2,
+                        total = 20,
+                        reward = 100L,
+                    ),
+                    LeagueResult(
+                        leagueName = "Бюджетная",
+                        winnerPublicName = "Winner B",
+                        place = 8,
+                        total = 20,
+                        reward = 0L,
+                    ),
+                ),
+                totalReward = 100L,
+                balanceAfter = 700L,
+            ),
         )
-        assertFalse(text.contains("Победитель серии:"))
+        assertTrue(text.contains("Основная (20 участников):"))
+        assertTrue(text.contains("Бюджетная (20 участников):"))
+        assertTrue(text.contains("Итого за серию: +100 фантиков."))
     }
 }

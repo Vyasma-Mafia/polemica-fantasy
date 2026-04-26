@@ -5,14 +5,18 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
+import io.github.mralex1810.fantasy.entity.League
+import io.github.mralex1810.fantasy.entity.LeagueType
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.Series
+import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -38,7 +42,13 @@ class SeriesFinalizationServiceTest {
     private lateinit var fantasyTeamRepository: FantasyTeamRepository
 
     @Mock
+    private lateinit var seriesLeagueRepository: SeriesLeagueRepository
+
+    @Mock
     private lateinit var economyConfigService: EconomyConfigService
+
+    @Mock
+    private lateinit var leagueService: LeagueService
 
     @Mock
     private lateinit var userService: UserService
@@ -75,15 +85,19 @@ class SeriesFinalizationServiceTest {
         val u2 = TelegramUser(telegramId = 2L).apply { id = 11L }
         val uc1 = UserCard(telegramUser = u1, cardTemplate = template(), usesRemaining = 3).apply { id = 101L }
         val uc2 = UserCard(telegramUser = u2, cardTemplate = template(), usesRemaining = 2).apply { id = 102L }
-        val ft1 = FantasyTeam(telegramUser = u1, series = s, totalScore = 10.0).apply { id = 1L }
-        val ft2 = FantasyTeam(telegramUser = u2, series = s, totalScore = 5.0).apply { id = 2L }
+        val league = League(code = "MAIN", name = "Main", leagueType = LeagueType.SYSTEM).apply { id = 1L }
+        val seriesLeague = SeriesLeague(series = s, league = league, enabled = true).apply { id = 21L }
+        val ft1 = FantasyTeam(telegramUser = u1, series = s, seriesLeague = seriesLeague, totalScore = 10.0).apply { id = 1L }
+        val ft2 = FantasyTeam(telegramUser = u2, series = s, seriesLeague = seriesLeague, totalScore = 5.0).apply { id = 2L }
         val ftc1 = FantasyTeamCard(fantasyTeam = ft1, userCard = uc1, slot = 1).apply { id = 1L }
         val ftc2 = FantasyTeamCard(fantasyTeam = ft2, userCard = uc2, slot = 1).apply { id = 2L }
         ft1.cards.add(ftc1)
         ft2.cards.add(ftc2)
 
         `when`(fantasyTeamRepository.findAllWithCardsForScoring(7L)).thenReturn(listOf(ft1, ft2))
-        `when`(fantasyTeamRepository.findLeaderboardForSeries(7L)).thenReturn(listOf(ft1, ft2))
+        `when`(seriesLeagueRepository.findById(21L)).thenReturn(Optional.of(seriesLeague))
+        `when`(fantasyTeamRepository.findLeaderboardForSeriesLeague(21L)).thenReturn(listOf(ft1, ft2))
+        `when`(leagueService.getEffectiveRewardScale(seriesLeague)).thenReturn(50)
         `when`(economyConfigService.getSeriesReward(1, 2)).thenReturn(100L)
         `when`(economyConfigService.getSeriesReward(2, 2)).thenReturn(70L)
         `when`(userService.getBalance(10L)).thenReturn(134L)
@@ -97,16 +111,17 @@ class SeriesFinalizationServiceTest {
         assertEquals(1, uc2.usesRemaining)
         assertEquals(true, s.finalized)
         assertEquals(SeriesStatus.FINISHED, s.status)
-        verify(userService).addBalance(10L, 34L, FantikiTransactionReason.SERIES_REWARD)
-        verify(userService).addBalance(11L, 24L, FantikiTransactionReason.SERIES_REWARD)
+        verify(userService).addBalance(10L, 17L, FantikiTransactionReason.SERIES_REWARD)
+        verify(userService).addBalance(11L, 12L, FantikiTransactionReason.SERIES_REWARD)
         val captor = ArgumentCaptor.forClass(SeriesFinalizedNotificationEvent::class.java)
         verify(applicationEventPublisher).publishEvent(captor.capture())
         val event = captor.value
         assertEquals(7L, event.seriesId)
-        assertEquals("1", event.winnerPublicName)
         assertEquals(2, event.recipients.size)
-        assertEquals(1, event.recipients[0].place)
-        assertEquals(2, event.recipients[1].place)
+        assertEquals(1, event.recipients[0].leagueResults.first().place)
+        assertEquals(2, event.recipients[1].leagueResults.first().place)
+        assertEquals(17L, event.recipients[0].totalReward)
+        assertEquals(12L, event.recipients[1].totalReward)
         assertEquals(134L, event.recipients[0].balanceAfter)
         assertEquals(124L, event.recipients[1].balanceAfter)
     }

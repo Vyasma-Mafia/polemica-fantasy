@@ -57,5 +57,8 @@ class Series(
     var seriesGames: MutableList<SeriesGame> = mutableListOf(),
 
     @OneToMany(mappedBy = "series")
+    var seriesLeagues: MutableList<SeriesLeague> = mutableListOf(),
+
+    @OneToMany(mappedBy = "series")
     var fantasyTeams: MutableList<FantasyTeam> = mutableListOf(),
 )

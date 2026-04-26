@@ -20,7 +20,6 @@ class SeriesFinalizedNotificationListener(
             val text = buildSeriesFinalizedTelegramMessage(
                 event.tournamentName,
                 event.seriesName,
-                event.winnerPublicName,
                 recipient,
             )
             notificationDeliveryService.deliver(

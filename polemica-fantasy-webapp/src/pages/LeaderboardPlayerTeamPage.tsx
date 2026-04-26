@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type {
   FantasyTeamDetailSlot,
@@ -17,6 +17,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { modalImgFrameClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
+import { defaultLeagueCode, leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
@@ -40,6 +41,8 @@ export function LeaderboardPlayerTeamPage() {
   const { seriesId, telegramId } = useParams<{ seriesId: string; telegramId: string }>()
   const sid = Number(seriesId)
   const initData = useInitData()
+  const [searchParams] = useSearchParams()
+  const leagueCode = defaultLeagueCode(searchParams.get('league'))
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
   const [expandedCell, setExpandedCell] = useState<{ gameIndex: number; colIndex: number } | null>(null)
 
@@ -50,17 +53,20 @@ export function LeaderboardPlayerTeamPage() {
   })
 
   const teamQ = useQuery({
-    queryKey: ['public-fantasy-team', sid, telegramId, initData],
+    queryKey: ['public-fantasy-team', sid, telegramId, leagueCode, initData],
     queryFn: () =>
-      apiGet<PublicFantasyTeam>(`/api/v1/series/${sid}/users/${telegramId}/fantasy-team`, initData),
+      apiGet<PublicFantasyTeam>(
+        `/api/v1/series/${sid}/users/${telegramId}/fantasy-team?leagueCode=${encodeURIComponent(leagueCode)}`,
+        initData,
+      ),
     enabled: !!initData && Number.isFinite(sid) && !!telegramId,
   })
 
   const detailsQ = useQuery({
-    queryKey: ['public-fantasy-team-details', sid, telegramId, initData],
+    queryKey: ['public-fantasy-team-details', sid, telegramId, leagueCode, initData],
     queryFn: () =>
       apiGet<FantasyTeamSeriesDetails>(
-        `/api/v1/series/${sid}/users/${telegramId}/fantasy-team/details`,
+        `/api/v1/series/${sid}/users/${telegramId}/fantasy-team/details?leagueCode=${encodeURIComponent(leagueCode)}`,
         initData,
       ),
     enabled: !!initData && Number.isFinite(sid) && !!telegramId && !!teamQ.data,
@@ -92,10 +98,18 @@ export function LeaderboardPlayerTeamPage() {
     const msg = (teamQ.error as Error).message
     return (
       <div className="pf-page">
-        <PageHeader title="Команда" subtitle={seriesMeta.data?.name} backTo={`/series/${sid}/leaderboard`} />
+        <PageHeader
+          title="Команда"
+          subtitle={
+            seriesMeta.data?.name
+              ? `${seriesMeta.data.name} · ${leagueShortName(leagueCode)}`
+              : leagueShortName(leagueCode)
+          }
+          backTo={`/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`}
+        />
         <p className="pf-err">{msg}</p>
         <p className="pf-footer-link">
-          <Link to={`/series/${sid}/leaderboard`}>← К лидерборду</Link>
+          <Link to={`/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`}>← К лидерборду</Link>
         </p>
       </div>
     )
@@ -104,7 +118,7 @@ export function LeaderboardPlayerTeamPage() {
   const team = teamQ.data!
   const ownerLabel = formatUserDisplayName(team.owner)
   const s = seriesMeta.data
-  const backLb = `/series/${sid}/leaderboard`
+  const backLb = `/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`
 
   const detailCard = detailCardId != null ? cardByUserCardId.get(detailCardId) : undefined
   const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
@@ -117,7 +131,11 @@ export function LeaderboardPlayerTeamPage() {
 
   return (
     <div className="pf-page">
-      <PageHeader title={ownerLabel} subtitle={s?.name ?? `Серия #${sid}`} backTo={backLb} />
+      <PageHeader
+        title={ownerLabel}
+        subtitle={`${s?.name ?? `Серия #${sid}`} · ${leagueShortName(team.leagueCode ?? leagueCode)}`}
+        backTo={backLb}
+      />
 
       <section className="pf-history">
         <div className="pf-acc">

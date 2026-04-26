@@ -14,6 +14,8 @@ fun UserCard.toUserCardItemDto(
     templateOverride: CardTemplate? = null,
     imageStorage: ImageStorageService,
     cardValueService: CardValueService,
+    leaguesInSeries: List<String>? = null,
+    canJoinMoreLeagues: Boolean? = null,
     activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
 ): UserCardItemDto {
     val ct = templateOverride ?: cardTemplate!!
@@ -43,6 +45,8 @@ fun UserCard.toUserCardItemDto(
         sourceCardPackId = sourceCardPack?.id,
         craftedByTelegramUserId = craftedBy?.telegramId,
         value = cardValueService.calculateValue(ct),
+        leaguesInSeries = leaguesInSeries,
+        canJoinMoreLeagues = canJoinMoreLeagues,
         activeMarketplaceListing = activeMarketplaceListing,
     )
 }

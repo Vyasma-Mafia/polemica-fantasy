@@ -8,7 +8,9 @@ import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.dto.admin.response.SkippedSeriesEntry
 import io.github.mralex1810.fantasy.dto.admin.response.StartedSeriesEntry
 import io.github.mralex1810.fantasy.entity.DeadlineReminder
+import io.github.mralex1810.fantasy.entity.LeagueType
 import io.github.mralex1810.fantasy.entity.Series
+import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
@@ -19,6 +21,8 @@ import io.github.mralex1810.fantasy.event.StartedSeriesInfo
 import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMessage
 import io.github.mralex1810.fantasy.polemica.GameSyncService
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
+import io.github.mralex1810.fantasy.repository.LeagueRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -41,6 +45,8 @@ class SeriesService(
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val deadlineReminderRepository: DeadlineReminderRepository,
+    private val leagueRepository: LeagueRepository,
+    private val seriesLeagueRepository: SeriesLeagueRepository,
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
     private val seriesFinalizationService: SeriesFinalizationService,
@@ -66,6 +72,7 @@ class SeriesService(
                 teamDeadline = request.teamDeadline,
             ),
         )
+        bootstrapSystemLeagues(s)
         upsertDeadlineReminder(s)
         if (s.status == SeriesStatus.FINISHED && !s.finalized) {
             seriesFinalizationService.finalizeSeries(s.id!!)
@@ -346,6 +353,23 @@ class SeriesService(
         }
         return seriesIds.associateWith { id ->
             Pair(totals[id] ?: 0L, scored[id] ?: 0L)
+        }
+    }
+
+    private fun bootstrapSystemLeagues(series: Series) {
+        val seriesId = series.id ?: return
+        val systemLeagues = leagueRepository.findAllByLeagueType(LeagueType.SYSTEM)
+        for (league in systemLeagues) {
+            if (seriesLeagueRepository.findBySeries_IdAndLeague_Id(seriesId, league.id!!) != null) {
+                continue
+            }
+            seriesLeagueRepository.save(
+                SeriesLeague(
+                    series = series,
+                    league = league,
+                    enabled = true,
+                ),
+            )
         }
     }
 

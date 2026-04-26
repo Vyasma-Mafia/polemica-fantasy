@@ -6,6 +6,7 @@ import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { TournamentStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
+import { leagueShortName } from '../lib/leagues'
 import { formatDateShort, tournamentSeriesDateRange } from '../lib/tournamentDates'
 
 export function TournamentPage() {
@@ -90,7 +91,16 @@ export function TournamentPage() {
           {t.series.map((s) => (
             <li key={s.id}>
               <Link to={`/series/${s.id}`} className="pf-link-row">
-                <span>{s.name}</span>
+                <span className="pf-link-row__main">
+                  <span>{s.name}</span>
+                  {s.leagues.length > 0 && (
+                    <span className="pf-link-row__sub">
+                      {s.leagues
+                        .map((league) => `${leagueShortName(league.code, league.name)} ${league.hasTeam ? '✓' : '✗'}`)
+                        .join(' / ')}
+                    </span>
+                  )}
+                </span>
                 <SeriesStatusInline status={s.status} />
               </Link>
             </li>

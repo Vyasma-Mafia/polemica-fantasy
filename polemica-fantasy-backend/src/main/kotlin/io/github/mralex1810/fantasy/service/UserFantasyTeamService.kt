@@ -16,12 +16,14 @@ import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
+import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -46,7 +48,8 @@ class UserFantasyTeamService(
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
-    private val economyConfigService: EconomyConfigService,
+    private val seriesLeagueRepository: SeriesLeagueRepository,
+    private val leagueService: LeagueService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val entityManager: EntityManager,
     private val imageStorageService: ImageStorageService,
@@ -60,30 +63,38 @@ class UserFantasyTeamService(
     }
 
     @Transactional
-    fun getTeamForSeries(user: TelegramUser, seriesId: Long): FantasyTeamDto {
+    fun getTeamForSeries(user: TelegramUser, seriesId: Long, leagueCode: String = LeagueService.MAIN_CODE): FantasyTeamDto {
         fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
-        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
+        val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(user.id!!, seriesId, leagueCode)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return team.toDto()
     }
 
     @Transactional
-    fun getTeamDetailsForSeries(user: TelegramUser, seriesId: Long): FantasyTeamSeriesDetailsDto {
+    fun getTeamDetailsForSeries(
+        user: TelegramUser,
+        seriesId: Long,
+        leagueCode: String = LeagueService.MAIN_CODE,
+    ): FantasyTeamSeriesDetailsDto {
         fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
-        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(user.id!!, seriesId)
+        val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(user.id!!, seriesId, leagueCode)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return buildTeamSeriesDetails(team, seriesId)
     }
 
     @Transactional
-    fun getPublicTeamForSeries(seriesId: Long, ownerTelegramId: Long): PublicFantasyTeamDto {
+    fun getPublicTeamForSeries(
+        seriesId: Long,
+        ownerTelegramId: Long,
+        leagueCode: String = LeagueService.MAIN_CODE,
+    ): PublicFantasyTeamDto {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
         fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
-        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)
+        val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(owner.id!!, seriesId, leagueCode)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         val templateIds = team.cards.map { it.userCard!!.cardTemplate!!.id!! }
         val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds)
@@ -113,6 +124,7 @@ class UserFantasyTeamService(
             owner = ownerDto,
             seriesId = s.id!!,
             tournamentId = s.tournament!!.id!!,
+            leagueCode = team.seriesLeague!!.league!!.code,
             totalScore = team.totalScore,
             submittedAt = team.submittedAt,
             slots = slots,
@@ -120,14 +132,18 @@ class UserFantasyTeamService(
     }
 
     @Transactional
-    fun getPublicTeamDetailsForSeries(seriesId: Long, ownerTelegramId: Long): FantasyTeamSeriesDetailsDto {
+    fun getPublicTeamDetailsForSeries(
+        seriesId: Long,
+        ownerTelegramId: Long,
+        leagueCode: String = LeagueService.MAIN_CODE,
+    ): FantasyTeamSeriesDetailsDto {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
         fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
-        val team = fantasyTeamRepository.findByUserAndSeriesWithCards(owner.id!!, seriesId)
+        val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(owner.id!!, seriesId, leagueCode)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         return buildTeamSeriesDetails(team, seriesId)
     }
@@ -182,30 +198,41 @@ class UserFantasyTeamService(
     }
 
     @Transactional
-    fun createFantasyTeam(user: TelegramUser, seriesId: Long, request: SubmitFantasyTeamRequest): FantasyTeamDto {
-        if (fantasyTeamRepository.findByTelegramUser_IdAndSeries_Id(user.id!!, seriesId) != null) {
+    fun createFantasyTeam(
+        user: TelegramUser,
+        seriesId: Long,
+        request: SubmitFantasyTeamRequest,
+        leagueCode: String = LeagueService.MAIN_CODE,
+    ): FantasyTeamDto {
+        val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
+        if (fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(user.id!!, seriesLeague.id!!) != null) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Fantasy team already submitted for this series")
         }
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-        }
+        val series = seriesLeague.series!!
         assertDeadline(series.teamDeadline)
         val team = FantasyTeam(
             telegramUser = user,
             series = series,
+            seriesLeague = seriesLeague,
             submittedAt = Instant.now(),
             totalScore = null,
         )
         fantasyTeamRepository.save(team)
-        attachCards(team, user, seriesId, request.userCardIds)
+        attachCards(team, user, seriesId, seriesLeague, request.userCardIds)
         entityManager.flush()
         entityManager.refresh(team)
         return team.toDto()
     }
 
     @Transactional
-    fun updateFantasyTeam(user: TelegramUser, seriesId: Long, request: SubmitFantasyTeamRequest): FantasyTeamDto {
-        val team = fantasyTeamRepository.findByTelegramUser_IdAndSeries_Id(user.id!!, seriesId)
+    fun updateFantasyTeam(
+        user: TelegramUser,
+        seriesId: Long,
+        request: SubmitFantasyTeamRequest,
+        leagueCode: String = LeagueService.MAIN_CODE,
+    ): FantasyTeamDto {
+        val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
+        val team = fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(user.id!!, seriesLeague.id!!)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         val series = team.series!!
         assertDeadline(series.teamDeadline)
@@ -216,7 +243,7 @@ class UserFantasyTeamService(
         team.submittedAt = Instant.now()
         team.totalScore = null
         fantasyTeamRepository.save(team)
-        attachCards(team, user, seriesId, request.userCardIds)
+        attachCards(team, user, seriesId, seriesLeague, request.userCardIds)
         entityManager.flush()
         entityManager.refresh(team)
         return team.toDto()
@@ -232,10 +259,16 @@ class UserFantasyTeamService(
         team: FantasyTeam,
         user: TelegramUser,
         seriesId: Long,
+        seriesLeague: SeriesLeague,
         userCardIds: List<Long>,
     ) {
-        if (userCardIds.size !in 1..3) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Between 1 and 3 user cards required")
+        val minTeamSize = seriesLeague.league!!.minTeamSize
+        val maxTeamSize = seriesLeague.league!!.maxTeamSize
+        if (userCardIds.size !in minTeamSize..maxTeamSize) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Team size must be between $minTeamSize and $maxTeamSize cards",
+            )
         }
         val distinct = userCardIds.distinct()
         if (distinct.size != userCardIds.size) {
@@ -264,17 +297,36 @@ class UserFantasyTeamService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Team cannot include more than one card per player")
         }
         val legendaryCount = cards.count { it.cardTemplate!!.rarity == Rarity.LEGENDARY }
-        val maxLegendary = economyConfigService.getLegendaryTeamMaxPerSeries()
-        if (legendaryCount > maxLegendary) {
+        val maxLegendary = leagueService.getEffectiveMaxLegendary(seriesLeague)
+        if (maxLegendary != null && legendaryCount > maxLegendary) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Maximum $maxLegendary LEGENDARY card(s) allowed per fantasy team",
+            )
+        }
+        val valueCap = leagueService.getEffectiveValueCap(seriesLeague)
+        val totalCardValue = cards.sumOf { cardValueService.calculateValue(it.cardTemplate!!) }
+        if (valueCap != null && totalCardValue > valueCap) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Team value $totalCardValue exceeds league cap $valueCap",
             )
         }
         userCardIds.forEachIndexed { index, ucId ->
             val uc = byId[ucId]!!
             if (uc.usesRemaining <= 0) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card $ucId has no remaining uses")
+            }
+            val existingLeagueCount = fantasyTeamCardRepository.countLeaguesInSeriesForCard(
+                userCardId = ucId,
+                seriesId = seriesId,
+                excludeSeriesLeagueId = seriesLeague.id!!,
+            )
+            if (existingLeagueCount + 1 > uc.usesRemaining) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Card $ucId has only ${uc.usesRemaining} uses and cannot be placed in another league",
+                )
             }
             val fantasyPlayerId = uc.cardTemplate!!.fantasyPlayer!!.id!!
             if (!seriesPlayerRepository.existsBySeries_IdAndTournamentPlayer_FantasyPlayer_Id(seriesId, fantasyPlayerId)) {
@@ -306,9 +358,17 @@ class UserFantasyTeamService(
         return FantasyTeamDto(
             seriesId = s.id!!,
             tournamentId = s.tournament!!.id!!,
+            leagueCode = seriesLeague!!.league!!.code,
             totalScore = totalScore,
             submittedAt = submittedAt,
             slots = slots,
         )
     }
+
+    private fun resolveSeriesLeague(seriesId: Long, leagueCode: String): SeriesLeague =
+        seriesLeagueRepository.findBySeries_IdAndLeague_CodeAndEnabledTrue(seriesId, leagueCode)
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "League $leagueCode is not available for series $seriesId",
+            )
 }

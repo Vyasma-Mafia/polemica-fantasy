@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.service.UserCardCollectionService
 import io.github.mralex1810.fantasy.service.UserFantasyTeamService
 import io.github.mralex1810.fantasy.service.UserService
+import io.github.mralex1810.fantasy.service.LeagueService
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -50,11 +51,13 @@ class UserController(
     fun fantasyTeamForSeries(
         @AuthenticationPrincipal user: TelegramUser,
         @PathVariable seriesId: Long,
-    ) = userFantasyTeamService.getTeamForSeries(user, seriesId)
+        @RequestParam(required = false) leagueCode: String?,
+    ) = userFantasyTeamService.getTeamForSeries(user, seriesId, leagueCode ?: LeagueService.MAIN_CODE)
 
     @GetMapping("/me/fantasy-teams/{seriesId}/details")
     fun fantasyTeamDetailsForSeries(
         @AuthenticationPrincipal user: TelegramUser,
         @PathVariable seriesId: Long,
-    ) = userFantasyTeamService.getTeamDetailsForSeries(user, seriesId)
+        @RequestParam(required = false) leagueCode: String?,
+    ) = userFantasyTeamService.getTeamDetailsForSeries(user, seriesId, leagueCode ?: LeagueService.MAIN_CODE)
 }

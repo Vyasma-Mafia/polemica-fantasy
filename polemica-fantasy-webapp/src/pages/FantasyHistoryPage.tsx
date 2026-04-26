@@ -15,6 +15,7 @@ import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { modalImgFrameClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
+import { leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
 
 function highlightMaxes(columns: FantasyTeamDetailSlot[], gameCount: number) {
@@ -37,9 +38,9 @@ export function FantasyHistoryPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
   const id = Number(tournamentId)
   const initData = useInitData()
-  const [openId, setOpenId] = useState<number | null>(null)
+  const [openTeam, setOpenTeam] = useState<{ seriesId: number; leagueCode: string } | null>(null)
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
-  const [detailSeriesId, setDetailSeriesId] = useState<number | null>(null)
+  const [detailSeries, setDetailSeries] = useState<{ seriesId: number; leagueCode: string } | null>(null)
   const [expandedCell, setExpandedCell] = useState<{ gameIndex: number; colIndex: number } | null>(null)
 
   const tq = useQuery({
@@ -61,15 +62,23 @@ export function FantasyHistoryPage() {
   })
 
   const detailsQ = useQuery({
-    queryKey: ['fantasy-team-details', openId, initData],
-    queryFn: () => apiGet<FantasyTeamSeriesDetails>(`/api/v1/me/fantasy-teams/${openId}/details`, initData),
-    enabled: !!initData && openId != null,
+    queryKey: ['fantasy-team-details', openTeam?.seriesId, openTeam?.leagueCode, initData],
+    queryFn: () =>
+      apiGet<FantasyTeamSeriesDetails>(
+        `/api/v1/me/fantasy-teams/${openTeam!.seriesId}/details?leagueCode=${encodeURIComponent(openTeam!.leagueCode)}`,
+        initData,
+      ),
+    enabled: !!initData && openTeam != null,
   })
 
   const detailsModalQ = useQuery({
-    queryKey: ['fantasy-team-details', detailSeriesId, initData],
-    queryFn: () => apiGet<FantasyTeamSeriesDetails>(`/api/v1/me/fantasy-teams/${detailSeriesId}/details`, initData),
-    enabled: !!initData && detailSeriesId != null && detailCardId != null,
+    queryKey: ['fantasy-team-details', detailSeries?.seriesId, detailSeries?.leagueCode, initData],
+    queryFn: () =>
+      apiGet<FantasyTeamSeriesDetails>(
+        `/api/v1/me/fantasy-teams/${detailSeries!.seriesId}/details?leagueCode=${encodeURIComponent(detailSeries!.leagueCode)}`,
+        initData,
+      ),
+    enabled: !!initData && detailSeries != null && detailCardId != null,
   })
 
   const teamsInTournament = useMemo(() => {
@@ -113,22 +122,27 @@ export function FantasyHistoryPage() {
 
       <section className="pf-history">
         {teamsInTournament.map((team) => {
-          const open = openId === team.seriesId
+          const open =
+            openTeam != null &&
+            openTeam.seriesId === team.seriesId &&
+            openTeam.leagueCode.toUpperCase() === team.leagueCode.toUpperCase()
           const total = team.totalScore
           const d = open ? detailsQ.data : undefined
           const showMatrix = open && d && d.games.length > 0
           return (
-            <div key={team.seriesId} className="pf-acc">
+            <div key={`${team.seriesId}-${team.leagueCode}`} className="pf-acc">
               <button
                 type="button"
                 className="pf-acc__head"
                 onClick={() => {
-                  setOpenId(open ? null : team.seriesId)
+                  setOpenTeam(open ? null : { seriesId: team.seriesId, leagueCode: team.leagueCode })
                   setExpandedCell(null)
                 }}
                 aria-expanded={open}
               >
-                <span>{seriesName(team.seriesId)}</span>
+                <span>
+                  {seriesName(team.seriesId)} · {leagueShortName(team.leagueCode)}
+                </span>
                 <span className="pf-acc__chevron">{open ? '▲' : '▼'}</span>
               </button>
               {open && (
@@ -219,7 +233,7 @@ export function FantasyHistoryPage() {
                           type="button"
                           className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card?.rarity)}`}
                           onClick={() => {
-                            setDetailSeriesId(team.seriesId)
+                            setDetailSeries({ seriesId: team.seriesId, leagueCode: team.leagueCode })
                             setDetailCardId(slot.userCardId)
                           }}
                           role="listitem"
@@ -257,7 +271,7 @@ export function FantasyHistoryPage() {
           aria-label="Карточка"
           onClick={() => {
             setDetailCardId(null)
-            setDetailSeriesId(null)
+            setDetailSeries(null)
           }}
         >
           <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
@@ -266,7 +280,7 @@ export function FantasyHistoryPage() {
               className="pf-modal__close"
               onClick={() => {
                 setDetailCardId(null)
-                setDetailSeriesId(null)
+                setDetailSeries(null)
               }}
             >
               ×

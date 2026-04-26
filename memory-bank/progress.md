@@ -2,6 +2,26 @@
 
 ## Что реализовано
 
+### Лиги (frontend, Plan 06)
+- [x] **Типы и контракты TMA:** `SeriesLeagueInfo`/`SeriesLeagueBrief`, `FantasyTeamDto`/`PublicFantasyTeam.leagueCode`, `UserCardItem.leaguesInSeries/canJoinMoreLeagues`, `EconomyInfo.leagues`, `UserSeriesDetail`/`UserSeriesSummary.leagues`
+- [x] **API-клиент лиг:** `src/api/leagues.ts` (`fetchSeriesLeagues`, `fetchLeagueLeaderboard`, `submitLeagueTeam`, `updateLeagueTeam`) на новых endpoint'ах `/api/v1/series/{id}/leagues/{code}/*`
+- [x] **UI-компоненты:** `LeagueTabs` (вкладки с checkmark и value cap) и `BudgetProgressBar` (цветовой прогресс бюджета по `valueCap`)
+- [x] **Страница серии и лидерборд:** `SeriesPage` и `LeaderboardPage` поддерживают `?league=` (fallback MAIN), показывают per-league таблицы и навигацию с сохранением `leagueCode`
+- [x] **Сборка команды по лигам:** `TeamPage` переведена на per-league CRUD, вкладки лиг, бюджетный cap-blocking, disabled-карты при нехватке uses для доп. лиги и бейджи «уже в другой лиге»
+- [x] **Главная/турнир/справка:** `HomePage` и `TournamentPage` показывают per-league статусы (`Основная ✓ / Бюджетная ✗`); `HelpPage` дополнена разделом «Лиги» (ограничения и reward scale из `economy-info`)
+- [x] **Сопутствующая совместимость:** `FantasyHistoryPage` и `LeaderboardPlayerTeamPage` учитывают `leagueCode` в запросах/ключах (без конфликтов команд разных лиг одной серии)
+- [x] **Проверка:** `npm run build` для `polemica-fantasy-webapp` — успешно
+
+### Лиги (backend, Plan 05)
+- [x] **Flyway V35:** `league`, `series_league`, bootstrap MAIN/BUDGET для существующих серий, `fantasy_team.series_league_id` + миграция существующих команд в MAIN, UNIQUE `(telegram_user_id, series_id, series_league_id)`, economy-ключи `league.reward_scale.*` и `league.budget.value_cap`, deprecated-маркер для `legendary.team.max_per_series`
+- [x] **Доменная модель:** `League`, `SeriesLeague`, `LeagueType`, `LeagueVisibility`; репозитории `LeagueRepository`, `SeriesLeagueRepository`; `SeriesService.createSeries` автоматически создаёт `series_league` для всех SYSTEM-лиг
+- [x] **Правила лиги в сборке состава:** `LeagueService` + `UserFantasyTeamService` (value cap, max legendary per league, min/max team size, uses across leagues через `FantasyTeamCardRepository.countLeaguesInSeriesForCard`)
+- [x] **User API лиг:** `LeagueController` (`GET /series/{id}/leagues`, per-league leaderboard, create/update team, public team/details); legacy endpoints `/series/{id}/leaderboard`, `/series/{id}/fantasy-team*`, `/me/fantasy-teams/{seriesId}*` поддерживают `leagueCode` (default `MAIN`)
+- [x] **DTO/контракты:** `LeagueDtos`, `FantasyTeamDto/PublicFantasyTeamDto.leagueCode`, `UserSeriesDetailDto`/`UserSeriesSummaryDto` + `SeriesLeagueBriefDto`, `UserCardItemDto.leaguesInSeries/canJoinMoreLeagues`, `EconomyInfoDto.leagues`
+- [x] **Admin API лиг:** `LeagueAdminController` + `LeagueAdminService` (`GET/PUT /api/v1/admin/leagues`, `POST/DELETE /api/v1/admin/series/{id}/leagues*`, запрет деактивации лиги серии при наличии команд)
+- [x] **Финализация и уведомления per-league:** `SeriesFinalizationService` начисляет награды по каждой лиге с `reward_scale`, списывает `uses_remaining` по числу лиг участия карты; `SeriesFinalizedNotificationEvent` и `buildSeriesFinalizedTelegramMessage` переведены на `leagueResults + totalReward`
+- [x] **Тесты:** обновлены unit-тесты `SeriesFinalizationServiceTest` и `SeriesFinalizationTelegramMessageTest` под per-league модель
+
 ### Инфраструктура уведомлений (Plan notify/01)
 - [x] **Flyway V34:** `notification_preference`, `tournament_subscription`, `telegram_user.bot_blocked` (default `false`), `deadline_reminder`, `marketplace_watch_filter`, `marketplace_watch_pending`
 - [x] **Сущности/репозитории:** `NotificationCategory`, `NotificationPreference`, `TournamentSubscription`, `NotificationPreferenceRepository`, `TournamentSubscriptionRepository`

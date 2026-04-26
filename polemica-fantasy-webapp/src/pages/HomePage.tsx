@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { apiGet } from '../api/client'
-import type { SeriesOpenForTeam, UserTournament } from '../api/types'
+import { fetchSeriesLeagues } from '../api/leagues'
+import type { SeriesLeagueInfo, SeriesOpenForTeam, UserTournament } from '../api/types'
 import { TournamentStatusBadge } from '../components/StatusBadge'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { useInitData } from '../context/useInitData'
+import { leagueShortName } from '../lib/leagues'
 import { formatDateShortWithTime } from '../lib/tournamentDates'
 
 export function HomePage() {
@@ -19,6 +21,14 @@ export function HomePage() {
     queryFn: () => apiGet<SeriesOpenForTeam[]>('/api/v1/tournaments/series-open-for-team', initData),
     enabled: !!initData,
   })
+  const openSeriesIds = openSeriesQ.data?.map((series) => series.seriesId) ?? []
+  const openSeriesLeaguesQ = useQueries({
+    queries: openSeriesIds.map((seriesId) => ({
+      queryKey: ['series', seriesId, 'leagues', initData],
+      queryFn: () => fetchSeriesLeagues(seriesId, initData),
+      enabled: !!initData && openSeriesIds.length > 0,
+    })),
+  })
 
   if (!initData) {
     return <MissingInitDataNotice />
@@ -27,11 +37,44 @@ export function HomePage() {
   /** v5: `isLoading` is only pending+fetching; avoid rendering with no data during the brief pending+idle gap. */
   const tournamentsBooting = q.isPending && q.data === undefined && !q.isError
   const openBooting = openSeriesQ.isPending && openSeriesQ.data === undefined && !openSeriesQ.isError
-  if (tournamentsBooting || openBooting) return <p className="pf-loading">Загрузка…</p>
+  const openSeriesLeaguesBooting =
+    openSeriesIds.length > 0 &&
+    openSeriesLeaguesQ.some((item) => (item.isPending || item.isLoading) && item.data === undefined)
+  if (tournamentsBooting || openBooting || openSeriesLeaguesBooting) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
 
   const list = q.data ?? []
   const openSeries = openSeriesQ.data ?? []
+  const leaguesBySeriesId = new Map<number, SeriesLeagueInfo[]>()
+  for (let i = 0; i < openSeries.length; i++) {
+    leaguesBySeriesId.set(openSeries[i].seriesId, openSeriesLeaguesQ[i]?.data ?? [])
+  }
+  const openSeriesError = openSeriesLeaguesQ.find((item) => item.isError)?.error as Error | undefined
+  const openSeriesWithOpenLeagues = openSeries.filter((series) => {
+    const leagues = leaguesBySeriesId.get(series.seriesId)
+    if (!leagues || leagues.length === 0) return true
+    return leagues.some((league) => !league.hasTeam)
+  })
+
+  const openSeriesStatus = (seriesId: number): string => {
+    const leagues = leaguesBySeriesId.get(seriesId) ?? []
+    if (leagues.length === 0) return 'Лиги недоступны'
+    return leagues
+      .map((league) => `${leagueShortName(league.code, league.name)} ${league.hasTeam ? '✓' : '✗'}`)
+      .join(' / ')
+  }
+
+  const openSeriesCta = (seriesId: number) => {
+    const leagues = leaguesBySeriesId.get(seriesId) ?? []
+    const missing = leagues.filter((league) => !league.hasTeam)
+    if (missing.length === 1) {
+      return {
+        to: `/series/${seriesId}/team?league=${encodeURIComponent(missing[0].code)}`,
+        label: 'Далее',
+      }
+    }
+    return { to: `/series/${seriesId}`, label: 'Далее' }
+  }
 
   return (
     <div className="pf-page pf-page--home">
@@ -40,16 +83,19 @@ export function HomePage() {
 
       {openSeriesQ.isError ? (
         <p className="pf-err pf-home-open-series-err">{(openSeriesQ.error as Error).message}</p>
-      ) : openSeries.length > 0 ? (
+      ) : openSeriesError ? (
+        <p className="pf-err pf-home-open-series-err">{openSeriesError.message}</p>
+      ) : openSeriesWithOpenLeagues.length > 0 ? (
         <section className="pf-home-open-series" aria-labelledby="home-open-series-heading">
           <h2 id="home-open-series-heading" className="pf-section-title">
             Состав на серию
           </h2>
           <p className="pf-instruction pf-home-open-series-hint">Серии, для которых ещё можно выставить команду</p>
           <ul className="pf-day-list">
-            {openSeries.map((s, idx) => {
+            {openSeriesWithOpenLeagues.map((s, idx) => {
               const deadline = new Date(s.teamDeadline)
               const seriesNum = s.gameNumFrom ?? idx + 1
+              const cta = openSeriesCta(s.seriesId)
               return (
                 <li key={s.seriesId}>
                   <div className="pf-day-card">
@@ -61,14 +107,11 @@ export function HomePage() {
                       <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
                       <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
+                      <p className="pf-home-leagues-status">{openSeriesStatus(s.seriesId)}</p>
                     </div>
                     <div className="pf-day-card__action">
-                      <Link
-                        className="pf-btn pf-btn--small pf-btn--ghost"
-                        to={`/series/${s.seriesId}/team`}
-                        state={{ fromHome: true }}
-                      >
-                        Далее
+                      <Link className="pf-btn pf-btn--small pf-btn--ghost" to={cta.to} state={{ fromHome: true }}>
+                        {cta.label}
                       </Link>
                     </div>
                   </div>

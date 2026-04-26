@@ -102,6 +102,7 @@ export interface UserSeriesSummary {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  leagues: SeriesLeagueBrief[]
 }
 
 export interface UserTournamentDetail extends UserTournament {
@@ -139,6 +140,26 @@ export interface UserSeriesDetail {
   teamDeadline: string
   players: SeriesPlayerEntry[]
   games: { polemicaGameId: number; gameName: string; scored: boolean }[]
+  leagues: SeriesLeagueBrief[]
+}
+
+export interface SeriesLeagueBrief {
+  code: string
+  name: string
+  hasTeam: boolean
+  valueCap: number | null
+}
+
+export interface SeriesLeagueInfo {
+  code: string
+  name: string
+  description: string | null
+  valueCap: number | null
+  maxLegendaryCount: number | null
+  minTeamSize: number
+  maxTeamSize: number
+  rewardScale: number
+  hasTeam: boolean
 }
 
 /** Public profile snippet (лидерборд, чужая команда). */
@@ -183,6 +204,7 @@ export interface PublicFantasyTeam {
   owner: UserPublic
   seriesId: number
   tournamentId: number
+  leagueCode: string
   totalScore: number | null
   submittedAt: string
   slots: PublicFantasyTeamSlot[]
@@ -207,6 +229,10 @@ export interface UserCardItem {
   craftedByTelegramUserId?: number | null
   /** Вычисляемая ценность (база по редкости + бонус за достижения). */
   value: number
+  /** Коды лиг этой серии, где карта уже используется (при `seriesId` запросе). */
+  leaguesInSeries?: string[] | null
+  /** Можно ли поставить карту ещё хотя бы в одну лигу текущей серии. */
+  canJoinMoreLeagues?: boolean | null
   /** Активный лот на маркетплейсе; null/undefined если карта не выставлена. */
   activeMarketplaceListing?: { listingId: number; price: number } | null
 }
@@ -241,6 +267,7 @@ export interface EconomyInfo {
     baseValues: Record<Rarity, number>
     achievementBonus: number
   }
+  leagues: Record<string, { valueCap: number | null; rewardScale: number }>
 }
 
 export interface RecycleResult {
@@ -257,6 +284,7 @@ export interface RenewResult {
 export interface FantasyTeamDto {
   seriesId: number
   tournamentId: number
+  leagueCode: string
   totalScore: number | null
   submittedAt: string
   slots: { slot: number; userCardId: number; score: number | null }[]

@@ -39,6 +39,7 @@ data class UserSeriesSummaryDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    val leagues: List<SeriesLeagueBriefDto> = emptyList(),
 )
 
 data class UserTournamentDetailDto(
@@ -95,6 +96,14 @@ data class UserSeriesDetailDto(
     val teamDeadline: Instant,
     val players: List<SeriesPlayerEntryDto>,
     val games: List<SeriesGameEntryDto>,
+    val leagues: List<SeriesLeagueBriefDto> = emptyList(),
+)
+
+data class SeriesLeagueBriefDto(
+    val code: String,
+    val name: String,
+    val hasTeam: Boolean,
+    val valueCap: Long?,
 )
 
 data class UserPublicDto(
@@ -139,6 +148,10 @@ data class UserCardItemDto(
     val craftedByTelegramUserId: Long?,
     /** Вычисляемая ценность карты (см. economy card.value.*). */
     val value: Long,
+    /** Коды лиг этой серии, где карта уже в составе (только при запросе с seriesId). */
+    val leaguesInSeries: List<String>? = null,
+    /** Можно ли поставить карту ещё хотя бы в одну лигу этой серии (только при seriesId). */
+    val canJoinMoreLeagues: Boolean? = null,
     /** Активный лот на маркетплейсе для этой user_card; null если не выставлена. */
     val activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
 )
@@ -158,6 +171,7 @@ data class FantasyTeamSlotDto(
 data class FantasyTeamDto(
     val seriesId: Long,
     val tournamentId: Long,
+    val leagueCode: String,
     val totalScore: Double?,
     val submittedAt: Instant,
     val slots: List<FantasyTeamSlotDto>,
@@ -173,6 +187,7 @@ data class PublicFantasyTeamDto(
     val owner: UserPublicDto,
     val seriesId: Long,
     val tournamentId: Long,
+    val leagueCode: String,
     val totalScore: Double?,
     val submittedAt: Instant,
     val slots: List<PublicFantasyTeamSlotDto>,

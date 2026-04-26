@@ -4,7 +4,9 @@ import io.github.mralex1810.fantasy.dto.user.response.SeriesOpenForTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDto
+import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.service.UserTournamentService
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -23,7 +25,10 @@ class TournamentController(
     fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> = userTournamentService.listSeriesOpenForTeam()
 
     @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): UserTournamentDetailDto = userTournamentService.getTournament(id)
+    fun get(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable id: Long,
+    ): UserTournamentDetailDto = userTournamentService.getTournament(id, user)
 
     @GetMapping("/{id}/participants")
     fun participants(@PathVariable id: Long): List<SeriesPlayerEntryDto> = userTournamentService.listParticipants(id)

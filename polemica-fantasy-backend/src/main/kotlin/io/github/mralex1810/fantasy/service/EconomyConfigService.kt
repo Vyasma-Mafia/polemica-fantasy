@@ -2,6 +2,7 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.CardValueInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.EconomyInfoDto
+import io.github.mralex1810.fantasy.dto.user.response.LeagueEconomyInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.RewardTierDto
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.repository.EconomyConfigRepository
@@ -115,6 +116,16 @@ class EconomyConfigService(
             val label = row.description?.trim()?.takeIf { it.isNotEmpty() } ?: key
             RewardTierDto(label = label, fantiki = getLong(key))
         }
+        val leagues = mapOf(
+            LeagueService.MAIN_CODE to LeagueEconomyInfoDto(
+                valueCap = null,
+                rewardScale = getInt("league.reward_scale.${LeagueService.MAIN_CODE}"),
+            ),
+            LeagueService.BUDGET_CODE to LeagueEconomyInfoDto(
+                valueCap = getLong("league.budget.value_cap"),
+                rewardScale = getInt("league.reward_scale.${LeagueService.BUDGET_CODE}"),
+            ),
+        )
         return EconomyInfoDto(
             usesPerRarity = uses,
             recycleValues = recycle,
@@ -126,6 +137,7 @@ class EconomyConfigService(
             marketplaceMaxPrices = marketplaceMax,
             minPackOpensBeforeMarketplacePurchase = getMinPackOpensBeforeMarketplacePurchase(),
             cardValues = buildCardValueInfo(),
+            leagues = leagues,
         )
     }
 }

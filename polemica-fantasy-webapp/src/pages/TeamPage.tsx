@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
-import { apiGet, apiSend, ApiError } from '../api/client'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { ApiError, apiGet } from '../api/client'
+import { fetchSeriesLeagues, submitLeagueTeam, updateLeagueTeam } from '../api/leagues'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
+import { BudgetProgressBar } from '../components/BudgetProgressBar'
+import { LeagueTabs } from '../components/LeagueTabs'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -12,6 +15,7 @@ import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from '../components/CardAchievementChips'
 import { CardValueBadge } from '../components/CardValueBadge'
 import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
+import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
 import { compareRarityDesc, RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 import { useNow } from '../lib/useNow'
 
@@ -22,19 +26,33 @@ function cardsQueryString(tournamentId: number, seriesId: number) {
   return sp.toString()
 }
 
+function leagueCodeEquals(a: string, b: string): boolean {
+  return a.trim().toUpperCase() === b.trim().toUpperCase()
+}
+
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const sid = Number(seriesId)
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const initData = useInitData()
   const qc = useQueryClient()
   const fromHome = (location.state as { fromHome?: boolean } | null)?.fromHome === true
+  const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
 
   const seriesQ = useQuery({
     queryKey: ['series', sid, initData],
     queryFn: () => apiGet<UserSeriesDetail>(`/api/v1/series/${sid}`, initData),
     enabled: !!initData && Number.isFinite(sid),
   })
+  const leaguesQ = useQuery({
+    queryKey: ['series', sid, 'leagues', initData],
+    queryFn: () => fetchSeriesLeagues(sid, initData),
+    enabled: !!initData && Number.isFinite(sid),
+  })
+  const leagues = leaguesQ.data ?? []
+  const activeLeagueCode = resolveActiveLeagueCode(leagues, requestedLeagueCode)
+  const activeLeague = leagues.find((league) => leagueCodeEquals(league.code, activeLeagueCode))
 
   const cardsQ = useQuery({
     queryKey: ['cards', 'team', sid, seriesQ.data?.tournamentId, initData],
@@ -53,16 +71,19 @@ export function TeamPage() {
   })
 
   const teamQ = useQuery({
-    queryKey: ['fantasy-team', sid, initData],
+    queryKey: ['fantasy-team', sid, activeLeagueCode, initData],
     queryFn: async () => {
       try {
-        return await apiGet<FantasyTeamDto>(`/api/v1/me/fantasy-teams/${sid}`, initData)
+        return await apiGet<FantasyTeamDto>(
+          `/api/v1/me/fantasy-teams/${sid}?leagueCode=${encodeURIComponent(activeLeagueCode)}`,
+          initData,
+        )
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return null
         throw e
       }
     },
-    enabled: !!initData && Number.isFinite(sid),
+    enabled: !!initData && Number.isFinite(sid) && leagues.length > 0,
     retry: false,
   })
 
@@ -76,7 +97,15 @@ export function TeamPage() {
       setRarityFilter('')
       setPlayerFantasyId('')
     })
-  }, [sid])
+  }, [sid, activeLeagueCode])
+
+  useEffect(() => {
+    if (!leagues.length) return
+    if (leagueCodeEquals(activeLeagueCode, requestedLeagueCode)) return
+    const next = new URLSearchParams(searchParams)
+    next.set('league', activeLeagueCode)
+    setSearchParams(next, { replace: true })
+  }, [activeLeagueCode, leagues.length, requestedLeagueCode, searchParams, setSearchParams])
 
   useEffect(() => {
     if (!teamQ.isSuccess) return
@@ -96,20 +125,32 @@ export function TeamPage() {
     for (const c of cardsQ.data ?? []) m.set(c.id, c)
     return m
   }, [cardsQ.data])
+  const currentTeamCardIds = useMemo(
+    () => new Set((teamQ.data?.slots ?? []).map((slot) => slot.userCardId)),
+    [teamQ.data?.slots],
+  )
 
   const toggle = (id: number) => {
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
-      if (prev.length >= 3) return prev
+      if (prev.length >= (activeLeague?.maxTeamSize ?? 3)) return prev
       const adding = cardById.get(id)
       if (adding) {
+        if (adding.canJoinMoreLeagues === false && !currentTeamCardIds.has(id)) return prev
         const fp = adding.fantasyPlayerId
         for (const x of prev) {
           if (cardById.get(x)?.fantasyPlayerId === fp) return prev
         }
-        if (adding.rarity === 'LEGENDARY') {
+        if (adding.rarity === 'LEGENDARY' && activeLeague?.maxLegendaryCount != null) {
           const hasLegendary = prev.some((x) => cardById.get(x)?.rarity === 'LEGENDARY')
-          if (hasLegendary) return prev
+          if (hasLegendary && activeLeague.maxLegendaryCount <= 1) return prev
+          const nextLegendaryCount =
+            prev.filter((x) => cardById.get(x)?.rarity === 'LEGENDARY').length + 1
+          if (nextLegendaryCount > activeLeague.maxLegendaryCount) return prev
+        }
+        if (activeLeague?.valueCap != null) {
+          const selectedValue = prev.reduce((sum, cid) => sum + (cardById.get(cid)?.value ?? 0), 0)
+          if (selectedValue + adding.value > activeLeague.valueCap) return prev
         }
       }
       return [...prev, id]
@@ -118,17 +159,17 @@ export function TeamPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const body = { userCardIds: selected }
       const existing = teamQ.data
       if (existing != null) {
-        return apiSend<FantasyTeamDto>('PUT', `/api/v1/series/${sid}/fantasy-team`, initData, body)
+        return updateLeagueTeam(sid, activeLeagueCode, selected, initData)
       }
-      return apiSend<FantasyTeamDto>('POST', `/api/v1/series/${sid}/fantasy-team`, initData, body)
+      return submitLeagueTeam(sid, activeLeagueCode, selected, initData)
     },
     onSuccess: (data) => {
-      qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, initData], data)
+      qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, activeLeagueCode, initData], data)
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
       void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
+      void qc.invalidateQueries({ queryKey: ['series', sid, 'leagues'] })
     },
   })
 
@@ -139,6 +180,14 @@ export function TeamPage() {
   }, [seriesQ.data, now])
 
   const usesPerRarity = economyQ.data?.usesPerRarity
+  const selectedValue = useMemo(
+    () => selected.reduce((sum, cid) => sum + (cardById.get(cid)?.value ?? 0), 0),
+    [selected, cardById],
+  )
+  const valueCap = activeLeague?.valueCap ?? null
+  const remainingBudget = valueCap != null ? valueCap - selectedValue : null
+  const minTeamSize = activeLeague?.minTeamSize ?? 1
+  const maxTeamSize = activeLeague?.maxTeamSize ?? 3
 
   const displayCards = useMemo(() => {
     let list = [...(cardsQ.data ?? [])]
@@ -152,18 +201,38 @@ export function TeamPage() {
     () => selected.filter((cid) => cardById.get(cid)?.rarity === 'LEGENDARY').length,
     [selected, cardById],
   )
+  const leagueTabs = leagues.map((league) => ({
+    code: league.code,
+    name: league.name,
+    hasTeam: league.hasTeam,
+    valueCap: league.valueCap,
+  }))
 
   if (!initData) return <MissingInitDataNotice />
-  if (seriesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
+  if (seriesQ.isLoading || leaguesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (seriesQ.isError) return <p className="pf-err">{(seriesQ.error as Error).message}</p>
+  if (leaguesQ.isError) return <p className="pf-err">{(leaguesQ.error as Error).message}</p>
+  if (!activeLeague) return <p className="pf-err">Лига недоступна для этой серии.</p>
 
   const s = seriesQ.data!
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
   const back = fromHome ? '/' : `/tournaments/${s.tournamentId}/series`
+  const activeLeagueName = leagueShortName(activeLeague.code, activeLeague.name)
+  const setLeague = (code: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('league', code.toUpperCase())
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <div className="pf-page">
-      <PageHeader title="Сборка команды" subtitle={s.name} backTo={back} backLabel={fromHome ? 'Турниры' : 'Назад'} />
+      <PageHeader
+        title="Сборка команды"
+        subtitle={`${s.name} · ${activeLeagueName}`}
+        backTo={back}
+        backLabel={fromHome ? 'Турниры' : 'Назад'}
+      />
+      <LeagueTabs leagues={leagueTabs} activeCode={activeLeagueCode} onChange={setLeague} />
 
       {deadlinePassed && <p className="pf-err">Дедлайн сбора команды прошёл.</p>}
       {teamQ.isSuccess && teamQ.data && (
@@ -172,13 +241,17 @@ export function TeamPage() {
         </p>
       )}
       {teamQ.isSuccess && !teamQ.data && (
-        <p className="pf-muted">Выберите от 1 до 3 карт для серии (неполный состав — меньше награда за место).</p>
+        <p className="pf-muted">
+          Выберите от {minTeamSize} до {maxTeamSize} карт для серии (неполный состав — меньше награда за место).
+        </p>
       )}
 
       <p className="pf-instruction">
-        Выберите от 1 до 3 карт (порядок — слоты 1–3). Один игрок — не больше одной карты. Легендарных карт в команде —
-        не больше одной.
+        Выберите от {minTeamSize} до {maxTeamSize} карт (порядок — слоты 1–3). Один игрок — не больше одной карты.
+        {activeLeague.maxLegendaryCount != null &&
+          ` Легендарных карт в команде — не больше ${activeLeague.maxLegendaryCount}.`}
       </p>
+      {valueCap != null && <BudgetProgressBar currentValue={selectedValue} maxValue={valueCap} />}
 
       <ol className="pf-picked-slots">
         {[0, 1, 2].map((i) => {
@@ -256,17 +329,39 @@ export function TeamPage() {
           const playerAlreadyPicked =
             !selected.includes(c.id) &&
             selected.some((sid) => cardById.get(sid)?.fantasyPlayerId === c.fantasyPlayerId)
+          const budgetBlocked =
+            valueCap != null &&
+            !selected.includes(c.id) &&
+            remainingBudget != null &&
+            c.value > remainingBudget
+          const leagueUsesBlocked =
+            c.canJoinMoreLeagues === false && !selected.includes(c.id) && !currentTeamCardIds.has(c.id)
           const secondLegendaryBlocked =
-            c.rarity === 'LEGENDARY' && !selected.includes(c.id) && legendarySlotsUsed >= 1
+            c.rarity === 'LEGENDARY' &&
+            !selected.includes(c.id) &&
+            activeLeague.maxLegendaryCount != null &&
+            legendarySlotsUsed >= activeLeague.maxLegendaryCount
           const listed = Boolean(c.activeMarketplaceListing)
           const gridDisabled =
-            deadlinePassed || dead || playerAlreadyPicked || secondLegendaryBlocked || listed
+            deadlinePassed ||
+            dead ||
+            playerAlreadyPicked ||
+            secondLegendaryBlocked ||
+            listed ||
+            budgetBlocked ||
+            leagueUsesBlocked
+          const otherLeaguesInSeries =
+            c.leaguesInSeries?.filter((code) => !leagueCodeEquals(code, activeLeagueCode)) ?? []
           const gridTitle = dead
             ? 'Контракт истёк — продлите в коллекции'
             : playerAlreadyPicked
               ? 'Этот игрок уже в команде'
+              : budgetBlocked
+                ? `Эта карта стоит ${c.value}₱, осталось ${remainingBudget ?? 0}₱ бюджета`
+                : leagueUsesBlocked
+                  ? 'Не хватает uses, чтобы поставить карту ещё в одну лигу серии'
               : secondLegendaryBlocked
-                ? 'В команде не больше одной легендарной карты за серию'
+                ? `В лиге максимум ${activeLeague.maxLegendaryCount} легендарн. карт`
                 : listed
                   ? 'Снимите карту с продажи, чтобы поставить в команду'
                   : undefined
@@ -280,6 +375,7 @@ export function TeamPage() {
                     selected.includes(c.id) ? 'pf-team-card--picked' : '',
                     dead ? 'pf-team-card--dead' : '',
                     playerAlreadyPicked && !dead ? 'pf-team-card--blocked' : '',
+                    budgetBlocked && !dead ? 'pf-card--budget-disabled' : '',
                     listed && !dead ? 'pf-team-card--listed' : '',
                   ]
                     .filter(Boolean)
@@ -297,6 +393,11 @@ export function TeamPage() {
                   )}
                   <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
                   {dead && <span className="pf-team-dead-label">Истекла</span>}
+                  {otherLeaguesInSeries.length > 0 && (
+                    <span className="pf-card-league-badge">
+                      {otherLeaguesInSeries.map((code) => leagueShortName(code)).join(', ')}
+                    </span>
+                  )}
                   {c.activeMarketplaceListing && (
                     <MarketplaceListedBadge listing={c.activeMarketplaceListing} layout="team" />
                   )}
@@ -322,15 +423,15 @@ export function TeamPage() {
       <button
         type="button"
         className="pf-btn pf-btn--primary pf-btn--block"
-        disabled={selected.length < 1 || deadlinePassed || submit.isPending}
+        disabled={selected.length < minTeamSize || deadlinePassed || submit.isPending}
         onClick={() => submit.mutate()}
       >
-        {teamQ.isSuccess && teamQ.data ? 'Обновить команду' : 'Отправить команду'}
+        {teamQ.isSuccess && teamQ.data ? `Обновить (${activeLeagueName})` : `Отправить (${activeLeagueName})`}
       </button>
       {errMsg && <p className="pf-err">{errMsg}</p>}
 
       <p className="pf-footer-link">
-        <Link to={`/series/${sid}`}>Обзор серии</Link>
+        <Link to={`/series/${sid}?league=${encodeURIComponent(activeLeagueCode)}`}>Обзор серии</Link>
       </p>
     </div>
   )

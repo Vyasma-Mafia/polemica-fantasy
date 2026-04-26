@@ -2,10 +2,15 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.LeaderboardEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesGameEntryDto
+import io.github.mralex1810.fantasy.dto.user.response.SeriesLeagueBriefDto
+import io.github.mralex1810.fantasy.dto.user.response.SeriesLeagueDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.dto.user.response.UserSeriesDetailDto
+import io.github.mralex1810.fantasy.entity.SeriesLeague
+import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -17,14 +22,16 @@ import org.springframework.web.server.ResponseStatusException
 @Service
 class UserSeriesService(
     private val seriesRepository: SeriesRepository,
+    private val seriesLeagueRepository: SeriesLeagueRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val seriesGameRepository: SeriesGameRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
+    private val leagueService: LeagueService,
     private val imageStorageService: ImageStorageService,
 ) {
 
     @Transactional(readOnly = true)
-    fun getSeriesDetail(seriesId: Long): UserSeriesDetailDto {
+    fun getSeriesDetail(user: TelegramUser, seriesId: Long): UserSeriesDetailDto {
         val s = seriesRepository.findById(seriesId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
@@ -45,6 +52,7 @@ class UserSeriesService(
                 scored = g.scored,
             )
         }
+        val leagueBriefs = listSeriesLeagueBriefs(seriesId, user.id!!)
         return UserSeriesDetailDto(
             id = s.id!!,
             tournamentId = s.tournament!!.id!!,
@@ -57,15 +65,17 @@ class UserSeriesService(
             teamDeadline = s.teamDeadline,
             players = players,
             games = games,
+            leagues = leagueBriefs,
         )
     }
 
     @Transactional(readOnly = true)
-    fun getLeaderboard(seriesId: Long): List<LeaderboardEntryDto> {
+    fun getLeaderboard(seriesId: Long, leagueCode: String = LeagueService.MAIN_CODE): List<LeaderboardEntryDto> {
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
-        val teams = fantasyTeamRepository.findLeaderboardForSeries(seriesId)
+        val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
+        val teams = fantasyTeamRepository.findLeaderboardForSeriesLeague(seriesLeague.id!!)
         return teams.mapIndexed { index, ft ->
             val u = ft.telegramUser!!
             LeaderboardEntryDto(
@@ -81,4 +91,43 @@ class UserSeriesService(
         }
     }
 
+    @Transactional(readOnly = true)
+    fun listSeriesLeagues(user: TelegramUser, seriesId: Long): List<SeriesLeagueDto> {
+        if (!seriesRepository.existsById(seriesId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        val userId = user.id!!
+        return seriesLeagueRepository.findAllEnabledBySeriesIdWithLeague(seriesId).map { sl ->
+            val league = sl.league!!
+            SeriesLeagueDto(
+                code = league.code,
+                name = league.name,
+                description = league.description,
+                valueCap = leagueService.getEffectiveValueCap(sl),
+                maxLegendaryCount = leagueService.getEffectiveMaxLegendary(sl),
+                minTeamSize = league.minTeamSize,
+                maxTeamSize = league.maxTeamSize,
+                rewardScale = leagueService.getEffectiveRewardScale(sl),
+                hasTeam = fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(userId, sl.id!!) != null,
+            )
+        }
+    }
+
+    private fun listSeriesLeagueBriefs(seriesId: Long, userId: Long): List<SeriesLeagueBriefDto> =
+        seriesLeagueRepository.findAllEnabledBySeriesIdWithLeague(seriesId).map { sl ->
+            val league = sl.league!!
+            SeriesLeagueBriefDto(
+                code = league.code,
+                name = league.name,
+                hasTeam = fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(userId, sl.id!!) != null,
+                valueCap = leagueService.getEffectiveValueCap(sl),
+            )
+        }
+
+    private fun resolveSeriesLeague(seriesId: Long, leagueCode: String): SeriesLeague =
+        seriesLeagueRepository.findBySeries_IdAndLeague_CodeAndEnabledTrue(seriesId, leagueCode)
+            ?: throw ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "League $leagueCode is not available for series $seriesId",
+            )
 }

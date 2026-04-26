@@ -2,11 +2,13 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.event.LeagueResult
 import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesFinalizedRecipient
 import io.github.mralex1810.fantasy.event.publicDisplayNameForNotifications
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
@@ -17,9 +19,11 @@ import org.springframework.web.server.ResponseStatusException
 @Service
 class SeriesFinalizationService(
     private val seriesRepository: SeriesRepository,
+    private val seriesLeagueRepository: SeriesLeagueRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
-    private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
+    private val economyConfigService: EconomyConfigService,
+    private val leagueService: LeagueService,
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
@@ -34,50 +38,84 @@ class SeriesFinalizationService(
         val tournamentName = series.tournament!!.name
         val seriesName = series.name
         val teamsWithCards = fantasyTeamRepository.findAllWithCardsForScoring(seriesId)
-        var cardsDecremented = 0
-        for (ft in teamsWithCards) {
-            for (ftc in ft.cards) {
-                val uc = ftc.userCard!!
-                val before = uc.usesRemaining
-                uc.usesRemaining = maxOf(0, before - 1)
-                cardsDecremented++
+        val leagueIds = teamsWithCards.mapNotNull { it.seriesLeague?.id }.distinct()
+        val leagueResultsByTelegramId = LinkedHashMap<Long, MutableList<LeagueResult>>()
+        val totalRewardByTelegramId = LinkedHashMap<Long, Long>()
+        val internalIdByTelegramId = LinkedHashMap<Long, Long>()
+        var rewardsDistributed = 0
+
+        for (seriesLeagueId in leagueIds) {
+            val seriesLeague = seriesLeagueRepository.findById(seriesLeagueId).orElse(null) ?: continue
+            val leaderboard = fantasyTeamRepository.findLeaderboardForSeriesLeague(seriesLeagueId)
+            val totalParticipants = leaderboard.size
+            if (totalParticipants == 0) continue
+            val winnerPublicName = leaderboard.firstOrNull()?.telegramUser?.publicDisplayNameForNotifications()
+            val rewardScalePercent = leagueService.getEffectiveRewardScale(seriesLeague)
+            val leagueName = seriesLeague.league!!.name
+
+            leaderboard.forEachIndexed { index, ft ->
+                val position = index + 1
+                val baseReward = economyConfigService.getSeriesReward(position, totalParticipants)
+                val scaledByRoster = scaleSeriesRewardByRosterSize(baseReward, ft.cards.size)
+                val reward = scaledByRoster * rewardScalePercent / 100L
+                val user = ft.telegramUser!!
+                val userInternalId = user.id!!
+                if (reward > 0) {
+                    userService.addBalance(userInternalId, reward, FantikiTransactionReason.SERIES_REWARD)
+                    rewardsDistributed++
+                }
+                internalIdByTelegramId[user.telegramId] = userInternalId
+                totalRewardByTelegramId.merge(user.telegramId, reward) { a, b -> a + b }
+                leagueResultsByTelegramId
+                    .computeIfAbsent(user.telegramId) { mutableListOf() }
+                    .add(
+                        LeagueResult(
+                            leagueName = leagueName,
+                            winnerPublicName = winnerPublicName,
+                            place = position,
+                            total = totalParticipants,
+                            reward = reward,
+                        ),
+                    )
             }
         }
-        val leaderboard = fantasyTeamRepository.findLeaderboardForSeries(seriesId)
-        val winnerPublicName = leaderboard.firstOrNull()?.telegramUser?.publicDisplayNameForNotifications()
-        val n = leaderboard.size
-        var rewardsDistributed = 0
-        val notificationRecipients = ArrayList<SeriesFinalizedRecipient>(n)
-        leaderboard.forEachIndexed { index, ft ->
-            val position = index + 1
-            val baseReward = economyConfigService.getSeriesReward(position, n)
-            val reward = scaleSeriesRewardByRosterSize(baseReward, ft.cards.size)
-            val u = ft.telegramUser!!
-            val userId = u.id!!
-            if (reward > 0) {
-                userService.addBalance(userId, reward, FantikiTransactionReason.SERIES_REWARD)
-                rewardsDistributed++
+
+        val cardLeagueSetById = LinkedHashMap<Long, MutableSet<Long>>()
+        val cardById = LinkedHashMap<Long, io.github.mralex1810.fantasy.entity.UserCard>()
+        for (team in teamsWithCards) {
+            val leagueId = team.seriesLeague?.id ?: continue
+            for (slot in team.cards) {
+                val userCard = slot.userCard ?: continue
+                val userCardId = userCard.id ?: continue
+                cardById[userCardId] = userCard
+                cardLeagueSetById.computeIfAbsent(userCardId) { LinkedHashSet() }.add(leagueId)
             }
-            val balanceAfter = userService.getBalance(userId)
-            notificationRecipients.add(
-                SeriesFinalizedRecipient(
-                    telegramId = u.telegramId,
-                    place = position,
-                    total = n,
-                    reward = reward,
-                    balanceAfter = balanceAfter,
-                ),
-            )
+        }
+        var cardsDecremented = 0
+        for ((userCardId, leagues) in cardLeagueSetById) {
+            val userCard = cardById[userCardId] ?: continue
+            val decrementBy = leagues.size
+            userCard.usesRemaining = maxOf(0, userCard.usesRemaining - decrementBy)
+            cardsDecremented += decrementBy
         }
         series.status = SeriesStatus.FINISHED
         series.finalized = true
         seriesRepository.save(series)
+
+        val notificationRecipients = leagueResultsByTelegramId.entries.map { (telegramId, leagueResults) ->
+            val balanceAfter = userService.getBalance(internalIdByTelegramId[telegramId]!!)
+            SeriesFinalizedRecipient(
+                telegramId = telegramId,
+                leagueResults = leagueResults.sortedBy { it.leagueName },
+                totalReward = totalRewardByTelegramId[telegramId] ?: 0L,
+                balanceAfter = balanceAfter,
+            )
+        }
         applicationEventPublisher.publishEvent(
             SeriesFinalizedNotificationEvent(
                 seriesId = seriesId,
                 tournamentName = tournamentName,
                 seriesName = seriesName,
-                winnerPublicName = winnerPublicName,
                 recipients = notificationRecipients,
             ),
         )
