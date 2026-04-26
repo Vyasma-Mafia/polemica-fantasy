@@ -7,6 +7,8 @@ data class RatingEntryDto(
     val cardsValue: Long,
     val totalValue: Long,
     val cardsCount: Int,
+    /** Sum of fantiki credited from series leaderboard (SERIES_REWARD). Not included in [totalValue]. */
+    val prizeWinnings: Long,
 )
 
 data class GlobalRatingDto(

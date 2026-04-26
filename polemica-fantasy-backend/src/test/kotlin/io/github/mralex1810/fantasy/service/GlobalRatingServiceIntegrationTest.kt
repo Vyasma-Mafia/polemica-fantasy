@@ -4,6 +4,7 @@ import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
@@ -48,6 +49,9 @@ class GlobalRatingServiceIntegrationTest {
     private lateinit var userCardRepository: UserCardRepository
 
     @Autowired
+    private lateinit var userService: UserService
+
+    @Autowired
     private lateinit var cacheManager: CacheManager
 
     @SpyBean
@@ -89,10 +93,37 @@ class GlobalRatingServiceIntegrationTest {
         assertEquals(100L + rankPoor.cardsValue, rankPoor.totalValue)
         assertEquals(0, byTelegram[rich.telegramId]!!.cardsCount)
         assertEquals(1, byTelegram[poor.telegramId]!!.cardsCount)
+        assertEquals(0L, rankRich.prizeWinnings)
+        assertEquals(0L, rankPoor.prizeWinnings)
 
         assertNotNull(out.currentUser)
         assertEquals(1, out.currentUser!!.rank)
         assertEquals(rich.telegramId, out.currentUser.user.telegramId)
+    }
+
+    @Test
+    @Transactional
+    fun `prizeWinnings is sum of SERIES_REWARD only`() {
+        val low = telegramUserRepository.save(
+            TelegramUser(telegramId = 883_001L, fantiki = 5_00L),
+        )
+        val high = telegramUserRepository.save(
+            TelegramUser(telegramId = 883_002L, fantiki = 5_00L),
+        )
+        userService.addBalance(low.id!!, 100L, FantikiTransactionReason.SERIES_REWARD)
+        userService.addBalance(low.id!!, 50L, FantikiTransactionReason.SERIES_REWARD)
+        userService.addBalance(low.id!!, 9_99L, FantikiTransactionReason.ADMIN_GRANT)
+        userService.addBalance(high.id!!, 1L, FantikiTransactionReason.SERIES_REWARD)
+        userService.addBalance(high.id!!, 400L, FantikiTransactionReason.SERIES_REWARD)
+
+        val out = globalRatingService.getRating(high)
+        val byId = out.entries.associateBy { it.user.telegramId }
+        assertEquals(150L, byId[883_001L]!!.prizeWinnings)
+        assertEquals(401L, byId[883_002L]!!.prizeWinnings)
+        // totalValue = balance + cards only (prizeWinnings is a subset of balance history, not double-counted in total)
+        val entryHigh = byId[883_002L]!!
+        assertEquals(901L, entryHigh.fantikiBalance) // 500 + 401 from SERIES_REWARD
+        assertEquals(901L, entryHigh.totalValue)
     }
 
     @Test

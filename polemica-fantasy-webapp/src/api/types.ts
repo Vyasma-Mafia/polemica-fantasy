@@ -157,6 +157,8 @@ export interface RatingEntry {
   cardsValue: number
   totalValue: number
   cardsCount: number
+  /** Сумма начислений за лидерборд серий (SERIES_REWARD), не входит в totalValue. */
+  prizeWinnings: number
 }
 
 export interface GlobalRating {

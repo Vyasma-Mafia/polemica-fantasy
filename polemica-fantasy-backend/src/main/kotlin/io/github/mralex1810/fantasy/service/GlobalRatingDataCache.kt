@@ -4,6 +4,8 @@ import io.github.mralex1810.fantasy.dto.user.response.RatingEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.config.AppRatingProperties
+import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.cache.annotation.Cacheable
@@ -21,6 +23,7 @@ data class GlobalRatingEntry(
     val cardsValue: Long,
     val totalValue: Long,
     val cardsCount: Int,
+    val prizeWinnings: Long,
 ) {
     fun toDto(): RatingEntryDto = RatingEntryDto(
         rank = rank,
@@ -29,6 +32,7 @@ data class GlobalRatingEntry(
         cardsValue = cardsValue,
         totalValue = totalValue,
         cardsCount = cardsCount,
+        prizeWinnings = prizeWinnings,
     )
 }
 
@@ -40,6 +44,7 @@ class GlobalRatingDataCache(
     private val telegramUserRepository: TelegramUserRepository,
     private val userCardRepository: UserCardRepository,
     private val cardValueService: CardValueService,
+    private val fantikiTransactionRepository: FantikiTransactionRepository,
     private val appRatingProperties: AppRatingProperties,
 ) {
     @Cacheable(value = ["globalRating"], key = "'all'")
@@ -48,6 +53,13 @@ class GlobalRatingDataCache(
         val excluded = appRatingProperties.excludedTelegramIds
         val users = telegramUserRepository.findAll()
             .filter { it.telegramId !in excluded }
+        val seriesRewardSums = fantikiTransactionRepository
+            .sumPositiveAmountsByUserIdForReason(FantikiTransactionReason.SERIES_REWARD)
+        val prizeWinningsByUserId: Map<Long, Long> = seriesRewardSums.associate { row ->
+            val userId = row[0] as Long
+            val total = (row[1] as Number).toLong()
+            userId to total
+        }
         val cards = userCardRepository.findAllForGlobalRating()
         val byUserId = cards.groupBy { it.telegramUser!!.id!! }
         data class Scored(
@@ -80,6 +92,7 @@ class GlobalRatingDataCache(
                 cardsValue = s.cardsValue,
                 totalValue = s.total,
                 cardsCount = s.cardsCount,
+                prizeWinnings = prizeWinningsByUserId[u.id!!] ?: 0L,
             )
         }
     }

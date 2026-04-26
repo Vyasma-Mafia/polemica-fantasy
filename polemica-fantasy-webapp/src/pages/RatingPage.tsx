@@ -14,12 +14,13 @@ function formatValue(n: number): string {
   return n.toLocaleString('ru-RU')
 }
 
-function ratingRow(e: RatingEntry): { rank: number; name: string; f: string; c: string; t: string } {
+function ratingRow(e: RatingEntry): { rank: number; name: string; f: string; c: string; p: string; t: string } {
   return {
     rank: e.rank,
     name: formatUserDisplayName(e.user),
     f: formatValue(e.fantikiBalance),
     c: formatValue(e.cardsValue),
+    p: formatValue(e.prizeWinnings),
     t: formatValue(e.totalValue),
   }
 }
@@ -40,6 +41,12 @@ function RatingTableRow({ row, current }: { row: ReturnType<typeof ratingRow>; c
           ₱
         </span>
         {row.c}
+      </td>
+      <td className="pf-rating__cell pf-rating__num" title="Призовые за серии (фантики)">
+        <span className="pf-rating__sym" aria-hidden>
+          ₣
+        </span>
+        {row.p}
       </td>
       <td className="pf-rating__cell pf-rating__num pf-rating__cell--total" title="Всего">
         {row.t}
@@ -86,6 +93,9 @@ export function RatingPage() {
               <th className="pf-rating__th--num" scope="col" title="Суммарная ценность карт (₱)">
                 ₱
               </th>
+              <th className="pf-rating__th--num" scope="col" title="Сумма призовых за серии">
+                Призовые
+              </th>
               <th className="pf-rating__th--num" scope="col" title="Баланс + ценность карт">
                 Всего
               </th>
@@ -124,6 +134,12 @@ export function RatingPage() {
                   ₱
                 </span>
                 {bottomRow.c}
+              </span>
+              <span className="pf-rating__num">
+                <span className="pf-rating__sym" aria-hidden>
+                  ₣
+                </span>
+                {bottomRow.p}
               </span>
               <span className="pf-rating__num pf-rating__cell--total">{bottomRow.t}</span>
             </div>

@@ -1066,7 +1066,7 @@ a.pf-lb-row--link:focus-visible {
 
 .pf-rating-pinned__row {
   display: grid;
-  grid-template-columns: 40px 1fr minmax(0, 56px) minmax(0, 56px) minmax(0, 64px);
+  grid-template-columns: 40px 1fr minmax(0, 56px) minmax(0, 56px) minmax(0, 56px) minmax(0, 64px);
   gap: 6px;
   align-items: center;
   padding: 10px 10px;
