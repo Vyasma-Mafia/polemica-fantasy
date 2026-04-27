@@ -1,20 +1,25 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { apiGet } from '../api/client'
-import type { LeaderboardEntry, UserProfile, UserTournamentDetail } from '../api/types'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { ApiError, apiGet } from '../api/client'
+import { fetchLeagueLeaderboard } from '../api/leagues'
+import type { LeaderboardEntry, SeriesLeagueBrief, UserProfile, UserTournamentDetail } from '../api/types'
+import { LeagueTabs } from '../components/LeagueTabs'
 import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { aggregateTournamentLeaderboards } from '../lib/aggregateLeaderboard'
 import { splitAggregatedByTelegramId, splitLeaderboardByTelegramId } from '../lib/leaderboardSelf'
+import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function TournamentLeaderboardPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
   const id = Number(tournamentId)
   const initData = useInitData()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
   const [tab, setTab] = useState<'general' | number>('general')
 
   const tq = useQuery({
@@ -30,11 +35,58 @@ export function TournamentLeaderboardPage() {
   })
 
   const seriesIds = tq.data?.series.map((s) => s.id) ?? []
+  const tournamentLeagues = useMemo<SeriesLeagueBrief[]>(() => {
+    const byCode = new Map<string, SeriesLeagueBrief>()
+    for (const series of tq.data?.series ?? []) {
+      for (const league of series.leagues ?? []) {
+        const key = league.code.trim().toUpperCase()
+        const existing = byCode.get(key)
+        if (existing) {
+          existing.hasTeam = existing.hasTeam || league.hasTeam
+          if (!existing.name && league.name) existing.name = league.name
+          continue
+        }
+        byCode.set(key, {
+          code: league.code,
+          name: league.name,
+          hasTeam: league.hasTeam,
+          valueCap: null,
+        })
+      }
+    }
+    return [...byCode.values()].sort((a, b) => {
+      const aCode = a.code.trim().toUpperCase()
+      const bCode = b.code.trim().toUpperCase()
+      if (aCode === bCode) return 0
+      if (aCode === 'MAIN') return -1
+      if (bCode === 'MAIN') return 1
+      return aCode.localeCompare(bCode)
+    })
+  }, [tq.data?.series])
+  const activeLeagueCode = resolveActiveLeagueCode(tournamentLeagues, requestedLeagueCode)
+  const activeLeague =
+    tournamentLeagues.find((league) => league.code.toUpperCase() === activeLeagueCode.toUpperCase()) ?? null
+
+  useEffect(() => {
+    if (!tournamentLeagues.length) return
+    if (activeLeagueCode === requestedLeagueCode) return
+    const next = new URLSearchParams(searchParams)
+    next.set('league', activeLeagueCode)
+    setSearchParams(next, { replace: true })
+  }, [activeLeagueCode, requestedLeagueCode, searchParams, setSearchParams, tournamentLeagues.length])
+
   const leaderboardQueries = useQueries({
     queries: seriesIds.map((sid) => ({
-      queryKey: ['leaderboard', sid, initData],
-      queryFn: () => apiGet<LeaderboardEntry[]>(`/api/v1/series/${sid}/leaderboard`, initData),
-      enabled: !!initData && seriesIds.length > 0,
+      queryKey: ['leaderboard', sid, activeLeagueCode, initData],
+      queryFn: async () => {
+        try {
+          return await fetchLeagueLeaderboard(sid, activeLeagueCode, initData)
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 404) return []
+          throw error
+        }
+      },
+      enabled: !!initData && seriesIds.length > 0 && tournamentLeagues.length > 0,
     })),
   })
 
@@ -71,10 +123,19 @@ export function TournamentLeaderboardPage() {
 
   const t = tq.data!
   const back = `/tournaments/${t.id}`
+  const leagueName = activeLeague ? leagueShortName(activeLeague.code, activeLeague.name) : activeLeagueCode
+  const setLeague = (code: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('league', code.toUpperCase())
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <div className="pf-page">
-      <PageHeader title="Лидерборд" subtitle={t.name} backTo={back} />
+      <PageHeader title="Лидерборд" subtitle={`${t.name} · ${leagueName}`} backTo={back} />
+      {tournamentLeagues.length > 0 && (
+        <LeagueTabs leagues={tournamentLeagues} activeCode={activeLeagueCode} onChange={setLeague} />
+      )}
 
       <div className="pf-tabs pf-tabs--scroll">
         <button
@@ -133,7 +194,7 @@ export function TournamentLeaderboardPage() {
           {seriesSplit.pinned && (
             <LeaderboardPinnedBlock>
               <Link
-                to={`/series/${tab}/leaderboard/player/${seriesSplit.pinned.user.telegramId}`}
+                to={`/series/${tab}/leaderboard/player/${seriesSplit.pinned.user.telegramId}?league=${encodeURIComponent(activeLeagueCode)}`}
                 className="pf-lb-row pf-lb-row--link"
               >
                 <span className="pf-lb-rank">#{seriesSplit.pinned.rank}</span>
@@ -149,7 +210,7 @@ export function TournamentLeaderboardPage() {
             {seriesSplit.rest.map((r) => (
               <li key={r.rank + '-' + r.user.telegramId}>
                 <Link
-                  to={`/series/${tab}/leaderboard/player/${r.user.telegramId}`}
+                  to={`/series/${tab}/leaderboard/player/${r.user.telegramId}?league=${encodeURIComponent(activeLeagueCode)}`}
                   className="pf-lb-row pf-lb-row--link"
                 >
                   <span className="pf-lb-rank">#{r.rank}</span>

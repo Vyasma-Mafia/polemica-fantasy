@@ -394,7 +394,7 @@ export function TeamPage() {
                   <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
                   {dead && <span className="pf-team-dead-label">Истекла</span>}
                   {otherLeaguesInSeries.length > 0 && (
-                    <span className="pf-card-league-badge">
+                    <span className={`pf-card-league-badge${dead ? ' pf-card-league-badge--team-dead' : ''}`}>
                       {otherLeaguesInSeries.map((code) => leagueShortName(code)).join(', ')}
                     </span>
                   )}

@@ -41,6 +41,9 @@ export function HelpPage() {
     queryFn: () => fetchLegendaryUpgradeInfo(initData!),
     enabled: !!initData,
   })
+  const budgetLeague = economyQ.data?.leagues.BUDGET
+  const budgetRewardScale = budgetLeague?.rewardScale ?? null
+  const budgetValueCap = budgetLeague?.valueCap ?? null
 
   if (!initData) return <MissingInitDataNotice />
 
@@ -135,6 +138,26 @@ export function HelpPage() {
               Одна и та же карта может играть в нескольких лигах серии, но тратит по <strong>1 использованию за каждую
               лигу</strong>. Если использований не хватает, карта будет недоступна для дополнительной лиги.
             </p>
+            <p>
+              В <strong>бюджетной лиге</strong> проверяется сумма ценностей всех карт команды: она должна быть не выше
+              лимита лиги. При редактировании состава приложение сразу блокирует карты, которые не помещаются в оставшийся
+              бюджет.
+            </p>
+            <p>
+              Награда в бюджетной лиге считается по той же таблице мест, что и в основной, но с отдельным коэффициентом
+              лиги. Начисления по основной и бюджетной лигам <strong>складываются</strong>.
+            </p>
+            <p>
+              Турнирный суммарный рейтинг строится по основной лиге. Бюджетная лига остаётся отдельным зачётом внутри
+              серии с собственным лидербордом и выплатами.
+            </p>
+            {budgetLeague && (
+              <p className="pf-muted">
+                Сейчас для бюджетной лиги: лимит команды <strong>{budgetValueCap != null ? `${budgetValueCap}₱` : 'без ограничения'}</strong>, коэффициент награды{' '}
+                <strong>{budgetRewardScale}%</strong> от базовой награды серии. Процент берётся из экономики сервера
+                (`economy_config`) и может меняться администратором.
+              </p>
+            )}
           </article>
           {economyQ.isLoading && <p className="pf-muted">Загрузка параметров лиг…</p>}
           {economyQ.isError && <p className="pf-err">{(economyQ.error as Error).message}</p>}

@@ -2,6 +2,17 @@
 
 ## Что реализовано
 
+### TMA bugfix: лидерборд турнира по лигам + бейджи карты в сборке
+- [x] `polemica-fantasy-webapp/src/pages/TournamentLeaderboardPage.tsx`: переход на per-league leaderboard для вкладок серий (`fetchLeagueLeaderboard`), добавлены `LeagueTabs` и синхронизация `?league=` в URL; ссылки на `/series/:id/leaderboard/player/:telegramId` теперь сохраняют `league`
+- [x] Исправлен кейс «из турнира не видно бюджетную лигу в лидерборде по сериям»: страница турнирного лидерборда больше не привязана к legacy MAIN endpoint
+- [x] `polemica-fantasy-webapp/src/pages/TeamPage.tsx` + `src/index.css`: устранено наложение ценности карты и бейджа «уже в другой лиге»; `pf-card-league-badge` смещён ниже value badge, добавлен вариант `pf-card-league-badge--team-dead` для карт со статусом «Истекла»
+- [x] Проверка: `npm run build` (webapp) — успешно
+
+### Справка `/help`: бюджетная лига (контент для игроков)
+- [x] `polemica-fantasy-webapp/src/pages/HelpPage.tsx`: раздел **«Лиги»** расширен игроко-ориентированными правилами бюджетной лиги (лимит суммы `card_value`, поведение uses при игре в нескольких лигах, суммирование наград по лигам, связь с турнирным рейтингом)
+- [x] Процент награды бюджетной лиги в тексте справки берётся из `economy-info` (`leagues.BUDGET.rewardScale` из `economy_config`), без хардкода
+- [x] `docs/features/DESIGN-CARD-VALUE-AND-LEAGUES.md` (п. 8.4) синхронизирован: добавлено явное требование подтягивать `reward_scale` из `economy_config` и полный список информации, которую нужно показать игроку
+
 ### Фильтр фаз для POLEMICA_COMPETITION серий
 - [x] **Flyway V36:** `series.game_phase` (`INT NULL`), CHECK-ограничение `0..2` или `NULL`, бэкфилл `game_phase = 0` для существующих серий турниров `POLEMICA_COMPETITION`
 - [x] **Backend API и модель:** в `Series`/`SeriesDto`/`CreateSeriesRequest`/`UpdateSeriesRequest` добавлено поле `gamePhase`; create default для competition = `0`, update поддерживает явное `null` через флаг `gamePhaseSpecified`; для `STANDALONE` значение принудительно `null`
