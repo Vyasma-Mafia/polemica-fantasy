@@ -50,11 +50,6 @@ export function HomePage() {
     leaguesBySeriesId.set(openSeries[i].seriesId, openSeriesLeaguesQ[i]?.data ?? [])
   }
   const openSeriesError = openSeriesLeaguesQ.find((item) => item.isError)?.error as Error | undefined
-  const openSeriesWithOpenLeagues = openSeries.filter((series) => {
-    const leagues = leaguesBySeriesId.get(series.seriesId)
-    if (!leagues || leagues.length === 0) return true
-    return leagues.some((league) => !league.hasTeam)
-  })
 
   const openSeriesStatus = (seriesId: number): string => {
     const leagues = leaguesBySeriesId.get(seriesId) ?? []
@@ -67,13 +62,16 @@ export function HomePage() {
   const openSeriesCta = (seriesId: number) => {
     const leagues = leaguesBySeriesId.get(seriesId) ?? []
     const missing = leagues.filter((league) => !league.hasTeam)
+    if (missing.length === 0) {
+      return { to: `/series/${seriesId}`, label: 'Изменить' }
+    }
     if (missing.length === 1) {
       return {
         to: `/series/${seriesId}/team?league=${encodeURIComponent(missing[0].code)}`,
-        label: 'Далее',
+        label: 'Собрать',
       }
     }
-    return { to: `/series/${seriesId}`, label: 'Далее' }
+    return { to: `/series/${seriesId}`, label: 'Открыть' }
   }
 
   return (
@@ -85,14 +83,16 @@ export function HomePage() {
         <p className="pf-err pf-home-open-series-err">{(openSeriesQ.error as Error).message}</p>
       ) : openSeriesError ? (
         <p className="pf-err pf-home-open-series-err">{openSeriesError.message}</p>
-      ) : openSeriesWithOpenLeagues.length > 0 ? (
+      ) : openSeries.length > 0 ? (
         <section className="pf-home-open-series" aria-labelledby="home-open-series-heading">
           <h2 id="home-open-series-heading" className="pf-section-title">
             Состав на серию
           </h2>
-          <p className="pf-instruction pf-home-open-series-hint">Серии, для которых ещё можно выставить команду</p>
+          <p className="pf-instruction pf-home-open-series-hint">
+            Активные серии с открытым дедлайном: можно подать новый состав или изменить текущий
+          </p>
           <ul className="pf-day-list">
-            {openSeriesWithOpenLeagues.map((s, idx) => {
+            {openSeries.map((s, idx) => {
               const deadline = new Date(s.teamDeadline)
               const seriesNum = s.gameNumFrom ?? idx + 1
               const cta = openSeriesCta(s.seriesId)

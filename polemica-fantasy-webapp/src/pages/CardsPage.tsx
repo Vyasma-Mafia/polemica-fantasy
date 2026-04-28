@@ -2,7 +2,11 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
-import { createMarketplaceListing } from '../api/marketplace'
+import {
+  cancelMarketplaceListing,
+  createMarketplaceListing,
+  updateMarketplaceListingPrice,
+} from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type {
   FantasyTeamDto,
@@ -89,6 +93,8 @@ export function CardsPage() {
   const [legendaryWizardInitialCardId, setLegendaryWizardInitialCardId] = useState<number | null>(null)
   const [sellModalCard, setSellModalCard] = useState<UserCardItem | null>(null)
   const [sellPrice, setSellPrice] = useState('')
+  const [manageListingCard, setManageListingCard] = useState<UserCardItem | null>(null)
+  const [manageListingPrice, setManageListingPrice] = useState('')
 
   const params = useMemo(() => {
     const sp = new URLSearchParams()
@@ -314,6 +320,33 @@ export function CardsPage() {
       void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
       void qc.invalidateQueries({ queryKey: ['cards'] })
       setSellModalCard(null)
+    },
+    onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
+  })
+
+  const updateListingMut = useMutation({
+    mutationFn: ({ listingId, price }: { listingId: number; price: number }) =>
+      updateMarketplaceListingPrice(initData, listingId, { price }),
+    onSuccess: () => {
+      setManageListingCard(null)
+      setManageListingPrice('')
+      void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+    },
+    onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
+  })
+
+  const cancelListingMut = useMutation({
+    mutationFn: (listingId: number) => cancelMarketplaceListing(initData, listingId),
+    onSuccess: (_, listingId) => {
+      setManageListingCard((card) =>
+        card?.activeMarketplaceListing?.listingId === listingId ? null : card,
+      )
+      setManageListingPrice('')
+      void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['cards'] })
     },
     onError: (e: Error) => window.alert(e instanceof ApiError ? e.message : String(e)),
   })
@@ -603,11 +636,23 @@ export function CardsPage() {
                   className="pf-btn pf-btn--small pf-btn--primary"
                   onClick={() => {
                     setSellModalCard(detailCard)
-                    const min = economyQ.data?.renewalCosts[detailCard.rarity] ?? 0
+                    const min = economyQ.data?.marketplaceMinPrices[detailCard.rarity] ?? 0
                     setSellPrice(String(min))
                   }}
                 >
                   Продать
+                </button>
+              )}
+              {detailCard.activeMarketplaceListing && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small"
+                  onClick={() => {
+                    setManageListingCard(detailCard)
+                    setManageListingPrice(String(detailCard.activeMarketplaceListing!.price))
+                  }}
+                >
+                  Управлять листингом
                 </button>
               )}
               <button
@@ -729,6 +774,130 @@ export function CardsPage() {
         </div>
       )}
 
+      {manageListingCard?.activeMarketplaceListing && (
+        <div
+          className="pf-modal-backdrop"
+          role="dialog"
+          aria-modal
+          aria-label="Управление листингом"
+          onClick={() => {
+            if (updateListingMut.isPending || cancelListingMut.isPending) return
+            setManageListingCard(null)
+            setManageListingPrice('')
+          }}
+        >
+          <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="pf-modal__close"
+              disabled={updateListingMut.isPending || cancelListingMut.isPending}
+              onClick={() => {
+                setManageListingCard(null)
+                setManageListingPrice('')
+              }}
+            >
+              ×
+            </button>
+            <h3 className="pf-modal__title">Управление листингом</h3>
+            <p className="pf-muted">{manageListingCard.playerNickname}</p>
+            <p className="pf-muted" style={{ marginTop: 4 }}>
+              Текущая цена: <strong>{manageListingCard.activeMarketplaceListing.price}₣</strong>
+            </p>
+
+            {!economyQ.data ? (
+              <p className="pf-muted" style={{ marginTop: 8 }}>
+                {economyQ.isError
+                  ? 'Не удалось загрузить лимиты цен. Попробуйте позже.'
+                  : 'Загрузка лимитов цен…'}
+              </p>
+            ) : (
+              <>
+                <label className="pf-field">
+                  <span className="pf-field__label">
+                    Новая цена (мин. {economyQ.data.marketplaceMinPrices[manageListingCard.rarity]}₣, макс.{' '}
+                    {economyQ.data.marketplaceMaxPrices[manageListingCard.rarity]}₣)
+                  </span>
+                  <input
+                    className="pf-input"
+                    inputMode="numeric"
+                    value={manageListingPrice}
+                    onChange={(e) => setManageListingPrice(e.target.value)}
+                    disabled={updateListingMut.isPending || cancelListingMut.isPending}
+                  />
+                </label>
+                {(() => {
+                  const price = Number(manageListingPrice)
+                  const pct = economyQ.data.marketplaceCommissionPercent ?? 10
+                  const commission = Number.isFinite(price) ? Math.floor((price * pct) / 100) : 0
+                  const youGet = Number.isFinite(price) ? price - commission : 0
+                  return (
+                    <p className="pf-muted" style={{ marginTop: 8 }}>
+                      Комиссия {pct}%: {Number.isFinite(price) ? `${commission}₣` : '—'}. Вы получите:{' '}
+                      <strong>{Number.isFinite(price) && price > 0 ? `${youGet}₣` : '—'}</strong>
+                    </p>
+                  )
+                })()}
+              </>
+            )}
+
+            <div className="pf-modal__economy-actions" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="pf-btn pf-btn--small"
+                disabled={updateListingMut.isPending || cancelListingMut.isPending}
+                onClick={() => {
+                  if (!window.confirm('Снять карту с продажи?')) return
+                  cancelListingMut.mutate(manageListingCard.activeMarketplaceListing!.listingId)
+                }}
+              >
+                {cancelListingMut.isPending ? 'Снимаем…' : 'Снять с продажи'}
+              </button>
+              <button
+                type="button"
+                className="pf-btn pf-btn--small"
+                disabled={updateListingMut.isPending || cancelListingMut.isPending}
+                onClick={() => {
+                  setManageListingCard(null)
+                  setManageListingPrice('')
+                }}
+              >
+                Закрыть
+              </button>
+              <button
+                type="button"
+                className="pf-btn pf-btn--small pf-btn--primary"
+                disabled={updateListingMut.isPending || cancelListingMut.isPending || !economyQ.data}
+                onClick={() => {
+                  if (!economyQ.data) return
+                  const min = economyQ.data.marketplaceMinPrices[manageListingCard.rarity]
+                  const max = economyQ.data.marketplaceMaxPrices[manageListingCard.rarity]
+                  const price = Number(manageListingPrice)
+                  if (!Number.isFinite(price) || price < min) {
+                    window.alert(`Минимальная цена для этой редкости: ${min}₣`)
+                    return
+                  }
+                  if (!Number.isFinite(price) || price > max) {
+                    window.alert(`Максимальная цена для этой редкости: ${max}₣`)
+                    return
+                  }
+                  if (price === manageListingCard.activeMarketplaceListing!.price) {
+                    setManageListingCard(null)
+                    setManageListingPrice('')
+                    return
+                  }
+                  updateListingMut.mutate({
+                    listingId: manageListingCard.activeMarketplaceListing!.listingId,
+                    price,
+                  })
+                }}
+              >
+                {updateListingMut.isPending ? 'Сохраняем…' : 'Сохранить цену'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {sellModalCard && economyQ.data && (
         <div
           className="pf-modal-backdrop"
@@ -786,7 +955,7 @@ export function CardsPage() {
                 className="pf-btn pf-btn--small pf-btn--primary"
                 disabled={sellMut.isPending}
                 onClick={() => {
-                  const min = economyQ.data!.renewalCosts[sellModalCard.rarity]
+                  const min = economyQ.data!.marketplaceMinPrices[sellModalCard.rarity]
                   const max = economyQ.data!.marketplaceMaxPrices[sellModalCard.rarity]
                   const price = Number(sellPrice)
                   if (!Number.isFinite(price) || price < min) {

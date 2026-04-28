@@ -90,12 +90,14 @@ export function TeamPage() {
   const [selected, setSelected] = useState<number[]>([])
   const [rarityFilter, setRarityFilter] = useState<Rarity | ''>('')
   const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
+  const [teamSelectionHydrated, setTeamSelectionHydrated] = useState(false)
 
   useEffect(() => {
     queueMicrotask(() => {
       setSelected([])
       setRarityFilter('')
       setPlayerFantasyId('')
+      setTeamSelectionHydrated(false)
     })
   }, [sid, activeLeagueCode])
 
@@ -108,17 +110,18 @@ export function TeamPage() {
   }, [activeLeagueCode, leagues.length, requestedLeagueCode, searchParams, setSearchParams])
 
   useEffect(() => {
-    if (!teamQ.isSuccess) return
+    if (!teamQ.isSuccess || teamSelectionHydrated) return
     queueMicrotask(() => {
       if (teamQ.data?.slots?.length) {
         setSelected(
           [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
         )
-      } else {
+      } else if (selected.length === 0) {
         setSelected([])
       }
+      setTeamSelectionHydrated(true)
     })
-  }, [teamQ.isSuccess, teamQ.data])
+  }, [teamQ.isSuccess, teamQ.data, teamSelectionHydrated, selected.length])
 
   const cardById = useMemo(() => {
     const m = new Map<number, UserCardItem>()
