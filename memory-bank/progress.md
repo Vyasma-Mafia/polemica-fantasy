@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Backend bugfix: финализация серии и uses в лигах (апрель 2026)
+- [x] Подтверждён дефект: при финализации серии карта в `MAIN` + `BUDGET` давала `cardsDecremented = 2`, но `user_card.uses_remaining` в БД не менялся (интеграционный сценарий в `UserApiIntegrationTest`)
+- [x] `SeriesFinalizationService`: после декремента uses добавлен явный `userCardRepository.saveAll(cardById.values)`, чтобы изменения карточек гарантированно сохранялись после финализации
+- [x] Добавлен регрессионный тест `finalize series decrements uses by leagues count for same card` (`UserApiIntegrationTest`): создаёт команды в двух лигах одной картой, финализирует серию, проверяет уменьшение `usesRemaining` на 2
+- [x] Проверка: `./gradlew test --tests "*finalize series decrements uses by leagues count for same card*"` и `./gradlew test --tests "io.github.mralex1810.fantasy.service.SeriesFinalizationServiceTest"` — успешно
+
 ### UX: главная и коллекция (апрель 2026)
 - [x] **HomePage (`/`):** блок «Состав на серию» больше не исчезает после заполнения команд во всех лигах — показываются все активные серии с открытым дедлайном; CTA учитывает состояние (`Собрать` / `Изменить` / `Открыть`)
 - [x] **CardsPage (`/cards`):** для карты в `activeMarketplaceListing` добавлено единое действие **«Управлять листингом»** (модалка: смена цены + снятие с продажи)

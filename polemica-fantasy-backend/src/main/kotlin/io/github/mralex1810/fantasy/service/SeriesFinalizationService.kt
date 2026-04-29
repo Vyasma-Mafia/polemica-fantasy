@@ -10,6 +10,7 @@ import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -21,6 +22,7 @@ class SeriesFinalizationService(
     private val seriesRepository: SeriesRepository,
     private val seriesLeagueRepository: SeriesLeagueRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
+    private val userCardRepository: UserCardRepository,
     private val userService: UserService,
     private val economyConfigService: EconomyConfigService,
     private val leagueService: LeagueService,
@@ -97,6 +99,9 @@ class SeriesFinalizationService(
             val decrementBy = leagues.size
             userCard.usesRemaining = maxOf(0, userCard.usesRemaining - decrementBy)
             cardsDecremented += decrementBy
+        }
+        if (cardById.isNotEmpty()) {
+            userCardRepository.saveAll(cardById.values)
         }
         series.status = SeriesStatus.FINISHED
         series.finalized = true

@@ -18,6 +18,7 @@ import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
@@ -40,6 +41,9 @@ class SeriesFinalizationServiceTest {
 
     @Mock
     private lateinit var fantasyTeamRepository: FantasyTeamRepository
+
+    @Mock
+    private lateinit var userCardRepository: UserCardRepository
 
     @Mock
     private lateinit var seriesLeagueRepository: SeriesLeagueRepository
