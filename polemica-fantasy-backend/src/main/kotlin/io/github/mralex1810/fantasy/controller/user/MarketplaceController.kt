@@ -3,6 +3,8 @@ package io.github.mralex1810.fantasy.controller.user
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceListingRequest
 import io.github.mralex1810.fantasy.dto.user.request.UpdateMarketplaceListingPriceRequest
 import io.github.mralex1810.fantasy.dto.user.response.BuyCardResultDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsDetailDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsSummaryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingsPageDto
@@ -89,4 +91,19 @@ class MarketplaceController(
     @GetMapping("/feed")
     fun getFeed(@RequestParam(defaultValue = "20") limit: Int): MarketplaceFeedDto =
         marketplaceService.getFeed(limit)
+
+    @GetMapping("/analytics/summary")
+    fun getAnalyticsSummary(
+        @AuthenticationPrincipal user: TelegramUser,
+        @RequestParam fantasyPlayerIds: List<Long>,
+    ): MarketplaceAnalyticsSummaryDto =
+        marketplaceService.getAnalyticsSummary(fantasyPlayerIds)
+
+    @GetMapping("/analytics/detail")
+    fun getAnalyticsDetail(
+        @AuthenticationPrincipal user: TelegramUser,
+        @RequestParam fantasyPlayerId: Long,
+        @RequestParam rarity: Rarity,
+    ): MarketplaceAnalyticsDetailDto =
+        marketplaceService.getAnalyticsDetail(fantasyPlayerId, rarity)
 }

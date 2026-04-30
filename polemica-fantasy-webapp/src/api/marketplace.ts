@@ -2,6 +2,8 @@ import { apiGet, apiSend } from './client'
 import type {
   BuyCardResult,
   CardOwnershipHistoryEntry,
+  MarketplaceAnalyticsDetail,
+  MarketplaceAnalyticsSummary,
   MarketplaceFeed,
   MarketplaceListingsPage,
   MarketplaceListingEntry,
@@ -84,6 +86,32 @@ export function buyMarketplaceListing(initData: string | undefined, listingId: n
 export function fetchCardOwnershipHistory(initData: string | undefined, userCardId: number) {
   return apiGet<CardOwnershipHistoryEntry[]>(
     `/api/v1/user-cards/${userCardId}/ownership-history`,
+    initData,
+  )
+}
+
+export function fetchMarketplaceAnalyticsSummary(
+  initData: string | undefined,
+  fantasyPlayerIds: number[],
+) {
+  const sp = new URLSearchParams()
+  sp.set('fantasyPlayerIds', fantasyPlayerIds.join(','))
+  return apiGet<MarketplaceAnalyticsSummary>(
+    `/api/v1/marketplace/analytics/summary?${sp.toString()}`,
+    initData,
+  )
+}
+
+export function fetchMarketplaceAnalyticsDetail(
+  initData: string | undefined,
+  fantasyPlayerId: number,
+  rarity: Rarity,
+) {
+  const sp = new URLSearchParams()
+  sp.set('fantasyPlayerId', String(fantasyPlayerId))
+  sp.set('rarity', rarity)
+  return apiGet<MarketplaceAnalyticsDetail>(
+    `/api/v1/marketplace/analytics/detail?${sp.toString()}`,
     initData,
   )
 }

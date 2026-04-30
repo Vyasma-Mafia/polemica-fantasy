@@ -117,6 +117,7 @@ data class LeaderboardEntryDto(
     val rank: Int,
     val totalScore: Double?,
     val user: UserPublicDto,
+    val fantasyPlayerIds: List<Long> = emptyList(),
 )
 
 data class CardAchievementBriefDto(

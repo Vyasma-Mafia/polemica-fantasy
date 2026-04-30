@@ -5,9 +5,13 @@ import io.github.mralex1810.fantasy.dto.user.response.BuyCardResultDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceCardAchievementDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedItemDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsDetailDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsSummaryDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsSummaryItemDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingCardDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingsPageDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceRecentSaleDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceSellerBriefDto
 import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardTemplate
@@ -476,6 +480,53 @@ class MarketplaceService(
             return false to "Insufficient balance"
         }
         return true to null
+    }
+
+    @Transactional(readOnly = true)
+    fun getAnalyticsSummary(fantasyPlayerIds: Collection<Long>): MarketplaceAnalyticsSummaryDto {
+        if (fantasyPlayerIds.isEmpty()) {
+            return MarketplaceAnalyticsSummaryDto(items = emptyList())
+        }
+        val rows = marketplaceListingRepository.findActiveListingSummaryByFantasyPlayerIds(fantasyPlayerIds)
+        val items = rows.map { row ->
+            MarketplaceAnalyticsSummaryItemDto(
+                fantasyPlayerId = (row[0] as Number).toLong(),
+                rarity = Rarity.valueOf(row[1] as String),
+                activeCount = (row[2] as Number).toLong(),
+                minActivePrice = (row[3] as? Number)?.toLong(),
+            )
+        }
+        return MarketplaceAnalyticsSummaryDto(items = items)
+    }
+
+    @Transactional(readOnly = true)
+    fun getAnalyticsDetail(fantasyPlayerId: Long, rarity: Rarity): MarketplaceAnalyticsDetailDto {
+        val activeStats = marketplaceListingRepository.findActiveListingStatsForPlayerAndRarity(
+            MarketplaceListingStatus.ACTIVE, fantasyPlayerId, rarity,
+        )
+        val activeCount = (activeStats[0] as Number).toLong()
+        val activeMinPrice = (activeStats[1] as? Number)?.toLong()
+        val activeMaxPrice = (activeStats[2] as? Number)?.toLong()
+
+        val recentSold = marketplaceListingRepository.findRecentSoldByPlayerAndRarity(
+            MarketplaceListingStatus.SOLD, fantasyPlayerId, rarity,
+            PageRequest.of(0, 10),
+        )
+        val recentSales = recentSold.map { ml ->
+            MarketplaceRecentSaleDto(price = ml.price, soldAt = ml.soldAt!!)
+        }
+        val avgSalePrice = if (recentSales.isEmpty()) null
+        else recentSales.sumOf { it.price } / recentSales.size
+
+        return MarketplaceAnalyticsDetailDto(
+            fantasyPlayerId = fantasyPlayerId,
+            rarity = rarity,
+            activeCount = activeCount,
+            activeMinPrice = activeMinPrice,
+            activeMaxPrice = activeMaxPrice,
+            recentSales = recentSales,
+            avgSalePrice = avgSalePrice,
+        )
     }
 
     private fun toMarketplaceCardDto(

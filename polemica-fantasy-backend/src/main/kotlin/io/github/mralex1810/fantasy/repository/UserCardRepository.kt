@@ -107,4 +107,14 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         """,
     )
     fun findAllForGlobalRating(): List<UserCard>
+
+    @Query(
+        """
+        SELECT ct.rarity, COUNT(uc)
+        FROM UserCard uc JOIN uc.cardTemplate ct
+        WHERE uc.telegramUser.id = :userId
+        GROUP BY ct.rarity
+        """,
+    )
+    fun countByUserGroupedByRarity(@Param("userId") userId: Long): List<Array<Any>>
 }

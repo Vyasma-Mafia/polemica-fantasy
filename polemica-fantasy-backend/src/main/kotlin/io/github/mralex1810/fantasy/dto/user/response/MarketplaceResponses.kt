@@ -64,3 +64,29 @@ data class BuyCardResultDto(
     val commission: Long,
     val newBalance: Long,
 )
+
+data class MarketplaceAnalyticsSummaryDto(
+    val items: List<MarketplaceAnalyticsSummaryItemDto>,
+)
+
+data class MarketplaceAnalyticsSummaryItemDto(
+    val fantasyPlayerId: Long,
+    val rarity: Rarity,
+    val activeCount: Long,
+    val minActivePrice: Long?,
+)
+
+data class MarketplaceAnalyticsDetailDto(
+    val fantasyPlayerId: Long,
+    val rarity: Rarity,
+    val activeCount: Long,
+    val activeMinPrice: Long?,
+    val activeMaxPrice: Long?,
+    val recentSales: List<MarketplaceRecentSaleDto>,
+    val avgSalePrice: Long?,
+)
+
+data class MarketplaceRecentSaleDto(
+    val price: Long,
+    val soldAt: Instant,
+)

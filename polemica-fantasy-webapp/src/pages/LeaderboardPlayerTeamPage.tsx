@@ -320,6 +320,8 @@ export function LeaderboardPlayerTeamPage() {
 
       <p className="pf-footer-link">
         <Link to={backLb}>← К лидерборду</Link>
+        {' · '}
+        <Link to={`/players/${telegramId}`}>Профиль игрока</Link>
       </p>
     </div>
   )

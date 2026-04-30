@@ -5,12 +5,15 @@ import { ApiError, apiGet } from '../api/client'
 import {
   cancelMarketplaceListing,
   createMarketplaceListing,
+  fetchMarketplaceAnalyticsDetail,
+  fetchMarketplaceAnalyticsSummary,
   updateMarketplaceListingPrice,
 } from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type {
   FantasyTeamDto,
   FantasyTeamSeriesDetails,
+  MarketplaceAnalyticsSummaryItem,
   Rarity,
   SeriesStatus,
   UserCardItem,
@@ -93,6 +96,23 @@ export function CardsPage() {
   const [legendaryWizardInitialCardId, setLegendaryWizardInitialCardId] = useState<number | null>(null)
   const [sellModalCard, setSellModalCard] = useState<UserCardItem | null>(null)
   const [sellPrice, setSellPrice] = useState('')
+  const sellAnalyticsQ = useQuery({
+    queryKey: [
+      'marketplace-analytics-detail',
+      sellModalCard?.fantasyPlayerId,
+      sellModalCard?.rarity,
+      initData,
+    ],
+    queryFn: () =>
+      fetchMarketplaceAnalyticsDetail(
+        initData,
+        sellModalCard!.fantasyPlayerId,
+        sellModalCard!.rarity,
+      ),
+    enabled: !!initData && sellModalCard != null,
+    staleTime: 30_000,
+  })
+
   const [manageListingCard, setManageListingCard] = useState<UserCardItem | null>(null)
   const [manageListingPrice, setManageListingPrice] = useState('')
 
@@ -150,6 +170,27 @@ export function CardsPage() {
     queryFn: () => fetchEconomyInfo(initData!),
     enabled: !!initData,
   })
+
+  const fantasyPlayerIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const c of q.data ?? []) ids.add(c.fantasyPlayerId)
+    return [...ids]
+  }, [q.data])
+
+  const analyticsSummaryQ = useQuery({
+    queryKey: ['marketplace-analytics-summary', fantasyPlayerIds, initData],
+    queryFn: () => fetchMarketplaceAnalyticsSummary(initData, fantasyPlayerIds),
+    enabled: !!initData && fantasyPlayerIds.length > 0,
+    staleTime: 60_000,
+  })
+
+  const analyticsSummaryMap = useMemo(() => {
+    const m = new Map<string, MarketplaceAnalyticsSummaryItem>()
+    for (const item of analyticsSummaryQ.data?.items ?? []) {
+      m.set(`${item.fantasyPlayerId}_${item.rarity}`, item)
+    }
+    return m
+  }, [analyticsSummaryQ.data])
 
   const teamSeriesIds = useMemo(
     () => [...new Set((teamsQ.data ?? []).map((t) => t.seriesId))],
@@ -539,6 +580,15 @@ export function CardsPage() {
                       <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
                     )}
                     <CardValueBadge value={c.value} layout="collection" expired={expired} />
+                    {(() => {
+                      const summary = analyticsSummaryMap.get(`${c.fantasyPlayerId}_${c.rarity}`)
+                      if (!summary || summary.activeCount === 0) return null
+                      return (
+                        <span className="pf-market-summary-badge" title="Активные лоты на рынке">
+                          {summary.activeCount} шт. от {summary.minActivePrice}₣
+                        </span>
+                      )
+                    })()}
                     <div className="pf-collection-card__cap">
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
@@ -917,6 +967,42 @@ export function CardsPage() {
             </button>
             <h3 className="pf-modal__title">Выставить на маркетплейс</h3>
             <p className="pf-muted">{sellModalCard.playerNickname}</p>
+            {sellAnalyticsQ.isLoading && (
+              <p className="pf-muted" style={{ marginTop: 8 }}>Загрузка аналитики рынка…</p>
+            )}
+            {sellAnalyticsQ.data && (
+              <div className="pf-sell-analytics">
+                <div>
+                  <strong>На рынке сейчас:</strong>{' '}
+                  {sellAnalyticsQ.data.activeCount === 0 ? (
+                    <span className="pf-muted">нет лотов</span>
+                  ) : (
+                    <span>
+                      {sellAnalyticsQ.data.activeCount} шт.,{' '}
+                      {sellAnalyticsQ.data.activeMinPrice}₣ – {sellAnalyticsQ.data.activeMaxPrice}₣
+                    </span>
+                  )}
+                </div>
+                {sellAnalyticsQ.data.recentSales.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <strong>Последние продажи:</strong>
+                    <ul style={{ margin: '4px 0 0 0', paddingLeft: 16, listStyle: 'disc' }}>
+                      {sellAnalyticsQ.data.recentSales.slice(0, 5).map((sale, i) => (
+                        <li key={i} className="pf-muted">
+                          {sale.price}₣ — {new Date(sale.soldAt).toLocaleDateString('ru-RU')}
+                        </li>
+                      ))}
+                    </ul>
+                    <p style={{ marginTop: 4 }}>
+                      Средняя цена: <strong>{sellAnalyticsQ.data.avgSalePrice}₣</strong>
+                    </p>
+                  </div>
+                )}
+                {sellAnalyticsQ.data.recentSales.length === 0 && (
+                  <p className="pf-muted" style={{ marginTop: 4 }}>Продаж пока не было.</p>
+                )}
+              </div>
+            )}
             <label className="pf-field">
               <span className="pf-field__label">
                 Цена (мин. {economyQ.data.marketplaceMinPrices[sellModalCard.rarity]}₣, макс.{' '}

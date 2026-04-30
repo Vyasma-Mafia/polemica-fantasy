@@ -87,6 +87,9 @@ class UserSeriesService(
                     firstName = u.firstName,
                     displayName = u.displayName,
                 ),
+                fantasyPlayerIds = ft.cards.mapNotNull { c ->
+                    c.userCard?.cardTemplate?.fantasyPlayer?.id
+                },
             )
         }
     }

@@ -17,6 +17,7 @@ import { MarketplacePage } from './pages/MarketplacePage'
 import { MyListingsPage } from './pages/MyListingsPage'
 import { MarketplaceWatchesPage } from './pages/MarketplaceWatchesPage'
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
+import { PlayerProfilePage } from './pages/PlayerProfilePage'
 import { RatingPage } from './pages/RatingPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
@@ -81,6 +82,7 @@ function Shell() {
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/rating" element={<RatingPage />} />
+          <Route path="/players/:telegramId" element={<PlayerProfilePage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/economy" element={<Navigate to="/help" replace />} />
           <Route path="/store" element={<StorePage />} />

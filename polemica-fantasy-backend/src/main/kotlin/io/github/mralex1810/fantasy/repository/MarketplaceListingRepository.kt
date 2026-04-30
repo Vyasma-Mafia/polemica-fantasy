@@ -179,4 +179,82 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("active") active: MarketplaceListingStatus,
         @Param("cancelled") cancelled: MarketplaceListingStatus,
     ): Int
+
+    @Query(
+        value = """
+            SELECT ct.fantasy_player_id,
+                   ct.rarity,
+                   CAST(COUNT(*) AS bigint),
+                   CAST(MIN(ml.price) AS bigint)
+            FROM marketplace_listing ml
+            JOIN user_card uc ON uc.id = ml.user_card_id
+            JOIN card_template ct ON ct.id = uc.card_template_id
+            WHERE ml.status = 'ACTIVE'
+              AND ct.fantasy_player_id IN (:fantasyPlayerIds)
+            GROUP BY ct.fantasy_player_id, ct.rarity
+        """,
+        nativeQuery = true,
+    )
+    fun findActiveListingSummaryByFantasyPlayerIds(
+        @Param("fantasyPlayerIds") fantasyPlayerIds: Collection<Long>,
+    ): List<Array<Any>>
+
+    @Query(
+        """
+        SELECT COUNT(ml), MIN(ml.price), MAX(ml.price)
+        FROM MarketplaceListing ml
+        JOIN ml.userCard uc
+        JOIN uc.cardTemplate ct
+        WHERE ml.status = :active
+          AND ct.fantasyPlayer.id = :fantasyPlayerId
+          AND ct.rarity = :rarity
+        """,
+    )
+    fun findActiveListingStatsForPlayerAndRarity(
+        @Param("active") active: MarketplaceListingStatus,
+        @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("rarity") rarity: Rarity,
+    ): Array<Any>
+
+    @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        JOIN ml.userCard uc
+        JOIN uc.cardTemplate ct
+        WHERE ml.status = :sold
+          AND ct.fantasyPlayer.id = :fantasyPlayerId
+          AND ct.rarity = :rarity
+          AND ml.soldAt IS NOT NULL
+        ORDER BY ml.soldAt DESC
+        """,
+    )
+    fun findRecentSoldByPlayerAndRarity(
+        @Param("sold") sold: MarketplaceListingStatus,
+        @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("rarity") rarity: Rarity,
+        pageable: Pageable,
+    ): List<MarketplaceListing>
+
+    fun countBySeller_IdAndStatus(sellerId: Long, status: MarketplaceListingStatus): Long
+
+    fun countByBuyer_IdAndStatus(buyerId: Long, status: MarketplaceListingStatus): Long
+
+    @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.userCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        JOIN FETCH ml.seller s
+        LEFT JOIN FETCH ml.buyer b
+        WHERE ml.status = :sold AND ml.soldAt IS NOT NULL
+          AND (ml.seller.id = :userId OR ml.buyer.id = :userId)
+        ORDER BY ml.soldAt DESC
+        """,
+    )
+    fun findRecentTradesByUserId(
+        @Param("sold") sold: MarketplaceListingStatus,
+        @Param("userId") userId: Long,
+        pageable: Pageable,
+    ): List<MarketplaceListing>
 }

@@ -215,6 +215,7 @@ export interface LeaderboardEntry {
   rank: number
   totalScore: number | null
   user: UserPublic
+  fantasyPlayerIds: number[]
 }
 
 /** Ответ GET /api/v1/series/{seriesId}/users/{telegramId}/fantasy-team */
@@ -393,6 +394,32 @@ export interface BuyCardResult {
   newBalance: number
 }
 
+export interface MarketplaceAnalyticsSummaryItem {
+  fantasyPlayerId: number
+  rarity: Rarity
+  activeCount: number
+  minActivePrice: number | null
+}
+
+export interface MarketplaceAnalyticsSummary {
+  items: MarketplaceAnalyticsSummaryItem[]
+}
+
+export interface MarketplaceRecentSale {
+  price: number
+  soldAt: string
+}
+
+export interface MarketplaceAnalyticsDetail {
+  fantasyPlayerId: number
+  rarity: Rarity
+  activeCount: number
+  activeMinPrice: number | null
+  activeMaxPrice: number | null
+  recentSales: MarketplaceRecentSale[]
+  avgSalePrice: number | null
+}
+
 export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE'
 
 export interface CardOwnershipHistoryEntry {
@@ -400,4 +427,59 @@ export interface CardOwnershipHistoryEntry {
   acquisitionType: CardAcquisitionType
   acquisitionLabel: string
   acquiredAt: string
+}
+
+/** GET /api/v1/players/{telegramId}/profile */
+export interface PlayerRatingSnapshot {
+  rank: number
+  fantikiBalance: number
+  cardsValue: number
+  cardsCount: number
+  prizeWinnings: number
+  totalValue: number
+}
+
+export interface PlayerSeriesResult {
+  seriesId: number
+  seriesName: string
+  tournamentId: number
+  tournamentName: string
+  leagueCode: string
+  leagueName: string
+  rank: number | null
+  totalScore: number | null
+  participantsCount: number
+  status: SeriesStatus
+}
+
+export interface PlayerCollectionSummary {
+  totalCards: number
+  byRarity: Record<string, number>
+}
+
+export interface PlayerMarketplaceStats {
+  activeSalesCount: number
+  totalSoldCount: number
+  totalPurchasedCount: number
+}
+
+export type TradeType = 'SALE' | 'PURCHASE'
+
+export interface PlayerMarketplaceTrade {
+  playerName: string
+  rarity: Rarity
+  price: number
+  date: string
+  counterpartyDisplayName: string
+  type: TradeType
+}
+
+export interface PlayerProfile {
+  user: UserPublic
+  memberSince: string
+  rating: PlayerRatingSnapshot | null
+  seriesHistory: PlayerSeriesResult[]
+  collectionSummary: PlayerCollectionSummary
+  marketplaceStats: PlayerMarketplaceStats
+  recentTrades: PlayerMarketplaceTrade[]
 }

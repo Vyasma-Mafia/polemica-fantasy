@@ -14,9 +14,10 @@ function formatValue(n: number): string {
   return n.toLocaleString('ru-RU')
 }
 
-function ratingRow(e: RatingEntry): { rank: number; name: string; f: string; c: string; p: string; t: string } {
+function ratingRow(e: RatingEntry): { rank: number; telegramId: number; name: string; f: string; c: string; p: string; t: string } {
   return {
     rank: e.rank,
+    telegramId: e.user.telegramId,
     name: formatUserDisplayName(e.user),
     f: formatValue(e.fantikiBalance),
     c: formatValue(e.cardsValue),
@@ -29,7 +30,9 @@ function RatingTableRow({ row, current }: { row: ReturnType<typeof ratingRow>; c
   return (
     <tr className={current ? 'pf-rating-row pf-rating-row--current' : 'pf-rating-row'}>
       <td className="pf-rating__cell pf-rating__cell--rank">#{row.rank}</td>
-      <td className="pf-rating__cell pf-rating__cell--name">{row.name}</td>
+      <td className="pf-rating__cell pf-rating__cell--name">
+        <Link to={`/players/${row.telegramId}`} className="pf-rating__name-link">{row.name}</Link>
+      </td>
       <td className="pf-rating__cell pf-rating__num" title="Фантики">
         <span className="pf-rating__sym" aria-hidden>
           ₣
@@ -122,7 +125,7 @@ export function RatingPage() {
           <LeaderboardPinnedBlock>
             <div className="pf-rating-pinned__row">
               <span className="pf-rating__cell--rank">#{bottomRow.rank}</span>
-              <span className="pf-rating__name-truncate">{bottomRow.name}</span>
+              <Link to={`/players/${bottomRow.telegramId}`} className="pf-rating__name-link pf-rating__name-truncate">{bottomRow.name}</Link>
               <span className="pf-rating__num">
                 <span className="pf-rating__sym" aria-hidden>
                   ₣

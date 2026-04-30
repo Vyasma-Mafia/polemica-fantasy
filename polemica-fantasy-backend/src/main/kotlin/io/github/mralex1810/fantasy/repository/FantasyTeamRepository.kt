@@ -79,6 +79,9 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
         SELECT DISTINCT ft FROM FantasyTeam ft
         JOIN FETCH ft.telegramUser u
         JOIN FETCH ft.cards c
+        LEFT JOIN FETCH c.userCard uc
+        LEFT JOIN FETCH uc.cardTemplate ct
+        LEFT JOIN FETCH ct.fantasyPlayer fp
         WHERE ft.seriesLeague.id = :seriesLeagueId
         ORDER BY ft.totalScore DESC NULLS LAST, ft.id ASC
         """,
@@ -101,4 +104,17 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
     fun findAllBySeries_IdWithCards(@Param("seriesId") seriesId: Long): List<FantasyTeam>
 
     fun countBySeriesLeague_Id(seriesLeagueId: Long): Long
+
+    @Query(
+        """
+        SELECT DISTINCT ft FROM FantasyTeam ft
+        JOIN FETCH ft.series s
+        JOIN FETCH s.tournament t
+        JOIN FETCH ft.seriesLeague sl
+        JOIN FETCH sl.league l
+        WHERE ft.telegramUser.id = :userId
+        ORDER BY s.startsAt DESC
+        """,
+    )
+    fun findAllByUserIdWithSeriesAndLeague(@Param("userId") userId: Long): List<FantasyTeam>
 }

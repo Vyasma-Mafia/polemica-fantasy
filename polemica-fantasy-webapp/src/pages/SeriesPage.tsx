@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
@@ -46,6 +47,15 @@ export function SeriesPage() {
     enabled: !!initData && Number.isFinite(id) && leagues.length > 0,
   })
 
+  const playerFilter = searchParams.get('player') ?? ''
+  const filteredLeaderboard = useMemo(() => {
+    const rows = leaderboardQ.data ?? []
+    if (!playerFilter) return rows
+    const pid = Number(playerFilter)
+    if (!Number.isFinite(pid)) return rows
+    return rows.filter((r) => r.fantasyPlayerIds.includes(pid))
+  }, [leaderboardQ.data, playerFilter])
+
   if (!initData) return <MissingInitDataNotice />
   if (q.isLoading || leaguesQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
@@ -58,6 +68,15 @@ export function SeriesPage() {
   const setLeague = (code: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('league', code.toUpperCase())
+    setSearchParams(next, { replace: true })
+  }
+  const setPlayerFilter = (fpId: string) => {
+    const next = new URLSearchParams(searchParams)
+    if (fpId) {
+      next.set('player', fpId)
+    } else {
+      next.delete('player')
+    }
     setSearchParams(next, { replace: true })
   }
   const teamPath = `/series/${s.id}/team?league=${encodeURIComponent(activeLeagueCode)}`
@@ -91,24 +110,43 @@ export function SeriesPage() {
 
       <section className="pf-section">
         <h2 className="pf-section-title">Лидерборд: {leagueName}</h2>
+        <label className="pf-field">
+          <span className="pf-field__label">Фильтр по игроку</span>
+          <select
+            className="pf-input"
+            value={playerFilter}
+            onChange={(e) => setPlayerFilter(e.target.value)}
+          >
+            <option value="">Все команды</option>
+            {s.players.map((p) => (
+              <option key={p.fantasyPlayerId} value={String(p.fantasyPlayerId)}>
+                {p.nickname}
+              </option>
+            ))}
+          </select>
+        </label>
         {leaderboardQ.isLoading && <p className="pf-muted">Загрузка таблицы…</p>}
         {leaderboardQ.isError && <p className="pf-err">{(leaderboardQ.error as Error).message}</p>}
         {!leaderboardQ.isLoading && !leaderboardQ.isError && (
           <ul className="pf-lb-list">
-            {(leaderboardQ.data ?? []).map((row) => (
-              <li key={row.rank + '-' + row.user.telegramId} className="pf-lb-row">
-                <span className="pf-lb-rank">#{row.rank}</span>
-                <span className="pf-lb-name">{formatUserDisplayName(row.user)}</span>
-                <span className="pf-lb-score">
-                  {row.totalScore != null ? row.totalScore.toFixed(2) : '—'}
-                  <span className="pf-lb-score-label">очков</span>
-                </span>
+            {filteredLeaderboard.map((row) => (
+              <li key={row.rank + '-' + row.user.telegramId}>
+                <Link to={`/players/${row.user.telegramId}`} className="pf-lb-row pf-lb-row--link">
+                  <span className="pf-lb-rank">#{row.rank}</span>
+                  <span className="pf-lb-name">{formatUserDisplayName(row.user)}</span>
+                  <span className="pf-lb-score">
+                    {row.totalScore != null ? row.totalScore.toFixed(2) : '—'}
+                    <span className="pf-lb-score-label">очков</span>
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
         )}
-        {!leaderboardQ.isLoading && !leaderboardQ.isError && (leaderboardQ.data?.length ?? 0) === 0 && (
-          <p className="pf-muted">Пока нет команд в этой лиге.</p>
+        {!leaderboardQ.isLoading && !leaderboardQ.isError && filteredLeaderboard.length === 0 && (
+          <p className="pf-muted">
+            {playerFilter ? 'Нет команд с этим игроком в составе.' : 'Пока нет команд в этой лиге.'}
+          </p>
         )}
       </section>
 
