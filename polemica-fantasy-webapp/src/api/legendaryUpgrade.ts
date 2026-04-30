@@ -1,5 +1,5 @@
 import { apiGet, apiSend } from './client'
-import type { LegendaryUpgradeInfo, UserCardItem } from './types'
+import type { LegendaryUpgradeInfo, LegendaryUpgradeResponse } from './types'
 
 export function fetchLegendaryUpgradeInfo(initData: string) {
   return apiGet<LegendaryUpgradeInfo>('/api/v1/legendary-upgrade/info', initData)
@@ -9,5 +9,5 @@ export function postLegendaryUpgrade(
   initData: string,
   body: { userCardId: number; achievementId: string },
 ) {
-  return apiSend<UserCardItem>('POST', '/api/v1/legendary-upgrade', initData, body)
+  return apiSend<LegendaryUpgradeResponse>('POST', '/api/v1/legendary-upgrade', initData, body)
 }

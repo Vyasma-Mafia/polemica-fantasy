@@ -68,6 +68,9 @@ app:
     # Excluded from global rating (e.g. admins). Override: APP_RATING_EXCLUDEDTELEGRAMIDS=1,2,3
     excluded-telegram-ids: []
 
+easter-egg:
+  tyulenchik-image-url: https://storage.yandexcloud.net/random/supawork-783fb4354cee4534816e03dbac540bbb.webp
+
 management:
   endpoints:
     web:

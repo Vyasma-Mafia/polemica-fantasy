@@ -47,7 +47,31 @@ export interface StorePackItem {
 export interface BuyPackResponse {
   fantiki: number
   cards: UserCardItem[]
+  /** Cards shown in pack opening animation; can include visual-only companions. */
+  openingCards?: PackOpeningCard[]
 }
+
+export interface PackOpeningUserCard {
+  kind: 'USER_CARD'
+  card: UserCardItem
+  rarity: Rarity
+  value: number
+  relatedUserCardId?: number | null
+  companionCardName?: null
+  companionCardImageUrl?: null
+}
+
+export interface PackOpeningCompanionCard {
+  kind: 'COMPANION'
+  card?: null
+  companionCardName: string
+  companionCardImageUrl: string | null
+  rarity: Rarity
+  value: number
+  relatedUserCardId: number
+}
+
+export type PackOpeningCard = PackOpeningUserCard | PackOpeningCompanionCard
 
 export interface FantasyTeamSeriesGameInfo {
   seriesGameId: number
@@ -242,6 +266,16 @@ export interface LegendaryUpgradeInfo {
   cost: number
   balance: number
   canAfford: boolean
+}
+
+export interface LegendaryUpgradeResponse {
+  card: UserCardItem
+  easterEgg?: {
+    message: string
+    bonusFantiki: number
+    companionCardName: string
+    companionCardImageUrl: string | null
+  } | null
 }
 
 export interface RewardTier {

@@ -2842,6 +2842,71 @@ button.pf-mini-card:disabled {
   margin: 0 0 4px;
 }
 
+.pf-legendary-wizard__easter-egg {
+  margin-top: 8px;
+}
+
+.pf-legendary-wizard__easter-egg-message {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.pf-legendary-wizard__easter-egg-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pf-legendary-wizard__easter-egg-card {
+  padding: 8px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+  background: linear-gradient(160deg, rgba(35, 30, 12, 0.7), rgba(22, 24, 34, 0.92));
+}
+
+.pf-legendary-wizard__easter-egg-label {
+  margin: 0 0 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pf-legendary-wizard__easter-egg-frame {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(232, 197, 71, 0.45);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.18);
+  margin-bottom: 6px;
+}
+
+.pf-legendary-wizard__easter-egg-frame img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-legendary-wizard__easter-egg-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.pf-legendary-wizard__easter-egg-bonus {
+  margin: 12px 0 0;
+  text-align: center;
+  color: #ffd84f;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(232, 197, 71, 0.3);
+}
+
+@media (max-width: 360px) {
+  .pf-legendary-wizard__easter-egg-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pf-store-legendary {
   margin-bottom: 1.25rem;
   padding: 12px 14px;
@@ -3263,6 +3328,11 @@ button.pf-mini-card:disabled {
   animation: pf-pack-legendary-pulse 2.4s ease-in-out infinite;
 }
 
+.pf-pack-open__card-wrap--companion .pf-pack-open__card-inner {
+  outline: 1px dashed rgba(255, 255, 255, 0.35);
+  outline-offset: -6px;
+}
+
 /* Подложка под фото при раскрытии пака */
 .pf-pack-open__card-wrap--common .pf-pack-open__card-inner::before {
   content: '';
@@ -3551,6 +3621,11 @@ button.pf-mini-card:disabled {
 .pf-pack-open__summary-card--legendary .pf-pack-open__summary-card-frame {
   border-color: var(--pf-gold);
   box-shadow: 0 0 16px rgba(232, 197, 71, 0.3);
+}
+
+.pf-pack-open__summary-card--companion .pf-pack-open__summary-card-frame {
+  outline: 1px dashed rgba(255, 255, 255, 0.32);
+  outline-offset: -4px;
 }
 
 .pf-pack-open__summary-card--common .pf-pack-open__summary-card-frame::before {

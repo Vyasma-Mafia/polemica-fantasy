@@ -66,6 +66,10 @@ class EconomyConfigService(
 
     fun getLegendaryTeamMaxPerSeries(): Int = getInt("legendary.team.max_per_series")
 
+    fun getEasterEggDeveloperFantasyPlayerId(): Long = getLong("easter_egg.developer_fantasy_player_id")
+
+    fun getEasterEggDeveloperBonusFantiki(): Long = getLong("easter_egg.developer_bonus_fantiki")
+
     fun getMarketplaceCommissionPercent(): Int = getInt("marketplace.commission_percent")
 
     fun getMinListingPrice(rarity: Rarity): Long = getLong("marketplace.min_price.$rarity")

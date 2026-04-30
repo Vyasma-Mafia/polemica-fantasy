@@ -1,8 +1,11 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.config.EasterEggProperties
 import io.github.mralex1810.fantasy.dto.user.response.BuyPackResponseDto
+import io.github.mralex1810.fantasy.dto.user.response.PackOpeningCardDto
 import io.github.mralex1810.fantasy.dto.user.response.StorePackItemDto
 import io.github.mralex1810.fantasy.dto.user.response.StorePackRaritySlotDto
+import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardPackRepository
@@ -29,6 +32,8 @@ class UserStoreService(
     private val telegramUserRepository: TelegramUserRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
+    private val economyConfigService: EconomyConfigService,
+    private val easterEggProperties: EasterEggProperties,
 ) {
 
     @Transactional(readOnly = true)
@@ -139,7 +144,33 @@ class UserStoreService(
                         )
                 uc.toUserCardItemDto(ct, imageStorageService, cardValueService)
             }
+        val openingCards = buildOpeningCards(cards)
         val balance = userService.getBalance(internalId)
-        return BuyPackResponseDto(fantiki = balance, cards = cards)
+        return BuyPackResponseDto(
+            fantiki = balance,
+            cards = cards,
+            openingCards = openingCards,
+        )
+    }
+
+    private fun buildOpeningCards(cards: List<UserCardItemDto>): List<PackOpeningCardDto> {
+        val developerFantasyPlayerId = economyConfigService.getEasterEggDeveloperFantasyPlayerId()
+        val tyulenchikImageUrl = easterEggProperties.tyulenchikImageUrl.trim().takeIf { it.isNotEmpty() }
+        val openingCards = ArrayList<PackOpeningCardDto>(cards.size * 2)
+        cards.forEach { card ->
+            openingCards.add(PackOpeningCardDto.userCard(card))
+            if (developerFantasyPlayerId > 0L && card.fantasyPlayerId == developerFantasyPlayerId) {
+                openingCards.add(
+                    PackOpeningCardDto.companion(
+                        relatedUserCardId = card.id,
+                        rarity = card.rarity,
+                        value = card.value,
+                        companionCardName = "Тюленчик",
+                        companionCardImageUrl = tyulenchikImageUrl,
+                    ),
+                )
+            }
+        }
+        return openingCards
     }
 }

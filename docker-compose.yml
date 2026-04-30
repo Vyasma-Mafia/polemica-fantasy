@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${DB_USER:-fantasy}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-fantasy}
     ports:
-      - "${POSTGRES_HOST_PORT:-5433}:5432"
+      - "${POSTGRES_HOST_PORT:-15433}:5432"
     volumes:
       - fantasy-postgres-data:/var/lib/postgresql/data
     healthcheck:

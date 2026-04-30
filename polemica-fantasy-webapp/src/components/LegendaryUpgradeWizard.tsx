@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiGet } from '../api/client'
 import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { fetchLegendaryUpgradeInfo, postLegendaryUpgrade } from '../api/legendaryUpgrade'
-import type { AchievementCatalogItem, UserCardItem } from '../api/types'
+import type { AchievementCatalogItem, LegendaryUpgradeResponse, UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityScoreModifierLabel } from '../lib/rarity'
 import { CardAchievementChips } from './CardAchievementChips'
 
-type Step = 'card' | 'achievement' | 'confirm'
+type Step = 'card' | 'achievement' | 'confirm' | 'result'
 
 export function isEligibleEpicForLegendary(c: UserCardItem): boolean {
   return (
@@ -34,6 +34,8 @@ export function LegendaryUpgradeWizard({
   const [userCardId, setUserCardId] = useState<number | null>(null)
   const [achievementId, setAchievementId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [resultCard, setResultCard] = useState<UserCardItem | null>(null)
+  const [easterEggResult, setEasterEggResult] = useState<LegendaryUpgradeResponse['easterEgg']>(null)
 
   const cardsQ = useQuery({
     queryKey: ['cards', 'legendary-wizard', initData],
@@ -72,6 +74,8 @@ export function LegendaryUpgradeWizard({
     setStep('card')
     setUserCardId(null)
     setAchievementId(null)
+    setResultCard(null)
+    setEasterEggResult(null)
   }, [isOpen])
 
   useEffect(() => {
@@ -88,11 +92,17 @@ export function LegendaryUpgradeWizard({
       if (userCardId == null || achievementId == null) throw new Error('Не выбраны данные')
       return postLegendaryUpgrade(initData, { userCardId, achievementId })
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       void qc.invalidateQueries({ queryKey: ['cards'] })
       void qc.invalidateQueries({ queryKey: ['me'] })
       void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
       void qc.invalidateQueries({ queryKey: ['legendary-upgrade-info'] })
+      if (result.easterEgg) {
+        setResultCard(result.card)
+        setEasterEggResult(result.easterEgg)
+        setStep('result')
+        return
+      }
       onClose()
     },
     onError: (e: Error) => {
@@ -107,6 +117,10 @@ export function LegendaryUpgradeWizard({
 
   const goBack = () => {
     setError(null)
+    if (step === 'result') {
+      onClose()
+      return
+    }
     if (step === 'confirm') {
       setStep('achievement')
       return
@@ -308,6 +322,44 @@ export function LegendaryUpgradeWizard({
                 onClick={() => upgradeM.mutate()}
               >
                 {upgradeM.isPending ? 'Апгрейд…' : 'Подтвердить'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'result' && resultCard && easterEggResult && (
+          <div className="pf-legendary-wizard__step pf-legendary-wizard__easter-egg">
+            <p className="pf-legendary-wizard__easter-egg-message">{easterEggResult.message}</p>
+            <div className="pf-legendary-wizard__easter-egg-cards">
+              <article className="pf-legendary-wizard__easter-egg-card pf-collection-card pf-collection-card--legendary pf-collection-card--legendary-crafted">
+                <p className="pf-muted pf-legendary-wizard__easter-egg-label">Ваша легендарная карта</p>
+                <div className="pf-legendary-wizard__easter-egg-frame">
+                  {cardDisplayImageUrl(resultCard) ? (
+                    <img src={cardDisplayImageUrl(resultCard)!} alt="" />
+                  ) : (
+                    <div className="pf-legendary-wizard__pick-ph">LEGENDARY</div>
+                  )}
+                </div>
+                <p className="pf-legendary-wizard__easter-egg-name">{resultCard.playerNickname}</p>
+              </article>
+              <article className="pf-legendary-wizard__easter-egg-card pf-collection-card pf-collection-card--legendary">
+                <p className="pf-muted pf-legendary-wizard__easter-egg-label">Найденная карта</p>
+                <div className="pf-legendary-wizard__easter-egg-frame">
+                  {easterEggResult.companionCardImageUrl ? (
+                    <img src={easterEggResult.companionCardImageUrl} alt="" />
+                  ) : (
+                    <div className="pf-legendary-wizard__pick-ph">LEGENDARY</div>
+                  )}
+                </div>
+                <p className="pf-legendary-wizard__easter-egg-name">{easterEggResult.companionCardName}</p>
+              </article>
+            </div>
+            <p className="pf-legendary-wizard__easter-egg-bonus">
+              +{easterEggResult.bonusFantiki.toLocaleString('ru-RU')} фантиков
+            </p>
+            <div className="pf-modal__actions">
+              <button type="button" className="pf-btn pf-btn--primary" onClick={onClose}>
+                OK
               </button>
             </div>
           </div>

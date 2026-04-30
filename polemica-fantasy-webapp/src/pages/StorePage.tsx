@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ApiError, apiGet, apiSend } from '../api/client'
-import type { BuyPackResponse, StorePackItem, UserProfile } from '../api/types'
+import type { BuyPackResponse, PackOpeningCard, StorePackItem, UserCardItem, UserProfile } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PackOpening } from '../components/PackOpening'
 import { PageHeader } from '../components/PageHeader'
@@ -60,6 +60,7 @@ export function StorePage() {
   const confirmMax = confirmingPack?.maxOpensPerUser ?? 0
   const confirmUsed = confirmingPack?.packOpensUsed ?? 0
   const confirmAtLimit = confirmMax > 0 && confirmUsed >= confirmMax
+  const openingCards = lastOpening ? resolvePackOpeningCards(lastOpening.response) : []
 
   if (!initData) return <MissingInitDataNotice />
 
@@ -154,10 +155,10 @@ export function StorePage() {
 
       {buyError && <p className="pf-err">{buyError}</p>}
 
-      {lastOpening && lastOpening.response.cards.length > 0 && (
+      {lastOpening && openingCards.length > 0 && (
         <PackOpening
-          key={lastOpening.response.cards.map((c) => c.id).join('-')}
-          cards={lastOpening.response.cards}
+          key={openingCards.map((c, idx) => openingCardKey(c, idx)).join('-')}
+          cards={openingCards}
           packName={lastOpening.packName}
           onBuyMore={() => {
             const id = lastOpening.packId
@@ -213,6 +214,31 @@ export function StorePage() {
       </p>
     </div>
   )
+}
+
+function resolvePackOpeningCards(response: BuyPackResponse): PackOpeningCard[] {
+  if (response.openingCards && response.openingCards.length > 0) {
+    return response.openingCards
+  }
+  return buildLegacyOpeningCards(response.cards)
+}
+
+function buildLegacyOpeningCards(cards: UserCardItem[]): PackOpeningCard[] {
+  return cards.map((card) => ({
+    kind: 'USER_CARD',
+    card,
+    rarity: card.rarity,
+    value: card.value,
+    relatedUserCardId: null,
+    companionCardName: null,
+    companionCardImageUrl: null,
+  }))
+}
+
+function openingCardKey(card: PackOpeningCard, index: number): string {
+  if (card.kind === 'USER_CARD' && card.card) return `user-${card.card.id}`
+  if (card.relatedUserCardId != null) return `companion-${card.relatedUserCardId}`
+  return `companion-${index}`
 }
 
 function StoreProfileNameBlock({

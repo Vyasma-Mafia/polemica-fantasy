@@ -2,6 +2,22 @@
 
 ## Что реализовано
 
+### Визуальный Тюленчик при открытии пака (апрель 2026)
+- [x] **Backend контракт магазина:** `BuyPackResponseDto` расширен полем `openingCards` (union `USER_CARD`/`COMPANION`) для display-последовательности открытия; поле `cards` сохранено как инвентарь (только реальные карты)
+- [x] **Логика формирования display-карт:** `UserStoreService` после каждой developer-карты (`economy_config.easter_egg.developer_fantasy_player_id`) вставляет визуальный companion «Тюленчик» с теми же `rarity` и `value`, что у developer-карты; image URL берётся из `EasterEggProperties.tyulenchikImageUrl`
+- [x] **Без сайд-эффектов экономики:** в flow покупки пака companion не создаёт `user_card` и не делает баланс-транзакций (`EASTER_EGG_BONUS` не используется)
+- [x] **Frontend TMA:** `types.ts` расширен `PackOpeningCard`; `StorePage` передаёт в `PackOpening` `openingCards` (fallback на legacy `cards`), `PackOpening` показывает companion в reveal и summary, включая вклад companion в `Суммарная ценность`
+- [x] **Покрытие:** `UserApiIntegrationTest` — сценарии single/multi developer (порядок `USER_CARD -> COMPANION`, `relatedUserCardId`, `value` и `rarity` совпадают с исходной картой)
+- [x] **Проверки:** `./gradlew test --tests \"...store buy adds visual tyulenchik...\"` и `npm run build` (`polemica-fantasy-webapp`) — успешно
+
+### Пасхалка для легендарного апгрейда (апрель 2026)
+- [x] **Flyway V37:** добавлены ключи `economy_config` — `easter_egg.developer_fantasy_player_id` (таргет `fantasy_player`) и `easter_egg.developer_bonus_fantiki` (бонус пасхалки, default 500)
+- [x] **Backend конфиг:** добавлен `easter-egg.tyulenchik-image-url` (`EASTER_EGG_TYULENCHIK_IMAGE_URL`) + `EasterEggProperties`
+- [x] **API апгрейда:** `POST /api/v1/legendary-upgrade` теперь возвращает `LegendaryUpgradeResponseDto` (`card` + опциональный `easterEgg`)
+- [x] **Логика бонуса:** `LegendaryUpgradeService` при апгрейде карты игрока из `easter_egg.developer_fantasy_player_id` начисляет бонус через `UserService.addBalance(..., EASTER_EGG_BONUS)` и формирует текст пасхалки + payload «Тюленьчик»
+- [x] **Frontend TMA:** `LegendaryUpgradeWizard` получил result-step (2 карточки, текст пасхалки, `+N фантиков`, кнопка `OK`) вместо мгновенного закрытия в easter-egg сценарии
+- [x] **Проверки:** `npm run build` (`polemica-fantasy-webapp`) — успешно; backend-таргет `./gradlew test --tests \"*upgrades EPIC to LEGENDARY*\" --tests \"*marketplace feed shows EPIC after purchased card upgraded to LEGENDARY*\" --tests \"*legendary-upgrade rejects duplicate achievement on card*\"` — успешно
+
 ### Backend bugfix: финализация серии и uses в лигах (апрель 2026)
 - [x] Подтверждён дефект: при финализации серии карта в `MAIN` + `BUDGET` давала `cardsDecremented = 2`, но `user_card.uses_remaining` в БД не менялся (интеграционный сценарий в `UserApiIntegrationTest`)
 - [x] `SeriesFinalizationService`: после декремента uses добавлен явный `userCardRepository.saveAll(cardById.values)`, чтобы изменения карточек гарантированно сохранялись после финализации

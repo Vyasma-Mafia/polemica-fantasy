@@ -162,6 +162,18 @@ data class LegendaryUpgradeInfoDto(
     val canAfford: Boolean,
 )
 
+data class LegendaryEasterEggDto(
+    val message: String,
+    val bonusFantiki: Long,
+    val companionCardName: String,
+    val companionCardImageUrl: String?,
+)
+
+data class LegendaryUpgradeResponseDto(
+    val card: UserCardItemDto,
+    val easterEgg: LegendaryEasterEggDto? = null,
+)
+
 data class FantasyTeamSlotDto(
     val slot: Int,
     val userCardId: Long,
@@ -214,7 +226,51 @@ data class StorePackItemDto(
 data class BuyPackResponseDto(
     val fantiki: Long,
     val cards: List<UserCardItemDto>,
+    val openingCards: List<PackOpeningCardDto>,
 )
+
+enum class PackOpeningCardKind {
+    USER_CARD,
+    COMPANION,
+}
+
+data class PackOpeningCardDto(
+    val kind: PackOpeningCardKind,
+    /** Present for [PackOpeningCardKind.USER_CARD]. */
+    val card: UserCardItemDto? = null,
+    /** Present for [PackOpeningCardKind.COMPANION]. */
+    val companionCardName: String? = null,
+    /** Present for [PackOpeningCardKind.COMPANION]. */
+    val companionCardImageUrl: String? = null,
+    val rarity: Rarity,
+    val value: Long,
+    /** Developer user card that spawned this visual companion. */
+    val relatedUserCardId: Long? = null,
+) {
+    companion object {
+        fun userCard(card: UserCardItemDto): PackOpeningCardDto = PackOpeningCardDto(
+            kind = PackOpeningCardKind.USER_CARD,
+            card = card,
+            rarity = card.rarity,
+            value = card.value,
+        )
+
+        fun companion(
+            relatedUserCardId: Long,
+            rarity: Rarity,
+            value: Long,
+            companionCardName: String,
+            companionCardImageUrl: String?,
+        ): PackOpeningCardDto = PackOpeningCardDto(
+            kind = PackOpeningCardKind.COMPANION,
+            companionCardName = companionCardName,
+            companionCardImageUrl = companionCardImageUrl,
+            rarity = rarity,
+            value = value,
+            relatedUserCardId = relatedUserCardId,
+        )
+    }
+}
 
 data class FantasyTeamSeriesGameInfoDto(
     val seriesGameId: Long,

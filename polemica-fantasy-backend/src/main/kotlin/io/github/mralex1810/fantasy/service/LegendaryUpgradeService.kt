@@ -1,7 +1,9 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.config.EasterEggProperties
+import io.github.mralex1810.fantasy.dto.user.response.LegendaryEasterEggDto
 import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeInfoDto
-import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
+import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeResponseDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -28,6 +30,7 @@ class LegendaryUpgradeService(
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
+    private val easterEggProperties: EasterEggProperties,
 ) {
 
     @Transactional(readOnly = true)
@@ -43,7 +46,7 @@ class LegendaryUpgradeService(
     }
 
     @Transactional
-    fun upgrade(user: TelegramUser, userCardId: Long, achievementId: String): UserCardItemDto {
+    fun upgrade(user: TelegramUser, userCardId: Long, achievementId: String): LegendaryUpgradeResponseDto {
         val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.cardTemplate!!.rarity != Rarity.EPIC) {
@@ -87,6 +90,8 @@ class LegendaryUpgradeService(
         }
 
         val fantasyPlayer = uc.cardTemplate!!.fantasyPlayer!!
+        val fantasyPlayerId = fantasyPlayer.id
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Card fantasy player is not persisted")
         val legendaryAchievements = existingRows.map { it.achievement!! } + extra
         val newTemplate = cardPackService.findOrCreateCardTemplateForAchievements(
             fantasyPlayer,
@@ -99,10 +104,42 @@ class LegendaryUpgradeService(
         uc.craftedBy = user
         userCardRepository.save(uc)
 
+        val easterEgg = buildLegendaryEasterEggIfEligible(
+            fantasyPlayerId = fantasyPlayerId,
+            internalUserId = internalId,
+        )
+
         val fresh = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(uc.id!!, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to reload upgraded card")
         val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(fresh.cardTemplate!!.id!!))
             .firstOrNull() ?: fresh.cardTemplate!!
-        return fresh.toUserCardItemDto(tpl, imageStorageService, cardValueService)
+        return LegendaryUpgradeResponseDto(
+            card = fresh.toUserCardItemDto(tpl, imageStorageService, cardValueService),
+            easterEgg = easterEgg,
+        )
+    }
+
+    private fun buildLegendaryEasterEggIfEligible(
+        fantasyPlayerId: Long,
+        internalUserId: Long,
+    ): LegendaryEasterEggDto? {
+        val configuredDeveloperPlayerId = economyConfigService.getEasterEggDeveloperFantasyPlayerId()
+        if (configuredDeveloperPlayerId <= 0 || fantasyPlayerId != configuredDeveloperPlayerId) {
+            return null
+        }
+
+        val bonusFantiki = economyConfigService.getEasterEggDeveloperBonusFantiki()
+        if (bonusFantiki <= 0L) {
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid easter egg bonus config")
+        }
+        userService.addBalance(internalUserId, bonusFantiki, FantikiTransactionReason.EASTER_EGG_BONUS)
+
+        val companionImageUrl = easterEggProperties.tyulenchikImageUrl.trim().takeIf { it.isNotEmpty() }
+        return LegendaryEasterEggDto(
+            message = "Вместе с легендарным Велосипедостроителем вы нашли легендарного Тюленчика. Вам начислено +$bonusFantiki фантиков",
+            bonusFantiki = bonusFantiki,
+            companionCardName = "Тюленчик",
+            companionCardImageUrl = companionImageUrl,
+        )
     }
 }

@@ -2,7 +2,7 @@ package io.github.mralex1810.fantasy.controller.user
 
 import io.github.mralex1810.fantasy.dto.user.request.LegendaryUpgradeRequest
 import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeInfoDto
-import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
+import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeResponseDto
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.service.LegendaryUpgradeService
 import jakarta.validation.Valid
@@ -27,5 +27,5 @@ class LegendaryUpgradeController(
     fun upgrade(
         @AuthenticationPrincipal user: TelegramUser,
         @Valid @RequestBody body: LegendaryUpgradeRequest,
-    ): UserCardItemDto = legendaryUpgradeService.upgrade(user, body.userCardId, body.achievementId)
+    ): LegendaryUpgradeResponseDto = legendaryUpgradeService.upgrade(user, body.userCardId, body.achievementId)
 }

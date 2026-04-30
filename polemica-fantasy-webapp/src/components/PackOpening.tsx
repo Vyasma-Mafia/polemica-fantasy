@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import type { UserCardItem } from '../api/types'
+import type { PackOpeningCard, PackOpeningUserCard, UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from './CardAchievementChips'
 import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
@@ -11,7 +11,7 @@ const CARD_STAGGER_MS = 1050
 type Phase = 'pack' | 'reveal' | 'summary'
 
 export interface PackOpeningProps {
-  cards: UserCardItem[]
+  cards: PackOpeningCard[]
   packName?: string
   /** «В коллекцию» — закрыть overlay (родитель сбрасывает state / ведёт на /cards). */
   onDismiss: () => void
@@ -109,7 +109,7 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
       {phase === 'reveal' && card && (
         <div className="pf-pack-open__reveal-stage">
           <p className="pf-pack-open__reveal-hint">{packName ?? 'Пак открыт'}</p>
-          <PackOpeningCardReveal key={card.id} card={card} />
+          <PackOpeningCardReveal key={openingCardKey(card, visibleIndex)} card={card} />
         </div>
       )}
 
@@ -118,11 +118,15 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
           <h3 className="pf-pack-open__summary-title">Вы получили</h3>
           <p className="pf-pack-open__summary-total-value">Суммарная ценность: {totalPulledValue}₱</p>
           <ul className="pf-pack-open__summary-grid">
-            {cards.map((c) => {
-              const img = cardDisplayImageUrl(c)
+            {cards.map((c, idx) => {
+              const img = openingCardImageUrl(c)
               const rc = rarityClass(c.rarity)
+              const companionClass = c.kind === 'COMPANION' ? 'pf-pack-open__summary-card--companion' : ''
               return (
-                <li key={c.id} className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc}`}>
+                <li
+                  key={openingCardKey(c, idx)}
+                  className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc} ${companionClass}`}
+                >
                   <div className="pf-pack-open__summary-card-frame">
                     {img ? (
                       <img src={img} alt="" className="pf-pack-open__summary-card-img" />
@@ -130,12 +134,15 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
                       <div className="pf-pack-open__summary-card-ph">{c.rarity}</div>
                     )}
                     <div className="pf-pack-open__summary-card-cap">
-                      <span className="pf-pack-open__summary-card-name">{c.playerNickname}</span>
+                      <span className="pf-pack-open__summary-card-name">{openingCardDisplayName(c)}</span>
                       <span className="pf-pack-open__summary-card-rarity">
                         {c.rarity}{' '}
                         <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
                       </span>
-                      <CardAchievementChips achievements={c.achievements} className="pf-card-ach-chips--compact" />
+                      <CardAchievementChips
+                        achievements={openingCardAchievements(c)}
+                        className="pf-card-ach-chips--compact"
+                      />
                     </div>
                   </div>
                 </li>
@@ -158,10 +165,11 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
   )
 }
 
-function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
-  const img = cardDisplayImageUrl(card)
+function PackOpeningCardReveal({ card }: { card: PackOpeningCard }) {
+  const img = openingCardImageUrl(card)
   const rc = rarityClass(card.rarity)
   const rarity = card.rarity
+  const companionClass = card.kind === 'COMPANION' ? 'pf-pack-open__card-wrap--companion' : ''
 
   const particleCount = rarity === 'LEGENDARY' ? 14 : rarity === 'EPIC' ? 10 : 0
 
@@ -184,19 +192,46 @@ function PackOpeningCardReveal({ card }: { card: UserCardItem }) {
         </span>
       ) : null}
       <div className="pf-pack-open__card-cap">
-        <span className="pf-pack-open__card-name">{card.playerNickname}</span>
+        <span className="pf-pack-open__card-name">{openingCardDisplayName(card)}</span>
         <span className="pf-pack-open__card-rarity">
           {card.rarity}{' '}
           <span className="pf-rarity-mod">{rarityScoreModifierLabel(card.rarity)}</span>
         </span>
-        <CardAchievementChips achievements={card.achievements} />
+        <CardAchievementChips achievements={openingCardAchievements(card)} />
       </div>
     </div>
   )
 
   return (
-    <div className={`pf-pack-open__card-wrap pf-pack-open__card-wrap--${rc} pf-pack-open__card-wrap--enter`}>
+    <div
+      className={`pf-pack-open__card-wrap pf-pack-open__card-wrap--${rc} pf-pack-open__card-wrap--enter ${companionClass}`}
+    >
       {rarity === 'COMMON' ? inner : <div className="pf-pack-open__flip">{inner}</div>}
     </div>
   )
+}
+
+function isUserPackOpeningCard(card: PackOpeningCard): card is PackOpeningUserCard {
+  return card.kind === 'USER_CARD' && card.card != null
+}
+
+function openingCardDisplayName(card: PackOpeningCard): string {
+  if (isUserPackOpeningCard(card)) return card.card.playerNickname
+  return card.companionCardName ?? 'Тюленчик'
+}
+
+function openingCardImageUrl(card: PackOpeningCard): string | null {
+  if (isUserPackOpeningCard(card)) return cardDisplayImageUrl(card.card)
+  return card.companionCardImageUrl ?? null
+}
+
+function openingCardAchievements(card: PackOpeningCard): UserCardItem['achievements'] {
+  if (isUserPackOpeningCard(card)) return card.card.achievements
+  return []
+}
+
+function openingCardKey(card: PackOpeningCard, index: number): string {
+  if (isUserPackOpeningCard(card)) return `user-${card.card.id}`
+  if (card.relatedUserCardId != null) return `companion-${card.relatedUserCardId}`
+  return `companion-${index}`
 }
