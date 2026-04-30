@@ -144,19 +144,23 @@ class UserStoreService(
                         )
                 uc.toUserCardItemDto(ct, imageStorageService, cardValueService)
             }
-        val openingCards = buildOpeningCards(cards)
+        val openingCardsResult = buildOpeningCards(cards)
+        if (openingCardsResult.fantikiBonus > 0L) {
+            userService.addBalance(internalId, openingCardsResult.fantikiBonus, FantikiTransactionReason.EASTER_EGG_BONUS)
+        }
         val balance = userService.getBalance(internalId)
         return BuyPackResponseDto(
             fantiki = balance,
             cards = cards,
-            openingCards = openingCards,
+            openingCards = openingCardsResult.openingCards,
         )
     }
 
-    private fun buildOpeningCards(cards: List<UserCardItemDto>): List<PackOpeningCardDto> {
+    private fun buildOpeningCards(cards: List<UserCardItemDto>): OpeningCardsResult {
         val developerFantasyPlayerId = economyConfigService.getEasterEggDeveloperFantasyPlayerId()
         val tyulenchikImageUrl = easterEggProperties.tyulenchikImageUrl.trim().takeIf { it.isNotEmpty() }
         val openingCards = ArrayList<PackOpeningCardDto>(cards.size * 2)
+        var fantikiBonus = 0L
         cards.forEach { card ->
             openingCards.add(PackOpeningCardDto.userCard(card))
             if (developerFantasyPlayerId > 0L && card.fantasyPlayerId == developerFantasyPlayerId) {
@@ -169,8 +173,14 @@ class UserStoreService(
                         companionCardImageUrl = tyulenchikImageUrl,
                     ),
                 )
+                fantikiBonus += card.value
             }
         }
-        return openingCards
+        return OpeningCardsResult(openingCards = openingCards, fantikiBonus = fantikiBonus)
     }
+
+    private data class OpeningCardsResult(
+        val openingCards: List<PackOpeningCardDto>,
+        val fantikiBonus: Long,
+    )
 }

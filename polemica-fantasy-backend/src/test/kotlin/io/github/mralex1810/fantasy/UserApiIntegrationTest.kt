@@ -675,7 +675,6 @@ class UserApiIntegrationTest {
                 .header("Authorization", tma),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.fantiki").value(1000))
             .andExpect(jsonPath("$.cards.length()").value(1))
             .andExpect(jsonPath("$.openingCards.length()").value(2))
             .andExpect(jsonPath("$.openingCards[0].kind").value("USER_CARD"))
@@ -690,6 +689,7 @@ class UserApiIntegrationTest {
         val companionValue = root.read<Number>("$.openingCards[1].value").toLong()
         val companionRarity = root.read<String>("$.openingCards[1].rarity")
         val relatedUserCardId = root.read<Number>("$.openingCards[1].relatedUserCardId").toLong()
+        val balanceAfterBuy = root.read<Number>("$.fantiki").toLong()
 
         check(companionValue == cardValue) {
             "expected companion value $companionValue to match developer card value $cardValue"
@@ -699,6 +699,9 @@ class UserApiIntegrationTest {
         }
         check(relatedUserCardId == cardId) {
             "expected relatedUserCardId $relatedUserCardId to match card id $cardId"
+        }
+        check(balanceAfterBuy == 1000L + companionValue) {
+            "expected balance to include companion bonus: ${1000L + companionValue}, got $balanceAfterBuy"
         }
     }
 
@@ -766,8 +769,10 @@ class UserApiIntegrationTest {
             .andReturn().response.contentAsString
 
         @Suppress("UNCHECKED_CAST")
-        val openingCards = JsonPath.parse(buyJson).read<List<Map<String, Any?>>>("$.openingCards")
+        val root = JsonPath.parse(buyJson)
+        val openingCards = root.read<List<Map<String, Any?>>>("$.openingCards")
         check(openingCards.size == 6) { "expected 6 opening cards, got ${openingCards.size}" }
+        var totalCompanionBonus = 0L
 
         for (i in openingCards.indices step 2) {
             val userCardEntry = openingCards[i]
@@ -794,6 +799,11 @@ class UserApiIntegrationTest {
             check(companionRarity == userCardRarity) {
                 "companion rarity $companionRarity should match user card rarity $userCardRarity"
             }
+            totalCompanionBonus += companionValue
+        }
+        val balanceAfterBuy = root.read<Number>("$.fantiki").toLong()
+        check(balanceAfterBuy == 1000L + totalCompanionBonus) {
+            "expected balance to include all companion bonuses: ${1000L + totalCompanionBonus}, got $balanceAfterBuy"
         }
     }
 

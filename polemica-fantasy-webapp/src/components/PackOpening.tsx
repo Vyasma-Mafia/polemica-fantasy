@@ -139,10 +139,7 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
                         {c.rarity}{' '}
                         <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
                       </span>
-                      <CardAchievementChips
-                        achievements={openingCardAchievements(c)}
-                        className="pf-card-ach-chips--compact"
-                      />
+                      {renderOpeningCardChips(c, 'pf-card-ach-chips--compact')}
                     </div>
                   </div>
                 </li>
@@ -197,7 +194,7 @@ function PackOpeningCardReveal({ card }: { card: PackOpeningCard }) {
           {card.rarity}{' '}
           <span className="pf-rarity-mod">{rarityScoreModifierLabel(card.rarity)}</span>
         </span>
-        <CardAchievementChips achievements={openingCardAchievements(card)} />
+        {renderOpeningCardChips(card)}
       </div>
     </div>
   )
@@ -228,6 +225,21 @@ function openingCardImageUrl(card: PackOpeningCard): string | null {
 function openingCardAchievements(card: PackOpeningCard): UserCardItem['achievements'] {
   if (isUserPackOpeningCard(card)) return card.card.achievements
   return []
+}
+
+function renderOpeningCardChips(card: PackOpeningCard, className = '') {
+  if (isUserPackOpeningCard(card)) {
+    return <CardAchievementChips achievements={openingCardAchievements(card)} className={className} />
+  }
+
+  const cn = ['pf-card-ach-chips', className].filter(Boolean).join(' ')
+  return (
+    <ul className={cn} aria-label="Бонус Тюленчика">
+      <li className="pf-card-ach-chip">
+        <span className="pf-card-ach-chip__bonus">+{card.value.toLocaleString('ru-RU')} фантики</span>
+      </li>
+    </ul>
+  )
 }
 
 function openingCardKey(card: PackOpeningCard, index: number): string {

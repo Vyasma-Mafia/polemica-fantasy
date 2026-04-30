@@ -5,9 +5,10 @@
 ### Визуальный Тюленчик при открытии пака (апрель 2026)
 - [x] **Backend контракт магазина:** `BuyPackResponseDto` расширен полем `openingCards` (union `USER_CARD`/`COMPANION`) для display-последовательности открытия; поле `cards` сохранено как инвентарь (только реальные карты)
 - [x] **Логика формирования display-карт:** `UserStoreService` после каждой developer-карты (`economy_config.easter_egg.developer_fantasy_player_id`) вставляет визуальный companion «Тюленчик» с теми же `rarity` и `value`, что у developer-карты; image URL берётся из `EasterEggProperties.tyulenchikImageUrl`
-- [x] **Без сайд-эффектов экономики:** в flow покупки пака companion не создаёт `user_card` и не делает баланс-транзакций (`EASTER_EGG_BONUS` не используется)
+- [x] **Экономика пасхалки:** companion не создаёт `user_card`, но начисляет фантики в размере своей ценности (`+value` соответствующей developer-карты) через `EASTER_EGG_BONUS`; итоговый баланс возвращается в `BuyPackResponseDto.fantiki`
 - [x] **Frontend TMA:** `types.ts` расширен `PackOpeningCard`; `StorePage` передаёт в `PackOpening` `openingCards` (fallback на legacy `cards`), `PackOpening` показывает companion в reveal и summary, включая вклад companion в `Суммарная ценность`
-- [x] **Покрытие:** `UserApiIntegrationTest` — сценарии single/multi developer (порядок `USER_CARD -> COMPANION`, `relatedUserCardId`, `value` и `rarity` совпадают с исходной картой)
+- [x] **Текст бонуса на companion-карте:** в `PackOpening` для `COMPANION` в блоке достижений показывается чип `+N фантики` (в reveal и summary)
+- [x] **Покрытие:** `UserApiIntegrationTest` — сценарии single/multi developer (порядок `USER_CARD -> COMPANION`, `relatedUserCardId`, `value` и `rarity` совпадают с исходной картой, баланс увеличивается на `Σ companion.value`)
 - [x] **Проверки:** `./gradlew test --tests \"...store buy adds visual tyulenchik...\"` и `npm run build` (`polemica-fantasy-webapp`) — успешно
 
 ### Пасхалка для легендарного апгрейда (апрель 2026)
