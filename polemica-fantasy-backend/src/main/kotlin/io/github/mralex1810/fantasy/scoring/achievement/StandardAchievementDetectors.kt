@@ -193,6 +193,9 @@ class LastHeroGuessAchievementDetector : AchievementDetector {
     override val type = "lastHeroGuess"
     override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
         val onTable = game.playersOnTable(null)
+        if (player.role.isRed() != game.isRedWin()) {
+            return 0
+        }
         return boolToInt(onTable.size == 2 && onTable.contains(player.position))
     }
 }
