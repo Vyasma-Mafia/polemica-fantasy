@@ -169,10 +169,12 @@ export function TeamPage() {
       return submitLeagueTeam(sid, activeLeagueCode, selected, initData)
     },
     onSuccess: (data) => {
+      setSelected([...data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId))
+      setTeamSelectionHydrated(true)
       qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, activeLeagueCode, initData], data)
+    },
+    onError: () => {
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
-      void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
-      void qc.invalidateQueries({ queryKey: ['series', sid, 'leagues'] })
     },
   })
 

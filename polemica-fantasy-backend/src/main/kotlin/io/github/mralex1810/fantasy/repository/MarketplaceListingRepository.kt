@@ -219,11 +219,10 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
     @Query(
         """
         SELECT ml FROM MarketplaceListing ml
-        JOIN ml.userCard uc
-        JOIN uc.cardTemplate ct
+        LEFT JOIN ml.soldCardTemplate ct
         WHERE ml.status = :sold
-          AND ct.fantasyPlayer.id = :fantasyPlayerId
-          AND ct.rarity = :rarity
+          AND COALESCE(ct.fantasyPlayer.id, ml.userCard.cardTemplate.fantasyPlayer.id) = :fantasyPlayerId
+          AND COALESCE(ct.rarity, ml.userCard.cardTemplate.rarity) = :rarity
           AND ml.soldAt IS NOT NULL
         ORDER BY ml.soldAt DESC
         """,
