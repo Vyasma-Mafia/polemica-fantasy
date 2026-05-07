@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Backend bugfix: marketplace analytics detail (май 2026)
+- [x] `MarketplaceService.getAnalyticsDetail`: устранён `ClassCastException` при разборе агрегатов `COUNT/MIN/MAX` из `MarketplaceListingRepository.findActiveListingStatsForPlayerAndRarity`
+- [x] Добавлен безопасный разбор ответа агрегатного запроса: поддержаны оба формата результата (`[count,min,max]` и `[[count,min,max]]`), для `activeCount` добавлен fallback `0`
+- [x] Добавлен интеграционный регрессионный тест `UserApiIntegrationTest` на `GET /api/v1/marketplace/analytics/detail` (два активных листинга, проверка `activeCount`, `activeMinPrice`, `activeMaxPrice`, `recentSales`, `avgSalePrice`)
+- [x] Проверка: `./gradlew test --tests "io.github.mralex1810.fantasy.UserApiIntegrationTest.GET marketplace analytics detail returns active stats without server error"` — успешно
+
 ### UX: коллекция и меню продажи (май 2026)
 - [x] `polemica-fantasy-webapp/src/pages/CardsPage.tsx`: убрана оверлейная плашка рыночной сводки (`N шт. от X₣`) с карточек в сетке коллекции, чтобы не перекрывать чипы достижений
 - [x] Сводка рынка перенесена в модалку карты и показывается рядом с действиями продажи (`Продать` / `Управлять листингом`) через новый inline-бейдж

@@ -322,6 +322,87 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `GET marketplace analytics detail returns active stats without server error`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"MPL analytics detail T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":700203,"nickname":"AnalyticsDetailPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fpId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val ctResponse = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fpId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctResponse)!!.groupValues[1].toLong()
+
+        val telegramUserId = 888_777_203L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId,$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardIds = JsonPath.parse(giveJson).read<List<Number>>("$[*].id").map { it.toLong() }
+        check(userCardIds.size == 2) { "expected 2 cards for analytics detail test, got ${userCardIds.size}" }
+
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"AnalyticsDetailSeller"}""",
+        )
+        val tma = "tma $initData"
+
+        mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":${userCardIds[0]},"price":35}"""),
+        ).andExpect(status().isOk)
+        mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":${userCardIds[1]},"price":80}"""),
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            get("/api/v1/marketplace/analytics/detail")
+                .header("Authorization", tma)
+                .param("fantasyPlayerId", fpId.toString())
+                .param("rarity", "COMMON"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantasyPlayerId").value(fpId))
+            .andExpect(jsonPath("$.rarity").value("COMMON"))
+            .andExpect(jsonPath("$.activeCount").value(2))
+            .andExpect(jsonPath("$.activeMinPrice").value(35))
+            .andExpect(jsonPath("$.activeMaxPrice").value(80))
+            .andExpect(jsonPath("$.recentSales", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.avgSalePrice").value(nullValue()))
+    }
+
+    @Test
     fun `GET fantasy team details without team returns 404`() {
         val initData = buildSignedInitData(
             botToken = "test-token",

@@ -501,12 +501,13 @@ class MarketplaceService(
 
     @Transactional(readOnly = true)
     fun getAnalyticsDetail(fantasyPlayerId: Long, rarity: Rarity): MarketplaceAnalyticsDetailDto {
-        val activeStats = marketplaceListingRepository.findActiveListingStatsForPlayerAndRarity(
+        val activeStatsRaw = marketplaceListingRepository.findActiveListingStatsForPlayerAndRarity(
             MarketplaceListingStatus.ACTIVE, fantasyPlayerId, rarity,
         )
-        val activeCount = (activeStats[0] as Number).toLong()
-        val activeMinPrice = (activeStats[1] as? Number)?.toLong()
-        val activeMaxPrice = (activeStats[2] as? Number)?.toLong()
+        val activeStats = unwrapAnalyticsStatsRow(activeStatsRaw)
+        val activeCount = (activeStats.getOrNull(0) as? Number)?.toLong() ?: 0L
+        val activeMinPrice = (activeStats.getOrNull(1) as? Number)?.toLong()
+        val activeMaxPrice = (activeStats.getOrNull(2) as? Number)?.toLong()
 
         val recentSold = marketplaceListingRepository.findRecentSoldByPlayerAndRarity(
             MarketplaceListingStatus.SOLD, fantasyPlayerId, rarity,
@@ -527,6 +528,11 @@ class MarketplaceService(
             recentSales = recentSales,
             avgSalePrice = avgSalePrice,
         )
+    }
+
+    private fun unwrapAnalyticsStatsRow(raw: Array<Any>): Array<*> {
+        val first = raw.firstOrNull()
+        return if (raw.size == 1 && first is Array<*>) first else raw
     }
 
     private fun toMarketplaceCardDto(
