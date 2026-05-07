@@ -61,6 +61,12 @@ function ruAchievementsLabel(n: number): string {
   return 'достижений'
 }
 
+function formatMarketplaceSummary(item: MarketplaceAnalyticsSummaryItem): string {
+  if (item.activeCount <= 0) return 'На рынке: нет активных лотов'
+  if (item.minActivePrice == null) return `На рынке: ${item.activeCount} шт.`
+  return `На рынке: ${item.activeCount} шт. от ${item.minActivePrice}₣`
+}
+
 export function CardsPage() {
   const initData = useInitData()
   const qc = useQueryClient()
@@ -111,6 +117,7 @@ export function CardsPage() {
       ),
     enabled: !!initData && sellModalCard != null,
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 
   const [manageListingCard, setManageListingCard] = useState<UserCardItem | null>(null)
@@ -327,6 +334,9 @@ export function CardsPage() {
       : undefined
 
   const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
+  const detailCardMarketSummary = detailCard
+    ? analyticsSummaryMap.get(`${detailCard.fantasyPlayerId}_${detailCard.rarity}`)
+    : undefined
 
   const recycleMut = useMutation({
     mutationFn: (cardId: number) => recycleUserCard(initData!, cardId),
@@ -580,15 +590,6 @@ export function CardsPage() {
                       <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
                     )}
                     <CardValueBadge value={c.value} layout="collection" expired={expired} />
-                    {(() => {
-                      const summary = analyticsSummaryMap.get(`${c.fantasyPlayerId}_${c.rarity}`)
-                      if (!summary || summary.activeCount === 0) return null
-                      return (
-                        <span className="pf-market-summary-badge" title="Активные лоты на рынке">
-                          {summary.activeCount} шт. от {summary.minActivePrice}₣
-                        </span>
-                      )
-                    })()}
                     <div className="pf-collection-card__cap">
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
@@ -667,6 +668,11 @@ export function CardsPage() {
             </ul>
 
             <div className="pf-modal__economy-actions">
+              {detailCardMarketSummary && (
+                <span className="pf-market-summary-inline" title="Срез активных лотов этой карты">
+                  {formatMarketplaceSummary(detailCardMarketSummary)}
+                </span>
+              )}
               {isEligibleEpicForLegendary(detailCard) && (
                 <button
                   type="button"
@@ -969,6 +975,11 @@ export function CardsPage() {
             <p className="pf-muted">{sellModalCard.playerNickname}</p>
             {sellAnalyticsQ.isLoading && (
               <p className="pf-muted" style={{ marginTop: 8 }}>Загрузка аналитики рынка…</p>
+            )}
+            {sellAnalyticsQ.isError && (
+              <p className="pf-err" style={{ marginTop: 8 }}>
+                Не удалось загрузить аналитику: {(sellAnalyticsQ.error as Error).message}
+              </p>
             )}
             {sellAnalyticsQ.data && (
               <div className="pf-sell-analytics">

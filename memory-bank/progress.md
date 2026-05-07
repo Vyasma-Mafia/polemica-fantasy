@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### UX: коллекция и меню продажи (май 2026)
+- [x] `polemica-fantasy-webapp/src/pages/CardsPage.tsx`: убрана оверлейная плашка рыночной сводки (`N шт. от X₣`) с карточек в сетке коллекции, чтобы не перекрывать чипы достижений
+- [x] Сводка рынка перенесена в модалку карты и показывается рядом с действиями продажи (`Продать` / `Управлять листингом`) через новый inline-бейдж
+- [x] В модалке «Выставить на маркетплейс» восстановлена наблюдаемость детальной аналитики: добавлен явный `isError`-state с сообщением об ошибке загрузки и включён `refetchOnMount: 'always'` для запроса `/marketplace/analytics/detail`
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
+
 ### Визуальный Тюленчик при открытии пака (апрель 2026)
 - [x] **Backend контракт магазина:** `BuyPackResponseDto` расширен полем `openingCards` (union `USER_CARD`/`COMPANION`) для display-последовательности открытия; поле `cards` сохранено как инвентарь (только реальные карты)
 - [x] **Логика формирования display-карт:** `UserStoreService` после каждой developer-карты (`economy_config.easter_egg.developer_fantasy_player_id`) вставляет визуальный companion «Тюленчик» с теми же `rarity` и `value`, что у developer-карты; image URL берётся из `EasterEggProperties.tyulenchikImageUrl`

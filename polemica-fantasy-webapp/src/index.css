@@ -1850,6 +1850,20 @@ button.pf-mini-card:disabled {
   pointer-events: none;
 }
 
+.pf-market-summary-inline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(30, 58, 95, 0.9);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+}
+
 .pf-sell-analytics {
   margin: 8px 0;
   font-size: 0.9rem;
