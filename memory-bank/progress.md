@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### TMA: турнирный лидерборд — бюджетная лига (май 2026)
+- [x] `polemica-fantasy-webapp/src/pages/TournamentLeaderboardPage.tsx`: добавлен fallback для списка лиг (`MAIN` + `BUDGET`) на случай, когда в `GET /api/v1/tournaments/{id}` не приходит `series.leagues`
+- [x] Переключатель лиг на странице турнирного лидерборда теперь рендерится и для fallback-набора; запросы leaderboard продолжают идти в per-league endpoint (`fetchLeagueLeaderboard`)
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
+
 ### Backend bugfix: marketplace analytics detail (май 2026)
 - [x] `MarketplaceService.getAnalyticsDetail`: устранён `ClassCastException` при разборе агрегатов `COUNT/MIN/MAX` из `MarketplaceListingRepository.findActiveListingStatsForPlayerAndRarity`
 - [x] Добавлен безопасный разбор ответа агрегатного запроса: поддержаны оба формата результата (`[count,min,max]` и `[[count,min,max]]`), для `activeCount` добавлен fallback `0`

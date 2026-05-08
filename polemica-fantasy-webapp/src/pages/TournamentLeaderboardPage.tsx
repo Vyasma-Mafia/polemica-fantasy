@@ -63,17 +63,25 @@ export function TournamentLeaderboardPage() {
       return aCode.localeCompare(bCode)
     })
   }, [tq.data?.series])
-  const activeLeagueCode = resolveActiveLeagueCode(tournamentLeagues, requestedLeagueCode)
+  const availableLeagues = useMemo<SeriesLeagueBrief[]>(() => {
+    if (tournamentLeagues.length > 0) return tournamentLeagues
+    if (seriesIds.length === 0) return []
+    return [
+      { code: 'MAIN', name: 'Основная', hasTeam: false, valueCap: null },
+      { code: 'BUDGET', name: 'Бюджетная', hasTeam: false, valueCap: null },
+    ]
+  }, [seriesIds.length, tournamentLeagues])
+  const activeLeagueCode = resolveActiveLeagueCode(availableLeagues, requestedLeagueCode)
   const activeLeague =
-    tournamentLeagues.find((league) => league.code.toUpperCase() === activeLeagueCode.toUpperCase()) ?? null
+    availableLeagues.find((league) => league.code.toUpperCase() === activeLeagueCode.toUpperCase()) ?? null
 
   useEffect(() => {
-    if (!tournamentLeagues.length) return
+    if (!availableLeagues.length) return
     if (activeLeagueCode === requestedLeagueCode) return
     const next = new URLSearchParams(searchParams)
     next.set('league', activeLeagueCode)
     setSearchParams(next, { replace: true })
-  }, [activeLeagueCode, requestedLeagueCode, searchParams, setSearchParams, tournamentLeagues.length])
+  }, [activeLeagueCode, requestedLeagueCode, searchParams, setSearchParams, availableLeagues.length])
 
   const leaderboardQueries = useQueries({
     queries: seriesIds.map((sid) => ({
@@ -86,7 +94,7 @@ export function TournamentLeaderboardPage() {
           throw error
         }
       },
-      enabled: !!initData && seriesIds.length > 0 && tournamentLeagues.length > 0,
+      enabled: !!initData && seriesIds.length > 0 && availableLeagues.length > 0,
     })),
   })
 
@@ -133,8 +141,8 @@ export function TournamentLeaderboardPage() {
   return (
     <div className="pf-page">
       <PageHeader title="Лидерборд" subtitle={`${t.name} · ${leagueName}`} backTo={back} />
-      {tournamentLeagues.length > 0 && (
-        <LeagueTabs leagues={tournamentLeagues} activeCode={activeLeagueCode} onChange={setLeague} />
+      {availableLeagues.length > 0 && (
+        <LeagueTabs leagues={availableLeagues} activeCode={activeLeagueCode} onChange={setLeague} />
       )}
 
       <div className="pf-tabs pf-tabs--scroll">
