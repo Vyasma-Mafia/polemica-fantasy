@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### UX: TeamPage — действия под выбранным составом (май 2026)
+- [x] `polemica-fantasy-webapp/src/pages/TeamPage.tsx`: кнопки действий `Отправить/Обновить` и `Обзор серии` перенесены из нижней части страницы (после сетки карт) в блок сразу под `pf-picked-slots`
+- [x] `Обзор серии` переведён на маршрут состава серии текущей лиги: `/series/:id/team?league=...` (вместо перехода на обзор/лидерборд серии)
+- [x] `polemica-fantasy-webapp/src/index.css`: добавлены стили `pf-team-picked-actions` для корректных отступов нового расположения блока действий
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
+
 ### TMA: турнирный лидерборд — бюджетная лига (май 2026)
 - [x] `polemica-fantasy-webapp/src/pages/TournamentLeaderboardPage.tsx`: добавлен fallback для списка лиг (`MAIN` + `BUDGET`) на случай, когда в `GET /api/v1/tournaments/{id}` не приходит `series.leagues`
 - [x] Переключатель лиг на странице турнирного лидерборда теперь рендерится и для fallback-набора; запросы leaderboard продолжают идти в per-league endpoint (`fetchLeagueLeaderboard`)

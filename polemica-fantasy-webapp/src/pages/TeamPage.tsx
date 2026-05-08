@@ -223,6 +223,7 @@ export function TeamPage() {
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
   const back = fromHome ? '/' : `/tournaments/${s.tournamentId}/series`
   const activeLeagueName = leagueShortName(activeLeague.code, activeLeague.name)
+  const seriesTeamPath = `/series/${sid}/team?league=${encodeURIComponent(activeLeagueCode)}`
   const setLeague = (code: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('league', code.toUpperCase())
@@ -284,6 +285,20 @@ export function TeamPage() {
           )
         })}
       </ol>
+      <div className="pf-team-picked-actions">
+        <button
+          type="button"
+          className="pf-btn pf-btn--primary pf-btn--block"
+          disabled={selected.length < minTeamSize || deadlinePassed || submit.isPending}
+          onClick={() => submit.mutate()}
+        >
+          {teamQ.isSuccess && teamQ.data ? `Обновить (${activeLeagueName})` : `Отправить (${activeLeagueName})`}
+        </button>
+        {errMsg && <p className="pf-err">{errMsg}</p>}
+        <p className="pf-footer-link">
+          <Link to={seriesTeamPath}>Обзор серии</Link>
+        </p>
+      </div>
 
       <div className="pf-filters">
         <label className="pf-field">
@@ -424,20 +439,6 @@ export function TeamPage() {
           )
         })}
       </ul>
-
-      <button
-        type="button"
-        className="pf-btn pf-btn--primary pf-btn--block"
-        disabled={selected.length < minTeamSize || deadlinePassed || submit.isPending}
-        onClick={() => submit.mutate()}
-      >
-        {teamQ.isSuccess && teamQ.data ? `Обновить (${activeLeagueName})` : `Отправить (${activeLeagueName})`}
-      </button>
-      {errMsg && <p className="pf-err">{errMsg}</p>}
-
-      <p className="pf-footer-link">
-        <Link to={`/series/${sid}?league=${encodeURIComponent(activeLeagueCode)}`}>Обзор серии</Link>
-      </p>
     </div>
   )
 }

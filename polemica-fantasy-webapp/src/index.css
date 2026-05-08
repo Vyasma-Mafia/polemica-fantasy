@@ -1149,6 +1149,18 @@ a.pf-lb-row--link:focus-visible {
   gap: 8px;
 }
 
+.pf-team-picked-actions {
+  margin: 0 0 18px;
+}
+
+.pf-team-picked-actions .pf-btn--block {
+  margin-top: 0;
+}
+
+.pf-team-picked-actions .pf-footer-link {
+  margin-top: 12px;
+}
+
 .pf-picked-slots__slot {
   display: flex;
   align-items: center;
