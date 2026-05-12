@@ -31,6 +31,12 @@ function leagueCodeEquals(a: string, b: string): boolean {
   return a.trim().toUpperCase() === b.trim().toUpperCase()
 }
 
+interface MarketplacePlayerListings {
+  fantasyPlayerId: number
+  nickname: string
+  listingIds: number[]
+}
+
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const sid = Number(seriesId)
@@ -92,22 +98,46 @@ export function TeamPage() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | ''>('')
   const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
   const [teamSelectionHydrated, setTeamSelectionHydrated] = useState(false)
-  const selectedPlayer = useMemo(
-    () => (playerFantasyId === '' ? null : seriesQ.data?.players.find((p) => p.fantasyPlayerId === playerFantasyId) ?? null),
-    [seriesQ.data?.players, playerFantasyId],
+  const [marketplacePlayerFantasyId, setMarketplacePlayerFantasyId] = useState<number | ''>('')
+  const marketplacePlayers = useMemo<MarketplacePlayerListings[]>(() => {
+    const listingMap = new Map<number, MarketplacePlayerListings>()
+    for (const card of cardsQ.data ?? []) {
+      const listing = card.activeMarketplaceListing
+      if (!listing) continue
+      const existing = listingMap.get(card.fantasyPlayerId)
+      if (existing) {
+        existing.listingIds.push(listing.listingId)
+        continue
+      }
+      const playerName =
+        seriesQ.data?.players.find((player) => player.fantasyPlayerId === card.fantasyPlayerId)?.nickname ??
+        card.playerNickname
+      listingMap.set(card.fantasyPlayerId, {
+        fantasyPlayerId: card.fantasyPlayerId,
+        nickname: playerName,
+        listingIds: [listing.listingId],
+      })
+    }
+    return [...listingMap.values()].sort((a, b) => a.nickname.localeCompare(b.nickname, 'ru'))
+  }, [cardsQ.data, seriesQ.data?.players])
+  const selectedMarketplacePlayer = useMemo(
+    () =>
+      marketplacePlayerFantasyId === ''
+        ? null
+        : marketplacePlayers.find((entry) => entry.fantasyPlayerId === marketplacePlayerFantasyId) ?? null,
+    [marketplacePlayers, marketplacePlayerFantasyId],
   )
-  const selectedPlayerListingIds = useMemo(() => {
-    if (playerFantasyId === '') return []
-    return (cardsQ.data ?? [])
-      .filter((card) => card.fantasyPlayerId === playerFantasyId && card.activeMarketplaceListing != null)
-      .map((card) => card.activeMarketplaceListing!.listingId)
-  }, [cardsQ.data, playerFantasyId])
+  const totalMarketplaceListings = useMemo(
+    () => marketplacePlayers.reduce((sum, entry) => sum + entry.listingIds.length, 0),
+    [marketplacePlayers],
+  )
 
   useEffect(() => {
     queueMicrotask(() => {
       setSelected([])
       setRarityFilter('')
       setPlayerFantasyId('')
+      setMarketplacePlayerFantasyId('')
       setTeamSelectionHydrated(false)
     })
   }, [sid, activeLeagueCode])
@@ -133,6 +163,19 @@ export function TeamPage() {
       setTeamSelectionHydrated(true)
     })
   }, [teamQ.isSuccess, teamQ.data, teamSelectionHydrated, selected.length])
+  useEffect(() => {
+    if (marketplacePlayers.length === 0) {
+      if (marketplacePlayerFantasyId !== '') setMarketplacePlayerFantasyId('')
+      return
+    }
+    if (
+      marketplacePlayerFantasyId !== '' &&
+      marketplacePlayers.some((entry) => entry.fantasyPlayerId === marketplacePlayerFantasyId)
+    ) {
+      return
+    }
+    setMarketplacePlayerFantasyId(marketplacePlayers[0]!.fantasyPlayerId)
+  }, [marketplacePlayerFantasyId, marketplacePlayers])
 
   const cardById = useMemo(() => {
     const m = new Map<number, UserCardItem>()
@@ -292,6 +335,49 @@ export function TeamPage() {
           ` Легендарных карт в команде — не больше ${activeLeague.maxLegendaryCount}.`}
       </p>
       {valueCap != null && <BudgetProgressBar currentValue={selectedValue} maxValue={valueCap} />}
+      {marketplacePlayers.length > 0 && (
+        <div className="pf-team-marketplace-tools">
+          <p className="pf-muted" style={{ marginBottom: 6 }}>
+            На продаже: {totalMarketplaceListings} карт.
+          </p>
+          <label className="pf-field">
+            <span className="pf-field__label">Игрок в листинге</span>
+            <select
+              className="pf-input"
+              value={marketplacePlayerFantasyId === '' ? '' : String(marketplacePlayerFantasyId)}
+              disabled={unlistPlayerListings.isPending}
+              onChange={(event) => {
+                const value = event.target.value
+                setMarketplacePlayerFantasyId(value === '' ? '' : Number(value))
+              }}
+            >
+              {marketplacePlayers.map((entry) => (
+                <option key={entry.fantasyPlayerId} value={String(entry.fantasyPlayerId)}>
+                  {entry.nickname} ({entry.listingIds.length})
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="pf-btn pf-btn--small"
+            disabled={selectedMarketplacePlayer == null || unlistPlayerListings.isPending}
+            onClick={() => {
+              if (!selectedMarketplacePlayer) return
+              if (
+                !window.confirm(
+                  `Снять с продажи все активные листинги игрока ${selectedMarketplacePlayer.nickname}?`,
+                )
+              ) {
+                return
+              }
+              unlistPlayerListings.mutate(selectedMarketplacePlayer.listingIds)
+            }}
+          >
+            {unlistPlayerListings.isPending ? 'Снимаем…' : 'Снять игрока с листинга'}
+          </button>
+        </div>
+      )}
 
       <ol className="pf-picked-slots">
         {[0, 1, 2].map((i) => {
@@ -357,31 +443,6 @@ export function TeamPage() {
           </select>
         </label>
       </div>
-      {selectedPlayer && (
-        <div className="pf-team-marketplace-tools">
-          <p className="pf-muted">
-            {selectedPlayer.nickname}: активных листингов {selectedPlayerListingIds.length}.
-          </p>
-          <button
-            type="button"
-            className="pf-btn pf-btn--small"
-            disabled={selectedPlayerListingIds.length === 0 || unlistPlayerListings.isPending}
-            onClick={() => {
-              if (selectedPlayerListingIds.length === 0) return
-              if (
-                !window.confirm(
-                  `Снять с продажи все активные листинги игрока ${selectedPlayer.nickname}?`,
-                )
-              ) {
-                return
-              }
-              unlistPlayerListings.mutate(selectedPlayerListingIds)
-            }}
-          >
-            {unlistPlayerListings.isPending ? 'Снимаем…' : 'Снять игрока с листинга'}
-          </button>
-        </div>
-      )}
 
       <div className="pf-rarity-tabs">
         {RARITY_UI.map((tab) => (

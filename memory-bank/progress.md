@@ -6,6 +6,7 @@
 - [x] `polemica-fantasy-webapp/src/pages/TeamPage.tsx`: после выбора `Игрок серии` добавлен блок Marketplace с количеством активных листингов по этому `fantasyPlayerId`
 - [x] Добавлено действие **«Снять игрока с листинга»**: пакетное снятие всех листингов выбранного игрока через последовательность `DELETE /api/v1/marketplace/listings/{id}` (`cancelMarketplaceListing`, `Promise.allSettled`)
 - [x] После операции инвалидация кэшей `cards`, `my-marketplace-listings`, `marketplace-listings`, чтобы карточки сразу разблокировались на экране сборки
+- [x] UX-фикс: блок управления листингами теперь показывается автоматически при наличии карт в продаже, с отдельным селектом `Игрок в листинге` (только игроки с активными лотами), без зависимости от фильтра `Игрок серии`
 - [x] `polemica-fantasy-webapp/src/index.css`: стили блока `pf-team-marketplace-tools` для нового действия на TeamPage
 - [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
 
