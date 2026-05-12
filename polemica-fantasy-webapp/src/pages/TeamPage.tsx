@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
 import { fetchSeriesLeagues, submitLeagueTeam, updateLeagueTeam } from '../api/leagues'
+import { cancelMarketplaceListing } from '../api/marketplace'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
 import { BudgetProgressBar } from '../components/BudgetProgressBar'
@@ -91,6 +92,16 @@ export function TeamPage() {
   const [rarityFilter, setRarityFilter] = useState<Rarity | ''>('')
   const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
   const [teamSelectionHydrated, setTeamSelectionHydrated] = useState(false)
+  const selectedPlayer = useMemo(
+    () => (playerFantasyId === '' ? null : seriesQ.data?.players.find((p) => p.fantasyPlayerId === playerFantasyId) ?? null),
+    [seriesQ.data?.players, playerFantasyId],
+  )
+  const selectedPlayerListingIds = useMemo(() => {
+    if (playerFantasyId === '') return []
+    return (cardsQ.data ?? [])
+      .filter((card) => card.fantasyPlayerId === playerFantasyId && card.activeMarketplaceListing != null)
+      .map((card) => card.activeMarketplaceListing!.listingId)
+  }, [cardsQ.data, playerFantasyId])
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -175,6 +186,29 @@ export function TeamPage() {
     },
     onError: () => {
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
+    },
+  })
+  const unlistPlayerListings = useMutation({
+    mutationFn: async (listingIds: number[]) => {
+      const results = await Promise.allSettled(
+        listingIds.map((listingId) => cancelMarketplaceListing(initData, listingId)),
+      )
+      const cancelled = results.filter((result) => result.status === 'fulfilled').length
+      const failed = results.length - cancelled
+      return { cancelled, failed }
+    },
+    onSuccess: ({ cancelled, failed }) => {
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      void qc.invalidateQueries({ queryKey: ['my-marketplace-listings'] })
+      void qc.invalidateQueries({ queryKey: ['marketplace-listings'] })
+      if (failed > 0) {
+        window.alert(`Снято с продажи: ${cancelled}. Не удалось снять: ${failed}. Обновите страницу и повторите попытку.`)
+        return
+      }
+      window.alert(`Снято с продажи: ${cancelled}.`)
+    },
+    onError: (e: Error) => {
+      window.alert(e instanceof ApiError ? e.message : e.message || 'Не удалось снять листинги с продажи')
     },
   })
 
@@ -323,6 +357,31 @@ export function TeamPage() {
           </select>
         </label>
       </div>
+      {selectedPlayer && (
+        <div className="pf-team-marketplace-tools">
+          <p className="pf-muted">
+            {selectedPlayer.nickname}: активных листингов {selectedPlayerListingIds.length}.
+          </p>
+          <button
+            type="button"
+            className="pf-btn pf-btn--small"
+            disabled={selectedPlayerListingIds.length === 0 || unlistPlayerListings.isPending}
+            onClick={() => {
+              if (selectedPlayerListingIds.length === 0) return
+              if (
+                !window.confirm(
+                  `Снять с продажи все активные листинги игрока ${selectedPlayer.nickname}?`,
+                )
+              ) {
+                return
+              }
+              unlistPlayerListings.mutate(selectedPlayerListingIds)
+            }}
+          >
+            {unlistPlayerListings.isPending ? 'Снимаем…' : 'Снять игрока с листинга'}
+          </button>
+        </div>
+      )}
 
       <div className="pf-rarity-tabs">
         {RARITY_UI.map((tab) => (

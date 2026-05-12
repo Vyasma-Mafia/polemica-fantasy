@@ -1161,6 +1161,18 @@ a.pf-lb-row--link:focus-visible {
   margin-top: 12px;
 }
 
+.pf-team-marketplace-tools {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pf-team-marketplace-tools .pf-muted {
+  margin: 0 0 8px;
+}
+
 .pf-picked-slots__slot {
   display: flex;
   align-items: center;
