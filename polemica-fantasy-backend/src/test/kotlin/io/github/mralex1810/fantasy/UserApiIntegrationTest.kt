@@ -319,6 +319,14 @@ class UserApiIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$", hasSize<Any>(0)))
+
+        mockMvc.perform(
+            get("/api/v1/user-cards/$userCardId/ownership-history")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].acquisitionType").value("ADMIN_GRANT"))
     }
 
     @Test

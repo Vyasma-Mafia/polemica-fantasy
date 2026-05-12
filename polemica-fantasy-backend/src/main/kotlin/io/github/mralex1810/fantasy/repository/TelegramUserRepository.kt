@@ -50,6 +50,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
             SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
             FROM telegram_user tu
             LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
+              AND uc.deleted_at IS NULL
               AND EXISTS (
                 SELECT 1 FROM card_template ct
                 INNER JOIN series_player sp ON sp.series_id = :seriesId
@@ -86,6 +87,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
             SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
             FROM telegram_user tu
             LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
+              AND uc.deleted_at IS NULL
               AND EXISTS (
                 SELECT 1 FROM card_template ct
                 INNER JOIN series_player sp ON sp.series_id = :seriesId

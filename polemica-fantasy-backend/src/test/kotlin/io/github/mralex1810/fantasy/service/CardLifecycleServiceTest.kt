@@ -3,14 +3,15 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
-import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -29,9 +30,6 @@ class CardLifecycleServiceTest {
 
     @Mock
     private lateinit var fantasyTeamCardRepository: FantasyTeamCardRepository
-
-    @Mock
-    private lateinit var userCardOwnershipHistoryRepository: UserCardOwnershipHistoryRepository
 
     @Mock
     private lateinit var economyConfigService: EconomyConfigService
@@ -76,10 +74,14 @@ class CardLifecycleServiceTest {
 
         assertEquals(10L, result.fantikiEarned)
         assertEquals(1010L, result.newBalance)
-        verify(userCardOwnershipHistoryRepository).deleteAllByUserCard_Id(50L)
-        verify(marketplaceListingRepository).deleteAllByUserCard_Id(50L)
+        assertNotNull(uc.deletedAt)
+        verify(marketplaceListingRepository).cancelAllActiveByUserCardId(
+            50L,
+            MarketplaceListingStatus.ACTIVE,
+            MarketplaceListingStatus.CANCELLED,
+        )
         verify(userService).addBalance(10L, 10L, FantikiTransactionReason.CARD_RECYCLE)
-        verify(userCardRepository).delete(uc)
+        verify(userCardRepository).save(uc)
     }
 
     @Test

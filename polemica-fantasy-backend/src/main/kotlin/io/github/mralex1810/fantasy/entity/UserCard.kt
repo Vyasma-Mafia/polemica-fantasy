@@ -45,6 +45,9 @@ class UserCard(
     @Column(name = "times_renewed", nullable = false)
     var timesRenewed: Int = 0,
 
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null,
+
     @OneToMany(mappedBy = "userCard")
     var fantasyTeamCards: MutableList<FantasyTeamCard> = mutableListOf(),
 )

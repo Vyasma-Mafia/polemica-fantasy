@@ -7,18 +7,17 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
-import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
 
 @Service
 class CardLifecycleService(
     private val userCardRepository: UserCardRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
-    private val userCardOwnershipHistoryRepository: UserCardOwnershipHistoryRepository,
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
@@ -37,10 +36,13 @@ class CardLifecycleService(
         val rarity = uc.cardTemplate!!.rarity
         val earned = economyConfigService.getRecycleValue(rarity)
         val internalId = user.id!!
-        fantasyTeamCardRepository.deleteAllByUserCard_Id(userCardId)
-        userCardOwnershipHistoryRepository.deleteAllByUserCard_Id(userCardId)
-        marketplaceListingRepository.deleteAllByUserCard_Id(userCardId)
-        userCardRepository.delete(uc)
+        marketplaceListingRepository.cancelAllActiveByUserCardId(
+            userCardId = userCardId,
+            active = MarketplaceListingStatus.ACTIVE,
+            cancelled = MarketplaceListingStatus.CANCELLED,
+        )
+        uc.deletedAt = Instant.now()
+        userCardRepository.save(uc)
         userService.addBalance(internalId, earned, FantikiTransactionReason.CARD_RECYCLE)
         val balance = userService.getBalance(internalId)
         return RecycleResultDto(fantikiEarned = earned, newBalance = balance)

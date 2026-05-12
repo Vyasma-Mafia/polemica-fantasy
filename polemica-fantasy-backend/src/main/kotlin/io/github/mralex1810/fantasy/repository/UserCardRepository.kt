@@ -11,7 +11,18 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
 
     fun countByTelegramUser_IdAndSourceCardPack_Id(telegramUserId: Long, sourceCardPackId: Long): Long
 
-    fun findByIdAndTelegramUser_Id(id: Long, telegramUserId: Long): UserCard?
+    @Query(
+        """
+        SELECT uc FROM UserCard uc
+        WHERE uc.id = :id
+          AND uc.telegramUser.id = :telegramUserId
+          AND uc.deletedAt IS NULL
+        """,
+    )
+    fun findByIdAndTelegramUser_Id(
+        @Param("id") id: Long,
+        @Param("telegramUserId") telegramUserId: Long,
+    ): UserCard?
 
     @Query(
         """
@@ -21,6 +32,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
         WHERE uc.telegramUser.id = :telegramUserId
+        AND uc.deletedAt IS NULL
         AND (:tournamentId IS NULL OR EXISTS (
             SELECT 1 FROM TournamentPlayer tp
             WHERE tp.fantasyPlayer.id = fp.id AND tp.tournament.id = :tournamentId
@@ -47,7 +59,9 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
-        WHERE uc.telegramUser.id = :telegramUserId AND uc.id IN :ids
+        WHERE uc.telegramUser.id = :telegramUserId
+          AND uc.id IN :ids
+          AND uc.deletedAt IS NULL
         """,
     )
     fun findAllByIdInAndTelegramUser_Id(
@@ -63,7 +77,9 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         LEFT JOIN FETCH uc.craftedBy
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
-        WHERE uc.id = :id AND uc.telegramUser.id = :telegramUserId
+        WHERE uc.id = :id
+          AND uc.telegramUser.id = :telegramUserId
+          AND uc.deletedAt IS NULL
         """,
     )
     fun findByIdAndTelegramUser_IdWithTemplateAchievements(
@@ -77,6 +93,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
         WHERE uc.telegramUser.id = :currentOwnerId
+        AND uc.deletedAt IS NULL
         AND EXISTS (
             SELECT 1 FROM MarketplaceListing ml
             WHERE ml.userCard.id = uc.id
@@ -104,6 +121,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
+        WHERE uc.deletedAt IS NULL
         """,
     )
     fun findAllForGlobalRating(): List<UserCard>
@@ -113,6 +131,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT ct.rarity, COUNT(uc)
         FROM UserCard uc JOIN uc.cardTemplate ct
         WHERE uc.telegramUser.id = :userId
+          AND uc.deletedAt IS NULL
         GROUP BY ct.rarity
         """,
     )

@@ -2,6 +2,15 @@
 
 ## Что реализовано
 
+### Backend: soft-delete при распылении карты (май 2026)
+- [x] **Flyway V38:** `user_card.deleted_at` + комментарий поля (`soft-delete` timestamp)
+- [x] `CardLifecycleService.recycleCard`: вместо физического удаления (`user_card`, `user_card_ownership_history`, `marketplace_listing`) теперь ставится `deletedAt = now`
+- [x] ACTIVE-листинги при recycle больше не удаляются: переводятся в `CANCELLED` через `MarketplaceListingRepository.cancelAllActiveByUserCardId`
+- [x] `UserCardRepository`: активные выборки и операции (`findById...`, `/me/cards`, attach team, legendary upgrade, global rating aggregates, pair confiscation candidates) исключают `deletedAt != null`
+- [x] `TelegramUserRepository`: админские запросы `findAllWithCardsInSeriesCount*` не считают soft-deleted `user_card`
+- [x] Тесты обновлены: `CardLifecycleServiceTest` и `UserApiIntegrationTest#POST recycle succeeds for card listed on marketplace` (добавлена проверка, что `ownership-history` доступна после recycle)
+- [x] Проверка: `./gradlew test --tests "io.github.mralex1810.fantasy.service.CardLifecycleServiceTest" --tests "io.github.mralex1810.fantasy.UserApiIntegrationTest.POST recycle succeeds for card listed on marketplace"` — успешно
+
 ### Admin: снятие игрока серии с маркетплейса (май 2026)
 - [x] Backend: `POST /api/v1/admin/series/{seriesId}/players/{tournamentPlayerId}/unlist-marketplace` в `SeriesAdminController` + `SeriesService.unlistMarketplaceListingsForTournamentPlayer`
 - [x] `MarketplaceListingRepository`: добавлен bulk-update `cancelAllActiveByFantasyPlayerId` (`ACTIVE -> CANCELLED`) для выбранного `fantasy_player`
