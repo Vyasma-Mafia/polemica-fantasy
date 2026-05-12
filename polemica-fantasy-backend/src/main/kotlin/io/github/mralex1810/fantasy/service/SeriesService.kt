@@ -5,10 +5,12 @@ import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.SkippedSeriesEntry
 import io.github.mralex1810.fantasy.dto.admin.response.StartedSeriesEntry
 import io.github.mralex1810.fantasy.entity.DeadlineReminder
 import io.github.mralex1810.fantasy.entity.LeagueType
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
@@ -22,6 +24,7 @@ import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMe
 import io.github.mralex1810.fantasy.polemica.GameSyncService
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
 import io.github.mralex1810.fantasy.repository.LeagueRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
@@ -46,6 +49,7 @@ class SeriesService(
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val deadlineReminderRepository: DeadlineReminderRepository,
     private val leagueRepository: LeagueRepository,
+    private val marketplaceListingRepository: MarketplaceListingRepository,
     private val seriesLeagueRepository: SeriesLeagueRepository,
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
@@ -269,6 +273,40 @@ class SeriesService(
         val counts = gameCountsForSeriesIds(listOf(seriesId))[seriesId] ?: (0L to 0L)
         return seriesRepository.findById(seriesId).get()
             .toDto(tournamentPlayerIdsForSeries(seriesId), counts.first, counts.second)
+    }
+
+    @Transactional
+    fun unlistMarketplaceListingsForTournamentPlayer(
+        seriesId: Long,
+        tournamentPlayerId: Long,
+    ): SeriesPlayerMarketplaceUnlistResultDto {
+        val series = seriesRepository.findById(seriesId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        val tournament = series.tournament ?: throw ResponseStatusException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Series $seriesId has no tournament",
+        )
+        val tp = tournamentPlayerRepository.findByIdAndTournament_Id(tournamentPlayerId, tournament.id!!)
+            ?: throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Tournament player $tournamentPlayerId is not part of tournament ${tournament.id}",
+            )
+        val fantasyPlayer = tp.fantasyPlayer ?: throw ResponseStatusException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Tournament player $tournamentPlayerId has no fantasy player",
+        )
+        val cancelled = marketplaceListingRepository.cancelAllActiveByFantasyPlayerId(
+            fantasyPlayerId = fantasyPlayer.id!!,
+            active = MarketplaceListingStatus.ACTIVE,
+            cancelled = MarketplaceListingStatus.CANCELLED,
+        )
+        return SeriesPlayerMarketplaceUnlistResultDto(
+            tournamentPlayerId = tournamentPlayerId,
+            fantasyPlayerId = fantasyPlayer.id!!,
+            playerNickname = fantasyPlayer.nickname,
+            cancelledListings = cancelled,
+        )
     }
 
     /**

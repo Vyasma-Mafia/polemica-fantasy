@@ -8,6 +8,7 @@ import type {
   BatchStartSeriesResponseDto,
   SeriesDto,
   SeriesFinalizationResultDto,
+  SeriesPlayerMarketplaceUnlistResultDto,
 } from './types'
 import { apiJson, apiVoid } from './client'
 
@@ -47,6 +48,13 @@ export function assignSeriesPlayers(id: number, body: AssignSeriesPlayersRequest
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+export function unlistSeriesPlayerFromMarketplace(id: number, tournamentPlayerId: number) {
+  return apiJson<SeriesPlayerMarketplaceUnlistResultDto>(
+    `/v1/admin/series/${id}/players/${tournamentPlayerId}/unlist-marketplace`,
+    { method: 'POST' },
+  )
 }
 
 export function batchStartSeries(body: BatchStartSeriesRequest) {

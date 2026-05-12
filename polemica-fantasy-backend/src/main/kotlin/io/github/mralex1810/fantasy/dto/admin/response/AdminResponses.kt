@@ -68,6 +68,13 @@ data class SeriesDto(
     val tournamentPlayerIds: List<Long>,
 )
 
+data class SeriesPlayerMarketplaceUnlistResultDto(
+    val tournamentPlayerId: Long,
+    val fantasyPlayerId: Long,
+    val playerNickname: String,
+    val cancelledListings: Int,
+)
+
 data class AchievementAdminDto(
     val id: String,
     val name: String,

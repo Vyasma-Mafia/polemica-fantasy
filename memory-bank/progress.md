@@ -2,6 +2,14 @@
 
 ## Что реализовано
 
+### Admin: снятие игрока серии с маркетплейса (май 2026)
+- [x] Backend: `POST /api/v1/admin/series/{seriesId}/players/{tournamentPlayerId}/unlist-marketplace` в `SeriesAdminController` + `SeriesService.unlistMarketplaceListingsForTournamentPlayer`
+- [x] `MarketplaceListingRepository`: добавлен bulk-update `cancelAllActiveByFantasyPlayerId` (`ACTIVE -> CANCELLED`) для выбранного `fantasy_player`
+- [x] Новый DTO ответа `SeriesPlayerMarketplaceUnlistResultDto` (какой игрок обработан и сколько лотов снято)
+- [x] Админка `SeriesDetailPage` (блок `Assign players`): добавлен UI «Marketplace» с выбором игрока, confirm и кнопкой `Remove player listings`
+- [x] Интеграционный тест backend: `AdminApiIntegrationTest#series admin can remove selected player listings from marketplace` (создание ACTIVE-листинга и проверка перехода в `CANCELLED`)
+- [x] Проверки: `./gradlew test --tests "io.github.mralex1810.fantasy.AdminApiIntegrationTest.series admin can remove selected player listings from marketplace"` и `npm run build` (`polemica-fantasy-admin`) — успешно
+
 ### UX: TeamPage — действия под выбранным составом (май 2026)
 - [x] `polemica-fantasy-webapp/src/pages/TeamPage.tsx`: кнопки действий `Отправить/Обновить` и `Обзор серии` перенесены из нижней части страницы (после сетки карт) в блок сразу под `pf-picked-slots`
 - [x] `Обзор серии` переведён на маршрут состава серии текущей лиги: `/series/:id/team?league=...` (вместо перехода на обзор/лидерборд серии)

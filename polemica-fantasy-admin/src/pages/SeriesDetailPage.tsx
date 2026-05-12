@@ -22,6 +22,7 @@ import {
   finalizeSeries,
   getSeries,
   syncGames,
+  unlistSeriesPlayerFromMarketplace,
   updateSeries,
 } from '../api/series'
 import type { UpdateSeriesRequest } from '../api/seriesRequests'
@@ -43,6 +44,7 @@ export function SeriesDetailPage() {
     teamDeadline: ReturnType<typeof dayjs>
   }>()
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([])
+  const [unlistTournamentPlayerId, setUnlistTournamentPlayerId] = useState<number | null>(null)
 
   const q = useQuery({
     queryKey: ['admin', 'series', seriesId],
@@ -131,6 +133,21 @@ export function SeriesDetailPage() {
         queryKey: ['admin', 'series', 'tournament', tournamentId],
       })
       void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const unlistPlayerMut = useMutation({
+    mutationFn: (tournamentPlayerId: number) =>
+      unlistSeriesPlayerFromMarketplace(seriesId, tournamentPlayerId),
+    onSuccess: (res) => {
+      if (res.cancelledListings > 0) {
+        message.success(
+          `Removed ${res.cancelledListings} active listing(s) for ${res.playerNickname}`,
+        )
+      } else {
+        message.info(`No active listings for ${res.playerNickname}`)
+      }
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -284,6 +301,48 @@ export function SeriesDetailPage() {
           onClick={() => assignMut.mutate(selectedPlayerIds)}
         >
           Assign players
+        </Button>
+        <Typography.Text strong>Marketplace</Typography.Text>
+        <Typography.Text type="secondary">
+          Remove all active marketplace listings for a specific player.
+        </Typography.Text>
+        <Select
+          allowClear
+          showSearch
+          placeholder="Select player to remove from marketplace"
+          style={{ width: '100%' }}
+          options={players.map((p) => ({
+            value: p.id,
+            label: `${p.nickname} (id ${p.id})`,
+          }))}
+          filterOption={(input, option) =>
+            String(option?.label ?? '')
+              .toLowerCase()
+              .includes(input.trim().toLowerCase())
+          }
+          value={unlistTournamentPlayerId}
+          onChange={(value) => setUnlistTournamentPlayerId(value ?? null)}
+        />
+        <Button
+          danger
+          disabled={unlistTournamentPlayerId == null}
+          loading={unlistPlayerMut.isPending}
+          onClick={() => {
+            if (unlistTournamentPlayerId == null) {
+              return
+            }
+            const selectedPlayer = players.find((p) => p.id === unlistTournamentPlayerId)
+            const playerLabel = selectedPlayer?.nickname ?? `id ${unlistTournamentPlayerId}`
+            Modal.confirm({
+              title: `Remove ${playerLabel} from marketplace?`,
+              content: 'This will cancel all active listings for this player.',
+              okText: 'Remove',
+              okButtonProps: { danger: true },
+              onOk: () => unlistPlayerMut.mutate(unlistTournamentPlayerId),
+            })
+          }}
+        >
+          Remove player listings
         </Button>
       </Space>
 

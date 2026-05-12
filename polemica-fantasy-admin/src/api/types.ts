@@ -99,6 +99,13 @@ export interface SeriesDto {
   tournamentPlayerIds: number[]
 }
 
+export interface SeriesPlayerMarketplaceUnlistResultDto {
+  tournamentPlayerId: number
+  fantasyPlayerId: number
+  playerNickname: string
+  cancelledListings: number
+}
+
 export interface EconomyConfigItemDto {
   key: string
   value: string

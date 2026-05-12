@@ -1,6 +1,10 @@
 package io.github.mralex1810.fantasy
 
+import io.github.mralex1810.fantasy.entity.MarketplaceListing
+import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
@@ -40,6 +44,12 @@ class AdminApiIntegrationTest {
 
     @Autowired
     private lateinit var deadlineReminderRepository: DeadlineReminderRepository
+
+    @Autowired
+    private lateinit var marketplaceListingRepository: MarketplaceListingRepository
+
+    @Autowired
+    private lateinit var userCardRepository: UserCardRepository
 
     @Test
     @Order(1)
@@ -574,6 +584,99 @@ class AdminApiIntegrationTest {
         assertEquals(false, updatedReminder.sent)
         assertEquals(null, updatedReminder.sentAt)
         assertEquals(null, updatedReminder.recipientCount)
+    }
+
+    @Test
+    @Order(19)
+    fun `series admin can remove selected player listings from marketplace`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Series Unlist Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val pJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":778899,"nickname":"Unlist Me"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentPlayerId = Regex("\"id\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(pJson)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Unlist Round","namePrefix":"ULS","status":"UPCOMING",
+                    "startsAt":"2026-09-01T12:00:00Z","teamDeadline":"2026-09-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$tournamentPlayerId]}"""),
+        )
+            .andExpect(status().isOk)
+
+        val ctJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(ctJson)!!.groupValues[1].toLong()
+
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/779111/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = JsonPath.read<List<Map<String, Any>>>(giveJson, "$")[0]["id"].toString().toLong()
+        val userCard = userCardRepository.findById(userCardId).orElseThrow()
+        val seller = userCard.telegramUser!!
+
+        val listing = marketplaceListingRepository.save(
+            MarketplaceListing(
+                seller = seller,
+                userCard = userCard,
+                price = 333,
+                status = MarketplaceListingStatus.ACTIVE,
+                createdAt = Instant.parse("2026-09-01T10:00:00Z"),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players/$tournamentPlayerId/unlist-marketplace")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.tournamentPlayerId").value(tournamentPlayerId))
+            .andExpect(jsonPath("$.fantasyPlayerId").value(fantasyPlayerId))
+            .andExpect(jsonPath("$.cancelledListings").value(1))
+
+        val updated = marketplaceListingRepository.findById(listing.id!!).orElseThrow()
+        assertEquals(MarketplaceListingStatus.CANCELLED, updated.status)
     }
 
     companion object {

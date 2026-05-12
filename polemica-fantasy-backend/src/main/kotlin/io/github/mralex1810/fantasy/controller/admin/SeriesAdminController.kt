@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
 import io.github.mralex1810.fantasy.service.SeriesService
@@ -54,6 +55,12 @@ class SeriesAdminController(
         @PathVariable id: Long,
         @Valid @RequestBody body: AssignSeriesPlayersRequest,
     ): SeriesDto = seriesService.assignPlayers(id, body)
+
+    @PostMapping("/series/{id}/players/{tournamentPlayerId}/unlist-marketplace")
+    fun unlistPlayerFromMarketplace(
+        @PathVariable id: Long,
+        @PathVariable tournamentPlayerId: Long,
+    ): SeriesPlayerMarketplaceUnlistResultDto = seriesService.unlistMarketplaceListingsForTournamentPlayer(id, tournamentPlayerId)
 
     @PostMapping("/series/{id}/sync-games")
     fun syncGames(@PathVariable id: Long) {

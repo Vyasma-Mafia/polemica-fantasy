@@ -180,6 +180,21 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("cancelled") cancelled: MarketplaceListingStatus,
     ): Int
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        """
+        UPDATE MarketplaceListing ml
+        SET ml.status = :cancelled
+        WHERE ml.status = :active
+          AND ml.userCard.cardTemplate.fantasyPlayer.id = :fantasyPlayerId
+        """,
+    )
+    fun cancelAllActiveByFantasyPlayerId(
+        @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("active") active: MarketplaceListingStatus,
+        @Param("cancelled") cancelled: MarketplaceListingStatus,
+    ): Int
+
     @Query(
         value = """
             SELECT ct.fantasy_player_id,
