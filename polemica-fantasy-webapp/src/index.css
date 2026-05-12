@@ -1161,18 +1161,6 @@ a.pf-lb-row--link:focus-visible {
   margin-top: 12px;
 }
 
-.pf-team-marketplace-tools {
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--pf-border);
-  border-radius: var(--pf-radius-sm);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.pf-team-marketplace-tools .pf-muted {
-  margin: 0 0 8px;
-}
-
 .pf-picked-slots__slot {
   display: flex;
   align-items: center;
@@ -1238,6 +1226,10 @@ button.pf-mini-card:disabled {
   gap: 10px;
 }
 
+.pf-team-grid__item {
+  position: relative;
+}
+
 .pf-team-card {
   display: flex;
   flex-direction: column;
@@ -1256,6 +1248,27 @@ button.pf-mini-card:disabled {
 .pf-team-card__media {
   position: relative;
   width: 100%;
+}
+
+.pf-team-card__unlist-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  border-radius: 999px;
+  background: rgba(6, 95, 70, 0.3);
+  color: #a7f3d0;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.pf-team-card__unlist-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .pf-team-card--picked {
