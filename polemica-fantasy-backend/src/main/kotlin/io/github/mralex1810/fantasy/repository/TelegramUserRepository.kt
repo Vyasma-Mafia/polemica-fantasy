@@ -69,7 +69,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
         value =
             """
             SELECT u.id, u.telegram_id, u.username, u.first_name, u.display_name, u.created_at, u.fantiki,
-              u.pack_opens_count, u.marketplace_banned, u.bot_blocked
+              u.pack_opens_count, u.marketplace_banned, u.marketplace_banned_until, u.bot_blocked
             FROM telegram_user u
             WHERE
               (u.username IS NOT NULL AND u.username ILIKE :pattern ESCAPE '!')

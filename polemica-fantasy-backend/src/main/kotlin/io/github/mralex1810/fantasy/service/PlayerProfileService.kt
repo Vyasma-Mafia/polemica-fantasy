@@ -13,6 +13,7 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.data.domain.PageRequest
@@ -29,6 +30,7 @@ class PlayerProfileService(
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val userCardRepository: UserCardRepository,
     private val marketplaceListingRepository: MarketplaceListingRepository,
+    private val marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository,
 ) {
     companion object {
         private const val MAX_SERIES_HISTORY = 20
@@ -139,11 +141,19 @@ class PlayerProfileService(
             userId = userId,
             pageable = PageRequest.of(0, MAX_RECENT_TRADES),
         )
+        val sanctionedIds = if (listings.isEmpty()) {
+            emptySet()
+        } else {
+            marketplaceListingSanctionRepository.findListingIdsWithSanctions(
+                listings.mapNotNull { it.id },
+            ).toSet()
+        }
         return listings.map { ml ->
             val isSale = ml.seller!!.id == userId
             val counterparty = if (isSale) ml.buyer!! else ml.seller!!
-            val ct = ml.userCard!!.cardTemplate!!
+            val ct = ml.soldCardTemplate ?: ml.userCard!!.cardTemplate!!
             PlayerMarketplaceTradeDto(
+                listingId = ml.id!!,
                 playerName = ct.fantasyPlayer!!.nickname,
                 rarity = ct.rarity,
                 price = ml.price,
@@ -153,6 +163,7 @@ class PlayerProfileService(
                     ?: counterparty.username
                     ?: counterparty.telegramId.toString(),
                 type = if (isSale) TradeType.SALE else TradeType.PURCHASE,
+                sanctioned = ml.id!! in sanctionedIds,
             )
         }
     }

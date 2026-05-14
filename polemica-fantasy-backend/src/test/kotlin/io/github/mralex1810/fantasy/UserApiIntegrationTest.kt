@@ -2082,6 +2082,212 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$[0].usesRemaining").value(expectedUses))
     }
 
+    @Test
+    fun `GET marketplace listings hides seller and card value but my-listings keeps them`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Anon listings T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":991001,"nickname":"AnonPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+
+        val sellerTelegramId = 889_920_001L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+
+        val sellerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$sellerTelegramId,"first_name":"AnonSeller"}""",
+        )
+        mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", sellerTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"price":60}"""),
+        ).andExpect(status().isOk)
+
+        val viewerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":889920002,"first_name":"AnonViewer"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/marketplace/listings")
+                .header("Authorization", viewerTma)
+                .param("fantasyPlayerId", fantasyPlayerId.toString()),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].seller").value(nullValue()))
+            .andExpect(jsonPath("$.content[0].card.value").value(nullValue()))
+
+        mockMvc.perform(
+            get("/api/v1/marketplace/my-listings")
+                .header("Authorization", sellerTma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].seller.displayName").value("AnonSeller"))
+            .andExpect(jsonPath("$[0].card.value").isNumber)
+    }
+
+    @Test
+    fun `marketplace transaction detail and complain endpoint work for sold listing`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Transaction detail T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":991002,"nickname":"TxPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+
+        val sellerTelegramId = 889_930_001L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+
+        val sellerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$sellerTelegramId,"first_name":"TxSeller"}""",
+        )
+        val listingJson = mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", sellerTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"price":120}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val listingId = Regex("\"listingId\"\\s*:\\s*(\\d+)").find(listingJson)!!.groupValues[1].toLong()
+
+        val buyerTelegramId = 889_930_002L
+        val buyerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$buyerTelegramId,"first_name":"TxBuyer"}""",
+        )
+
+        val packJson = mockMvc.perform(
+            post("/api/v1/admin/card-packs")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"TxBuyPack","tournamentId":$tournamentId,"active":true,
+                    "autoGenerated":true,
+                    "priceFantiki":0,"useAllTournamentPlayers":true,
+                    "rarityConfigs":[{"rarity":"COMMON","cardsCount":1}]}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val packId = Regex("\"id\"\\s*:\\s*(\\d+)").find(packJson)!!.groupValues[1].toLong()
+        repeat(3) {
+            mockMvc.perform(post("/api/v1/store/packs/$packId/buy").header("Authorization", buyerTma))
+                .andExpect(status().isOk)
+        }
+        mockMvc.perform(post("/api/v1/marketplace/listings/$listingId/buy").header("Authorization", buyerTma))
+            .andExpect(status().isOk)
+
+        val observerTelegramId = 889_930_003L
+        val observerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$observerTelegramId,"first_name":"TxObserver"}""",
+        )
+        mockMvc.perform(
+            post("/api/v1/marketplace/transactions/$listingId/complain")
+                .header("Authorization", observerTma),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.listingId").value(listingId))
+            .andExpect(jsonPath("$.totalComplaints").value(1))
+            .andExpect(jsonPath("$.remainingToday").value(4))
+
+        mockMvc.perform(
+            post("/api/v1/marketplace/transactions/$listingId/complain")
+                .header("Authorization", observerTma),
+        ).andExpect(status().isConflict)
+
+        mockMvc.perform(
+            get("/api/v1/marketplace/transactions/$listingId")
+                .header("Authorization", observerTma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.listingId").value(listingId))
+            .andExpect(jsonPath("$.price").value(120))
+            .andExpect(jsonPath("$.commission").value(12))
+            .andExpect(jsonPath("$.sellerReceived").value(108))
+            .andExpect(jsonPath("$.seller.telegramId").value(sellerTelegramId))
+            .andExpect(jsonPath("$.buyer.telegramId").value(buyerTelegramId))
+            .andExpect(jsonPath("$.card.fantasyPlayerId").value(fantasyPlayerId))
+            .andExpect(jsonPath("$.complaint.totalComplaints").value(1))
+            .andExpect(jsonPath("$.complaint.userAlreadyComplained").value(true))
+            .andExpect(jsonPath("$.sanction").value(nullValue()))
+    }
+
     private fun buildSignedInitData(botToken: String, authDate: Long, userJson: String): String {
         val userEncoded = java.net.URLEncoder.encode(userJson, StandardCharsets.UTF_8)
         val pairs = linkedMapOf(

@@ -2,6 +2,34 @@
 
 ## Что реализовано
 
+### Backend: marketplace complaints/moderation (май 2026)
+- [x] **Flyway V39:** добавлены `marketplace_complaint`, `marketplace_listing_sanction`, колонка `telegram_user.marketplace_banned_until`, сид `economy_config.marketplace.daily_complaint_limit`
+- [x] **Новые сущности/репозитории:** `MarketplaceComplaint`, `MarketplaceListingSanction`, `MarketplaceComplaintRepository`, `MarketplaceListingSanctionRepository`, расширения `MarketplaceListingRepository` для trade-details
+- [x] **User API:** `MarketplaceTransactionService` + `MarketplaceComplaintService`, DTO transaction-detail/complaints, endpoint'ы детализации сделки и подачи жалобы
+- [x] **Admin API:** список жалоб по сделкам, деталь жалоб по сделке, применение санкции, список пользователей по жалобам, бан пользователя на срок (`marketplace_banned_until`) и обновлённый unban
+- [x] **Санкции и экономика:** `MarketplaceSanctionService` (штраф продавцу/покупателю, награда жалобщикам, опциональный временный бан), новые `FantikiTransactionReason` (`MARKETPLACE_SANCTION_FINE`, `MARKETPLACE_COMPLAINT_REWARD`)
+- [x] **Уведомления:** `MarketplaceSanctionAppliedEvent` + `MarketplaceSanctionNotificationListener`, новые категории `MARKETPLACE_SANCTION_APPLIED` и `MARKETPLACE_COMPLAINT_RESOLVED`, кнопка перехода к сделке в `NotificationButtonFactory`
+- [x] **Публичная витрина:** в `/marketplace/listings` скрываются seller и `card.value`; в `my-listings` поля сохраняются
+- [x] **Покрытие тестами:** `MarketplaceComplaintServiceTest`, новые интеграционные сценарии в `UserApiIntegrationTest` и `AdminApiIntegrationTest`; целевой прогон `./gradlew test --tests "io.github.mralex1810.fantasy.service.MarketplaceComplaintServiceTest" --tests "io.github.mralex1810.fantasy.AdminApiIntegrationTest" --tests "io.github.mralex1810.fantasy.UserApiIntegrationTest.GET marketplace listings hides seller and card value but my-listings keeps them" --tests "io.github.mralex1810.fantasy.UserApiIntegrationTest.marketplace transaction detail and complain endpoint work for sold listing"` — успешно
+
+### TMA: marketplace complaints UI (май 2026)
+- [x] `src/pages/TransactionDetailPage.tsx`: новый экран `/marketplace/transactions/:listingId` с карточкой сделки, участниками, экономикой (цена/комиссия/net), счётчиком жалоб и блоком санкции
+- [x] `src/api/types.ts`: добавлены `MarketplaceTransactionDetail`/`ComplainResult`, расширены `MarketplaceFeedItem` и `PlayerMarketplaceTrade` (`listingId`, `sanctioned`), а также nullable-контракт для `MarketplaceListingEntry.seller` и `MarketplaceListingCard.value`
+- [x] `src/api/marketplace.ts`: добавлены `fetchMarketplaceTransactionDetail` и `complainMarketplaceTransaction` (`GET/POST /api/v1/marketplace/transactions/{id}`)
+- [x] `src/pages/MarketplacePage.tsx`: лента сделок стала кликабельной (переход на деталку), санкционированные сделки помечаются бейджем/зачёркнутой ценой; в каталоге скрываются seller/value при `null`
+- [x] `src/pages/PlayerProfilePage.tsx`: блок «Последние сделки» стал кликабельным, добавлена санкционная метка в строках сделок
+- [x] `src/App.tsx`: подключён маршрут `/marketplace/transactions/:listingId`
+- [x] `src/index.css`: добавлены стили страницы сделки, кликабельных feed-чипов и санкционных бейджей для ленты/профиля
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
+
+### Admin frontend: marketplace complaints UI (май 2026)
+- [x] `polemica-fantasy-admin/src/api/types.ts`: добавлены DTO/запросы для complained transactions, transaction complaints, sanction result, users-by-complaints и ban user request
+- [x] `polemica-fantasy-admin/src/api/marketplaceAdmin.ts`: добавлены методы `getComplainedTransactions`, `getTransactionComplaints`, `sanctionTransaction`, `getUsersByComplaints`, `banMarketplaceUser`
+- [x] `polemica-fantasy-admin/src/pages/MarketplaceModerationPage.tsx`: добавлены табы **«Жалобы»** и **«Игроки по жалобам»** с пагинацией, фильтром `minComplaints`, статусами и действиями
+- [x] Реализована модалка санкции сделки: сводка сделки, список жалобщиков, рекомендуемые штрафы/награды по комиссии `marketplace.commission_percent`, предупреждение о превышении комиссии, подтверждение через `Popconfirm`, показ результата `SanctionTransactionResultDto`
+- [x] Реализована модалка бана пользователя из таблицы жалоб: пресеты 3/7/30 дней, custom days, перманент, а также разбан через `POST /api/v1/admin/marketplace/unban/{telegramId}`
+- [x] Проверка: `npm run build` (`polemica-fantasy-admin`) — успешно
+
 ### TMA: снятие листингов игрока с TeamPage (май 2026)
 - [x] `polemica-fantasy-webapp/src/pages/TeamPage.tsx`: после выбора `Игрок серии` добавлен блок Marketplace с количеством активных листингов по этому `fantasyPlayerId`
 - [x] Добавлено действие **«Снять игрока с листинга»**: пакетное снятие всех листингов выбранного игрока через последовательность `DELETE /api/v1/marketplace/listings/{id}` (`cancelMarketplaceListing`, `Promise.allSettled`)
@@ -394,6 +422,7 @@
 
 ## Известные проблемы
 - Детекторы достижений зависят от полноты модели `PolemicaGame` (голосования, кики, лучший ход); при расхождениях с Полемикой уточнять по реальным логам API
+- В `UserApiIntegrationTest` по-прежнему падает legacy-сценарий `POST fantasy team rejects more than one LEGENDARY per team()` (`expected 400, actual 200`) — не относится к complaints-функционалу и требует отдельного решения по актуальному правилу лимита legendary в лигах
 
 ## Технический долг
 - TMA SDK: npm предупреждает о deprecated пакетах `@telegram-apps/*` в пользу `@tma.js/*` — миграция по желанию

@@ -26,6 +26,7 @@ import io.github.mralex1810.fantasy.event.MarketplaceSaleNotificationEvent
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
@@ -51,6 +52,7 @@ class MarketplaceService(
     private val userCardOwnershipService: UserCardOwnershipService,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val telegramUserRepository: TelegramUserRepository,
+    private val marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
@@ -61,12 +63,7 @@ class MarketplaceService(
         val me = telegramUserRepository.findById(user.id!!).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
-        if (me.marketplaceBanned) {
-            throw ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Your marketplace access is suspended",
-            )
-        }
+        checkMarketplaceBan(me)
         val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(request.userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.usesRemaining <= 0) {
@@ -124,6 +121,8 @@ class MarketplaceService(
             tpl,
             viewer = user,
             forSellerOwnListing = true,
+            includeSeller = true,
+            includeCardValue = true,
             minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
             viewerPackOpens = user.packOpensCount,
         )
@@ -138,12 +137,7 @@ class MarketplaceService(
         val me = telegramUserRepository.findById(user.id!!).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
-        if (me.marketplaceBanned) {
-            throw ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Your marketplace access is suspended",
-            )
-        }
+        checkMarketplaceBan(me)
         val listing = marketplaceListingRepository.findByIdAndStatusForUpdate(
             listingId,
             MarketplaceListingStatus.ACTIVE,
@@ -181,6 +175,8 @@ class MarketplaceService(
             tpl,
             viewer = user,
             forSellerOwnListing = true,
+            includeSeller = true,
+            includeCardValue = true,
             minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
             viewerPackOpens = me.packOpensCount,
         )
@@ -219,12 +215,7 @@ class MarketplaceService(
         val buyerRow = telegramUserRepository.findById(buyerId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
-        if (buyerRow.marketplaceBanned) {
-            throw ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Your marketplace access is suspended",
-            )
-        }
+        checkMarketplaceBan(buyerRow)
         val buyerPackOpens = buyerRow.packOpensCount
         if (buyerPackOpens < minPackOpens) {
             throw ResponseStatusException(
@@ -284,6 +275,8 @@ class MarketplaceService(
             tpl,
             viewer = buyer,
             forSellerOwnListing = false,
+            includeSeller = true,
+            includeCardValue = true,
             minPackOpensRequired = economyConfigService.getMinPackOpensBeforeMarketplacePurchase(),
             viewerPackOpens = buyerRow.packOpensCount,
             canBuyOverride = false to null,
@@ -342,6 +335,8 @@ class MarketplaceService(
                 tpl,
                 viewer = viewer,
                 forSellerOwnListing = ml.seller!!.id == viewer.id,
+                includeSeller = false,
+                includeCardValue = false,
                 minPackOpensRequired = minPackOpens,
                 viewerPackOpens = viewerPackOpens,
             )
@@ -378,6 +373,8 @@ class MarketplaceService(
                 tpl,
                 viewer = user,
                 forSellerOwnListing = true,
+                includeSeller = true,
+                includeCardValue = true,
                 minPackOpensRequired = minPackOpens,
                 viewerPackOpens = viewerPackOpens,
             )
@@ -395,6 +392,12 @@ class MarketplaceService(
             ml.soldCardTemplate?.id ?: ml.userCard!!.cardTemplate!!.id!!
         }.distinct()
         val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+        val listingIds = sold.mapNotNull { it.id }
+        val sanctionedIds = if (listingIds.isEmpty()) {
+            emptySet()
+        } else {
+            marketplaceListingSanctionRepository.findListingIdsWithSanctions(listingIds).toSet()
+        }
 
         val items = sold.map { ml ->
             val uc = ml.userCard!!
@@ -404,13 +407,15 @@ class MarketplaceService(
             val seller = ml.seller!!
             val buyer = ml.buyer!!
             MarketplaceFeedItemDto(
+                listingId = ml.id!!,
                 playerName = fp.nickname,
                 rarity = tpl.rarity,
                 price = ml.price,
                 soldAt = ml.soldAt!!,
                 sellerDisplayName = seller.publicDisplayName(),
                 buyerDisplayName = buyer.publicDisplayName(),
-                card = toMarketplaceCardDto(uc, tpl),
+                sanctioned = ml.id!! in sanctionedIds,
+                card = toMarketplaceCardDto(uc, tpl, includeValue = true),
             )
         }
         return MarketplaceFeedDto(items = items)
@@ -431,6 +436,8 @@ class MarketplaceService(
         template: CardTemplate,
         viewer: TelegramUser,
         forSellerOwnListing: Boolean,
+        includeSeller: Boolean,
+        includeCardValue: Boolean,
         minPackOpensRequired: Int,
         viewerPackOpens: Int,
         canBuyOverride: Pair<Boolean, String?>? = null,
@@ -449,8 +456,8 @@ class MarketplaceService(
             listingId = listing.id!!,
             price = listing.price,
             createdAt = listing.createdAt,
-            card = toMarketplaceCardDto(uc, template),
-            seller = MarketplaceSellerBriefDto(displayName = seller.publicDisplayName()),
+            card = toMarketplaceCardDto(uc, template, includeCardValue),
+            seller = if (includeSeller) MarketplaceSellerBriefDto(displayName = seller.publicDisplayName()) else null,
             canBuy = canBuy,
             canBuyReason = reason,
         )
@@ -538,6 +545,7 @@ class MarketplaceService(
     private fun toMarketplaceCardDto(
         uc: UserCard,
         template: CardTemplate,
+        includeValue: Boolean = true,
     ): MarketplaceListingCardDto {
         val fp = template.fantasyPlayer!!
         val achievements = template.achievements.distinctBy { it.achievement!!.id }.map { a ->
@@ -555,7 +563,23 @@ class MarketplaceService(
             playerPhotoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             rarity = template.rarity,
             achievements = achievements,
-            value = cardValueService.calculateValue(template),
+            value = if (includeValue) cardValueService.calculateValue(template) else null,
         )
+    }
+
+    private fun checkMarketplaceBan(user: TelegramUser) {
+        if (user.marketplaceBanned) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Your marketplace access is suspended",
+            )
+        }
+        val bannedUntil = user.marketplaceBannedUntil
+        if (bannedUntil != null && bannedUntil.isAfter(Instant.now())) {
+            throw ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Your marketplace access is suspended until $bannedUntil",
+            )
+        }
     }
 }

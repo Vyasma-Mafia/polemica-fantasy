@@ -20,7 +20,7 @@ data class MarketplaceListingCardDto(
     val playerPhotoUrl: String?,
     val rarity: Rarity,
     val achievements: List<MarketplaceCardAchievementDto>,
-    val value: Long,
+    val value: Long?,
 )
 
 data class MarketplaceListingEntryDto(
@@ -28,7 +28,7 @@ data class MarketplaceListingEntryDto(
     val price: Long,
     val createdAt: Instant,
     val card: MarketplaceListingCardDto,
-    val seller: MarketplaceSellerBriefDto,
+    val seller: MarketplaceSellerBriefDto?,
     val canBuy: Boolean,
     val canBuyReason: String?,
 )
@@ -42,12 +42,14 @@ data class MarketplaceListingsPageDto(
 )
 
 data class MarketplaceFeedItemDto(
+    val listingId: Long,
     val playerName: String,
     val rarity: Rarity,
     val price: Long,
     val soldAt: Instant,
     val sellerDisplayName: String,
     val buyerDisplayName: String,
+    val sanctioned: Boolean,
     /** Карта сделки — для превью в ленте (фото, ачивки). */
     val card: MarketplaceListingCardDto,
 )

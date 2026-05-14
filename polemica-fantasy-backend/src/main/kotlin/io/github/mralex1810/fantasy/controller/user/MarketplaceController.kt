@@ -3,14 +3,18 @@ package io.github.mralex1810.fantasy.controller.user
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceListingRequest
 import io.github.mralex1810.fantasy.dto.user.request.UpdateMarketplaceListingPriceRequest
 import io.github.mralex1810.fantasy.dto.user.response.BuyCardResultDto
+import io.github.mralex1810.fantasy.dto.user.response.ComplainResultDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsSummaryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingsPageDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceTransactionDetailDto
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.service.MarketplaceComplaintService
 import io.github.mralex1810.fantasy.service.MarketplaceService
+import io.github.mralex1810.fantasy.service.MarketplaceTransactionService
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -28,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/marketplace")
 class MarketplaceController(
     private val marketplaceService: MarketplaceService,
+    private val marketplaceTransactionService: MarketplaceTransactionService,
+    private val marketplaceComplaintService: MarketplaceComplaintService,
 ) {
 
     @GetMapping("/listings")
@@ -91,6 +97,21 @@ class MarketplaceController(
     @GetMapping("/feed")
     fun getFeed(@RequestParam(defaultValue = "20") limit: Int): MarketplaceFeedDto =
         marketplaceService.getFeed(limit)
+
+    @GetMapping("/transactions/{listingId}")
+    fun getTransactionDetail(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable listingId: Long,
+    ): MarketplaceTransactionDetailDto =
+        marketplaceTransactionService.getTransactionDetail(user, listingId)
+
+    @PostMapping("/transactions/{listingId}/complain")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun complainTransaction(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable listingId: Long,
+    ): ComplainResultDto =
+        marketplaceComplaintService.complain(user, listingId)
 
     @GetMapping("/analytics/summary")
     fun getAnalyticsSummary(

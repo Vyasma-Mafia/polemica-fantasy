@@ -3980,6 +3980,15 @@ button.pf-mini-card:disabled {
   gap: 4px;
 }
 
+.pf-marketplace-feed__chip-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pf-marketplace-feed__chip-link:hover {
+  border-color: rgba(167, 139, 250, 0.6);
+}
+
 .pf-marketplace-feed__chip-row {
   display: flex;
   flex-direction: row;
@@ -4047,8 +4056,35 @@ button.pf-mini-card:disabled {
 }
 
 .pf-marketplace-feed__chip-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pf-marketplace-feed__chip-price-value {
   color: var(--pf-gold);
   font-weight: 700;
+}
+
+.pf-marketplace-feed__item--sanctioned .pf-marketplace-feed__chip-price-value {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.pf-sanctioned-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #fecaca;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .pf-marketplace-feed__chip-buyer {
@@ -4490,6 +4526,16 @@ button.pf-mini-card:disabled {
   border-bottom: 1px solid var(--pf-border);
 }
 
+.pf-profile-trade-item--link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.pf-profile-trade-item--link:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .pf-profile-trade-item__main {
   display: flex;
   align-items: center;
@@ -4556,8 +4602,16 @@ button.pf-mini-card:disabled {
 }
 
 .pf-profile-trade-item__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 600;
   color: var(--pf-text-heading);
+}
+
+.pf-profile-trade-item--sanctioned .pf-profile-trade-item__price-value {
+  text-decoration: line-through;
+  opacity: 0.75;
 }
 
 .pf-profile-trade-item__party {
@@ -4565,6 +4619,61 @@ button.pf-mini-card:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
+}
+
+/* --- Marketplace transaction detail --- */
+.pf-transaction-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pf-transaction-detail__card-frame {
+  margin-bottom: 0;
+}
+
+.pf-transaction-detail__info,
+.pf-transaction-detail__participants,
+.pf-transaction-detail__complaint {
+  padding: 12px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg-elevated);
+}
+
+.pf-transaction-detail__line {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.pf-transaction-detail__line:last-child {
+  margin-bottom: 0;
+}
+
+.pf-transaction-detail__participant {
+  font-size: 0.9rem;
+  margin: 0 0 6px;
+}
+
+.pf-transaction-detail__participant:last-child {
+  margin-bottom: 0;
+}
+
+.pf-transaction-detail__sanction {
+  padding: 12px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.65);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.pf-transaction-detail__sanction-title {
+  margin: 0 0 8px;
+  color: #fecaca;
+  font-weight: 700;
+}
+
+.pf-complaint-btn {
+  margin: 6px 0;
 }
 
 a.pf-rating__name-link {

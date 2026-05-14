@@ -46,7 +46,6 @@ class TelegramInitDataValidatorTest {
      * `TELEGRAM_BOT_TOKEN=test-token` или перегенерируйте под свой токен.
      */
     @Test
-    @org.junit.jupiter.api.Disabled("Включите локально, чтобы напечатать VITE_DEV_INIT_DATA")
     fun printViteDevInitDataSample() {
         val botToken = "test-token"
         val authDate = Instant.now().epochSecond

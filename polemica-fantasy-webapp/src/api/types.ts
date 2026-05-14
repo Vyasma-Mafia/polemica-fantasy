@@ -349,7 +349,11 @@ export interface MarketplaceListingCard {
   playerPhotoUrl: string | null
   rarity: Rarity
   achievements: MarketplaceCardAchievement[]
-  value: number
+  value: number | null
+}
+
+export interface MarketplaceSellerBrief {
+  displayName: string
 }
 
 export interface MarketplaceListingEntry {
@@ -357,7 +361,7 @@ export interface MarketplaceListingEntry {
   price: number
   createdAt: string
   card: MarketplaceListingCard
-  seller: { displayName: string }
+  seller: MarketplaceSellerBrief | null
   canBuy: boolean
   canBuyReason: string | null
 }
@@ -371,18 +375,62 @@ export interface MarketplaceListingsPage {
 }
 
 export interface MarketplaceFeedItem {
+  listingId: number
   playerName: string
   rarity: Rarity
   price: number
   soldAt: string
   sellerDisplayName: string
   buyerDisplayName: string
+  sanctioned: boolean
   /** Карта сделки — превью в ленте */
   card: MarketplaceListingCard
 }
 
 export interface MarketplaceFeed {
   items: MarketplaceFeedItem[]
+}
+
+export interface MarketplaceTransactionDetail {
+  listingId: number
+  price: number
+  soldAt: string
+  commission: number
+  sellerReceived: number
+  seller: TransactionParticipant
+  buyer: TransactionParticipant
+  card: TransactionCard
+  complaint: TransactionComplaintInfo
+  sanction: TransactionSanctionInfo | null
+}
+
+export interface TransactionParticipant {
+  telegramId: number
+  displayName: string
+}
+
+export interface TransactionCard {
+  fantasyPlayerId: number
+  playerName: string
+  playerPhotoUrl: string | null
+  rarity: Rarity
+  achievements: MarketplaceCardAchievement[]
+}
+
+export interface TransactionComplaintInfo {
+  totalComplaints: number
+  userAlreadyComplained: boolean
+}
+
+export interface TransactionSanctionInfo {
+  sanctionedAt: string
+  reason: string
+}
+
+export interface ComplainResult {
+  listingId: number
+  totalComplaints: number
+  remainingToday: number
 }
 
 export interface BuyCardResult {
@@ -466,12 +514,14 @@ export interface PlayerMarketplaceStats {
 export type TradeType = 'SALE' | 'PURCHASE'
 
 export interface PlayerMarketplaceTrade {
+  listingId: number
   playerName: string
   rarity: Rarity
   price: number
   date: string
   counterpartyDisplayName: string
   type: TradeType
+  sanctioned: boolean
 }
 
 export interface PlayerProfile {

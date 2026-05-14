@@ -61,4 +61,15 @@ class NotificationButtonFactory(
             ),
         ),
     )
+
+    fun openTransactionButton(listingId: Long): InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inlineKeyboard = listOf(
+            listOf(
+                InlineKeyboardButton.WebApp(
+                    text = "\uD83D\uDCCB Посмотреть сделку",
+                    url = "${appProperties.webappBaseUrl}/marketplace/transactions/$listingId",
+                ),
+            ),
+        ),
+    )
 }

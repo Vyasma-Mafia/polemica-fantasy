@@ -2,11 +2,13 @@ import { apiGet, apiSend } from './client'
 import type {
   BuyCardResult,
   CardOwnershipHistoryEntry,
+  ComplainResult,
   MarketplaceAnalyticsDetail,
   MarketplaceAnalyticsSummary,
   MarketplaceFeed,
   MarketplaceListingsPage,
   MarketplaceListingEntry,
+  MarketplaceTransactionDetail,
   MarketplaceSortBy,
   Rarity,
 } from './types'
@@ -53,6 +55,14 @@ export function fetchMarketplaceFeed(initData: string | undefined, limit = 20) {
 
 export function fetchMyMarketplaceListings(initData: string | undefined) {
   return apiGet<MarketplaceListingEntry[]>('/api/v1/marketplace/my-listings', initData)
+}
+
+export function fetchMarketplaceTransactionDetail(initData: string | undefined, listingId: number) {
+  return apiGet<MarketplaceTransactionDetail>(`/api/v1/marketplace/transactions/${listingId}`, initData)
+}
+
+export function complainMarketplaceTransaction(initData: string | undefined, listingId: number) {
+  return apiSend<ComplainResult>('POST', `/api/v1/marketplace/transactions/${listingId}/complain`, initData)
 }
 
 export function createMarketplaceListing(

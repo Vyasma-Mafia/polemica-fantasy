@@ -53,10 +53,12 @@ enum class TradeType {
 }
 
 data class PlayerMarketplaceTradeDto(
+    val listingId: Long,
     val playerName: String,
     val rarity: Rarity,
     val price: Long,
     val date: Instant,
     val counterpartyDisplayName: String,
     val type: TradeType,
+    val sanctioned: Boolean,
 )

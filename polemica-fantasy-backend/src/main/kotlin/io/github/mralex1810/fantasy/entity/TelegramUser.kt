@@ -41,6 +41,9 @@ class TelegramUser(
     @Column(name = "marketplace_banned", nullable = false)
     var marketplaceBanned: Boolean = false,
 
+    @Column(name = "marketplace_banned_until")
+    var marketplaceBannedUntil: Instant? = null,
+
     @Column(name = "bot_blocked", nullable = false)
     var botBlocked: Boolean = false,
 

@@ -1,18 +1,28 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
+import io.github.mralex1810.fantasy.dto.admin.request.BanUserRequest
 import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
+import io.github.mralex1810.fantasy.dto.admin.request.SanctionTransactionRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairConfiscatedCardDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewUserDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairUserResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.ComplainedTransactionDto
+import io.github.mralex1810.fantasy.dto.admin.response.MarketplaceAdminParticipantDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedComplainedTransactionsDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedPairSanctionHistoryDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedUsersByComplaintsDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairAnalysisDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairSanctionHistoryItemDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradeDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesUserBriefDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.SanctionTransactionResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintDetailDto
+import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintsListDto
+import io.github.mralex1810.fantasy.dto.admin.response.UserByComplaintsDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
@@ -23,7 +33,9 @@ import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.event.PairBanNotificationEvent
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceComplaintRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
 import io.github.mralex1810.fantasy.repository.MarketplacePairClearanceRepository
 import io.github.mralex1810.fantasy.repository.MarketplacePairSanctionHistoryRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -38,11 +50,14 @@ import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 class MarketplaceAdminService(
     private val economyConfigService: EconomyConfigService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
+    private val marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository,
+    private val marketplaceComplaintRepository: MarketplaceComplaintRepository,
     private val userCardRepository: UserCardRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
     private val userCardOwnershipHistoryRepository: UserCardOwnershipHistoryRepository,
@@ -52,6 +67,7 @@ class MarketplaceAdminService(
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val marketplacePairClearanceRepository: MarketplacePairClearanceRepository,
     private val marketplacePairSanctionHistoryRepository: MarketplacePairSanctionHistoryRepository,
+    private val marketplaceSanctionService: MarketplaceSanctionService,
 ) {
 
     @Transactional(readOnly = true)
@@ -265,6 +281,238 @@ class MarketplaceAdminService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun getComplainedTransactions(
+        page: Int,
+        size: Int,
+        minComplaints: Int,
+        sortBy: String?,
+    ): PagedComplainedTransactionsDto {
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val safeMinComplaints = minComplaints.coerceAtLeast(1)
+        val complaintRows = marketplaceComplaintRepository.findListingComplaintCounts(safeMinComplaints.toLong())
+        if (complaintRows.isEmpty()) {
+            return PagedComplainedTransactionsDto(
+                content = emptyList(),
+                page = safePage,
+                size = safeSize,
+                totalElements = 0,
+                totalPages = 0,
+            )
+        }
+        val complaintCountByListingId = complaintRows.associate { row ->
+            toLongId(row[0]) to toLongId(row[1]).toInt()
+        }
+        val listingIds = complaintCountByListingId.keys.toList()
+        val listingsById = marketplaceListingRepository.findAllWithTradeDetailsByIdIn(listingIds)
+            .associateBy { it.id!! }
+        val sanctionedIds = marketplaceListingSanctionRepository.findListingIdsWithSanctions(listingIds).toSet()
+
+        val content = complaintCountByListingId.entries.mapNotNull { (listingId, complaintsCount) ->
+            val listing = listingsById[listingId] ?: return@mapNotNull null
+            val seller = listing.seller ?: return@mapNotNull null
+            val buyer = listing.buyer ?: return@mapNotNull null
+            val template = listing.soldCardTemplate ?: listing.userCard?.cardTemplate ?: return@mapNotNull null
+            val player = template.fantasyPlayer ?: return@mapNotNull null
+            val soldAt = listing.soldAt ?: return@mapNotNull null
+            ComplainedTransactionDto(
+                listingId = listingId,
+                playerName = player.nickname,
+                rarity = template.rarity,
+                price = listing.price,
+                soldAt = soldAt,
+                seller = MarketplaceAdminParticipantDto(
+                    telegramId = seller.telegramId,
+                    displayName = seller.publicDisplayName(),
+                ),
+                buyer = MarketplaceAdminParticipantDto(
+                    telegramId = buyer.telegramId,
+                    displayName = buyer.publicDisplayName(),
+                ),
+                complaintsCount = complaintsCount,
+                sanctioned = listingId in sanctionedIds,
+            )
+        }
+        val sorted = when (sortBy?.trim()?.lowercase()) {
+            null, "", "complaints_desc" -> content.sortedWith(
+                compareByDescending<ComplainedTransactionDto> { it.complaintsCount }
+                    .thenByDescending { it.soldAt }
+                    .thenByDescending { it.listingId },
+            )
+
+            "sold_at_desc" -> content.sortedWith(
+                compareByDescending<ComplainedTransactionDto> { it.soldAt }
+                    .thenByDescending { it.complaintsCount }
+                    .thenByDescending { it.listingId },
+            )
+
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sortBy")
+        }
+        val totalElements = sorted.size.toLong()
+        val totalPages = if (totalElements == 0L) 0 else ((totalElements + safeSize - 1) / safeSize).toInt()
+        val pageContent = sorted.drop(safePage * safeSize).take(safeSize)
+        return PagedComplainedTransactionsDto(
+            content = pageContent,
+            page = safePage,
+            size = safeSize,
+            totalElements = totalElements,
+            totalPages = totalPages,
+        )
+    }
+
+    @Transactional(readOnly = true)
+    fun getTransactionComplaints(listingId: Long): TransactionComplaintsListDto {
+        val listing = marketplaceListingRepository.findSoldByIdWithTradeDetails(
+            id = listingId,
+            sold = MarketplaceListingStatus.SOLD,
+        ) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found")
+        if (listing.buyer == null || listing.seller == null) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found")
+        }
+        val complaints = marketplaceComplaintRepository.findAllByListing_IdOrderByCreatedAtAsc(listingId)
+        return TransactionComplaintsListDto(
+            complaints = complaints.map { complaint ->
+                val user = complaint.telegramUser
+                    ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Complaint user is missing")
+                val userId = user.id
+                    ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Complaint user id is missing")
+                TransactionComplaintDetailDto(
+                    userId = userId,
+                    displayName = user.publicDisplayName(),
+                    telegramId = user.telegramId,
+                    complainedAt = complaint.createdAt,
+                )
+            },
+        )
+    }
+
+    @Transactional
+    fun sanctionTransaction(
+        listingId: Long,
+        request: SanctionTransactionRequest,
+        adminUsername: String,
+    ): SanctionTransactionResultDto =
+        marketplaceSanctionService.sanctionTransaction(
+            listingId = listingId,
+            request = request,
+            adminUsername = adminUsername,
+        )
+
+    @Transactional(readOnly = true)
+    fun getUsersByComplaints(
+        page: Int,
+        size: Int,
+        sortBy: String?,
+    ): PagedUsersByComplaintsDto {
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val complaintRows = marketplaceComplaintRepository.findListingComplaintCounts(1)
+        if (complaintRows.isEmpty()) {
+            return PagedUsersByComplaintsDto(
+                content = emptyList(),
+                page = safePage,
+                size = safeSize,
+                totalElements = 0,
+                totalPages = 0,
+            )
+        }
+        val complaintCountByListingId = complaintRows.associate { row ->
+            toLongId(row[0]) to toLongId(row[1]).toInt()
+        }
+        val listingIds = complaintCountByListingId.keys.toList()
+        val listingsById = marketplaceListingRepository.findAllWithTradeDetailsByIdIn(listingIds)
+            .associateBy { it.id!! }
+        val sanctionedIds = marketplaceListingSanctionRepository.findListingIdsWithSanctions(listingIds).toSet()
+
+        data class UserComplaintStats(
+            var totalComplaints: Int = 0,
+            var transactionsWithComplaints: Int = 0,
+            var sanctionedTransactions: Int = 0,
+        )
+
+        val statsByUserId = LinkedHashMap<Long, UserComplaintStats>()
+        for ((listingId, complaintsCount) in complaintCountByListingId) {
+            val listing = listingsById[listingId] ?: continue
+            val sellerId = listing.seller?.id ?: continue
+            val buyerId = listing.buyer?.id ?: continue
+            val sanctioned = listingId in sanctionedIds
+            for (userId in listOf(sellerId, buyerId)) {
+                val stats = statsByUserId.getOrPut(userId) { UserComplaintStats() }
+                stats.totalComplaints += complaintsCount
+                stats.transactionsWithComplaints += 1
+                if (sanctioned) {
+                    stats.sanctionedTransactions += 1
+                }
+            }
+        }
+        val usersById = if (statsByUserId.isEmpty()) {
+            emptyMap()
+        } else {
+            telegramUserRepository.findAllById(statsByUserId.keys).associateBy { it.id!! }
+        }
+        val items = statsByUserId.mapNotNull { (userId, stats) ->
+            val user = usersById[userId] ?: return@mapNotNull null
+            UserByComplaintsDto(
+                telegramId = user.telegramId,
+                displayName = user.publicDisplayName(),
+                totalComplaints = stats.totalComplaints,
+                transactionsWithComplaints = stats.transactionsWithComplaints,
+                avgComplaintsPerTransaction = if (stats.transactionsWithComplaints == 0) {
+                    0.0
+                } else {
+                    stats.totalComplaints.toDouble() / stats.transactionsWithComplaints.toDouble()
+                },
+                sanctionedTransactions = stats.sanctionedTransactions,
+                marketplaceBanned = user.marketplaceBanned,
+                marketplaceBannedUntil = user.marketplaceBannedUntil,
+            )
+        }
+        val sorted = when (sortBy?.trim()?.lowercase()) {
+            null, "", "total_complaints_desc" -> items.sortedWith(
+                compareByDescending<UserByComplaintsDto> { it.totalComplaints }
+                    .thenByDescending { it.transactionsWithComplaints }
+                    .thenByDescending { it.telegramId },
+            )
+
+            "avg_complaints_desc" -> items.sortedWith(
+                compareByDescending<UserByComplaintsDto> { it.avgComplaintsPerTransaction }
+                    .thenByDescending { it.totalComplaints }
+                    .thenByDescending { it.telegramId },
+            )
+
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sortBy")
+        }
+        val totalElements = sorted.size.toLong()
+        val totalPages = if (totalElements == 0L) 0 else ((totalElements + safeSize - 1) / safeSize).toInt()
+        val pageContent = sorted.drop(safePage * safeSize).take(safeSize)
+        return PagedUsersByComplaintsDto(
+            content = pageContent,
+            page = safePage,
+            size = safeSize,
+            totalElements = totalElements,
+            totalPages = totalPages,
+        )
+    }
+
+    @Transactional
+    fun banUser(telegramId: Long, request: BanUserRequest) {
+        val user = telegramUserRepository.findByTelegramId(telegramId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+        val days = request.days
+        if (days == null) {
+            user.marketplaceBanned = true
+            user.marketplaceBannedUntil = null
+        } else {
+            if (days <= 0) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Ban days must be positive")
+            }
+            user.marketplaceBanned = false
+            user.marketplaceBannedUntil = Instant.now().plus(days.toLong(), ChronoUnit.DAYS)
+        }
+        telegramUserRepository.save(user)
+    }
+
     @Transactional
     fun banPair(request: BanPairRequest): BanPairResultDto {
         val tga = request.telegramIdA ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "telegramIdA is required")
@@ -409,6 +657,7 @@ class MarketplaceAdminService(
         val user = telegramUserRepository.findByTelegramId(telegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         user.marketplaceBanned = false
+        user.marketplaceBannedUntil = null
         telegramUserRepository.save(user)
     }
 

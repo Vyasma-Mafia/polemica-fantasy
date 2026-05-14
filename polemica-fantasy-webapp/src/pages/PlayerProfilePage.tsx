@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { fetchPlayerProfile } from '../api/playerProfile'
 import type { PlayerMarketplaceTrade, PlayerProfile, PlayerSeriesResult, Rarity } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -135,26 +135,41 @@ function MarketplaceSection({ profile }: { profile: PlayerProfile }) {
   )
 }
 
-function TradesSection({ trades }: { trades: PlayerMarketplaceTrade[] }) {
+function TradesSection({
+  trades,
+  backPath,
+}: {
+  trades: PlayerMarketplaceTrade[]
+  backPath: string
+}) {
   if (trades.length === 0) return null
   return (
     <section className="pf-section">
       <h2 className="pf-section-title">Последние сделки</h2>
       <ul className="pf-profile-trades-list">
         {trades.map((t, i) => (
-          <li key={i} className="pf-profile-trade-item">
-            <div className="pf-profile-trade-item__main">
-              <span className={`pf-profile-trade-item__type pf-profile-trade-item__type--${t.type.toLowerCase()}`}>
-                {t.type === 'SALE' ? 'Продажа' : 'Покупка'}
-              </span>
-              <span className="pf-profile-trade-item__player">{t.playerName}</span>
-              <span className={`pf-rarity-dot pf-rarity-dot--${rarityClass(t.rarity)}`} />
-            </div>
-            <div className="pf-profile-trade-item__details">
-              <span className="pf-profile-trade-item__price">{formatValue(t.price)} ₣</span>
-              <span className="pf-profile-trade-item__party">{t.counterpartyDisplayName}</span>
-              <span className="pf-profile-trade-item__date">{formatDateShort(new Date(t.date))}</span>
-            </div>
+          <li key={`${t.listingId}-${i}`}>
+            <Link
+              to={`/marketplace/transactions/${t.listingId}`}
+              state={{ backTo: backPath, backLabel: 'Профиль' }}
+              className={`pf-profile-trade-item pf-profile-trade-item--link${t.sanctioned ? ' pf-profile-trade-item--sanctioned' : ''}`}
+            >
+              <div className="pf-profile-trade-item__main">
+                <span className={`pf-profile-trade-item__type pf-profile-trade-item__type--${t.type.toLowerCase()}`}>
+                  {t.type === 'SALE' ? 'Продажа' : 'Покупка'}
+                </span>
+                <span className="pf-profile-trade-item__player">{t.playerName}</span>
+                <span className={`pf-rarity-dot pf-rarity-dot--${rarityClass(t.rarity)}`} />
+              </div>
+              <div className="pf-profile-trade-item__details">
+                <span className="pf-profile-trade-item__price">
+                  <span className="pf-profile-trade-item__price-value">{formatValue(t.price)} ₣</span>
+                  {t.sanctioned && <span className="pf-sanctioned-badge">Нерыночная</span>}
+                </span>
+                <span className="pf-profile-trade-item__party">{t.counterpartyDisplayName}</span>
+                <span className="pf-profile-trade-item__date">{formatDateShort(new Date(t.date))}</span>
+              </div>
+            </Link>
           </li>
         ))}
       </ul>
@@ -164,6 +179,7 @@ function TradesSection({ trades }: { trades: PlayerMarketplaceTrade[] }) {
 
 export function PlayerProfilePage() {
   const { telegramId } = useParams<{ telegramId: string }>()
+  const location = useLocation()
   const tgId = Number(telegramId)
   const initData = useInitData()
 
@@ -196,7 +212,10 @@ export function PlayerProfilePage() {
       <SeriesHistorySection history={profile.seriesHistory} telegramId={telegramId!} />
       <CollectionSection profile={profile} />
       <MarketplaceSection profile={profile} />
-      <TradesSection trades={profile.recentTrades} />
+      <TradesSection
+        trades={profile.recentTrades}
+        backPath={location.pathname + location.search}
+      />
     </div>
   )
 }

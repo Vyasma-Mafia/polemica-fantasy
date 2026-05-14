@@ -2,8 +2,12 @@ package io.github.mralex1810.fantasy
 
 import io.github.mralex1810.fantasy.entity.MarketplaceListing
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
+import io.github.mralex1810.fantasy.entity.MarketplaceComplaint
+import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceComplaintRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
@@ -22,6 +26,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import com.jayway.jsonpath.JsonPath
+import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -50,6 +55,12 @@ class AdminApiIntegrationTest {
 
     @Autowired
     private lateinit var userCardRepository: UserCardRepository
+
+    @Autowired
+    private lateinit var telegramUserRepository: TelegramUserRepository
+
+    @Autowired
+    private lateinit var marketplaceComplaintRepository: MarketplaceComplaintRepository
 
     @Test
     @Order(1)
@@ -677,6 +688,215 @@ class AdminApiIntegrationTest {
 
         val updated = marketplaceListingRepository.findById(listing.id!!).orElseThrow()
         assertEquals(MarketplaceListingStatus.CANCELLED, updated.status)
+    }
+
+    @Test
+    @Order(20)
+    fun `admin complained transactions and complaints details endpoints return data`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Complaints admin T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":779001,"nickname":"ComplainedPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+
+        val sellerTelegramId = 779210L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = JsonPath.read<List<Map<String, Any>>>(giveJson, "$")[0]["id"].toString().toLong()
+        val userCard = userCardRepository.findById(userCardId).orElseThrow()
+        val seller = userCard.telegramUser!!
+        val buyer = telegramUserRepository.save(TelegramUser(telegramId = 779211L))
+        val complainant = telegramUserRepository.save(TelegramUser(telegramId = 779212L, firstName = "Reporter"))
+
+        val listing = marketplaceListingRepository.save(
+            MarketplaceListing(
+                seller = seller,
+                buyer = buyer,
+                userCard = userCard,
+                price = 150,
+                status = MarketplaceListingStatus.SOLD,
+                createdAt = Instant.now().minusSeconds(300),
+                soldAt = Instant.now().minusSeconds(60),
+            ),
+        )
+        marketplaceComplaintRepository.save(
+            MarketplaceComplaint(
+                listing = listing,
+                telegramUser = complainant,
+                createdAt = Instant.now().minusSeconds(30),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/v1/admin/marketplace/complained-transactions")
+                .header("Authorization", auth)
+                .param("minComplaints", "1"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(greaterThan(0)))
+            .andExpect(jsonPath("$.content[0].listingId").value(listing.id!!.toInt()))
+            .andExpect(jsonPath("$.content[0].complaintsCount").value(1))
+            .andExpect(jsonPath("$.content[0].sanctioned").value(false))
+
+        mockMvc.perform(
+            get("/api/v1/admin/marketplace/transactions/${listing.id}/complaints")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.complaints.length()").value(1))
+            .andExpect(jsonPath("$.complaints[0].telegramId").value(complainant.telegramId))
+            .andExpect(jsonPath("$.complaints[0].displayName").value("Reporter"))
+    }
+
+    @Test
+    @Order(21)
+    fun `admin can sanction complained transaction and apply balances`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Sanction admin T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":779002,"nickname":"SanctionedPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+
+        val sellerTelegramId = 779220L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = JsonPath.read<List<Map<String, Any>>>(giveJson, "$")[0]["id"].toString().toLong()
+        val userCard = userCardRepository.findById(userCardId).orElseThrow()
+        val seller = userCard.telegramUser!!
+        val buyer = telegramUserRepository.save(TelegramUser(telegramId = 779221L))
+        val complainantA = telegramUserRepository.save(TelegramUser(telegramId = 779222L))
+        val complainantB = telegramUserRepository.save(TelegramUser(telegramId = 779223L))
+
+        val listing = marketplaceListingRepository.save(
+            MarketplaceListing(
+                seller = seller,
+                buyer = buyer,
+                userCard = userCard,
+                price = 180,
+                status = MarketplaceListingStatus.SOLD,
+                createdAt = Instant.now().minusSeconds(300),
+                soldAt = Instant.now().minusSeconds(60),
+            ),
+        )
+        marketplaceComplaintRepository.save(MarketplaceComplaint(listing = listing, telegramUser = complainantA))
+        marketplaceComplaintRepository.save(MarketplaceComplaint(listing = listing, telegramUser = complainantB))
+
+        mockMvc.perform(
+            post("/api/v1/admin/marketplace/transactions/${listing.id}/sanction")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"reason":"Нерыночная сделка","sellerFine":100,"buyerFine":50,
+                    "complainantReward":20,"banSeller":{"days":3}}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.listingId").value(listing.id!!.toInt()))
+            .andExpect(jsonPath("$.sellerFined").value(100))
+            .andExpect(jsonPath("$.buyerFined").value(50))
+            .andExpect(jsonPath("$.complainantsRewarded").value(2))
+            .andExpect(jsonPath("$.totalRewardPaid").value(40))
+            .andExpect(jsonPath("$.sellerBannedUntil").isNotEmpty)
+
+        val sellerAfter = telegramUserRepository.findById(seller.id!!).orElseThrow()
+        val buyerAfter = telegramUserRepository.findById(buyer.id!!).orElseThrow()
+        val complainantAAfter = telegramUserRepository.findById(complainantA.id!!).orElseThrow()
+        val complainantBAfter = telegramUserRepository.findById(complainantB.id!!).orElseThrow()
+        assertEquals(900L, sellerAfter.fantiki)
+        assertEquals(950L, buyerAfter.fantiki)
+        assertEquals(1020L, complainantAAfter.fantiki)
+        assertEquals(1020L, complainantBAfter.fantiki)
+    }
+
+    @Test
+    @Order(22)
+    fun `admin temporary ban endpoint sets banned until and unban clears both flags`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val user = telegramUserRepository.save(TelegramUser(telegramId = 779300L))
+
+        mockMvc.perform(
+            post("/api/v1/admin/marketplace/users/${user.telegramId}/ban")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"days":7}"""),
+        ).andExpect(status().isNoContent)
+
+        val banned = telegramUserRepository.findByTelegramId(user.telegramId)!!
+        assertEquals(false, banned.marketplaceBanned)
+        assertNotNull(banned.marketplaceBannedUntil)
+
+        mockMvc.perform(
+            post("/api/v1/admin/marketplace/unban/${user.telegramId}")
+                .header("Authorization", auth),
+        ).andExpect(status().isNoContent)
+
+        val unbanned = telegramUserRepository.findByTelegramId(user.telegramId)!!
+        assertEquals(false, unbanned.marketplaceBanned)
+        assertEquals(null, unbanned.marketplaceBannedUntil)
     }
 
     companion object {

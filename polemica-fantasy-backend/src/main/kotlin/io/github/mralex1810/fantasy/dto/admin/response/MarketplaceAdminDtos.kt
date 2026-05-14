@@ -107,3 +107,70 @@ data class PagedPairSanctionHistoryDto(
     val totalElements: Long,
     val totalPages: Int,
 )
+
+data class MarketplaceAdminParticipantDto(
+    val telegramId: Long,
+    val displayName: String,
+)
+
+data class ComplainedTransactionDto(
+    val listingId: Long,
+    val playerName: String,
+    val rarity: Rarity,
+    val price: Long,
+    val soldAt: Instant,
+    val seller: MarketplaceAdminParticipantDto,
+    val buyer: MarketplaceAdminParticipantDto,
+    val complaintsCount: Int,
+    val sanctioned: Boolean,
+)
+
+data class PagedComplainedTransactionsDto(
+    val content: List<ComplainedTransactionDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+data class TransactionComplaintDetailDto(
+    val userId: Long,
+    val displayName: String,
+    val telegramId: Long,
+    val complainedAt: Instant,
+)
+
+data class TransactionComplaintsListDto(
+    val complaints: List<TransactionComplaintDetailDto>,
+)
+
+data class UserByComplaintsDto(
+    val telegramId: Long,
+    val displayName: String,
+    val totalComplaints: Int,
+    val transactionsWithComplaints: Int,
+    val avgComplaintsPerTransaction: Double,
+    val sanctionedTransactions: Int,
+    val marketplaceBanned: Boolean,
+    val marketplaceBannedUntil: Instant?,
+)
+
+data class PagedUsersByComplaintsDto(
+    val content: List<UserByComplaintsDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+data class SanctionTransactionResultDto(
+    val listingId: Long,
+    val sellerFined: Long,
+    val sellerNewBalance: Long,
+    val sellerBannedUntil: Instant?,
+    val buyerFined: Long,
+    val buyerNewBalance: Long,
+    val buyerBannedUntil: Instant?,
+    val complainantsRewarded: Int,
+    val totalRewardPaid: Long,
+)

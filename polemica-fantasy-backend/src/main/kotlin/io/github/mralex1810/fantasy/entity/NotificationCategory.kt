@@ -40,6 +40,16 @@ enum class NotificationCategory(
         enabledByDefault = true,
         description = "Отслеживание карт на маркетплейсе",
     ),
+    MARKETPLACE_COMPLAINT_RESOLVED(
+        userToggleable = true,
+        enabledByDefault = true,
+        description = "Решения по вашим жалобам на маркетплейсе",
+    ),
+    MARKETPLACE_SANCTION_APPLIED(
+        userToggleable = false,
+        enabledByDefault = true,
+        description = "Уведомления о санкциях на маркетплейсе",
+    ),
     PAIR_BAN(
         userToggleable = false,
         enabledByDefault = true,

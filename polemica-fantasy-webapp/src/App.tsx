@@ -21,6 +21,7 @@ import { PlayerProfilePage } from './pages/PlayerProfilePage'
 import { RatingPage } from './pages/RatingPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
+import { TransactionDetailPage } from './pages/TransactionDetailPage'
 import { TournamentSubscriptionsPage } from './pages/TournamentSubscriptionsPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
 import { TournamentPage } from './pages/TournamentPage'
@@ -88,6 +89,7 @@ function Shell() {
           <Route path="/store" element={<StorePage />} />
           <Route path="/marketplace" element={<MarketplacePage />} />
           <Route path="/marketplace/my" element={<MyListingsPage />} />
+          <Route path="/marketplace/transactions/:listingId" element={<TransactionDetailPage />} />
           <Route path="/notifications" element={<NotificationSettingsPage />} />
           <Route path="/notifications/tournaments" element={<TournamentSubscriptionsPage />} />
           <Route path="/notifications/marketplace-watches" element={<MarketplaceWatchesPage />} />

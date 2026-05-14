@@ -293,3 +293,87 @@ export interface PagedPairSanctionHistoryDto {
   totalElements: number
   totalPages: number
 }
+
+export interface TransactionParticipantDto {
+  telegramId: number
+  displayName: string
+}
+
+export interface ComplainedTransactionDto {
+  listingId: number
+  playerName: string
+  rarity: Rarity
+  price: number
+  soldAt: string
+  seller: TransactionParticipantDto
+  buyer: TransactionParticipantDto
+  complaintsCount: number
+  sanctioned: boolean
+}
+
+export interface PagedComplainedTransactionsDto {
+  content: ComplainedTransactionDto[]
+  totalElements: number
+  page: number
+  size: number
+  totalPages: number
+}
+
+export interface TransactionComplaintDetailDto {
+  userId: number
+  displayName: string
+  telegramId: number
+  complainedAt: string
+}
+
+export interface TransactionComplaintsListDto {
+  complaints: TransactionComplaintDetailDto[]
+}
+
+export interface BanDurationRequest {
+  days: number
+}
+
+export interface SanctionTransactionRequest {
+  reason: string
+  sellerFine: number
+  buyerFine: number
+  complainantReward: number
+  banSeller: BanDurationRequest | null
+  banBuyer: BanDurationRequest | null
+}
+
+export interface SanctionTransactionResultDto {
+  listingId: number
+  sellerFined: number
+  sellerNewBalance: number
+  sellerBannedUntil: string | null
+  buyerFined: number
+  buyerNewBalance: number
+  buyerBannedUntil: string | null
+  complainantsRewarded: number
+  totalRewardPaid: number
+}
+
+export interface UserByComplaintsDto {
+  telegramId: number
+  displayName: string
+  totalComplaints: number
+  transactionsWithComplaints: number
+  avgComplaintsPerTransaction: number
+  sanctionedTransactions: number
+  marketplaceBanned: boolean
+  marketplaceBannedUntil: string | null
+}
+
+export interface PagedUsersByComplaintsDto {
+  content: UserByComplaintsDto[]
+  totalElements: number
+  page: number
+  size: number
+  totalPages: number
+}
+
+export interface BanUserRequest {
+  days: number | null
+}

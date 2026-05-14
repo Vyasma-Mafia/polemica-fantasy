@@ -200,19 +200,27 @@ export function MarketplacePage() {
         )}
         {feedQ.data && feedQ.data.items.length > 0 && (
           <div className="pf-marketplace-feed__strip">
-            {feedQ.data.items.map((it, i) => {
+            {feedQ.data.items.map((it) => {
               const c = it.card
               const img = cardDisplayImageUrl({
                 playerPhotoUrl: c.playerPhotoUrl,
                 imageUrl: null,
               })
               return (
-                <div key={`${it.soldAt}-${i}`} className="pf-marketplace-feed__chip">
+                <Link
+                  key={it.listingId}
+                  to={`/marketplace/transactions/${it.listingId}`}
+                  state={{ backTo: '/marketplace', backLabel: 'Маркетплейс' }}
+                  className={`pf-marketplace-feed__chip pf-marketplace-feed__chip-link${it.sanctioned ? ' pf-marketplace-feed__item--sanctioned' : ''}`}
+                >
                   <div className="pf-marketplace-feed__chip-row">
                     <div className="pf-marketplace-feed__chip-copy">
                       <span className={`pf-rarity-tag pf-rarity-tag--${rarityClass(it.rarity)}`}>{it.rarity}</span>
                       <span className="pf-marketplace-feed__chip-name">{it.playerName}</span>
-                      <span className="pf-marketplace-feed__chip-price">{it.price}₣</span>
+                      <span className="pf-marketplace-feed__chip-price">
+                        <span className="pf-marketplace-feed__chip-price-value">{it.price}₣</span>
+                        {it.sanctioned && <span className="pf-sanctioned-badge">Нерыночная</span>}
+                      </span>
                       <span className="pf-marketplace-feed__chip-buyer">
                         {it.sellerDisplayName} → {it.buyerDisplayName}
                       </span>
@@ -229,7 +237,7 @@ export function MarketplacePage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>
@@ -412,15 +420,21 @@ export function MarketplacePage() {
                       <span className="pf-muted">Цена: </span>
                       <span className="pf-marketplace-card__price-fantiki">{row.price}₣</span>
                     </span>
-                    <span className="pf-muted" aria-hidden>
-                      ·
-                    </span>
-                    <span>
-                      <span className="pf-muted">Ценность: </span>
-                      <span className="pf-marketplace-card__value-pill">{c.value}₱</span>
-                    </span>
+                    {c.value != null && (
+                      <>
+                        <span className="pf-muted" aria-hidden>
+                          ·
+                        </span>
+                        <span>
+                          <span className="pf-muted">Ценность: </span>
+                          <span className="pf-marketplace-card__value-pill">{c.value}₱</span>
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <div className="pf-muted pf-marketplace-card__seller">Продавец: {row.seller.displayName}</div>
+                  {row.seller && (
+                    <div className="pf-muted pf-marketplace-card__seller">Продавец: {row.seller.displayName}</div>
+                  )}
                   {row.canBuy ? (
                     <button
                       type="button"

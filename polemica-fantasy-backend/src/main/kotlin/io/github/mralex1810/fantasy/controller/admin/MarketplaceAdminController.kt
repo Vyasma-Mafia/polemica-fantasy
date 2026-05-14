@@ -1,14 +1,21 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.BanPairRequest
+import io.github.mralex1810.fantasy.dto.admin.request.BanUserRequest
 import io.github.mralex1810.fantasy.dto.admin.request.MarkPairClearedRequest
+import io.github.mralex1810.fantasy.dto.admin.request.SanctionTransactionRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedComplainedTransactionsDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedPairSanctionHistoryDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedUsersByComplaintsDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairAnalysisDto
 import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.SanctionTransactionResultDto
+import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintsListDto
 import io.github.mralex1810.fantasy.service.MarketplaceAdminService
 import jakarta.validation.Valid
+import java.security.Principal
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
@@ -47,6 +54,55 @@ class MarketplaceAdminController(
     fun getBanPairHistory(
         @PageableDefault(size = 20) pageable: Pageable,
     ): PagedPairSanctionHistoryDto = marketplaceAdminService.getBanPairHistory(pageable)
+
+    @GetMapping("/complained-transactions")
+    fun getComplainedTransactions(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "1") minComplaints: Int,
+        @RequestParam(required = false) sortBy: String?,
+    ): PagedComplainedTransactionsDto = marketplaceAdminService.getComplainedTransactions(
+        page = page,
+        size = size,
+        minComplaints = minComplaints,
+        sortBy = sortBy,
+    )
+
+    @GetMapping("/transactions/{listingId}/complaints")
+    fun getTransactionComplaints(
+        @PathVariable listingId: Long,
+    ): TransactionComplaintsListDto = marketplaceAdminService.getTransactionComplaints(listingId)
+
+    @PostMapping("/transactions/{listingId}/sanction")
+    fun sanctionTransaction(
+        @PathVariable listingId: Long,
+        @Valid @RequestBody body: SanctionTransactionRequest,
+        principal: Principal,
+    ): SanctionTransactionResultDto = marketplaceAdminService.sanctionTransaction(
+        listingId = listingId,
+        request = body,
+        adminUsername = principal.name,
+    )
+
+    @GetMapping("/users-by-complaints")
+    fun getUsersByComplaints(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) sortBy: String?,
+    ): PagedUsersByComplaintsDto = marketplaceAdminService.getUsersByComplaints(
+        page = page,
+        size = size,
+        sortBy = sortBy,
+    )
+
+    @PostMapping("/users/{telegramId}/ban")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun banUser(
+        @PathVariable telegramId: Long,
+        @Valid @RequestBody body: BanUserRequest,
+    ) {
+        marketplaceAdminService.banUser(telegramId, body)
+    }
 
     @PostMapping("/ban-pair")
     fun banPair(@Valid @RequestBody body: BanPairRequest): BanPairResultDto = marketplaceAdminService.banPair(body)

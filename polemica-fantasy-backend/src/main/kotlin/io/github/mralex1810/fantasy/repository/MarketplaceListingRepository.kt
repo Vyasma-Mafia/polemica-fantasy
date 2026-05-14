@@ -119,6 +119,43 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
     fun findRecentSold(@Param("sold") sold: MarketplaceListingStatus, pageable: Pageable): List<MarketplaceListing>
 
     @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.seller
+        JOIN FETCH ml.buyer
+        JOIN FETCH ml.userCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer
+        LEFT JOIN FETCH ml.soldCardTemplate sct
+        LEFT JOIN FETCH sct.fantasyPlayer
+        WHERE ml.id = :id
+          AND ml.status = :sold
+          AND ml.soldAt IS NOT NULL
+        """,
+    )
+    fun findSoldByIdWithTradeDetails(
+        @Param("id") id: Long,
+        @Param("sold") sold: MarketplaceListingStatus,
+    ): MarketplaceListing?
+
+    @Query(
+        """
+        SELECT DISTINCT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.seller
+        JOIN FETCH ml.buyer
+        JOIN FETCH ml.userCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer
+        LEFT JOIN FETCH ml.soldCardTemplate sct
+        LEFT JOIN FETCH sct.fantasyPlayer
+        WHERE ml.id IN :ids
+        """,
+    )
+    fun findAllWithTradeDetailsByIdIn(
+        @Param("ids") ids: Collection<Long>,
+    ): List<MarketplaceListing>
+
+    @Query(
         value =
             """
             SELECT ml.seller_id, ml.buyer_id,
