@@ -94,7 +94,9 @@ export function TransactionDetailPage() {
       <PageHeader title="Сделка" subtitle={transaction.card.playerName} backTo={backTo} backLabel={backLabel} />
 
       <div className="pf-transaction-detail">
-        <section className={`pf-collection-card pf-collection-card--${rarityClass(transaction.card.rarity)}`}>
+        <section
+          className={`pf-collection-card pf-transaction-detail__card pf-collection-card--${rarityClass(transaction.card.rarity)}`}
+        >
           <div className="pf-collection-card__frame pf-transaction-detail__card-frame">
             <div className="pf-collection-card__open">
               {cardImageUrl ? (
@@ -102,15 +104,15 @@ export function TransactionDetailPage() {
               ) : (
                 <div className="pf-collection-card__ph">{transaction.card.rarity}</div>
               )}
-              <div className="pf-collection-card__cap">
-                <span className="pf-collection-card__name">{transaction.card.playerName}</span>
-                <span className="pf-collection-card__rarity">
+              <div className="pf-collection-card__cap pf-transaction-detail__card-cap">
+                <span className="pf-collection-card__name pf-transaction-detail__card-name">{transaction.card.playerName}</span>
+                <span className="pf-collection-card__rarity pf-transaction-detail__card-rarity">
                   {transaction.card.rarity}{' '}
                   <span className="pf-rarity-mod" title="Множитель очков в фэнтези">
                     {rarityScoreModifierLabel(transaction.card.rarity)}
                   </span>
                 </span>
-                <CardAchievementChips achievements={achievements} max={6} className="pf-card-ach-chips--tight" />
+                <CardAchievementChips achievements={achievements} max={6} className="pf-card-ach-chips--compact" />
               </div>
             </div>
           </div>

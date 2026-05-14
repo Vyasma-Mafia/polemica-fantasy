@@ -4625,17 +4625,39 @@ button.pf-mini-card:disabled {
 .pf-transaction-detail {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+}
+
+.pf-transaction-detail__card {
+  width: min(100%, 300px);
+  align-self: center;
 }
 
 .pf-transaction-detail__card-frame {
   margin-bottom: 0;
 }
 
+.pf-transaction-detail__card-cap {
+  padding: 10px 8px 8px;
+}
+
+.pf-transaction-detail__card-name {
+  font-size: 0.94rem;
+}
+
+.pf-transaction-detail__card-rarity {
+  margin-top: 4px;
+  font-size: 0.68rem;
+}
+
+.pf-transaction-detail__card .pf-card-ach-chips {
+  margin-top: 4px;
+}
+
 .pf-transaction-detail__info,
 .pf-transaction-detail__participants,
 .pf-transaction-detail__complaint {
-  padding: 12px;
+  padding: 10px 11px;
   border-radius: var(--pf-radius-sm);
   border: 1px solid var(--pf-border);
   background: var(--pf-bg-elevated);
