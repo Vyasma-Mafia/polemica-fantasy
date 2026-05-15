@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### TMA: устранение мерцания у legendary-crafted и tournament_gold карт (май 2026)
+- [x] В `polemica-fantasy-webapp/src/index.css` из keyframes `pf-legendary-crafted-glow` и `pf-skin-gold-glow` убран `filter` (анимация оставлена на `box-shadow`)
+- [x] Добавлены GPU/compositing hints (`will-change`) для glow/shimmer/sweep анимаций: `box-shadow`, `background-position`, `transform`
+- [x] Для `tournament_gold` sweep-псевдоэлемента уменьшен экстент (`inset: -60% -> -20%`) и подправлены gradient stop'ы, чтобы снизить repaint-glitches на `overflow: hidden` контейнерах
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно; lints для `src/index.css` — без ошибок
+
 ### Special card skins `tournament_gold` (май 2026)
 - [x] **Flyway V40:** `card_skin`, `user_card.card_skin_id`, `card_pack.card_skin_id`, `marketplace_listing.sold_skin_code`; seed первого скина `tournament_gold`
 - [x] **Backend модель/сервисы:** `CardSkin` + `CardSkinRepository`; `CardPackService.openPack` назначает скин из пака на `user_card`; `MarketplaceService.buyCard` сохраняет snapshot `soldSkinCode`; `MarketplaceTransactionService` и feed/listings используют skin snapshot для sold-кейсов

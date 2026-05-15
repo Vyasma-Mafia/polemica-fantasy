@@ -1463,6 +1463,7 @@ button.pf-mini-card:disabled {
     0 0 48px rgba(232, 197, 71, 0.18),
     inset 0 0 28px rgba(232, 197, 71, 0.06);
   animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
 }
 
 .pf-team-card--legendary-crafted .pf-team-card__name {
@@ -1472,6 +1473,7 @@ button.pf-mini-card:disabled {
   background-clip: text;
   color: transparent;
   animation: pf-legendary-crafted-shimmer 4s ease-in-out infinite;
+  will-change: background-position;
 }
 
 .pf-mini-card--common {
@@ -2164,6 +2166,7 @@ button.pf-mini-card:disabled {
     0 0 64px rgba(232, 197, 71, 0.2),
     inset 0 0 40px rgba(232, 197, 71, 0.06);
   animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
 }
 
 .pf-collection-card--legendary-crafted .pf-collection-card__frame::before {
@@ -2214,19 +2217,18 @@ button.pf-mini-card:disabled {
   background-clip: text;
   color: transparent;
   animation: pf-legendary-crafted-shimmer 4s ease-in-out infinite;
+  will-change: background-position;
 }
 
 @keyframes pf-legendary-crafted-glow {
   0%,
   100% {
-    filter: saturate(1) brightness(1);
     box-shadow:
       0 0 28px rgba(232, 197, 71, 0.45),
       0 0 64px rgba(232, 197, 71, 0.2),
       inset 0 0 40px rgba(232, 197, 71, 0.06);
   }
   50% {
-    filter: saturate(1.12) brightness(1.04);
     box-shadow:
       0 0 38px rgba(232, 197, 71, 0.62),
       0 0 72px rgba(245, 158, 11, 0.22),
@@ -2744,6 +2746,7 @@ button.pf-mini-card:disabled {
     0 0 26px rgba(232, 197, 71, 0.45),
     inset 0 0 24px rgba(232, 197, 71, 0.06);
   animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
 }
 
 .pf-modal__img {
@@ -4748,6 +4751,7 @@ a.pf-rating__name-link:hover {
     0 0 44px rgba(243, 231, 186, 0.16),
     inset 0 0 22px rgba(154, 225, 196, 0.1);
   animation: pf-skin-gold-glow 2.8s ease-in-out infinite;
+  will-change: box-shadow;
 }
 
 .pf-collection-card--skin-tournament_gold .pf-collection-card__frame::after,
@@ -4758,17 +4762,18 @@ a.pf-rating__name-link:hover {
 .pf-pack-open__summary-card--skin-tournament_gold .pf-pack-open__summary-card-frame::after {
   content: '';
   position: absolute;
-  inset: -60%;
+  inset: -20%;
   pointer-events: none;
   z-index: 3;
   opacity: 0.2;
   background: linear-gradient(
     130deg,
-    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0) 30%,
     rgba(205, 245, 224, 0.55) 50%,
-    rgba(255, 255, 255, 0) 65%
+    rgba(255, 255, 255, 0) 70%
   );
   animation: pf-skin-gold-sweep 4.2s linear infinite;
+  will-change: transform;
 }
 
 .pf-collection-card--skin-tournament_gold .pf-collection-card__cap::before,
@@ -4801,6 +4806,7 @@ a.pf-rating__name-link:hover {
   background-clip: text;
   color: transparent;
   animation: pf-skin-gold-shimmer 3.2s ease-in-out infinite;
+  will-change: background-position;
 }
 
 .pf-collection-card--skin-tournament_gold .pf-card-ach-chip,
@@ -4829,14 +4835,12 @@ a.pf-rating__name-link:hover {
       0 0 20px rgba(126, 199, 170, 0.35),
       0 0 44px rgba(243, 231, 186, 0.16),
       inset 0 0 22px rgba(154, 225, 196, 0.1);
-    filter: saturate(1) brightness(1);
   }
   50% {
     box-shadow:
       0 0 30px rgba(141, 224, 190, 0.5),
       0 0 56px rgba(243, 231, 186, 0.24),
       inset 0 0 30px rgba(154, 225, 196, 0.16);
-    filter: saturate(1.08) brightness(1.03);
   }
 }
 

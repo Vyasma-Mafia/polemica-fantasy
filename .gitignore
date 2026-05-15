@@ -3,3 +3,4 @@
 scripts/telegram-support-export/.venv/
 scripts/telegram-support-export/config.yml
 scripts/telegram-support-export/*.session
+.local-dev-logs/
