@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { ApiError, apiGet } from '../api/client'
 import {
@@ -31,6 +32,7 @@ export function TransactionDetailPage() {
   const initData = useInitData()
   const queryClient = useQueryClient()
   const location = useLocation()
+  const [complaintConfirmOpen, setComplaintConfirmOpen] = useState(false)
   const { listingId } = useParams<{ listingId: string }>()
   const numericListingId = Number(listingId)
   const backState = (location.state as BackState) ?? null
@@ -52,6 +54,7 @@ export function TransactionDetailPage() {
   const complainM = useMutation({
     mutationFn: () => complainMarketplaceTransaction(initData, numericListingId),
     onSuccess: async (result) => {
+      setComplaintConfirmOpen(false)
       await queryClient.invalidateQueries({
         queryKey: ['marketplace', 'transaction', numericListingId],
       })
@@ -168,7 +171,7 @@ export function TransactionDetailPage() {
             type="button"
             className="pf-btn pf-btn--small pf-btn--outline pf-complaint-btn"
             disabled={complainDisabled}
-            onClick={() => complainM.mutate()}
+            onClick={() => setComplaintConfirmOpen(true)}
           >
             {complainM.isPending ? 'Отправляем…' : 'Пожаловаться'}
           </button>
@@ -179,6 +182,43 @@ export function TransactionDetailPage() {
           {transaction.sanction && <p className="pf-muted">Сделка уже санкционирована.</p>}
         </section>
       </div>
+
+      {complaintConfirmOpen && (
+        <div
+          className="pf-modal-backdrop"
+          role="dialog"
+          aria-modal
+          aria-label="Подтверждение жалобы"
+          onClick={() => setComplaintConfirmOpen(false)}
+        >
+          <div className="pf-modal pf-modal--narrow" onClick={(e) => e.stopPropagation()}>
+            <h3 className="pf-modal__title">Отправить жалобу?</h3>
+            <p className="pf-muted">Администрация рассматривает жалобы только на транзакции маркетплейса.</p>
+            <ul className="pf-transaction-detail__complaint-notes">
+              <li>Действует дневной лимит жалоб. Если лимит исчерпан, отправка будет отклонена.</li>
+              <li>Если сделку признают нерыночной, жалобщикам может быть начислена награда.</li>
+            </ul>
+            <div className="pf-modal__actions">
+              <button
+                type="button"
+                className="pf-btn pf-btn--ghost"
+                disabled={complainM.isPending}
+                onClick={() => setComplaintConfirmOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="pf-btn"
+                disabled={complainM.isPending}
+                onClick={() => complainM.mutate()}
+              >
+                {complainM.isPending ? 'Отправляем…' : 'Отправить жалобу'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -4698,6 +4698,17 @@ button.pf-mini-card:disabled {
   margin: 6px 0;
 }
 
+.pf-transaction-detail__complaint-notes {
+  margin: 10px 0;
+  padding-left: 18px;
+  color: var(--pf-text-muted);
+  font-size: 0.88rem;
+}
+
+.pf-transaction-detail__complaint-notes li + li {
+  margin-top: 6px;
+}
+
 a.pf-rating__name-link {
   color: inherit;
   text-decoration: none;
