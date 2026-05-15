@@ -2,6 +2,25 @@
 
 ## Что реализовано
 
+### Special card skins `tournament_gold` (май 2026)
+- [x] **Flyway V40:** `card_skin`, `user_card.card_skin_id`, `card_pack.card_skin_id`, `marketplace_listing.sold_skin_code`; seed первого скина `tournament_gold`
+- [x] **Backend модель/сервисы:** `CardSkin` + `CardSkinRepository`; `CardPackService.openPack` назначает скин из пака на `user_card`; `MarketplaceService.buyCard` сохраняет snapshot `soldSkinCode`; `MarketplaceTransactionService` и feed/listings используют skin snapshot для sold-кейсов
+- [x] **DTO контракты:** `skinCode` добавлен в `UserCardItemDto`, `MarketplaceListingCardDto`, `TransactionCardDto`; в admin `CardPackDto` добавлены `skinId`/`skinCode`; в create/update card-pack request добавлен `skinId`
+- [x] **Admin API/UI:** `GET /api/v1/admin/card-skins`; в `CardPacksPage` добавлен выбор skin (create/edit) и отображение skin в таблице паков
+- [x] **TMA рендеринг:** `skinCode` добавлен в TS-типы; helper `skinClass`; skin-модификаторы подключены для collection/team/modal/mini cards, marketplace listings/feed/my-listings, leaderboard/history cards, pack opening reveal/summary, transaction detail
+- [x] **CSS для `tournament_gold`:** отдельные модификаторы с золотым conic-border, glow/shimmer/sweep-анимациями, бейджем `GOLD`, и tint для achievement chips
+- [x] **Визуальная отстройка от legendary:** палитра `tournament_gold` смещена в «шампань + изумруд», ослаблена янтарная доминанта в border/glow/sweep/text/chips — скин читается как отдельная косметика, а не вариация `legendary-crafted`
+- [x] **Интеграционные тесты:** `UserApiIntegrationTest` — (1) opening skinned pack возвращает `skinCode` в `cards`/`openingCards`/`me/cards`; (2) marketplace сохраняет `skinCode` через listing/feed/transaction/buyer cards
+- [x] **Проверки:** `./gradlew test --tests "...store buy from skinned pack assigns skin..." --tests "...marketplace preserves skin code..."`; `npm run build` в `polemica-fantasy-admin` и `polemica-fantasy-webapp` — успешно
+
+### DX: единый локальный старт стека (май 2026)
+- [x] Добавлен исполняемый скрипт `scripts/local-up.sh` для запуска backend + admin + TMA одной командой
+- [x] Скрипт поддерживает `--init-data`, `--host`, `--admin-port`, `--tma-port` и ENV-аналоги (`VITE_DEV_INIT_DATA`, `DEV_HOST`, `ADMIN_PORT`, `TMA_PORT`)
+- [x] Добавлены preflight-проверки зависимостей (`docker`, `npm`, `curl`) и ожидание health backend (`http://localhost:8081/actuator/health`)
+- [x] Логи frontend dev-серверов выводятся в `.local-dev-logs/admin.log` и `.local-dev-logs/tma.log`
+- [x] README дополнен разделом «Быстрый старт всего стека (backend + admin + TMA)»
+- [x] Проверка: `bash -n scripts/local-up.sh` и `./scripts/local-up.sh --help` — успешно
+
 ### Backend: marketplace complaints/moderation (май 2026)
 - [x] **Flyway V39:** добавлены `marketplace_complaint`, `marketplace_listing_sanction`, колонка `telegram_user.marketplace_banned_until`, сид `economy_config.marketplace.daily_complaint_limit`
 - [x] **Новые сущности/репозитории:** `MarketplaceComplaint`, `MarketplaceListingSanction`, `MarketplaceComplaintRepository`, `MarketplaceListingSanctionRepository`, расширения `MarketplaceListingRepository` для trade-details

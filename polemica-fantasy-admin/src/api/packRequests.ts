@@ -18,6 +18,7 @@ export interface CreateCardPackRequest {
   /** RNG pool for this pack; empty = global canAppearOnRandomCards pool. */
   achievementIds?: string[]
   useAllTournamentPlayers?: boolean
+  skinId?: number | null
   playerIds?: number[] | null
   rarityConfigs: CardPackRarityConfigDto[]
 }
@@ -31,6 +32,7 @@ export interface UpdateCardPackRequest {
   maxOpensPerUser?: number | null
   achievementIds?: string[] | null
   useAllTournamentPlayers?: boolean | null
+  skinId?: number | null
   playerIds?: number[] | null
   rarityConfigs?: CardPackRarityConfigDto[] | null
 }

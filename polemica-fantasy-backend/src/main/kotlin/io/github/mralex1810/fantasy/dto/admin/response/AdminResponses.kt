@@ -108,6 +108,12 @@ data class CardPackRarityConfigResponseDto(
     val cardsCount: Int,
 )
 
+data class CardSkinDto(
+    val id: Long,
+    val code: String,
+    val name: String,
+)
+
 data class CardPackDto(
     val id: Long,
     val name: String,
@@ -122,6 +128,8 @@ data class CardPackDto(
     val useAllTournamentPlayers: Boolean,
     val playerIds: List<Long>,
     val rarityConfigs: List<CardPackRarityConfigResponseDto>,
+    val skinId: Long?,
+    val skinCode: String?,
 )
 
 data class UserCardDto(

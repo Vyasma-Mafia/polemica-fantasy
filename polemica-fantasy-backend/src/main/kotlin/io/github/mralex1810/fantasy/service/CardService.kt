@@ -14,6 +14,7 @@ import io.github.mralex1810.fantasy.entity.CardTemplateAchievement
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.repository.AchievementRepository
+import io.github.mralex1810.fantasy.repository.CardSkinRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
@@ -29,6 +30,7 @@ import java.time.Instant
 class CardService(
     private val cardTemplateRepository: CardTemplateRepository,
     private val achievementRepository: AchievementRepository,
+    private val cardSkinRepository: CardSkinRepository,
     private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
     private val userCardRepository: UserCardRepository,
@@ -115,6 +117,11 @@ class CardService(
     fun giveCards(telegramUserId: Long, request: GiveCardsRequest): List<UserCardDto> {
         val user = userService.getOrCreateAndUpdateProfile(telegramUserId, null, null)
         val now = Instant.now()
+        val skin = request.skinId?.let { skinId ->
+            cardSkinRepository.findById(skinId).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Card skin $skinId not found")
+            }
+        }
         return request.cardTemplateIds.map { templateId ->
             val template = cardTemplateRepository.findById(templateId).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Card template $templateId not found")
@@ -123,6 +130,7 @@ class CardService(
                 UserCard(
                     telegramUser = user,
                     cardTemplate = template,
+                    cardSkin = skin,
                     acquiredAt = now,
                     usesRemaining = economyConfigService.getUsesForRarity(template.rarity),
                     timesRenewed = 0,

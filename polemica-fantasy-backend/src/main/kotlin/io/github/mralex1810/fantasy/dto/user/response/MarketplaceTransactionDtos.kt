@@ -27,6 +27,7 @@ data class TransactionCardDto(
     val playerPhotoUrl: String?,
     val rarity: Rarity,
     val achievements: List<MarketplaceCardAchievementDto>,
+    val skinCode: String?,
 )
 
 data class TransactionComplaintInfoDto(

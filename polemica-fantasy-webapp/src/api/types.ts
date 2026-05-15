@@ -260,6 +260,8 @@ export interface UserCardItem {
   canJoinMoreLeagues?: boolean | null
   /** Активный лот на маркетплейсе; null/undefined если карта не выставлена. */
   activeMarketplaceListing?: { listingId: number; price: number } | null
+  /** Cosmetic skin code; null/undefined means default visual. */
+  skinCode?: string | null
 }
 
 /** GET /api/v1/legendary-upgrade/info */
@@ -350,6 +352,7 @@ export interface MarketplaceListingCard {
   rarity: Rarity
   achievements: MarketplaceCardAchievement[]
   value: number | null
+  skinCode?: string | null
 }
 
 export interface MarketplaceSellerBrief {
@@ -415,6 +418,7 @@ export interface TransactionCard {
   playerPhotoUrl: string | null
   rarity: Rarity
   achievements: MarketplaceCardAchievement[]
+  skinCode?: string | null
 }
 
 export interface TransactionComplaintInfo {

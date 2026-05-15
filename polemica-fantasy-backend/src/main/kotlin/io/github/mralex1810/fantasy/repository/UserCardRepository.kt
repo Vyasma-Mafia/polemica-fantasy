@@ -29,6 +29,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
         WHERE uc.telegramUser.id = :telegramUserId
@@ -57,6 +58,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
         WHERE uc.telegramUser.id = :telegramUserId
@@ -74,6 +76,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH uc.craftedBy
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
@@ -92,6 +95,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         SELECT DISTINCT uc FROM UserCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         WHERE uc.telegramUser.id = :currentOwnerId
         AND uc.deletedAt IS NULL
         AND EXISTS (
@@ -119,6 +123,7 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH uc.telegramUser tu
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH ct.achievements ach
         LEFT JOIN FETCH ach.achievement
         WHERE uc.deletedAt IS NULL

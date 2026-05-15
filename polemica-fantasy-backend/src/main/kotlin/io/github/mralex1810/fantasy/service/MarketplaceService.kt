@@ -249,6 +249,7 @@ class MarketplaceService(
         listing.soldAt = Instant.now()
         listing.buyer = buyer
         listing.soldCardTemplate = uc.cardTemplate
+        listing.soldSkinCode = uc.cardSkin?.code
         marketplaceListingRepository.save(listing)
 
         val newBalance = userService.getBalance(buyerId)
@@ -415,7 +416,7 @@ class MarketplaceService(
                 sellerDisplayName = seller.publicDisplayName(),
                 buyerDisplayName = buyer.publicDisplayName(),
                 sanctioned = ml.id!! in sanctionedIds,
-                card = toMarketplaceCardDto(uc, tpl, includeValue = true),
+                card = toMarketplaceCardDto(uc, tpl, includeValue = true, skinCodeOverride = ml.soldSkinCode),
             )
         }
         return MarketplaceFeedDto(items = items)
@@ -546,6 +547,7 @@ class MarketplaceService(
         uc: UserCard,
         template: CardTemplate,
         includeValue: Boolean = true,
+        skinCodeOverride: String? = null,
     ): MarketplaceListingCardDto {
         val fp = template.fantasyPlayer!!
         val achievements = template.achievements.distinctBy { it.achievement!!.id }.map { a ->
@@ -564,6 +566,7 @@ class MarketplaceService(
             rarity = template.rarity,
             achievements = achievements,
             value = if (includeValue) cardValueService.calculateValue(template) else null,
+            skinCode = skinCodeOverride ?: uc.cardSkin?.code,
         )
     }
 

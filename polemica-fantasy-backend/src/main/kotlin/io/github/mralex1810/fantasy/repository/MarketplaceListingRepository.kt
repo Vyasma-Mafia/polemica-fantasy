@@ -43,6 +43,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN FETCH ml.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         WHERE ml.id = :id AND ml.status = :status
         """,
     )
@@ -112,6 +113,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
         JOIN FETCH ml.buyer b
+        LEFT JOIN FETCH uc.cardSkin
         WHERE ml.status = :sold AND ml.soldAt IS NOT NULL
         ORDER BY ml.soldAt DESC
         """,
@@ -126,6 +128,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN FETCH ml.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH ml.soldCardTemplate sct
         LEFT JOIN FETCH sct.fantasyPlayer
         WHERE ml.id = :id
@@ -146,6 +149,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN FETCH ml.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer
+        LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH ml.soldCardTemplate sct
         LEFT JOIN FETCH sct.fantasyPlayer
         WHERE ml.id IN :ids
@@ -311,6 +315,7 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         JOIN FETCH ml.userCard uc
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
         JOIN FETCH ml.seller s
         LEFT JOIN FETCH ml.buyer b
         WHERE ml.status = :sold AND ml.soldAt IS NOT NULL

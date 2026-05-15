@@ -29,4 +29,5 @@ data class AddCardTemplateAchievementRequest(
 data class GiveCardsRequest(
     @field:NotNull
     val cardTemplateIds: List<Long>,
+    val skinId: Long? = null,
 )

@@ -15,7 +15,7 @@ import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
-import { modalImgFrameClass } from '../lib/cardFrameClasses'
+import { modalImgFrameClass, skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { defaultLeagueCode, leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
@@ -222,11 +222,12 @@ export function LeaderboardPlayerTeamPage() {
               {sortedSlots.map((slot) => {
                 const card = slot.card
                 const imgSrc = cardDisplayImageUrl(card)
+                const skinMod = skinClass(card.skinCode)
                 return (
                   <button
                     key={slot.slot}
                     type="button"
-                    className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card.rarity)}`}
+                    className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card.rarity)}${skinMod ? ` pf-fantasy-card${skinMod}` : ''}`}
                     onClick={() => setDetailCardId(card.id)}
                     role="listitem"
                   >

@@ -19,6 +19,7 @@ import { CardAchievementChips } from '../components/CardAchievementChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
 import { rarityClass } from '../lib/rarity'
@@ -206,6 +207,7 @@ export function MarketplacePage() {
                 playerPhotoUrl: c.playerPhotoUrl,
                 imageUrl: null,
               })
+              const skinMod = skinClass(c.skinCode)
               return (
                 <Link
                   key={it.listingId}
@@ -226,7 +228,7 @@ export function MarketplacePage() {
                       </span>
                     </div>
                     <div
-                      className={`pf-marketplace-feed__thumb pf-mini-card pf-mini-card--${rarityClass(c.rarity)}`}
+                      className={`pf-marketplace-feed__thumb pf-mini-card pf-mini-card--${rarityClass(c.rarity)}${skinMod ? ` pf-mini-card${skinMod}` : ''}`}
                       aria-hidden
                       title={c.playerName}
                     >
@@ -385,6 +387,7 @@ export function MarketplacePage() {
       <ul className="pf-collection-grid">
         {(listingsQ.data?.content ?? []).map((row) => {
           const c = row.card
+          const skinMod = skinClass(c.skinCode)
           const img = cardDisplayImageUrl({
             playerPhotoUrl: c.playerPhotoUrl,
             imageUrl: null,
@@ -395,7 +398,10 @@ export function MarketplacePage() {
             bonusPoints: a.bonusPoints,
           }))
           return (
-            <li key={row.listingId} className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`}>
+            <li
+              key={row.listingId}
+              className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${skinMod ? ` pf-collection-card${skinMod}` : ''}`}
+            >
               <div className="pf-collection-card__frame">
                 <div className="pf-collection-card__open pf-marketplace-card__open">
                   {img ? (

@@ -49,4 +49,8 @@ class MarketplaceListing(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sold_card_template_id")
     var soldCardTemplate: CardTemplate? = null,
+
+    /** Cosmetic skin code at sale time; keeps sold feed visuals stable if card appearance changes later. */
+    @Column(name = "sold_skin_code", length = 64)
+    var soldSkinCode: String? = null,
 )

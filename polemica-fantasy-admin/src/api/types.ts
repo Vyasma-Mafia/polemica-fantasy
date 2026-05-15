@@ -165,6 +165,12 @@ export interface CardPackRarityConfigResponseDto {
   cardsCount: number
 }
 
+export interface CardSkinDto {
+  id: number
+  code: string
+  name: string
+}
+
 export interface CardPackDto {
   id: number
   name: string
@@ -178,6 +184,8 @@ export interface CardPackDto {
   useAllTournamentPlayers: boolean
   playerIds: number[]
   rarityConfigs: CardPackRarityConfigResponseDto[]
+  skinId: number | null
+  skinCode: string | null
 }
 
 export interface UserCardDto {

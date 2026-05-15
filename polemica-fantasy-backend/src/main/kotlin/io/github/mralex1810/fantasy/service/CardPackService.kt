@@ -5,6 +5,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.CreateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.response.CardPackDto
 import io.github.mralex1810.fantasy.dto.admin.response.CardPackRarityConfigResponseDto
+import io.github.mralex1810.fantasy.dto.admin.response.CardSkinDto
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
 import io.github.mralex1810.fantasy.entity.Achievement
@@ -23,6 +24,7 @@ import io.github.mralex1810.fantasy.repository.CardPackAchievementRepository
 import io.github.mralex1810.fantasy.repository.CardPackPlayerRepository
 import io.github.mralex1810.fantasy.repository.CardPackRarityConfigRepository
 import io.github.mralex1810.fantasy.repository.CardPackRepository
+import io.github.mralex1810.fantasy.repository.CardSkinRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
@@ -44,6 +46,7 @@ class CardPackService(
     private val cardPackRarityConfigRepository: CardPackRarityConfigRepository,
     private val cardPackAchievementRepository: CardPackAchievementRepository,
     private val cardPackPlayerRepository: CardPackPlayerRepository,
+    private val cardSkinRepository: CardSkinRepository,
     private val tournamentRepository: TournamentRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
@@ -74,6 +77,16 @@ class CardPackService(
             it.toDto(loadPlayerIds(it.id!!), loadPackAchievementIds(it.id!!))
         }
     }
+
+    @Transactional(readOnly = true)
+    fun listSkins(): List<CardSkinDto> =
+        cardSkinRepository.findAllByOrderByIdAsc().map {
+            CardSkinDto(
+                id = it.id!!,
+                code = it.code,
+                name = it.name,
+            )
+        }
 
     @Transactional(readOnly = true)
     fun getPack(id: Long): CardPackDto {
@@ -108,6 +121,7 @@ class CardPackService(
                 freeOpensPerUser = request.freeOpensPerUser,
                 maxOpensPerUser = request.maxOpensPerUser,
                 useAllTournamentPlayers = request.useAllTournamentPlayers,
+                cardSkin = resolveSkin(request.skinId),
             ),
         )
         replacePackAchievements(pack.id!!, request.achievementIds)
@@ -141,6 +155,7 @@ class CardPackService(
             validatePackAchievementIds(ids)
             replacePackAchievements(id, ids)
         }
+        request.skinId?.let { pack.cardSkin = resolveSkin(it) }
 
         val mergedUseAll = request.useAllTournamentPlayers ?: pack.useAllTournamentPlayers
         val currentPlayerIds = cardPackPlayerRepository.findAllByCardPack_Id(id).map { it.fantasyPlayer!!.id!! }
@@ -245,6 +260,7 @@ class CardPackService(
                         telegramUser = user,
                         cardTemplate = template,
                         sourceCardPack = pack,
+                        cardSkin = pack.cardSkin,
                         acquiredAt = now,
                         usesRemaining = economyConfigService.getUsesForRarity(cfg.rarity),
                         timesRenewed = 0,
@@ -383,6 +399,13 @@ class CardPackService(
         }
     }
 
+    private fun resolveSkin(skinId: Long?) =
+        skinId?.let {
+            cardSkinRepository.findById(it).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Card skin $it not found")
+            }
+        }
+
     private fun CardPack.toDto(playerIds: List<Long>, achievementIds: List<String>): CardPackDto {
         val cfgs = rarityConfigs.map { c ->
             CardPackRarityConfigResponseDto(
@@ -404,6 +427,8 @@ class CardPackService(
             useAllTournamentPlayers = useAllTournamentPlayers,
             playerIds = playerIds,
             rarityConfigs = cfgs,
+            skinId = cardSkin?.id,
+            skinCode = cardSkin?.code,
         )
     }
 

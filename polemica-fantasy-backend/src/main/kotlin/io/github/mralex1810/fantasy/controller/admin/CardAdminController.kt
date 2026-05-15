@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardPackPlayersReque
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardTemplateRequest
 import io.github.mralex1810.fantasy.dto.admin.response.CardPackDto
+import io.github.mralex1810.fantasy.dto.admin.response.CardSkinDto
 import io.github.mralex1810.fantasy.dto.admin.response.CardTemplateDto
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
@@ -33,6 +34,9 @@ class CardAdminController(
     private val cardService: CardService,
     private val cardPackService: CardPackService,
 ) {
+
+    @GetMapping("/card-skins")
+    fun listCardSkins(): List<CardSkinDto> = cardPackService.listSkins()
 
     @GetMapping("/card-packs")
     fun listCardPacks(@RequestParam(required = false) tournamentId: Long?): List<CardPackDto> =

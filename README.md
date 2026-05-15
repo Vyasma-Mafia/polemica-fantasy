@@ -21,3 +21,20 @@
 ## Локальный запуск
 
 Шаблон переменных окружения: [`.env.example`](.env.example). Dev-стек: PostgreSQL + MinIO + бэкенд — [`docker-compose.yml`](docker-compose.yml).
+
+### Быстрый старт всего стека (backend + admin + TMA)
+
+```bash
+./scripts/local-up.sh --init-data "auth_date=...&user=...&hash=..."
+```
+
+Скрипт:
+- поднимает `fantasy-backend` через `docker compose` (вместе с БД и MinIO),
+- запускает dev-серверы админки и TMA,
+- пишет логи в `.local-dev-logs/admin.log` и `.local-dev-logs/tma.log`.
+
+Порты и host можно переопределить:
+
+```bash
+ADMIN_PORT=5174 TMA_PORT=5175 DEV_HOST=0.0.0.0 ./scripts/local-up.sh
+```

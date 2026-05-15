@@ -1,5 +1,5 @@
 import type { CreateCardPackRequest, UpdateCardPackRequest } from './packRequests'
-import type { CardPackDto } from './types'
+import type { CardPackDto, CardSkinDto } from './types'
 import { apiJson } from './client'
 
 export type { CreateCardPackRequest, UpdateCardPackRequest } from './packRequests'
@@ -12,6 +12,10 @@ export function listCardPacks(tournamentId?: number) {
 
 export function getCardPack(id: number) {
   return apiJson<CardPackDto>(`/v1/admin/card-packs/${id}`)
+}
+
+export function listCardSkins() {
+  return apiJson<CardSkinDto[]>('/v1/admin/card-skins')
 }
 
 export function createCardPack(body: CreateCardPackRequest) {

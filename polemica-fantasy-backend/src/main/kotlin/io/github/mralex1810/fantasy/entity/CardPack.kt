@@ -45,6 +45,10 @@ class CardPack(
     @Column(name = "use_all_tournament_players", nullable = false)
     var useAllTournamentPlayers: Boolean = false,
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "card_skin_id", nullable = true)
+    var cardSkin: CardSkin? = null,
+
     @OneToMany(mappedBy = "cardPack")
     var rarityConfigs: MutableList<CardPackRarityConfig> = mutableListOf(),
 

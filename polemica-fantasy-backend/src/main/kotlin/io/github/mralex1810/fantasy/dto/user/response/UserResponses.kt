@@ -155,6 +155,8 @@ data class UserCardItemDto(
     val canJoinMoreLeagues: Boolean? = null,
     /** Активный лот на маркетплейсе для этой user_card; null если не выставлена. */
     val activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
+    /** Cosmetic skin code; null = default card visual. */
+    val skinCode: String? = null,
 )
 
 data class LegendaryUpgradeInfoDto(

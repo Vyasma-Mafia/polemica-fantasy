@@ -12,6 +12,6 @@ interface CardPackRepository : JpaRepository<CardPack, Long> {
 
     fun findAllByActiveTrueAndPriceFantikiGreaterThanEqualOrderByIdAsc(minPriceFantiki: Long): List<CardPack>
 
-    @Query("SELECT DISTINCT p FROM CardPack p JOIN FETCH p.rarityConfigs WHERE p.id = :id")
+    @Query("SELECT DISTINCT p FROM CardPack p JOIN FETCH p.rarityConfigs LEFT JOIN FETCH p.cardSkin WHERE p.id = :id")
     fun findByIdWithRarityConfigs(@Param("id") id: Long): CardPack?
 }

@@ -48,5 +48,6 @@ fun UserCard.toUserCardItemDto(
         leaguesInSeries = leaguesInSeries,
         canJoinMoreLeagues = canJoinMoreLeagues,
         activeMarketplaceListing = activeMarketplaceListing,
+        skinCode = cardSkin?.code,
     )
 }

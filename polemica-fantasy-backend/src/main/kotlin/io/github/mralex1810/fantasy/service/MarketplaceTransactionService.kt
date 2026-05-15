@@ -51,7 +51,7 @@ class MarketplaceTransactionService(
             sellerReceived = sellerReceived,
             seller = listing.seller!!.toParticipantDto(),
             buyer = listing.buyer!!.toParticipantDto(),
-            card = template.toTransactionCardDto(),
+            card = template.toTransactionCardDto(listing.soldSkinCode ?: listing.userCard?.cardSkin?.code),
             complaint = TransactionComplaintInfoDto(
                 totalComplaints = totalComplaints,
                 userAlreadyComplained = userAlreadyComplained,
@@ -79,7 +79,7 @@ class MarketplaceTransactionService(
             displayName = publicDisplayName(),
         )
 
-    private fun CardTemplate.toTransactionCardDto(): TransactionCardDto {
+    private fun CardTemplate.toTransactionCardDto(skinCode: String?): TransactionCardDto {
         val fantasyPlayer = fantasyPlayer!!
         return TransactionCardDto(
             fantasyPlayerId = fantasyPlayer.id!!,
@@ -94,6 +94,7 @@ class MarketplaceTransactionService(
                     bonusPoints = ach.bonusPoints ?: def.bonusPoints,
                 )
             },
+            skinCode = skinCode,
         )
     }
 }

@@ -21,6 +21,7 @@ data class MarketplaceListingCardDto(
     val rarity: Rarity,
     val achievements: List<MarketplaceCardAchievementDto>,
     val value: Long?,
+    val skinCode: String?,
 )
 
 data class MarketplaceListingEntryDto(

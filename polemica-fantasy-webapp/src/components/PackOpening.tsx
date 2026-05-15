@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { PackOpeningCard, PackOpeningUserCard, UserCardItem } from '../api/types'
+import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardAchievementChips } from './CardAchievementChips'
 import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
@@ -122,10 +123,11 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
               const img = openingCardImageUrl(c)
               const rc = rarityClass(c.rarity)
               const companionClass = c.kind === 'COMPANION' ? 'pf-pack-open__summary-card--companion' : ''
+              const skinMod = skinClass(openingCardSkinCode(c))
               return (
                 <li
                   key={openingCardKey(c, idx)}
-                  className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc} ${companionClass}`}
+                  className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc} ${companionClass}${skinMod ? ` pf-pack-open__summary-card${skinMod}` : ''}`}
                 >
                   <div className="pf-pack-open__summary-card-frame">
                     {img ? (
@@ -167,6 +169,7 @@ function PackOpeningCardReveal({ card }: { card: PackOpeningCard }) {
   const rc = rarityClass(card.rarity)
   const rarity = card.rarity
   const companionClass = card.kind === 'COMPANION' ? 'pf-pack-open__card-wrap--companion' : ''
+  const skinMod = skinClass(openingCardSkinCode(card))
 
   const particleCount = rarity === 'LEGENDARY' ? 14 : rarity === 'EPIC' ? 10 : 0
 
@@ -201,7 +204,7 @@ function PackOpeningCardReveal({ card }: { card: PackOpeningCard }) {
 
   return (
     <div
-      className={`pf-pack-open__card-wrap pf-pack-open__card-wrap--${rc} pf-pack-open__card-wrap--enter ${companionClass}`}
+      className={`pf-pack-open__card-wrap pf-pack-open__card-wrap--${rc} pf-pack-open__card-wrap--enter ${companionClass}${skinMod ? ` pf-pack-open__card-wrap${skinMod}` : ''}`}
     >
       {rarity === 'COMMON' ? inner : <div className="pf-pack-open__flip">{inner}</div>}
     </div>
@@ -220,6 +223,11 @@ function openingCardDisplayName(card: PackOpeningCard): string {
 function openingCardImageUrl(card: PackOpeningCard): string | null {
   if (isUserPackOpeningCard(card)) return cardDisplayImageUrl(card.card)
   return card.companionCardImageUrl ?? null
+}
+
+function openingCardSkinCode(card: PackOpeningCard): string | null {
+  if (!isUserPackOpeningCard(card)) return null
+  return card.card.skinCode ?? null
 }
 
 function openingCardAchievements(card: PackOpeningCard): UserCardItem['achievements'] {

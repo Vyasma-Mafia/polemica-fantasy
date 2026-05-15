@@ -12,6 +12,7 @@ import { CardAchievementChips } from '../components/CardAchievementChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass } from '../lib/rarity'
 import { rarityScoreModifierLabel } from '../lib/rarity'
@@ -74,6 +75,7 @@ export function MyListingsPage() {
       <ul className="pf-collection-grid">
         {(q.data ?? []).map((row) => {
           const c = row.card
+          const skinMod = skinClass(c.skinCode)
           const img = cardDisplayImageUrl({ playerPhotoUrl: c.playerPhotoUrl, imageUrl: null })
           const achForChips = c.achievements.map((a) => ({
             achievementId: a.achievementId,
@@ -81,7 +83,10 @@ export function MyListingsPage() {
             bonusPoints: a.bonusPoints,
           }))
           return (
-            <li key={row.listingId} className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`}>
+            <li
+              key={row.listingId}
+              className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${skinMod ? ` pf-collection-card${skinMod}` : ''}`}
+            >
               <div className="pf-collection-card__frame">
                 <div className="pf-collection-card__open pf-marketplace-card__open">
                   {img ? (

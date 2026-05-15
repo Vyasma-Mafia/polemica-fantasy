@@ -11,6 +11,7 @@ import { CardAchievementChips } from '../components/CardAchievementChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 import { formatDateShortWithTime } from '../lib/tournamentDates'
@@ -92,13 +93,15 @@ export function TransactionDetailPage() {
     isParticipant ||
     transaction.sanction != null
 
+  const skinMod = skinClass(transaction.card.skinCode)
+
   return (
     <div className="pf-page">
       <PageHeader title="Сделка" subtitle={transaction.card.playerName} backTo={backTo} backLabel={backLabel} />
 
       <div className="pf-transaction-detail">
         <section
-          className={`pf-collection-card pf-transaction-detail__card pf-collection-card--${rarityClass(transaction.card.rarity)}`}
+          className={`pf-collection-card pf-transaction-detail__card pf-collection-card--${rarityClass(transaction.card.rarity)}${skinMod ? ` pf-collection-card${skinMod}` : ''}`}
         >
           <div className="pf-collection-card__frame pf-transaction-detail__card-frame">
             <div className="pf-collection-card__open">

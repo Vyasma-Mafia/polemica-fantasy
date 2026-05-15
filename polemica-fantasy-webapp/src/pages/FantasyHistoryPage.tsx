@@ -13,7 +13,7 @@ import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
-import { modalImgFrameClass } from '../lib/cardFrameClasses'
+import { modalImgFrameClass, skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
@@ -227,11 +227,12 @@ export function FantasyHistoryPage() {
                     {team.slots.map((slot) => {
                       const card = cardById.get(slot.userCardId)
                       const imgSrc = card ? cardDisplayImageUrl(card) : null
+                      const skinMod = skinClass(card?.skinCode)
                       return (
                         <button
                           key={slot.slot}
                           type="button"
-                          className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card?.rarity)}`}
+                          className={`pf-fantasy-card pf-fantasy-card--${rarityClass(card?.rarity)}${skinMod ? ` pf-fantasy-card${skinMod}` : ''}`}
                           onClick={() => {
                             setDetailSeries({ seriesId: team.seriesId, leagueCode: team.leagueCode })
                             setDetailCardId(slot.userCardId)
