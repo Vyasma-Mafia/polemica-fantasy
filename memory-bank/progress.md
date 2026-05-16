@@ -2,6 +2,15 @@
 
 ## Что реализовано
 
+### Marketplace moderation: контекст рынка в жалобах (май 2026)
+- [x] `MarketplaceAdminDtos`: `ComplainedTransactionDto.createdAt`, новые `ConcurrentListingDto` и `TransactionMarketContextDto`, `TransactionComplaintsListDto.marketContext`
+- [x] **Flyway V42:** `CREATE INDEX idx_marketplace_listing_user_card ON marketplace_listing(user_card_id)`
+- [x] `MarketplaceListingRepository`: `findConcurrentListingsForContext` (same fantasy-player + rarity, окно активности на момент `soldAt`, исключение текущего листинга, fallback `soldCardTemplate -> userCard.cardTemplate`)
+- [x] `MarketplaceAdminService`: в `getComplainedTransactions` проброшен `createdAt`; в `getTransactionComplaints` построен `marketContext` с разделением concurrent-листингов на `sameTemplate` и `samePlayerRarity`, сортировка по цене
+- [x] Admin API types (`polemica-fantasy-admin/src/api/types.ts`): добавлены `ConcurrentListingDto`, `TransactionMarketContextDto`, `marketContext` в `TransactionComplaintsListDto`, `createdAt` в `ComplainedTransactionDto`
+- [x] `MarketplaceModerationPage`: в таблице жалоб колонка «Создан»; в модалке санкции поля «Создан» и «Время на рынке»; секция «Рынок на момент выкупа» (2 таблицы + success-alert если пусто + цветовая маркировка цены)
+- [x] Проверки: `./gradlew compileKotlin` (`polemica-fantasy-backend`) и `npm run build` (`polemica-fantasy-admin`) — успешно
+
 ### STANDALONE: фильтр по started-дню серии (май 2026)
 - [x] **Flyway V41:** добавлена колонка `series.game_started_on` (`DATE NULL`) для day-based фильтра Polemica `game.started`
 - [x] **Backend контракты:** `Series.gameStartedOn` + проброс в `SeriesDto`, `CreateSeriesRequest`, `UpdateSeriesRequest`

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.Instant
 
 interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long> {
 
@@ -140,6 +141,34 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("id") id: Long,
         @Param("sold") sold: MarketplaceListingStatus,
     ): MarketplaceListing?
+
+    @Query(
+        """
+        SELECT DISTINCT ml FROM MarketplaceListing ml
+        JOIN FETCH ml.seller
+        JOIN FETCH ml.userCard uc
+        JOIN FETCH uc.cardTemplate ct
+        LEFT JOIN FETCH ml.soldCardTemplate sct
+        WHERE ml.id <> :excludeId
+          AND ml.createdAt <= :soldAt
+          AND (
+            ml.status = :active
+            OR (ml.status = :sold AND ml.soldAt IS NOT NULL AND ml.soldAt > :soldAt)
+          )
+          AND (
+            (sct IS NOT NULL AND sct.fantasyPlayer.id = :fantasyPlayerId AND sct.rarity = :rarity)
+            OR (sct IS NULL AND ct.fantasyPlayer.id = :fantasyPlayerId AND ct.rarity = :rarity)
+          )
+        """,
+    )
+    fun findConcurrentListingsForContext(
+        @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("rarity") rarity: Rarity,
+        @Param("soldAt") soldAt: Instant,
+        @Param("excludeId") excludeId: Long,
+        @Param("active") active: MarketplaceListingStatus,
+        @Param("sold") sold: MarketplaceListingStatus,
+    ): List<MarketplaceListing>
 
     @Query(
         """

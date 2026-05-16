@@ -40,6 +40,7 @@ import type {
   BanPairResultDto,
   BanPairPreviewUserDto,
   ComplainedTransactionDto,
+  ConcurrentListingDto,
   EconomyConfigItemDto,
   PairAnalysisDto,
   PairSanctionHistoryItemDto,
@@ -128,6 +129,28 @@ function renderBanStatus(record: UserByComplaintsDto) {
     }
   }
   return <Tag color="green">Активен</Tag>
+}
+
+function formatMarketDuration(createdAt: string, soldAt: string): string {
+  const durationMinutes = Math.max(0, dayjs(soldAt).diff(dayjs(createdAt), 'minute'))
+  if (durationMinutes < 60) {
+    return `${durationMinutes} мин`
+  }
+  const durationHours = Math.floor(durationMinutes / 60)
+  if (durationHours < 24) {
+    const restMinutes = durationMinutes % 60
+    return restMinutes > 0 ? `${durationHours} ч ${restMinutes} мин` : `${durationHours} ч`
+  }
+  const durationDays = Math.floor(durationHours / 24)
+  const restHours = durationHours % 24
+  return restHours > 0 ? `${durationDays} д ${restHours} ч` : `${durationDays} д`
+}
+
+function renderConcurrentPriceTag(concurrentPrice: number, reviewedPrice: number) {
+  if (concurrentPrice < reviewedPrice) {
+    return <Tag color="orange">Дешевле: {concurrentPrice.toLocaleString('ru-RU')} ₣</Tag>
+  }
+  return <Tag color="green">{concurrentPrice.toLocaleString('ru-RU')} ₣</Tag>
 }
 
 export function MarketplaceModerationPage() {
@@ -596,6 +619,11 @@ export function MarketplaceModerationPage() {
         render: (_: unknown, r: ComplainedTransactionDto) => `${r.price.toLocaleString('ru-RU')} ₣`,
       },
       {
+        title: 'Создан',
+        key: 'createdAt',
+        render: (_: unknown, r: ComplainedTransactionDto) => dayjs(r.createdAt).format('DD.MM.YYYY HH:mm'),
+      },
+      {
         title: 'Продавец',
         key: 'seller',
         render: (_: unknown, r: ComplainedTransactionDto) => `${r.seller.displayName} (${r.seller.telegramId})`,
@@ -720,6 +748,42 @@ export function MarketplaceModerationPage() {
       },
     ],
     [],
+  )
+
+  const concurrentListingsColumns = useMemo(
+    () => [
+      {
+        title: 'Listing ID',
+        dataIndex: 'listingId' as const,
+        key: 'listingId',
+      },
+      {
+        title: 'Продавец',
+        key: 'seller',
+        render: (_: unknown, r: ConcurrentListingDto) => `${r.sellerDisplayName} (${r.sellerTelegramId})`,
+      },
+      {
+        title: 'Цена ₣',
+        key: 'price',
+        render: (_: unknown, r: ConcurrentListingDto) => renderConcurrentPriceTag(r.price, selectedTransaction?.price ?? r.price),
+      },
+      {
+        title: 'Создан',
+        key: 'createdAt',
+        render: (_: unknown, r: ConcurrentListingDto) => dayjs(r.createdAt).format('DD.MM.YYYY HH:mm'),
+      },
+      {
+        title: 'Статус',
+        key: 'status',
+        render: (_: unknown, r: ConcurrentListingDto) =>
+          r.active ? (
+            <Tag color="processing">Активен</Tag>
+          ) : (
+            <Tag color="default">Продан: {r.soldAt ? dayjs(r.soldAt).format('DD.MM.YYYY HH:mm') : '—'}</Tag>
+          ),
+      },
+    ],
+    [selectedTransaction?.price],
   )
 
   const sanctionHistoryColumns = useMemo(
@@ -1165,6 +1229,9 @@ export function MarketplaceModerationPage() {
                 {selectedTransaction.playerName} <Tag color={rarityColor(selectedTransaction.rarity)}>{selectedTransaction.rarity}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Цена">{selectedTransaction.price.toLocaleString('ru-RU')} ₣</Descriptions.Item>
+              <Descriptions.Item label="Создан" span={2}>
+                {dayjs(selectedTransaction.createdAt).format('DD.MM.YYYY HH:mm')}
+              </Descriptions.Item>
               <Descriptions.Item label="Продавец">
                 {selectedTransaction.seller.displayName} ({selectedTransaction.seller.telegramId})
               </Descriptions.Item>
@@ -1175,6 +1242,9 @@ export function MarketplaceModerationPage() {
                 {dayjs(selectedTransaction.soldAt).format('DD.MM.YYYY HH:mm')}
               </Descriptions.Item>
               <Descriptions.Item label="Жалоб">{selectedTransaction.complaintsCount}</Descriptions.Item>
+              <Descriptions.Item label="Время на рынке" span={2}>
+                {formatMarketDuration(selectedTransaction.createdAt, selectedTransaction.soldAt)}
+              </Descriptions.Item>
             </Descriptions>
 
             {transactionComplaintsQ.isLoading && <Typography.Text type="secondary">Загрузка жалоб…</Typography.Text>}
@@ -1189,6 +1259,37 @@ export function MarketplaceModerationPage() {
                 columns={transactionComplaintsColumns}
                 dataSource={transactionComplaintsQ.data.complaints}
               />
+            )}
+            {transactionComplaintsQ.data && (
+              <Space direction="vertical" style={{ display: 'flex' }} size="small">
+                <Typography.Text strong>Рынок на момент выкупа</Typography.Text>
+                {transactionComplaintsQ.data.marketContext.concurrentSameTemplate.length === 0 &&
+                transactionComplaintsQ.data.marketContext.concurrentSamePlayerRarity.length === 0 ? (
+                  <Alert type="success" message="Одновременных листингов не найдено" showIcon />
+                ) : (
+                  <>
+                    <Typography.Text strong>Те же ачивки</Typography.Text>
+                    <Table<ConcurrentListingDto>
+                      rowKey="listingId"
+                      size="small"
+                      pagination={false}
+                      columns={concurrentListingsColumns}
+                      dataSource={transactionComplaintsQ.data.marketContext.concurrentSameTemplate}
+                    />
+                    <Typography.Text strong>Та же редкость (другие ачивки)</Typography.Text>
+                    <Table<ConcurrentListingDto>
+                      rowKey="listingId"
+                      size="small"
+                      pagination={false}
+                      columns={concurrentListingsColumns}
+                      dataSource={transactionComplaintsQ.data.marketContext.concurrentSamePlayerRarity}
+                    />
+                  </>
+                )}
+                <Typography.Text type="secondary">
+                  Листинги той же fantasy-player, но другой редкости, не показываются.
+                </Typography.Text>
+              </Space>
             )}
 
             <Form<SanctionFormValues>

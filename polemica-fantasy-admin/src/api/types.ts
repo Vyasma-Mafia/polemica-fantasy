@@ -314,6 +314,7 @@ export interface ComplainedTransactionDto {
   playerName: string
   rarity: Rarity
   price: number
+  createdAt: string
   soldAt: string
   seller: TransactionParticipantDto
   buyer: TransactionParticipantDto
@@ -336,8 +337,26 @@ export interface TransactionComplaintDetailDto {
   complainedAt: string
 }
 
+export interface ConcurrentListingDto {
+  listingId: number
+  sellerDisplayName: string
+  sellerTelegramId: number
+  price: number
+  createdAt: string
+  soldAt: string | null
+  active: boolean
+  sameTemplate: boolean
+}
+
+export interface TransactionMarketContextDto {
+  listingCreatedAt: string
+  concurrentSameTemplate: ConcurrentListingDto[]
+  concurrentSamePlayerRarity: ConcurrentListingDto[]
+}
+
 export interface TransactionComplaintsListDto {
   complaints: TransactionComplaintDetailDto[]
+  marketContext: TransactionMarketContextDto
 }
 
 export interface BanDurationRequest {

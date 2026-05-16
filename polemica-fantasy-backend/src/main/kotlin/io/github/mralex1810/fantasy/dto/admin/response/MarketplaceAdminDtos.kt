@@ -118,6 +118,7 @@ data class ComplainedTransactionDto(
     val playerName: String,
     val rarity: Rarity,
     val price: Long,
+    val createdAt: Instant,
     val soldAt: Instant,
     val seller: MarketplaceAdminParticipantDto,
     val buyer: MarketplaceAdminParticipantDto,
@@ -140,8 +141,26 @@ data class TransactionComplaintDetailDto(
     val complainedAt: Instant,
 )
 
+data class ConcurrentListingDto(
+    val listingId: Long,
+    val sellerDisplayName: String,
+    val sellerTelegramId: Long,
+    val price: Long,
+    val createdAt: Instant,
+    val soldAt: Instant?,
+    val active: Boolean,
+    val sameTemplate: Boolean,
+)
+
+data class TransactionMarketContextDto(
+    val listingCreatedAt: Instant,
+    val concurrentSameTemplate: List<ConcurrentListingDto>,
+    val concurrentSamePlayerRarity: List<ConcurrentListingDto>,
+)
+
 data class TransactionComplaintsListDto(
     val complaints: List<TransactionComplaintDetailDto>,
+    val marketContext: TransactionMarketContextDto,
 )
 
 data class UserByComplaintsDto(

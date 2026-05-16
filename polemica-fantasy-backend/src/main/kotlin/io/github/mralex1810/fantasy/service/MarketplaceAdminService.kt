@@ -10,6 +10,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.BanPairPreviewUserDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.BanPairUserResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.ComplainedTransactionDto
+import io.github.mralex1810.fantasy.dto.admin.response.ConcurrentListingDto
 import io.github.mralex1810.fantasy.dto.admin.response.MarketplaceAdminParticipantDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedComplainedTransactionsDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedPairSanctionHistoryDto
@@ -22,6 +23,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.PairTradesResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.SanctionTransactionResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintDetailDto
 import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintsListDto
+import io.github.mralex1810.fantasy.dto.admin.response.TransactionMarketContextDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserByComplaintsDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
@@ -321,6 +323,7 @@ class MarketplaceAdminService(
                 playerName = player.nickname,
                 rarity = template.rarity,
                 price = listing.price,
+                createdAt = listing.createdAt,
                 soldAt = soldAt,
                 seller = MarketplaceAdminParticipantDto(
                     telegramId = seller.telegramId,
@@ -370,6 +373,44 @@ class MarketplaceAdminService(
         if (listing.buyer == null || listing.seller == null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found")
         }
+        val reviewedTemplate = listing.soldCardTemplate ?: listing.userCard?.cardTemplate
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction card template is missing")
+        val fantasyPlayer = reviewedTemplate.fantasyPlayer
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction fantasy player is missing")
+        val fantasyPlayerId = fantasyPlayer.id
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction fantasy player id is missing")
+        val soldAt = listing.soldAt
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction soldAt is missing")
+        val reviewedTemplateId = reviewedTemplate.id
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction template id is missing")
+
+        val concurrentListings = marketplaceListingRepository.findConcurrentListingsForContext(
+            fantasyPlayerId = fantasyPlayerId,
+            rarity = reviewedTemplate.rarity,
+            soldAt = soldAt,
+            excludeId = listingId,
+            active = MarketplaceListingStatus.ACTIVE,
+            sold = MarketplaceListingStatus.SOLD,
+        )
+        val concurrentListingDtos = concurrentListings.mapNotNull { concurrent ->
+            val concurrentListingId = concurrent.id ?: return@mapNotNull null
+            val concurrentSeller = concurrent.seller ?: return@mapNotNull null
+            val effectiveTemplate = concurrent.soldCardTemplate ?: concurrent.userCard?.cardTemplate ?: return@mapNotNull null
+            ConcurrentListingDto(
+                listingId = concurrentListingId,
+                sellerDisplayName = concurrentSeller.publicDisplayName(),
+                sellerTelegramId = concurrentSeller.telegramId,
+                price = concurrent.price,
+                createdAt = concurrent.createdAt,
+                soldAt = concurrent.soldAt,
+                active = concurrent.status == MarketplaceListingStatus.ACTIVE,
+                sameTemplate = effectiveTemplate.id == reviewedTemplateId,
+            )
+        }
+        val byPriceThenId = compareBy<ConcurrentListingDto> { it.price }.thenBy { it.listingId }
+        val concurrentSameTemplate = concurrentListingDtos.filter { it.sameTemplate }.sortedWith(byPriceThenId)
+        val concurrentSamePlayerRarity = concurrentListingDtos.filter { !it.sameTemplate }.sortedWith(byPriceThenId)
+
         val complaints = marketplaceComplaintRepository.findAllByListing_IdOrderByCreatedAtAsc(listingId)
         return TransactionComplaintsListDto(
             complaints = complaints.map { complaint ->
@@ -384,6 +425,11 @@ class MarketplaceAdminService(
                     complainedAt = complaint.createdAt,
                 )
             },
+            marketContext = TransactionMarketContextDto(
+                listingCreatedAt = listing.createdAt,
+                concurrentSameTemplate = concurrentSameTemplate,
+                concurrentSamePlayerRarity = concurrentSamePlayerRarity,
+            ),
         )
     }
 
