@@ -21,7 +21,8 @@
 
 Коды «потери» игр в бэкенде:
 - STANDALONE: id матча встречается в профильной выборке у меньше чем min(min_overlap, N) игроков из N в серии;
-  имя не начинается с name_prefix; лимит 500 последних игр на игрока (PROFILE_SYNC_PAGE_SIZE) —
+  имя не начинается с name_prefix; не совпадает started-день с gameStartedOn (если фильтр задан);
+  лимит 500 последних игр на игрока (PROFILE_SYNC_PAGE_SIZE) —
   если у кого-то в истории >500 игр, матчи старее «хвоста» не учитываются в частотах.
 - POLEMICA_COMPETITION: num вне [game_num_from, game_num_to]; в upsertSeriesGame при game.id == null запись не создаётся.
 
@@ -38,6 +39,7 @@ import sys
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
@@ -129,6 +131,49 @@ def fetch_profile_games(profile_base: str, user_id: int, page: int, limit: int, 
     return data
 
 
+def started_day_in_server_tz(started: Any) -> Optional[date]:
+    server_tz = datetime.now().astimezone().tzinfo
+    if started is None:
+        return None
+
+    if isinstance(started, (int, float)):
+        ts = float(started)
+        if ts > 10_000_000_000:
+            ts /= 1000.0
+        return datetime.fromtimestamp(ts, tz=server_tz).date()
+
+    if isinstance(started, str):
+        text = started.strip()
+        if not text:
+            return None
+        normalized = f"{text[:-1]}+00:00" if text.endswith("Z") else text
+        try:
+            dt = datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            return dt.date()
+        return dt.astimezone(server_tz).date()
+
+    if isinstance(started, dict):
+        year = started.get("year")
+        month = started.get("monthValue", started.get("month"))
+        day = started.get("dayOfMonth", started.get("day"))
+        if isinstance(year, int) and isinstance(month, int) and isinstance(day, int):
+            try:
+                return date(year, month, day)
+            except ValueError:
+                return None
+
+    return None
+
+
+def format_started_for_log(started: Any) -> str:
+    if isinstance(started, (dict, list)):
+        return json.dumps(started, ensure_ascii=False)
+    return repr(started)
+
+
 def trace_standalone(
     series: Dict[str, Any],
     tournament_players_by_id: Dict[int, Dict[str, Any]],
@@ -140,6 +185,14 @@ def trace_standalone(
     polemica_login_failed: bool = False,
 ) -> None:
     prefix = (series.get("namePrefix") or "").strip()
+    started_filter_raw = series.get("gameStartedOn")
+    started_filter: Optional[date] = None
+    if started_filter_raw:
+        try:
+            started_filter = date.fromisoformat(str(started_filter_raw))
+        except ValueError:
+            print(f"WARNING: gameStartedOn имеет неожиданный формат: {started_filter_raw!r} (фильтр отключён)")
+            started_filter = None
     print("\n=== STANDALONE sync (как fetchStandalonePrepared) ===")
     if not prefix:
         print("ERROR: name_prefix пуст — бэкенд вернёт 400.")
@@ -151,6 +204,10 @@ def trace_standalone(
         return
 
     print(f"name_prefix: {prefix!r}")
+    if started_filter is None:
+        print("Фильтр started-дня: отключён (gameStartedOn=null)")
+    else:
+        print(f"Фильтр started-дня: {started_filter.isoformat()} (календарный день в таймзоне сервера)")
     print(f"Лимит строк профиля на игрока (как в бэкенде): {profile_page_limit}")
 
     id_sets: List[Set[int]] = []
@@ -206,6 +263,7 @@ def trace_standalone(
     print("\nЗагрузка матчей (GET /v1/matches/{id}) и фильтр по префиксу имени:")
     kept: List[int] = []
     dropped_prefix: List[Tuple[int, str]] = []
+    dropped_started_day: List[Tuple[int, str, Any]] = []
     dropped_null_id: List[int] = []
     for mid in candidates:
         try:
@@ -222,15 +280,35 @@ def trace_standalone(
         if not name.startswith(prefix):
             dropped_prefix.append((mid, name[:80]))
             continue
+        game_started_raw = game.get("started")
+        game_started_day = started_day_in_server_tz(game_started_raw)
+        if started_filter is not None and game_started_day != started_filter:
+            dropped_started_day.append((mid, name[:80], game_started_raw))
+            continue
         kept.append(mid)
 
-    print(f"\nИтог: сохранилось бы {len(kept)} игр (после префикса).")
+    if started_filter is None:
+        print(f"\nИтог: сохранилось бы {len(kept)} игр (после префикса).")
+    else:
+        print(f"\nИтог: сохранилось бы {len(kept)} игр (после префикса и started-дня).")
     if dropped_prefix:
         print(f"Отброшено по префиксу (не startswith {prefix!r}): {len(dropped_prefix)}")
         for mid, nm in dropped_prefix[:20]:
             print(f"  match {mid}: name={nm!r}")
         if len(dropped_prefix) > 20:
             print(f"  … ещё {len(dropped_prefix) - 20}")
+    if dropped_started_day:
+        print(
+            f"Отброшено по started-дню (ожидался {started_filter.isoformat()}): {len(dropped_started_day)}"
+        )
+        for mid, nm, started_raw in dropped_started_day[:20]:
+            parsed_day = started_day_in_server_tz(started_raw)
+            print(
+                f"  match {mid}: name={nm!r}, started={format_started_for_log(started_raw)}, "
+                f"started_day={parsed_day.isoformat() if parsed_day else 'n/a'}"
+            )
+        if len(dropped_started_day) > 20:
+            print(f"  … ещё {len(dropped_started_day) - 20}")
     if dropped_null_id:
         print(f"Отброшено из-за null game.id: {dropped_null_id}")
 

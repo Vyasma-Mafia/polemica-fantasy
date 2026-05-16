@@ -87,6 +87,8 @@ export interface SeriesDto {
   gameNumTo: number | null
   /** POLEMICA_COMPETITION filter: 0/1/2, null = all phases. */
   gamePhase: number | null
+  /** STANDALONE filter by game.started calendar day, format YYYY-MM-DD; null = all days. */
+  gameStartedOn: string | null
   status: SeriesStatus
   startsAt: string
   teamDeadline: string

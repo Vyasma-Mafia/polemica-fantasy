@@ -2,6 +2,16 @@
 
 ## Что реализовано
 
+### STANDALONE: фильтр по started-дню серии (май 2026)
+- [x] **Flyway V41:** добавлена колонка `series.game_started_on` (`DATE NULL`) для day-based фильтра Polemica `game.started`
+- [x] **Backend контракты:** `Series.gameStartedOn` + проброс в `SeriesDto`, `CreateSeriesRequest`, `UpdateSeriesRequest`
+- [x] **Update semantics:** в `UpdateSeriesRequest` добавлен флаг `gameStartedOnSpecified` для явного сброса `gameStartedOn = null`
+- [x] **SeriesService:** для `STANDALONE` фильтр сохраняется/обновляется; для `POLEMICA_COMPETITION` non-null `gameStartedOn` отклоняется с 400 и в сущности удерживается `null`
+- [x] **Sync логика:** `DefaultGameSyncService.fetchStandalonePrepared` дополняет `name_prefix`-фильтр проверкой `game.started.toLocalDate() == series.gameStartedOn` (если фильтр задан)
+- [x] **Админка:** `SeriesFormModal` и `SeriesDetailPage` получили DatePicker (без времени, optional, clear/reset), `TournamentDetailPage` показывает дату фильтра рядом с `Prefix`
+- [x] **Trace script:** `scripts/trace_series_game_sync.py` читает `gameStartedOn`, фильтрует кандидаты по started-дню и выводит отдельную статистику отсечения
+- [x] **Проверки:** `./gradlew compileKotlin compileTestKotlin`, `npm run build` (`polemica-fantasy-admin`), `python3 -m py_compile scripts/trace_series_game_sync.py`; запуск целевого Testcontainers-теста упёрся в отсутствие Docker в окружении
+
 ### TMA: устранение мерцания у legendary-crafted и tournament_gold карт (май 2026)
 - [x] В `polemica-fantasy-webapp/src/index.css` из keyframes `pf-legendary-crafted-glow` и `pf-skin-gold-glow` убран `filter` (анимация оставлена на `box-shadow`)
 - [x] Добавлены GPU/compositing hints (`will-change`) для glow/shimmer/sweep анимаций: `box-shadow`, `background-position`, `transform`
@@ -277,8 +287,8 @@
 - [x] **`sniper`:** дополнительно требуется смерть шерифа в **ночь 1** (`getKilled` + `night == 1`), а не только «реальный ком-убийца» по первой жертве в целом.
 
 ### STANDALONE: подбор игр серии по профилю (min(8, N))
-- [x] **`DefaultGameSyncService.fetchStandalonePrepared`:** частоты match id по страницам профиля; порог **≥ min(8, N)** игроков ростера, затем `name_prefix`; константа `STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP`.
-- [x] **`scripts/trace_series_game_sync.py`:** та же логика, `--min-overlap` (default 8).
+- [x] **`DefaultGameSyncService.fetchStandalonePrepared`:** частоты match id по страницам профиля; порог **≥ min(8, N)** игроков ростера, затем `name_prefix`; константа `STANDALONE_MIN_PLAYERS_IN_PROFILE_OVERLAP`. С мая 2026 дополнительно поддерживается optional day-filter `series.game_started_on` (`gameStartedOn`): матч учитывается только если `game.started.toLocalDate()` совпадает с днём фильтра.
+- [x] **`scripts/trace_series_game_sync.py`:** трассировка той же логики (`--min-overlap` + started-day filter из серии с отдельной статистикой отсечения).
 
 ### Документация в репозитории
 - [x] **Структура `docs/`:** [`architecture/DESIGN.md`](../docs/architecture/DESIGN.md) (SDD), [`plans/archive/`](../docs/plans/archive/) (V2/V3 планы, CHANGES-V2), [`features/DESIGN-LEGENDARY-CARDS.md`](../docs/features/DESIGN-LEGENDARY-CARDS.md); в корне — [`README.md`](../README.md), указатель [`docs/README.md`](../docs/README.md)

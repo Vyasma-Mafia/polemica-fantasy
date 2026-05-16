@@ -6,6 +6,7 @@ import type { SeriesStatus, TournamentKind } from '../api/types'
 interface Values {
   name: string
   namePrefix: string
+  gameStartedOn: ReturnType<typeof dayjs> | null
   gameNumFrom: number | null
   gameNumTo: number | null
   gamePhase: number | 'ALL'
@@ -31,6 +32,7 @@ export function SeriesFormModal({
       initialValues={{
         name: '',
         namePrefix: '',
+        gameStartedOn: null,
         gameNumFrom: null,
         gameNumTo: null,
         gamePhase: 0,
@@ -57,6 +59,7 @@ export function SeriesFormModal({
           onSubmit({
             ...base,
             namePrefix: v.namePrefix,
+            gameStartedOn: v.gameStartedOn ? v.gameStartedOn.format('YYYY-MM-DD') : null,
           })
         }
       }}
@@ -65,9 +68,14 @@ export function SeriesFormModal({
         <Input />
       </Form.Item>
       {!isCompetition && (
-        <Form.Item name="namePrefix" label="Name prefix" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
+        <>
+          <Form.Item name="namePrefix" label="Name prefix" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="gameStartedOn" label="Game started day (optional)">
+            <DatePicker format="YYYY-MM-DD" allowClear style={{ width: '100%' }} />
+          </Form.Item>
+        </>
       )}
       {isCompetition && (
         <>

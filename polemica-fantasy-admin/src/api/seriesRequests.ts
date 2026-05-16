@@ -6,6 +6,7 @@ export interface CreateSeriesRequest {
   gameNumFrom?: number | null
   gameNumTo?: number | null
   gamePhase?: number | null
+  gameStartedOn?: string | null
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
@@ -17,6 +18,7 @@ export interface UpdateSeriesRequest {
   gameNumFrom?: number | null
   gameNumTo?: number | null
   gamePhase?: number | null
+  gameStartedOn?: string | null
   status?: SeriesStatus | null
   startsAt?: string | null
   teamDeadline?: string | null

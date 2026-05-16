@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.time.Instant
+import java.time.LocalDate
 
 @Entity
 @Table(name = "series")
@@ -39,6 +40,9 @@ class Series(
 
     @Column(name = "game_phase")
     var gamePhase: Int? = null,
+
+    @Column(name = "game_started_on")
+    var gameStartedOn: LocalDate? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)

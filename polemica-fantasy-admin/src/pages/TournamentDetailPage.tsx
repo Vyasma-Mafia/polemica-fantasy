@@ -182,7 +182,9 @@ export function TournamentDetailPage() {
                 ? row.gameNumFrom != null && row.gameNumTo != null
                   ? `${row.gameNumFrom}–${row.gameNumTo}`
                   : '—'
-                : (row.namePrefix ?? '—'),
+                : row.gameStartedOn
+                  ? `${row.namePrefix ?? '—'} · ${row.gameStartedOn}`
+                  : (row.namePrefix ?? '—'),
           },
           {
             title: 'Synced',

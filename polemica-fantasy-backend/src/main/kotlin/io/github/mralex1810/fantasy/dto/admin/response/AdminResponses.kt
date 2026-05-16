@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import java.time.Instant
+import java.time.LocalDate
 
 data class ActiveSeriesBriefDto(
     val id: Long,
@@ -56,6 +57,8 @@ data class SeriesDto(
     val gameNumTo: Long?,
     /** POLEMICA_COMPETITION filter: 0/1/2, null = all phases. */
     val gamePhase: Int?,
+    /** STANDALONE filter: include games from this calendar day (`started`); null = all days. */
+    val gameStartedOn: LocalDate?,
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,

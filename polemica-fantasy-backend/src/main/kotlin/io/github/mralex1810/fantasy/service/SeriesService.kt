@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 @Service
@@ -72,6 +73,7 @@ class SeriesService(
                 gameNumFrom = validated.gameNumFrom,
                 gameNumTo = validated.gameNumTo,
                 gamePhase = validated.gamePhase,
+                gameStartedOn = validated.gameStartedOn,
                 status = request.status,
                 startsAt = request.startsAt,
                 teamDeadline = request.teamDeadline,
@@ -112,6 +114,9 @@ class SeriesService(
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gamePhase is not used for STANDALONE tournaments")
                 }
                 s.gamePhase = null
+                if (request.gameStartedOnSpecified) {
+                    s.gameStartedOn = request.gameStartedOn
+                }
             }
             TournamentKind.POLEMICA_COMPETITION -> {
                 val from = request.gameNumFrom ?: s.gameNumFrom
@@ -130,6 +135,10 @@ class SeriesService(
                 if (request.gamePhaseSpecified) {
                     s.gamePhase = request.gamePhase
                 }
+                if (request.gameStartedOnSpecified && request.gameStartedOn != null) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gameStartedOn is only used for STANDALONE tournaments")
+                }
+                s.gameStartedOn = null
             }
         }
         val saved = seriesRepository.save(s)
@@ -203,6 +212,7 @@ class SeriesService(
                     gameNumFrom = null,
                     gameNumTo = null,
                     gamePhase = null,
+                    gameStartedOn = request.gameStartedOn,
                 )
             }
             TournamentKind.POLEMICA_COMPETITION -> {
@@ -213,12 +223,16 @@ class SeriesService(
                 if (from > to) {
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gameNumFrom must be <= gameNumTo")
                 }
+                if (request.gameStartedOn != null) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "gameStartedOn is only used for STANDALONE tournaments")
+                }
                 val prefix = request.namePrefix?.trim()?.takeIf { it.isNotEmpty() }
                 ValidatedSeriesFields(
                     namePrefix = prefix,
                     gameNumFrom = from,
                     gameNumTo = to,
                     gamePhase = request.gamePhase,
+                    gameStartedOn = null,
                 )
             }
         }
@@ -449,6 +463,7 @@ class SeriesService(
         gameNumFrom = gameNumFrom,
         gameNumTo = gameNumTo,
         gamePhase = gamePhase,
+        gameStartedOn = gameStartedOn,
         status = status,
         startsAt = startsAt,
         teamDeadline = teamDeadline,
@@ -463,5 +478,6 @@ class SeriesService(
         val gameNumFrom: Long?,
         val gameNumTo: Long?,
         val gamePhase: Int?,
+        val gameStartedOn: LocalDate?,
     )
 }

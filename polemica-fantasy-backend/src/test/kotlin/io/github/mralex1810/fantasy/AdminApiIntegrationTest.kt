@@ -899,6 +899,115 @@ class AdminApiIntegrationTest {
         assertEquals(null, unbanned.marketplaceBannedUntil)
     }
 
+    @Test
+    @Order(23)
+    fun `series gameStartedOn works for standalone and is rejected for competition`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+
+        val standaloneTournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Started Day Standalone","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val standaloneTournamentId =
+            Regex("\"id\"\\s*:\\s*(\\d+)").find(standaloneTournamentJson)!!.groupValues[1].toLong()
+
+        val standaloneSeriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$standaloneTournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Started Day Series","namePrefix":"SDS","gameStartedOn":"2026-10-05","status":"UPCOMING",
+                    "startsAt":"2026-10-01T12:00:00Z","teamDeadline":"2026-10-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.gameStartedOn").value("2026-10-05"))
+            .andReturn().response.contentAsString
+        val standaloneSeriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(standaloneSeriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            get("/api/v1/admin/series/$standaloneSeriesId").header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.gameStartedOn").value("2026-10-05"))
+
+        mockMvc.perform(
+            put("/api/v1/admin/series/$standaloneSeriesId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"gameStartedOn":"2026-10-06"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.gameStartedOn").value("2026-10-06"))
+
+        mockMvc.perform(
+            put("/api/v1/admin/series/$standaloneSeriesId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"gameStartedOn":null}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.gameStartedOn").value(nullValue()))
+
+        val competitionTournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Started Day Competition","status":"DRAFT","kind":"POLEMICA_COMPETITION","polemicaCompetitionId":99887766}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val competitionTournamentId =
+            Regex("\"id\"\\s*:\\s*(\\d+)").find(competitionTournamentJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$competitionTournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Competition Started Day","gameNumFrom":1,"gameNumTo":3,"gameStartedOn":"2026-10-05","status":"UPCOMING",
+                    "startsAt":"2026-10-01T12:00:00Z","teamDeadline":"2026-10-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+
+        val competitionSeriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$competitionTournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Competition Series","gameNumFrom":1,"gameNumTo":3,"status":"UPCOMING",
+                    "startsAt":"2026-10-01T12:00:00Z","teamDeadline":"2026-10-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.gameStartedOn").value(nullValue()))
+            .andReturn().response.contentAsString
+        val competitionSeriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(competitionSeriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            put("/api/v1/admin/series/$competitionSeriesId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"gameStartedOn":"2026-10-07"}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
     companion object {
         @JvmField
         @Container

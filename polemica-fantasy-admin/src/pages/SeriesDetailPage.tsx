@@ -36,6 +36,7 @@ export function SeriesDetailPage() {
   const [form] = Form.useForm<{
     name: string
     namePrefix: string
+    gameStartedOn: ReturnType<typeof dayjs> | null
     gameNumFrom: number | null
     gameNumTo: number | null
     gamePhase: number | 'ALL'
@@ -69,6 +70,7 @@ export function SeriesDetailPage() {
     form.setFieldsValue({
       name: s.name,
       namePrefix: s.namePrefix ?? '',
+      gameStartedOn: s.gameStartedOn ? dayjs(s.gameStartedOn, 'YYYY-MM-DD') : null,
       gameNumFrom: s.gameNumFrom ?? null,
       gameNumTo: s.gameNumTo ?? null,
       gamePhase: s.gamePhase == null ? 'ALL' : s.gamePhase,
@@ -200,6 +202,7 @@ export function SeriesDetailPage() {
             updateMut.mutate({
               ...base,
               namePrefix: v.namePrefix,
+              gameStartedOn: v.gameStartedOn ? v.gameStartedOn.format('YYYY-MM-DD') : null,
             })
           }
         }}
@@ -209,9 +212,14 @@ export function SeriesDetailPage() {
           <Input />
         </Form.Item>
         {!isCompetition && (
-          <Form.Item name="namePrefix" label="Name prefix" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
+          <>
+            <Form.Item name="namePrefix" label="Name prefix" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="gameStartedOn" label="Game started day (optional)">
+              <DatePicker format="YYYY-MM-DD" allowClear style={{ width: '100%' }} />
+            </Form.Item>
+          </>
         )}
         {isCompetition && (
           <>

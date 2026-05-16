@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 import java.time.Instant
+import java.time.LocalDate
 
 data class CreateSeriesRequest(
     @field:NotBlank @field:Size(max = 512)
@@ -19,6 +20,7 @@ data class CreateSeriesRequest(
     val gameNumTo: Long? = null,
     @field:Min(0) @field:Max(2)
     val gamePhase: Int? = 0,
+    val gameStartedOn: LocalDate? = null,
     @field:NotNull
     val status: SeriesStatus = SeriesStatus.UPCOMING,
     @field:NotNull
@@ -46,6 +48,13 @@ class UpdateSeriesRequest {
             gamePhaseSpecified = true
         }
 
+    var gameStartedOn: LocalDate? = null
+        @JsonSetter("gameStartedOn")
+        set(value) {
+            field = value
+            gameStartedOnSpecified = true
+        }
+
     var status: SeriesStatus? = null
 
     var startsAt: Instant? = null
@@ -54,6 +63,10 @@ class UpdateSeriesRequest {
 
     @get:JsonIgnore
     var gamePhaseSpecified: Boolean = false
+        private set
+
+    @get:JsonIgnore
+    var gameStartedOnSpecified: Boolean = false
         private set
 }
 

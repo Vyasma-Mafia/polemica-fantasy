@@ -63,6 +63,7 @@ class DefaultGameSyncService(
 
     private fun fetchStandalonePrepared(seriesId: Long, series: Series): List<PreparedSeriesGame> {
         val prefix = series.namePrefix?.trim().orEmpty()
+        val startedOnFilter = series.gameStartedOn
         if (prefix.isEmpty()) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -91,6 +92,7 @@ class DefaultGameSyncService(
             val game = loaded.getOrPut(mid) { integration.loadMatch(mid) }
             val name = game.name?.trim() ?: ""
             if (!name.startsWith(prefix)) continue
+            if (startedOnFilter != null && game.started.toLocalDate() != startedOnFilter) continue
             val gid = game.id ?: continue
             result.add(
                 PreparedSeriesGame(
