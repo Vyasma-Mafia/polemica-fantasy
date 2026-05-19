@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Marketplace moderation: pair trades createdAt и complaintsCount (май 2026)
+- [x] **Backend DTO:** `PairTradeDto` получил поля `createdAt` (время создания листинга из `MarketplaceListing.createdAt`) и `complaintsCount` (количество жалоб на операцию)
+- [x] **MarketplaceAdminService:** в `getPairTrades` добавлен batch-запрос `MarketplaceComplaintRepository.countGroupedByListingIds` для всех sold listings между юзерами; маппинг complaint count в `PairTradeDto`
+- [x] **Admin API types:** `polemica-fantasy-admin/src/api/types.ts` добавлены `createdAt` и `complaintsCount` в `PairTradeDto`
+- [x] **Admin UI (`MarketplaceModerationPage`):** в таблице pair trades добавлены колонки «Created at» (время листинга, width=180, формат `YYYY-MM-DD HH:mm`) и «Жалобы» (число жалоб, красный тег если ≥3, иначе обычный текст)
+- [x] Проверки: `./gradlew compileKotlin` (`polemica-fantasy-backend`) и `npm run build` (`polemica-fantasy-admin`) — успешно
+
 ### Marketplace moderation: контекст рынка в жалобах (май 2026)
 - [x] `MarketplaceAdminDtos`: `ComplainedTransactionDto.createdAt`, новые `ConcurrentListingDto` и `TransactionMarketContextDto`, `TransactionComplaintsListDto.marketContext`
 - [x] **Flyway V42:** `CREATE INDEX idx_marketplace_listing_user_card ON marketplace_listing(user_card_id)`
