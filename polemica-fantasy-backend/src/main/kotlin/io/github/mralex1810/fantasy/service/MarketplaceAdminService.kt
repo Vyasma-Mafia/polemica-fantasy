@@ -25,23 +25,21 @@ import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintDetai
 import io.github.mralex1810.fantasy.dto.admin.response.TransactionComplaintsListDto
 import io.github.mralex1810.fantasy.dto.admin.response.TransactionMarketContextDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserByComplaintsDto
-import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
+import io.github.mralex1810.fantasy.entity.MarketplaceListingSanction
 import io.github.mralex1810.fantasy.entity.MarketplacePairClearance
 import io.github.mralex1810.fantasy.entity.MarketplacePairClearanceId
 import io.github.mralex1810.fantasy.entity.MarketplacePairSanctionHistory
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.event.PairBanNotificationEvent
-import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
-import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceComplaintRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
 import io.github.mralex1810.fantasy.repository.MarketplacePairClearanceRepository
 import io.github.mralex1810.fantasy.repository.MarketplacePairSanctionHistoryRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
-import io.github.mralex1810.fantasy.repository.UserCardOwnershipHistoryRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Pageable
@@ -61,9 +59,6 @@ class MarketplaceAdminService(
     private val marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository,
     private val marketplaceComplaintRepository: MarketplaceComplaintRepository,
     private val userCardRepository: UserCardRepository,
-    private val fantasyTeamCardRepository: FantasyTeamCardRepository,
-    private val userCardOwnershipHistoryRepository: UserCardOwnershipHistoryRepository,
-    private val fantikiTransactionRepository: FantikiTransactionRepository,
     private val userService: UserService,
     private val telegramUserRepository: TelegramUserRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
@@ -189,6 +184,13 @@ class MarketplaceAdminService(
             idB,
         )
         val pct = economyConfigService.getMarketplaceCommissionPercent()
+        val soldListingIds = sold.map { it.id!! }
+        val complaintCounts = if (soldListingIds.isEmpty()) {
+            emptyMap()
+        } else {
+            marketplaceComplaintRepository.countGroupedByListingIds(soldListingIds)
+                .associate { row -> toLongId(row[0]) to toLongId(row[1]).toInt() }
+        }
 
         var totalGross = 0L
         var totalNet = 0L
@@ -205,6 +207,7 @@ class MarketplaceAdminService(
                 listingId = ml.id!!,
                 price = price,
                 sellerReceived = sellerReceived,
+                createdAt = ml.createdAt,
                 soldAt = ml.soldAt,
                 sellerTelegramId = ml.seller!!.telegramId,
                 buyerTelegramId = buyerTg,
@@ -213,6 +216,7 @@ class MarketplaceAdminService(
                 rarity = tpl.rarity,
                 currentOwnerTelegramId = ownerTg,
                 buyerStillOwnsCard = ownerTg == buyerTg,
+                complaintsCount = complaintCounts[ml.id!!] ?: 0,
             )
         }
         return PairTradesResultDto(
@@ -572,8 +576,7 @@ class MarketplaceAdminService(
         val pct = economyConfigService.getMarketplaceCommissionPercent()
         val sold = MarketplaceListingStatus.SOLD
 
-        // Money first for both, then cards/listings. Otherwise the first pass removes SOLD rows (e.g. partner A received
-        // a card in a B→A sale) and the second pass under-counts the seller’s net in sumSellerReceivedForSalesTo.
+        // Money first for both, then mark listings sanctioned so both directions are counted before exclusions apply.
         val takeA = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idA, idB, pct).coerceAtLeast(0L)
         val takeB = marketplaceListingRepository.sumSellerReceivedForSalesTo(sold, idB, idA, pct).coerceAtLeast(0L)
         if (takeA > 0) {
@@ -716,41 +719,41 @@ class MarketplaceAdminService(
         val selfId = self.id!!
         val partnerId = partner.id!!
 
-        val toRemove = userCardRepository.findUserCardsBoughtOnMarketplaceFromPartner(
-            currentOwnerId = selfId,
-            partnerId = partnerId,
-            sold = sold,
-        )
+        val listings = marketplaceListingRepository.findSoldFromPartnerToBuyer(sold, partnerId, selfId)
         val cardPayload = mutableListOf<BanPairConfiscatedCardDto>()
-        for (uc in toRemove) {
-            if (uc.telegramUser!!.id != selfId) {
+        val now = Instant.now()
+        val lo = minOf(selfId, partnerId)
+        val hi = maxOf(selfId, partnerId)
+
+        for (ml in listings) {
+            marketplaceListingSanctionRepository.save(
+                MarketplaceListingSanction(
+                    listing = ml,
+                    reason = "Pair ban",
+                    sellerFine = 0,
+                    buyerFine = 0,
+                    complainantReward = 0,
+                    createdAt = now,
+                    adminUsername = "pair-ban:$lo:$hi",
+                ),
+            )
+
+            val uc = ml.userCard
+            if (uc == null || uc.telegramUser == null || uc.telegramUser!!.id != selfId) {
                 continue
             }
             val ucId = uc.id!!
-            val template = uc.cardTemplate!!
-            val fp = template.fantasyPlayer!!
+            val tpl = ml.soldCardTemplate ?: uc.cardTemplate!!
+            val fp = tpl.fantasyPlayer
             cardPayload.add(
                 BanPairConfiscatedCardDto(
                     userCardId = ucId,
-                    playerName = fp.nickname,
-                    rarity = template.rarity,
+                    playerName = fp?.nickname ?: "—",
+                    rarity = tpl.rarity,
                 ),
             )
-            fantasyTeamCardRepository.deleteAllByUserCard_Id(ucId)
-            userCardOwnershipHistoryRepository.deleteAllByUserCard_Id(ucId)
-            marketplaceListingRepository.deleteAllByUserCard_Id(ucId)
-            val ownerRef = telegramUserRepository.getReferenceById(selfId)
-            fantikiTransactionRepository.save(
-                FantikiTransaction(
-                    telegramUser = ownerRef,
-                    amount = 0L,
-                    reason = FantikiTransactionReason.ADMIN_CARD_CONFISCATE,
-                ),
-            )
-            userCardRepository.delete(uc)
         }
 
-        // Re-load: [self] may be detached with stale [fantiki] after forceDeduct in [banPair].
         val fresh = telegramUserRepository.findById(selfId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found after pair sanctions")
         }

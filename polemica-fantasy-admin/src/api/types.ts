@@ -220,6 +220,7 @@ export interface PairTradeDto {
   listingId: number
   price: number
   sellerReceived: number
+  createdAt: string
   soldAt: string | null
   sellerTelegramId: number
   buyerTelegramId: number
@@ -229,6 +230,7 @@ export interface PairTradeDto {
   currentOwnerTelegramId: number
   /** False if the card was resold: not deleted at pair ban; seller net is still recovered. */
   buyerStillOwnsCard: boolean
+  complaintsCount: number
 }
 
 export interface PairTradesUserBriefDto {

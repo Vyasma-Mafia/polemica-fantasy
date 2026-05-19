@@ -844,6 +844,12 @@ export function MarketplaceModerationPage() {
   const tradeColumns = useMemo(
     () => [
       {
+        title: 'Created at',
+        key: 'createdAt',
+        width: 180,
+        render: (_: unknown, t: PairTradeDto) => dayjs(t.createdAt).format('YYYY-MM-DD HH:mm'),
+      },
+      {
         title: 'Sold at',
         key: 'sold',
         width: 180,
@@ -875,6 +881,13 @@ export function MarketplaceModerationPage() {
         key: 'seize',
         width: 130,
         render: (_: unknown, t: PairTradeDto) => (t.buyerStillOwnsCard ? 'Yes' : 'No'),
+      },
+      {
+        title: 'Жалобы',
+        dataIndex: 'complaintsCount' as const,
+        key: 'complaints',
+        align: 'center' as const,
+        render: (v: number) => (v >= 3 ? <Tag color="red">{v}</Tag> : v),
       },
     ],
     [],

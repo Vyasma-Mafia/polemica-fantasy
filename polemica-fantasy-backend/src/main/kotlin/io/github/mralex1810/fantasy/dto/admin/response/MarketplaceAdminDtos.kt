@@ -24,6 +24,7 @@ data class PairTradeDto(
     val listingId: Long,
     val price: Long,
     val sellerReceived: Long,
+    val createdAt: Instant,
     val soldAt: Instant?,
     val sellerTelegramId: Long,
     val buyerTelegramId: Long,
@@ -33,6 +34,7 @@ data class PairTradeDto(
     val currentOwnerTelegramId: Long,
     /** If false, the card is not removed at pair sanction; seller net for this sale is still recovered via fantiki. */
     val buyerStillOwnsCard: Boolean,
+    val complaintsCount: Int,
 )
 
 data class PairTradesUserBriefDto(
