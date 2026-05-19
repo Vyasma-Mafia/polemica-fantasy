@@ -213,6 +213,9 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
             (ml.seller.id = :idA AND ml.buyer.id = :idB)
             OR (ml.seller.id = :idB AND ml.buyer.id = :idA)
         )
+        AND NOT EXISTS (
+            SELECT 1 FROM MarketplaceListingSanction s WHERE s.listing.id = ml.id
+        )
         ORDER BY ml.soldAt ASC, ml.id ASC
         """,
     )
@@ -226,7 +229,12 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         """
         SELECT COALESCE(SUM(ml.price - (ml.price * :pct) / 100), 0)
         FROM MarketplaceListing ml
-        WHERE ml.status = :sold AND ml.seller.id = :sellerId AND ml.buyer.id = :buyerId
+        WHERE ml.status = :sold
+          AND ml.seller.id = :sellerId
+          AND ml.buyer.id = :buyerId
+          AND NOT EXISTS (
+              SELECT 1 FROM MarketplaceListingSanction s WHERE s.listing.id = ml.id
+          )
         """,
     )
     fun sumSellerReceivedForSalesTo(
@@ -356,5 +364,22 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("sold") sold: MarketplaceListingStatus,
         @Param("userId") userId: Long,
         pageable: Pageable,
+    ): List<MarketplaceListing>
+
+    @Query(
+        """
+        SELECT ml FROM MarketplaceListing ml
+        WHERE ml.status = :sold
+          AND ml.seller.id = :partnerId
+          AND ml.buyer.id = :buyerId
+          AND NOT EXISTS (
+              SELECT 1 FROM MarketplaceListingSanction s WHERE s.listing.id = ml.id
+          )
+        """,
+    )
+    fun findSoldFromPartnerToBuyer(
+        @Param("sold") sold: MarketplaceListingStatus,
+        @Param("partnerId") partnerId: Long,
+        @Param("buyerId") buyerId: Long,
     ): List<MarketplaceListing>
 }

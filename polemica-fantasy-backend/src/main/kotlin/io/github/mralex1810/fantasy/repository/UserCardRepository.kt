@@ -104,6 +104,9 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
             AND ml.status = :sold
             AND ml.seller.id = :partnerId
             AND ml.buyer.id = uc.telegramUser.id
+            AND NOT EXISTS (
+                SELECT 1 FROM MarketplaceListingSanction s WHERE s.listing.id = ml.id
+            )
         )
         """,
     )

@@ -12,10 +12,14 @@ import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
+import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
+import io.github.mralex1810.fantasy.repository.MarketplacePairSanctionHistoryRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -59,6 +63,12 @@ class MarketplacePairBanFantikiIntegrationTest {
 
     @Autowired
     private lateinit var userCardRepository: UserCardRepository
+
+    @Autowired
+    private lateinit var marketplacePairSanctionHistoryRepository: MarketplacePairSanctionHistoryRepository
+
+    @Autowired
+    private lateinit var marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository
 
     @Test
     @Transactional
@@ -215,11 +225,75 @@ class MarketplacePairBanFantikiIntegrationTest {
         val c = newUser(tgC)
         val price = 7_777L
         val (_, uc) = soldListingFromAToBWithCard(a, b, price, 501L)
+        val listingId = marketplaceListingRepository.findAll()
+            .filter { it.userCard?.id == uc.id }[0].id!!
         uc.telegramUser = c
         userCardRepository.save(uc)
 
         val r = ban(tgA, tgB)
         assertEquals(sellerNetAfterCommission(price, pct), r.userA.fantikiConfiscated)
+
+        assertTrue(marketplaceListingSanctionRepository.existsByListing_Id(listingId))
+        val secondResult = ban(tgA, tgB)
+        assertEquals(0L, secondResult.userA.fantikiConfiscated)
+    }
+
+    @Test
+    @Transactional
+    fun `ban pair keeps cards and listings, second ban has no effect`() {
+        val pct = economyConfigService.getMarketplaceCommissionPercent()
+        val tgA = 881_000_701L
+        val tgB = 881_000_702L
+        val a = newUser(tgA)
+        val b = newUser(tgB)
+        val price = 5_000L
+        val (_, uc) = soldListingFromAToBWithCard(a, b, price, 701L)
+        val listingId = marketplaceListingRepository.findAll()
+            .filter { it.userCard?.id == uc.id }[0].id!!
+
+        val firstResult = ban(tgA, tgB)
+        val expected = sellerNetAfterCommission(price, pct)
+        assertEquals(expected, firstResult.userA.fantikiConfiscated)
+        assertEquals(1, firstResult.userB.cardsConfiscated.size)
+        assertEquals("ban-test-701", firstResult.userB.cardsConfiscated[0].playerName)
+
+        val reloadedCard = userCardRepository.findById(uc.id!!).orElseThrow()
+        assertNull(reloadedCard.deletedAt, "Card must stay available")
+
+        val reloadedListing = marketplaceListingRepository.findById(listingId).orElseThrow()
+        assertEquals(MarketplaceListingStatus.SOLD, reloadedListing.status, "Listing must stay SOLD")
+        assertTrue(marketplaceListingSanctionRepository.existsByListing_Id(listingId), "Listing must be marked sanctioned")
+
+        val sanctionHistory = marketplacePairSanctionHistoryRepository.findAll()
+        assertEquals(1, sanctionHistory.size, "Pair sanction history must be created")
+
+        val secondResult = ban(tgA, tgB)
+        assertAll(
+            { assertEquals(0L, secondResult.userA.fantikiConfiscated, "Second ban: no fantiki") },
+            { assertEquals(0, secondResult.userB.cardsConfiscated.size, "Second ban: no cards") },
+        )
+    }
+
+    @Test
+    @Transactional
+    fun `second ban confiscates only new unsanctioned transactions`() {
+        val pct = economyConfigService.getMarketplaceCommissionPercent()
+        val tgA = 881_000_801L
+        val tgB = 881_000_802L
+        val a = newUser(tgA)
+        val b = newUser(tgB)
+        val firstPrice = 4_000L
+        val secondPrice = 6_000L
+        soldListingFromAToBWithCard(a, b, firstPrice, 801L)
+
+        val firstResult = ban(tgA, tgB)
+        assertEquals(sellerNetAfterCommission(firstPrice, pct), firstResult.userA.fantikiConfiscated)
+
+        soldListingFromAToBWithCard(a, b, secondPrice, 802L)
+
+        val secondResult = ban(tgA, tgB)
+        assertEquals(sellerNetAfterCommission(secondPrice, pct), secondResult.userA.fantikiConfiscated)
+        assertEquals(1, secondResult.userB.cardsConfiscated.size)
     }
 
     private fun ban(telegramA: Long, telegramB: Long) =
