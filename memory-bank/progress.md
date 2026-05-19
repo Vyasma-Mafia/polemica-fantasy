@@ -2,6 +2,14 @@
 
 ## Что реализовано
 
+### Backend: ban-pair без удаления карт и повторных списаний (май 2026)
+- [x] `MarketplaceAdminService.banPair` больше не удаляет и не soft-delete'ит карты при санкции пары; `user_card.deleted_at` остаётся неизменным, SOLD-листинг сохраняет статус `SOLD`
+- [x] Учтённые при бане пары SOLD-листинги маркируются через `MarketplaceListingSanction(reason = "Pair ban", adminUsername = "pair-ban:<low>:<high>")`
+- [x] `MarketplaceListingRepository.sumSellerReceivedForSalesTo`, `findSoldListingsBetweenUsers`, `findSoldFromPartnerToBuyer` и preview-кандидаты в `UserCardRepository.findUserCardsBoughtOnMarketplaceFromPartner` исключают уже санкционированные листинги, поэтому повторный бан не списывает штраф повторно за старые транзакции
+- [x] Новые сделки той же пары после первого бана остаются санкционируемыми, потому что фильтр идёт по `marketplace_listing_sanction`, а не по факту прошлой записи в `marketplace_pair_sanction_history`
+- [x] Регрессии в `MarketplacePairBanFantikiIntegrationTest`: карты/листинги сохраняются, повторный бан старой транзакции даёт 0, повторный бан после новой сделки списывает только новую сделку, перепроданная третьему пользователю карта не удаляется, но листинг помечается санкцией
+- [x] Проверки: `./gradlew compileTestKotlin` — успешно; targeted Testcontainers-тест `MarketplacePairBanFantikiIntegrationTest` не стартовал из-за недоступного Docker (`ContainerFetchException`)
+
 ### Marketplace moderation: pair trades createdAt и complaintsCount (май 2026)
 - [x] **Backend DTO:** `PairTradeDto` получил поля `createdAt` (время создания листинга из `MarketplaceListing.createdAt`) и `complaintsCount` (количество жалоб на операцию)
 - [x] **MarketplaceAdminService:** в `getPairTrades` добавлен batch-запрос `MarketplaceComplaintRepository.countGroupedByListingIds` для всех sold listings между юзерами; маппинг complaint count в `PairTradeDto`
