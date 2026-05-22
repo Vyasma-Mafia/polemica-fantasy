@@ -26,3 +26,5 @@ app:
   admin:
     username: admin
     password: test-admin-secret
+    moderator-username: moderator
+    moderator-password: test-moderator-secret

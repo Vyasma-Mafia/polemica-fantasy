@@ -1,3 +1,5 @@
+import type { AdminMeDto } from './types'
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 const STORAGE_KEY = 'polemica_admin_basic_b64'
@@ -30,6 +32,10 @@ export async function loginWithPassword(
     throw new Error(await readErrorMessage(res))
   }
   setStoredBasicB64(token)
+}
+
+export async function fetchMe(): Promise<AdminMeDto> {
+  return apiJson<AdminMeDto>('/v1/admin/me')
 }
 
 async function readErrorMessage(res: Response): Promise<string> {

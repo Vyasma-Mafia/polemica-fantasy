@@ -153,6 +153,16 @@ data class EconomyConfigItemDto(
     val description: String?,
 )
 
+enum class AdminRole {
+    ADMIN,
+    MODERATOR,
+}
+
+data class AdminMeDto(
+    val username: String,
+    val role: AdminRole,
+)
+
 data class ApiErrorBody(
     val message: String,
     val fieldErrors: Map<String, String>? = null,

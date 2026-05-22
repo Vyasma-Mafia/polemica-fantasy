@@ -91,6 +91,61 @@ class AdminApiIntegrationTest {
     }
 
     @Test
+    @Order(1001)
+    fun `admin me endpoint returns roles`() {
+        val adminAuth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(get("/api/v1/admin/me").header("Authorization", adminAuth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.username").value("admin"))
+            .andExpect(jsonPath("$.role").value("ADMIN"))
+
+        val moderatorAuth = basicAuth("moderator", "test-moderator-secret")
+        mockMvc.perform(get("/api/v1/admin/me").header("Authorization", moderatorAuth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.username").value("moderator"))
+            .andExpect(jsonPath("$.role").value("MODERATOR"))
+    }
+
+    @Test
+    @Order(1002)
+    fun `moderator can access tournament series league and polemica endpoints`() {
+        val auth = basicAuth("moderator", "test-moderator-secret")
+        mockMvc.perform(get("/api/v1/admin/tournaments").header("Authorization", auth))
+            .andExpect(status().isOk)
+        mockMvc.perform(get("/api/v1/admin/series/999").header("Authorization", auth))
+            .andExpect(status().isNotFound)
+        mockMvc.perform(get("/api/v1/admin/leagues").header("Authorization", auth))
+            .andExpect(status().isOk)
+        mockMvc.perform(get("/api/v1/admin/polemica/competitions/999").header("Authorization", auth))
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    @Order(1003)
+    fun `moderator cannot access users cards packs economy achievements marketplace or notifications`() {
+        val auth = basicAuth("moderator", "test-moderator-secret")
+        mockMvc.perform(get("/api/v1/admin/users").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/admin/card-templates").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/admin/card-packs").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/admin/economy-config").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/admin/achievements").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(get("/api/v1/admin/marketplace/pair-analysis").header("Authorization", auth))
+            .andExpect(status().isForbidden)
+        mockMvc.perform(
+            post("/api/v1/admin/notifications/broadcast")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"text":"test"}"""),
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
     @Order(3)
     fun `sync games returns 400 when polemica credentials not configured`() {
         val auth = basicAuth("admin", "test-admin-secret")

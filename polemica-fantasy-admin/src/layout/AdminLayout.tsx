@@ -1,10 +1,10 @@
-import { Layout, Menu, theme } from 'antd'
+import { Layout, Menu, Tag, theme } from 'antd'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
 const { Header, Sider, Content } = Layout
 
-const menuItems = [
+const allMenuItems = [
   { key: '/tournaments', label: <Link to="/tournaments">Tournaments</Link> },
   {
     key: '/card-templates',
@@ -26,11 +26,18 @@ const menuItems = [
 ]
 
 export function AdminLayout() {
-  const { logout } = useAuth()
+  const { logout, role, roleLoading } = useAuth()
   const location = useLocation()
   const {
     token: { colorBgContainer },
   } = theme.useToken()
+
+  const menuItems =
+    role === 'moderator'
+      ? allMenuItems.filter((item) => item.key === '/tournaments')
+      : roleLoading
+        ? []
+        : allMenuItems
 
   const selected = menuItems
     .map((m) => m.key)
@@ -74,6 +81,9 @@ export function AdminLayout() {
             gap: 16,
           }}
         >
+          <Tag color={role === 'admin' ? 'blue' : 'orange'}>
+            {roleLoading ? 'Loading role' : role === 'admin' ? 'Admin' : 'Moderator'}
+          </Tag>
           <a role="button" tabIndex={0} onClick={() => logout()}>
             Log out
           </a>

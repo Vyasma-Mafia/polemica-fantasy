@@ -22,12 +22,20 @@ class SecurityConfig {
 
     @Bean
     fun adminUserDetailsService(adminProperties: AdminProperties): UserDetailsService {
-        val user = User.builder()
+        val admin = User.builder()
             .username(adminProperties.username)
             .password("{noop}${adminProperties.password}")
             .roles("ADMIN")
             .build()
-        return InMemoryUserDetailsManager(user)
+        val users = mutableListOf(admin)
+        if (adminProperties.moderatorUsername.isNotBlank() && adminProperties.moderatorPassword.isNotBlank()) {
+            users += User.builder()
+                .username(adminProperties.moderatorUsername)
+                .password("{noop}${adminProperties.moderatorPassword}")
+                .roles("MODERATOR")
+                .build()
+        }
+        return InMemoryUserDetailsManager(users)
     }
 
     @Bean
@@ -37,7 +45,19 @@ class SecurityConfig {
             .securityMatcher("/api/v1/admin/**")
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .authorizeHttpRequests { auth -> auth.anyRequest().authenticated() }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers(
+                        "/api/v1/admin/me",
+                        "/api/v1/admin/tournaments",
+                        "/api/v1/admin/tournaments/**",
+                        "/api/v1/admin/series/**",
+                        "/api/v1/admin/leagues",
+                        "/api/v1/admin/leagues/**",
+                        "/api/v1/admin/polemica/**",
+                    ).hasAnyAuthority("ROLE_ADMIN", "ROLE_MODERATOR")
+                    .anyRequest().hasAuthority("ROLE_ADMIN")
+            }
             .httpBasic { }
         return http.build()
     }

@@ -6,4 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 data class AdminProperties(
     var username: String = "admin",
     var password: String = "defaultPassword123",
+    var moderatorUsername: String = "",
+    var moderatorPassword: String = "",
 )

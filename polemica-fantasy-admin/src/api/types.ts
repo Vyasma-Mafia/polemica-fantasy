@@ -8,6 +8,13 @@ export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 
 export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
 
+export type AdminRole = 'ADMIN' | 'MODERATOR'
+
+export interface AdminMeDto {
+  username: string
+  role: AdminRole
+}
+
 /** `achievement.id` from the backend catalog (Flyway V10: sniper, voteForBlack, …). */
 export type AchievementId = string
 
