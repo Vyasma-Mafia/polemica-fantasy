@@ -18,6 +18,18 @@
 - **`polemica-fantasy-webapp`** — пользовательский TMA (Vite + React)
 - **`polemica-fantasy-admin`** — админ-панель (Vite + React + Ant Design)
 
+## Разработка через Codex
+
+Основные инструкции для агента лежат в [`AGENTS.md`](AGENTS.md), долговременный контекст — в [`memory-bank/`](memory-bank/). После заметных фич, архитектурных изменений или обновления зависимостей стоит просить Codex обновить `memory-bank/activeContext.md` и `memory-bank/progress.md`.
+
+Быстрая проверка перед сдачей изменений:
+
+```bash
+./scripts/codex-check.sh quick
+```
+
+Она компилирует backend и собирает оба фронтенда. Для точечных прогонов доступны цели `backend`, `backend-test`, `webapp`, `admin`, `frontend`, `lint`.
+
 ## Локальный запуск
 
 Шаблон переменных окружения: [`.env.example`](.env.example). Dev-стек: PostgreSQL + MinIO + бэкенд — [`docker-compose.yml`](docker-compose.yml).
@@ -26,6 +38,12 @@
 
 ```bash
 ./scripts/local-up.sh --init-data "auth_date=...&user=...&hash=..."
+```
+
+Для TMA можно сгенерировать свежий `VITE_DEV_INIT_DATA` из `TELEGRAM_BOT_TOKEN` в `.env`:
+
+```bash
+./scripts/local-up.sh --generate-init-data
 ```
 
 Скрипт:

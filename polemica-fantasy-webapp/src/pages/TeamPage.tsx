@@ -244,7 +244,7 @@ export function TeamPage() {
   const errMsg = submit.error instanceof ApiError ? submit.error.message : (submit.error as Error)?.message
   const back = fromHome ? '/' : `/tournaments/${s.tournamentId}/series`
   const activeLeagueName = leagueShortName(activeLeague.code, activeLeague.name)
-  const seriesTeamPath = `/series/${sid}/team?league=${encodeURIComponent(activeLeagueCode)}`
+  const seriesOverviewPath = `/series/${sid}?league=${encodeURIComponent(activeLeagueCode)}`
   const setLeague = (code: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('league', code.toUpperCase())
@@ -317,7 +317,7 @@ export function TeamPage() {
         </button>
         {errMsg && <p className="pf-err">{errMsg}</p>}
         <p className="pf-footer-link">
-          <Link to={seriesTeamPath}>Обзор серии</Link>
+          <Link to={seriesOverviewPath}>Обзор серии</Link>
         </p>
       </div>
 

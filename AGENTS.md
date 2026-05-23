@@ -26,6 +26,15 @@ Two API groups on the same backend:
 - **User API** `/api/v1/**` (excluding `/api/v1/admin/**`) — TMA auth via `Authorization: tma <initData>` (HMAC validation)
 - **Admin API** `/api/v1/admin/**` — Basic Auth (`InMemoryUserDetailsManager`)
 
+## Codex Workflow
+
+- Start non-trivial tasks by reading this file plus the relevant `memory-bank/` files. For broad/product work, read `activeContext.md`, `progress.md`, `systemPatterns.md`, and `techContext.md`; for small fixes, read the narrowly relevant files first.
+- Check `git status --short` before editing. Preserve user changes and keep edits scoped to the requested feature or fix.
+- Keep backend/user/admin API contracts synchronized: Kotlin DTOs, frontend `src/api/types.ts`, API clients, and UI call sites should move together.
+- After meaningful feature, architecture, dependency, or deployment changes, append a short dated note to `memory-bank/activeContext.md` and update `memory-bank/progress.md` when status changed.
+- Prefer the focused verification commands below. Use `./scripts/codex-check.sh quick` before handing off broad cross-module changes when dependencies are installed locally.
+- For interactive local UI testing, use the project skill at `.codex/skills/polemica-local-testing` when available. It covers `local-up`, browser checks, and fresh TMA `VITE_DEV_INIT_DATA` generation.
+
 ## Tech Stack
 
 | Layer | Stack |
@@ -33,7 +42,7 @@ Two API groups on the same backend:
 | Backend | Kotlin 2.3.0, Gradle 9.0.0 (Kotlin DSL), Spring Boot 3.4.2, Spring Data JPA, Flyway, Spring Security, AWS SDK v2 (S3) |
 | User frontend | React 19, Vite 8, `@telegram-apps/sdk-react`, TanStack Query 5, React Router 7 |
 | Admin frontend | React 19, Vite 8, Ant Design 6, TanStack Query 5, React Router 7, dayjs |
-| External | `io.github.mralex1810:polemica-library:1.8.2` (Polemica API client), PostgreSQL 16, S3 (MinIO in dev, Yandex Object Storage in prod) |
+| External | `io.github.mralex1810:polemica-library:1.8.8` (Polemica API client), PostgreSQL 16, S3 (MinIO in dev, Yandex Object Storage in prod) |
 | Infra | Docker (multi-stage), Docker Compose, GitHub Actions (GHCR + deploy), Nginx, Prometheus/Actuator |
 
 ## Backend Package Structure
@@ -98,12 +107,14 @@ io.github.mralex1810.fantasy
 ## Database Migrations
 
 Flyway manages schema. `spring.jpa.hibernate.ddl-auto=validate`.
-Migrations are in `polemica-fantasy-backend/src/main/resources/db/migration/` (V1 through V37+).
+Migrations are in `polemica-fantasy-backend/src/main/resources/db/migration/` (V1 through V42+).
 
 ## Testing
 
-- **Backend**: Testcontainers PostgreSQL 16. Key test classes: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackServiceProbabilityTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, achievement detector tests.
+- **Quick cross-module check**: `./scripts/codex-check.sh quick` runs backend Kotlin compilation plus both frontend builds.
+- **Backend**: Testcontainers PostgreSQL 16. Key test classes: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackRarityConfigValidationTest`, `CardPackFindOrCreateTemplateIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, achievement detector tests.
 - **Frontend**: `npm run build` as verification (no unit test suite).
+- Run backend compile check: `cd polemica-fantasy-backend && ./gradlew compileKotlin compileTestKotlin`
 - Run backend tests: `cd polemica-fantasy-backend && ./gradlew test`
 - Run specific: `./gradlew test --tests "io.github.mralex1810.fantasy.XXX"`
 
@@ -121,6 +132,13 @@ cd polemica-fantasy-webapp && npm ci && npm run dev
 
 # Admin frontend
 cd polemica-fantasy-admin && npm ci && npm run dev
+```
+
+Fresh local TMA auth:
+
+```bash
+./scripts/generate-tma-init-data.py
+./scripts/local-up.sh --generate-init-data
 ```
 
 Dev proxy in both frontends: `/api` → `http://localhost:8080`.
@@ -162,7 +180,7 @@ Secrets: `~/polemica-fantasy/.env` (not in git). Key vars: `TELEGRAM_BOT_TOKEN`,
 
 ## Key External Dependencies
 
-- **polemica-library** (`io.github.mralex1810:polemica-library:1.8.2`): Kotlin client for Polemica API. Source at `../polemica-library/` for local development. Uses `mavenLocal()` in `build.gradle.kts`. Publish locally: `cd ../polemica-library && ./gradlew publishToMavenLocal`.
+- **polemica-library** (`io.github.mralex1810:polemica-library:1.8.8`): Kotlin client for Polemica API. Source at `../polemica-library/` for local development. Uses `mavenLocal()` in `build.gradle.kts`. Publish locally: `cd ../polemica-library && ./gradlew publishToMavenLocal`.
 
 ## Documentation
 

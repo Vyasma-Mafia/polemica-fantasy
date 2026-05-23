@@ -14,7 +14,7 @@
 | Spring Security | via Spring Boot | Auth (TMA + Admin) |
 | Jackson | via Spring Boot | JSON serialization |
 | PostgreSQL | 16+ | Primary database |
-| polemica-library | 1.8.2 | Polemica API client (`io.github.mralex1810:polemica-library`); `getProfileGames`, `getMatch`, игры турниров/клубов; в `build.gradle.kts` также `mavenLocal()` |
+| polemica-library | 1.8.8 | Polemica API client (`io.github.mralex1810:polemica-library`); `getProfileGames`, `getMatch`, игры турниров/клубов; в `build.gradle.kts` также `mavenLocal()` |
 
 **Исходники библиотеки (локальная разработка):** `../polemica-library/src/main/kotlin` относительно корня `polemica-fantasy` — репозиторий [polemica-library](https://github.com/Vyasma-Mafia/polemica-library) клонируется рядом или по symlink.
 
@@ -182,12 +182,22 @@ curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" 
 
 Бэкенд (`polemica-fantasy-backend/`):
 - Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 + Spring Boot 3.4.2
-- JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.2
-- `src/main`: `FantasyApplication`, `config/` (S3, Security, `TelegramProperties`, `TelegramConfig`, AdminProperties, `PolemicaProperties`, `PolemicaConfig`), `auth/` (`TelegramInitDataValidator`, `TelegramAuthFilter`, `TelegramAuthentication`, `UserApiRequestMatcher`), `telegram/` (`TelegramBotApiClient`), `event/` (события и слушатель финализации серии), `entity/` (в т.ч. `TournamentKind`, `FantasyPlayer`, `TournamentPlayer`, `CardTemplate`), `repository/`, `service/` (в т.ч. `UserService`, `UserTournamentService`, `UserSeriesService`, `UserCardCollectionService`, `UserFantasyTeamService`, `SeriesFinalizationService`), `controller/user/*`, `controller/admin/*` (в т.ч. `PolemicaAdminController`), `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `resources/application.yml`, Flyway: `V1` … `V4__tournament_kind_competition.sql`
-- `src/test`: Testcontainers PostgreSQL 16; `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackServiceProbabilityTest`, `FantasyApplicationTests`, achievement unit tests
+- JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.8
+- `src/main`: `FantasyApplication`, `config/`, `auth/`, `telegram/`, `event/`, `entity/`, `repository/`, `service/`, `controller/user/*`, `controller/admin/*`, `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `schedule/`, `resources/application.yml`; Flyway migrations: `V1` … `V42`
+- `src/test`: Testcontainers PostgreSQL 16; ключевые классы: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `MarketplacePairBanFantikiIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, achievement/scoring unit tests
 - Docker: multi-stage `Dockerfile`, артефакт `build/libs/app.jar` (bootJar)
 - Корень репозитория: `docker-compose.yml`, `.env.example`
 
 Фронтенды:
 - `polemica-fantasy-webapp/` — Vite React TMA (см. README в каталоге)
 - `polemica-fantasy-admin/` — Vite React admin (см. README в каталоге)
+
+## Codex / agent verification
+
+- Быстрый кросс-модульный прогон: `./scripts/codex-check.sh quick`
+- Backend compile only: `./scripts/codex-check.sh backend`
+- Полные backend tests: `./scripts/codex-check.sh backend-test` (нужен Docker/Testcontainers)
+- Frontend builds: `./scripts/codex-check.sh frontend`
+- Frontend lint: `./scripts/codex-check.sh lint`
+- Свежий TMA initData для Vite: `./scripts/generate-tma-init-data.py` или `./scripts/local-up.sh --generate-init-data`
+- Проектный skill для интерактивных локальных проверок: `.codex/skills/polemica-local-testing`

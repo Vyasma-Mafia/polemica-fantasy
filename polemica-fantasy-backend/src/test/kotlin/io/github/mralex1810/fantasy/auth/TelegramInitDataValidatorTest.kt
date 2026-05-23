@@ -2,6 +2,7 @@ package io.github.mralex1810.fantasy.auth
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.nio.charset.StandardCharsets
@@ -40,11 +41,13 @@ class TelegramInitDataValidatorTest {
     }
 
     /**
-     * Локально: снять @Disabled, выполнить
-     * `./gradlew :polemica-fantasy-backend:test --tests "*TelegramInitDataValidatorTest.printViteDevInitDataSample"`.
+     * Prefer `./scripts/generate-tma-init-data.py` from the repository root.
+     * Locally: remove @Disabled and run
+     * `./gradlew test --tests "*TelegramInitDataValidatorTest.printViteDevInitDataSample"`.
      * Строка подписана [test-token] как в [application-test.yml]; для docker/backend задайте в .env
      * `TELEGRAM_BOT_TOKEN=test-token` или перегенерируйте под свой токен.
      */
+    @Disabled("Use scripts/generate-tma-init-data.py for local Vite dev initData")
     @Test
     fun printViteDevInitDataSample() {
         val botToken = "test-token"

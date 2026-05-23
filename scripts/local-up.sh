@@ -9,6 +9,7 @@ HOST="${DEV_HOST:-0.0.0.0}"
 ADMIN_PORT="${ADMIN_PORT:-5174}"
 TMA_PORT="${TMA_PORT:-5175}"
 TMA_INIT_DATA="${VITE_DEV_INIT_DATA:-}"
+GENERATE_INIT_DATA="false"
 
 ADMIN_PID=""
 TMA_PID=""
@@ -20,6 +21,7 @@ Usage:
 
 Options:
   --init-data "<telegram initData>"  Init data for TMA dev auth
+  --generate-init-data               Generate fresh TMA initData from TELEGRAM_BOT_TOKEN/.env
   --host "<host>"                    Dev server host (default: 0.0.0.0)
   --admin-port <port>                Admin dev server port (default: 5174)
   --tma-port <port>                  TMA dev server port (default: 5175)
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
     --init-data)
       TMA_INIT_DATA="${2:-}"
       shift 2
+      ;;
+    --generate-init-data)
+      GENERATE_INIT_DATA="true"
+      shift
       ;;
     --host)
       HOST="${2:-}"
@@ -60,12 +66,22 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-for cmd in docker npm curl; do
+REQUIRED_COMMANDS=(docker npm curl)
+if [[ "${GENERATE_INIT_DATA}" == "true" ]]; then
+  REQUIRED_COMMANDS+=(python3)
+fi
+
+for cmd in "${REQUIRED_COMMANDS[@]}"; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "Required command not found: $cmd" >&2
     exit 1
   fi
 done
+
+if [[ "${GENERATE_INIT_DATA}" == "true" && -z "${TMA_INIT_DATA}" ]]; then
+  echo "Generating fresh VITE_DEV_INIT_DATA from TELEGRAM_BOT_TOKEN/.env..."
+  TMA_INIT_DATA="$(python3 "${ROOT_DIR}/scripts/generate-tma-init-data.py" --format raw)"
+fi
 
 if [[ -z "${TMA_INIT_DATA}" ]]; then
   echo "Warning: VITE_DEV_INIT_DATA is empty. TMA may fail authentication in local mode." >&2

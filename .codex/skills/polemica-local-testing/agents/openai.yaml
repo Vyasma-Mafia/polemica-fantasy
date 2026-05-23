@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polemica Local Testing"
+  short_description: "Launch and test Polemica Fantasy locally."
+  default_prompt: "Run the Polemica Fantasy local testing workflow."

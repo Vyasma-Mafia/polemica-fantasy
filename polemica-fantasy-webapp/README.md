@@ -13,7 +13,13 @@ Vite + React + TypeScript. API: `Authorization: tma <initData>`.
 VITE_DEV_INIT_DATA=auth_date=...&user=...&hash=...
 ```
 
-Сгенерируйте пару токен + подпись через тест `UserApiIntegrationTest` / `TelegramInitDataValidatorTest` в бэкенде или вручную по [документации Telegram](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app).
+Сгенерировать свежую строку можно из корня репозитория:
+
+```bash
+./scripts/generate-tma-init-data.py
+```
+
+Скрипт берёт `TELEGRAM_BOT_TOKEN` из окружения или корневого `.env`. Для прямого запуска всего локального стека используйте `./scripts/local-up.sh --generate-init-data`.
 
 Опционально для страницы «Справка» → блок «Поддержка»: `VITE_TELEGRAM_BOT_USERNAME` — username бота без `@` (ссылка `https://t.me/…`).
 

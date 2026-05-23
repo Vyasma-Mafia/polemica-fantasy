@@ -53,6 +53,17 @@
 - [x] **Интеграционные тесты:** `UserApiIntegrationTest` — (1) opening skinned pack возвращает `skinCode` в `cards`/`openingCards`/`me/cards`; (2) marketplace сохраняет `skinCode` через listing/feed/transaction/buyer cards
 - [x] **Проверки:** `./gradlew test --tests "...store buy from skinned pack assigns skin..." --tests "...marketplace preserves skin code..."`; `npm run build` в `polemica-fantasy-admin` и `polemica-fantasy-webapp` — успешно
 
+### DX: Codex workflow и быстрые проверки (май 2026)
+- [x] `AGENTS.md` дополнен разделом `Codex Workflow`: что читать перед задачами, как держать DTO/API контракты синхронными, когда обновлять `memory-bank/`, какие проверки предпочитать
+- [x] Актуализированы агентские версии и ориентиры: `polemica-library:1.8.8`, Flyway `V1` … `V42+`, key backend tests без устаревшего `CardPackServiceProbabilityTest`
+- [x] Добавлен `scripts/codex-check.sh` с целями `quick`, `backend`, `backend-test`, `webapp`, `admin`, `frontend`, `lint`
+- [x] README получил раздел «Разработка через Codex» с быстрым smoke/check циклом
+- [x] `memory-bank/techContext.md` синхронизирован с текущими версиями и новым проверочным entrypoint
+- [x] Добавлен `scripts/generate-tma-init-data.py` для свежего `VITE_DEV_INIT_DATA` (Telegram initData HMAC, token из env или `.env`)
+- [x] `scripts/local-up.sh` получил `--generate-init-data` для запуска TMA без ручного копирования initData
+- [x] Добавлен проектный Codex skill `.codex/skills/polemica-local-testing` для локального UI-тестирования webapp/admin
+- [x] Workflow проверен на реальном локальном запуске: TMA открылся с dev initData; кнопка «Обзор серии» на `TeamPage` исправлена и подтверждена browser-проверкой
+
 ### DX: единый локальный старт стека (май 2026)
 - [x] Добавлен исполняемый скрипт `scripts/local-up.sh` для запуска backend + admin + TMA одной командой
 - [x] Скрипт поддерживает `--init-data`, `--host`, `--admin-port`, `--tma-port` и ENV-аналоги (`VITE_DEV_INIT_DATA`, `DEV_HOST`, `ADMIN_PORT`, `TMA_PORT`)
