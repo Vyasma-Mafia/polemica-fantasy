@@ -1281,7 +1281,7 @@ export function MarketplaceModerationPage() {
                   <Alert type="success" message="Одновременных листингов не найдено" showIcon />
                 ) : (
                   <>
-                    <Typography.Text strong>Те же ачивки</Typography.Text>
+                    <Typography.Text strong>Те же перки</Typography.Text>
                     <Table<ConcurrentListingDto>
                       rowKey="listingId"
                       size="small"
@@ -1289,7 +1289,7 @@ export function MarketplaceModerationPage() {
                       columns={concurrentListingsColumns}
                       dataSource={transactionComplaintsQ.data.marketContext.concurrentSameTemplate}
                     />
-                    <Typography.Text strong>Та же редкость (другие ачивки)</Typography.Text>
+                    <Typography.Text strong>Та же редкость (другие перки)</Typography.Text>
                     <Table<ConcurrentListingDto>
                       rowKey="listingId"
                       size="small"

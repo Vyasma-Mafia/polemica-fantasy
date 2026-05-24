@@ -2,12 +2,19 @@
 
 ## Что реализовано
 
-### Backend+TMA: фильтр по достижениям в коллекции, маркетплейсе и отслеживании (май 2026)
-- [x] Backend `GET /api/v1/me/cards` и `GET /api/v1/marketplace/listings` получили повторяемый query-параметр `achievementIds`; фильтр работает как OR внутри выбранных достижений и AND с остальными фильтрами
-- [x] Flyway **V44** добавил `marketplace_watch_filter_achievement`, `achievement_ids_key` и нормализованный unique index для marketplace watch-фильтров
-- [x] `POST /api/v1/settings/marketplace-watches` принимает `achievementIds`, валидирует неизвестные id, нормализует порядок и возвращает выбранные достижения в `MarketplaceWatchDto`
-- [x] Watch-уведомления при создании листинга учитывают пересечение достижений карты и watch-фильтра
-- [x] TMA: мультивыбор достижений добавлен в коллекцию `/cards`, маркетплейс `/marketplace` и страницу отслеживания `/notifications/marketplace-watches`
+### Backend+TMA+admin: переименование достижений в перки (май 2026)
+- [x] Backend-код переименован на `Perk*`: JPA entities, repositories, DTO, services, controllers, scoring detectors/registry и тесты
+- [x] API-контракты переведены на `/api/v1/perks`, `/api/v1/admin/perks`, `/api/v1/admin/perk-statistics`, `/card-templates/{id}/perks`, `perkId`, `perkIds`, `perks`, `perkBonus`
+- [x] Flyway **V45** переименовывает таблицы/колонки БД с `achievement*` на `perk*`, включая score breakdown, pack pools, marketplace watch filters и economy key `card.value.perk_bonus`
+- [x] TMA/admin фронтенды переведены на перки: API clients, TS-типы, страницы, компоненты, видимые тексты и chip CSS-классы
+- [x] Проверки: backend `./gradlew compileKotlin compileTestKotlin`, `npm run build` для `polemica-fantasy-webapp` и `polemica-fantasy-admin` — успешно
+
+### Backend+TMA: фильтр по перкам в коллекции, маркетплейсе и отслеживании (май 2026)
+- [x] Backend `GET /api/v1/me/cards` и `GET /api/v1/marketplace/listings` получили повторяемый query-параметр `perkIds`; фильтр работает как OR внутри выбранных перков и AND с остальными фильтрами
+- [x] Flyway **V44** добавил `marketplace_watch_filter_perk`, `perk_ids_key` и нормализованный unique index для marketplace watch-фильтров
+- [x] `POST /api/v1/settings/marketplace-watches` принимает `perkIds`, валидирует неизвестные id, нормализует порядок и возвращает выбранные перки в `MarketplaceWatchDto`
+- [x] Watch-уведомления при создании листинга учитывают пересечение перков карты и watch-фильтра
+- [x] TMA: мультивыбор перков добавлен в коллекцию `/cards`, маркетплейс `/marketplace` и страницу отслеживания `/notifications/marketplace-watches`
 - [x] Проверки: `./gradlew compileKotlin compileTestKotlin`, targeted backend tests для filters/watch, `npm run build` (`polemica-fantasy-webapp`) — успешно
 
 ### DX: production DB readonly skill (май 2026)
@@ -90,7 +97,7 @@
 - [x] **DTO контракты:** `skinCode` добавлен в `UserCardItemDto`, `MarketplaceListingCardDto`, `TransactionCardDto`; в admin `CardPackDto` добавлены `skinId`/`skinCode`; в create/update card-pack request добавлен `skinId`
 - [x] **Admin API/UI:** `GET /api/v1/admin/card-skins`; в `CardPacksPage` добавлен выбор skin (create/edit) и отображение skin в таблице паков
 - [x] **TMA рендеринг:** `skinCode` добавлен в TS-типы; helper `skinClass`; skin-модификаторы подключены для collection/team/modal/mini cards, marketplace listings/feed/my-listings, leaderboard/history cards, pack opening reveal/summary, transaction detail
-- [x] **CSS для `tournament_gold`:** отдельные модификаторы с золотым conic-border, glow/shimmer/sweep-анимациями, бейджем `GOLD`, и tint для achievement chips
+- [x] **CSS для `tournament_gold`:** отдельные модификаторы с золотым conic-border, glow/shimmer/sweep-анимациями, бейджем `GOLD`, и tint для perk chips
 - [x] **Визуальная отстройка от legendary:** палитра `tournament_gold` смещена в «шампань + изумруд», ослаблена янтарная доминанта в border/glow/sweep/text/chips — скин читается как отдельная косметика, а не вариация `legendary-crafted`
 - [x] **Интеграционные тесты:** `UserApiIntegrationTest` — (1) opening skinned pack возвращает `skinCode` в `cards`/`openingCards`/`me/cards`; (2) marketplace сохраняет `skinCode` через listing/feed/transaction/buyer cards
 - [x] **Проверки:** `./gradlew test --tests "...store buy from skinned pack assigns skin..." --tests "...marketplace preserves skin code..."`; `npm run build` в `polemica-fantasy-admin` и `polemica-fantasy-webapp` — успешно
@@ -188,7 +195,7 @@
 - [x] Проверка: `./gradlew test --tests "io.github.mralex1810.fantasy.UserApiIntegrationTest.GET marketplace analytics detail returns active stats without server error"` — успешно
 
 ### UX: коллекция и меню продажи (май 2026)
-- [x] `polemica-fantasy-webapp/src/pages/CardsPage.tsx`: убрана оверлейная плашка рыночной сводки (`N шт. от X₣`) с карточек в сетке коллекции, чтобы не перекрывать чипы достижений
+- [x] `polemica-fantasy-webapp/src/pages/CardsPage.tsx`: убрана оверлейная плашка рыночной сводки (`N шт. от X₣`) с карточек в сетке коллекции, чтобы не перекрывать чипы перков
 - [x] Сводка рынка перенесена в модалку карты и показывается рядом с действиями продажи (`Продать` / `Управлять листингом`) через новый inline-бейдж
 - [x] В модалке «Выставить на маркетплейс» восстановлена наблюдаемость детальной аналитики: добавлен явный `isError`-state с сообщением об ошибке загрузки и включён `refetchOnMount: 'always'` для запроса `/marketplace/analytics/detail`
 - [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно
@@ -198,7 +205,7 @@
 - [x] **Логика формирования display-карт:** `UserStoreService` после каждой developer-карты (`economy_config.easter_egg.developer_fantasy_player_id`) вставляет визуальный companion «Тюленчик» с теми же `rarity` и `value`, что у developer-карты; image URL берётся из `EasterEggProperties.tyulenchikImageUrl`
 - [x] **Экономика пасхалки:** companion не создаёт `user_card`, но начисляет фантики в размере своей ценности (`+value` соответствующей developer-карты) через `EASTER_EGG_BONUS`; итоговый баланс возвращается в `BuyPackResponseDto.fantiki`
 - [x] **Frontend TMA:** `types.ts` расширен `PackOpeningCard`; `StorePage` передаёт в `PackOpening` `openingCards` (fallback на legacy `cards`), `PackOpening` показывает companion в reveal и summary, включая вклад companion в `Суммарная ценность`
-- [x] **Текст бонуса на companion-карте:** в `PackOpening` для `COMPANION` в блоке достижений показывается чип `+N фантики` (в reveal и summary)
+- [x] **Текст бонуса на companion-карте:** в `PackOpening` для `COMPANION` в блоке перков показывается чип `+N фантики` (в reveal и summary)
 - [x] **Покрытие:** `UserApiIntegrationTest` — сценарии single/multi developer (порядок `USER_CARD -> COMPANION`, `relatedUserCardId`, `value` и `rarity` совпадают с исходной картой, баланс увеличивается на `Σ companion.value`)
 - [x] **Проверки:** `./gradlew test --tests \"...store buy adds visual tyulenchik...\"` и `npm run build` (`polemica-fantasy-webapp`) — успешно
 
@@ -208,7 +215,7 @@
 - [x] **API апгрейда:** `POST /api/v1/legendary-upgrade` теперь возвращает `LegendaryUpgradeResponseDto` (`card` + опциональный `easterEgg`)
 - [x] **Логика бонуса:** `LegendaryUpgradeService` при апгрейде карты игрока из `easter_egg.developer_fantasy_player_id` начисляет бонус через `UserService.addBalance(..., EASTER_EGG_BONUS)` и формирует текст пасхалки + payload «Тюленьчик»
 - [x] **Frontend TMA:** `LegendaryUpgradeWizard` получил result-step (2 карточки, текст пасхалки, `+N фантиков`, кнопка `OK`) вместо мгновенного закрытия в easter-egg сценарии
-- [x] **Проверки:** `npm run build` (`polemica-fantasy-webapp`) — успешно; backend-таргет `./gradlew test --tests \"*upgrades EPIC to LEGENDARY*\" --tests \"*marketplace feed shows EPIC after purchased card upgraded to LEGENDARY*\" --tests \"*legendary-upgrade rejects duplicate achievement on card*\"` — успешно
+- [x] **Проверки:** `npm run build` (`polemica-fantasy-webapp`) — успешно; backend-таргет `./gradlew test --tests \"*upgrades EPIC to LEGENDARY*\" --tests \"*marketplace feed shows EPIC after purchased card upgraded to LEGENDARY*\" --tests \"*legendary-upgrade rejects duplicate perk on card*\"` — успешно
 
 ### Backend bugfix: финализация серии и uses в лигах (апрель 2026)
 - [x] Подтверждён дефект: при финализации серии карта в `MAIN` + `BUDGET` давала `cardsDecremented = 2`, но `user_card.uses_remaining` в БД не менялся (интеграционный сценарий в `UserApiIntegrationTest`)
@@ -308,14 +315,14 @@
 - [x] **Стилизация:** расширен `index.css` для экрана уведомлений, switch/checkbox-элементов, списка watch-фильтров и CTA блока на маркетплейсе
 
 ### Ценность карты (card value, backend)
-- [x] **Flyway V33:** ключи `economy_config` `card.value.{RARITY}` и `card.value.achievement_bonus` (сид по плану)
-- [x] **`CardValueService`:** `base + achievementCount * bonus` по шаблону (уникальные ачивки), без хранения в БД
-- [x] **`UserCardItemDto.value`**, `MarketplaceListingCardDto.value`; `EconomyInfoDto.cardValues` (`CardValueInfoDto`: `baseValues`, `achievementBonus`); `GET /api/v1/card-value/info` = `buildCardValueInfo()`
+- [x] **Flyway V33:** ключи `economy_config` `card.value.{RARITY}` и `card.value.perk_bonus` (сид по плану)
+- [x] **`CardValueService`:** `base + perkCount * bonus` по шаблону (уникальные перки), без хранения в БД
+- [x] **`UserCardItemDto.value`**, `MarketplaceListingCardDto.value`; `EconomyInfoDto.cardValues` (`CardValueInfoDto`: `baseValues`, `perkBonus`); `GET /api/v1/card-value/info` = `buildCardValueInfo()`
 
-### Паки турниров: лимит открытий, пул ачивок, новые достижения
-- [x] **Flyway V30:** `card_pack.max_opens_per_user` (0 = без лимита), `card_pack_achievement` (пул ачивок на пак), ачивки `ninja`, `crowned`, `lastHeroGuess` + роли
-- [x] **Scoring:** `ScoringContext(basePoints)` в `AchievementDetector`, `DefaultScoringService` передаёт базовые баллы; детекторы Ninja / Crowned / Last Hero
-- [x] **Паки:** `CardPackAchievement` + репозиторий, `openPack` берёт пул из `card_pack_achievement` или глобальный; админ/магазин DTO, лимит покупок в `UserStoreService`
+### Паки турниров: лимит открытий, пул перков, новые перки
+- [x] **Flyway V30:** `card_pack.max_opens_per_user` (0 = без лимита), `card_pack_perk` (пул перков на пак), перки `ninja`, `crowned`, `lastHeroGuess` + роли
+- [x] **Scoring:** `ScoringContext(basePoints)` в `PerkDetector`, `DefaultScoringService` передаёт базовые баллы; детекторы Ninja / Crowned / Last Hero
+- [x] **Паки:** `CardPackPerk` + репозиторий, `openPack` берёт пул из `card_pack_perk` или глобальный; админ/магазин DTO, лимит покупок в `UserStoreService`
 - [x] **Админка / TMA:** поля max opens + multi-select пула; магазин — «осталось X/Y», отключение «Купить» при лимите
 
 ### Маркетплейс карт (backend M1–M6)
@@ -359,7 +366,7 @@
 - [x] **TMA Справка:** текст про диапазоны мест + список сумм из `economy-info`
 - [x] **Тест:** `UserApiIntegrationTest` ожидает `seriesRewards.length() == 7`
 
-### Детекторы достижений (polemica-fantasy-backend)
+### Детекторы перков (polemica-fantasy-backend)
 - [x] **`votingOnlyForBlack`:** учитывается только если у мирного есть хотя бы одно финальное голосование (`mine.isNotEmpty()`), иначе пустой список давал бы «все голоса за чёрных» по `Collection.all`.
 - [x] **`sniper`:** дополнительно требуется смерть шерифа в **ночь 1** (`getKilled` + `night == 1`), а не только «реальный ком-убийца» по первой жертве в целом.
 
@@ -369,7 +376,7 @@
 
 ### Документация в репозитории
 - [x] **Структура `docs/`:** [`architecture/DESIGN.md`](../docs/architecture/DESIGN.md) (SDD), [`plans/archive/`](../docs/plans/archive/) (V2/V3 планы, CHANGES-V2), [`features/DESIGN-LEGENDARY-CARDS.md`](../docs/features/DESIGN-LEGENDARY-CARDS.md); в корне — [`README.md`](../README.md), указатель [`docs/README.md`](../docs/README.md)
-- [x] **Актуализация SDD:** команды 1–3 карты и награды; базовые очки через `GamePointsService`; V11 `can_appear_on_random_cards`; сущности и API (display name, legendary upgrade, free pack opens, GET `/achievements`, порядок серий, автофинализация, Phase 4+)
+- [x] **Актуализация SDD:** команды 1–3 карты и награды; базовые очки через `GamePointsService`; V11 `can_appear_on_random_cards`; сущности и API (display name, legendary upgrade, free pack opens, GET `/perks`, порядок серий, автофинализация, Phase 4+)
 
 ### Поддержка через Telegram Forum + webhook
 - [x] **Flyway V18:** `telegram_support_topic` (`telegram_user_id`, `forum_message_thread_id`)
@@ -411,12 +418,12 @@
 - [x] **Backend:** `EconomyConfigService` (кэш + инвалидация из админки), `CardLifecycleService` (recycle/renew), `SeriesFinalizationService` (декремент uses + награды по лидерборду); причины `SERIES_REWARD`, `CARD_RECYCLE`, `CARD_RENEWAL`; выдача карт с uses из конфига; проверка uses при сборке команды; API user `/me/cards/{id}/recycle|renew`, `/me/economy-info`; admin `POST /series/{id}/finalize`, `GET/PUT /economy-config`
 - [x] **Тесты:** `CardLifecycleServiceTest`, `SeriesFinalizationServiceTest`, интеграция admin economy config в `AdminApiIntegrationTest`
 - [x] **Админка:** страница Economy, колонка Finalized в списке серий турнира, финализация на деталке серии
-- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница **«Справка»** `/help` (очки, достижения из `GET /api/v1/achievements`, экономика из `GET /me/economy-info`; подписи наград за лидерборд серии — из `economy_config.description`, числа — из `value`)
-- [x] **Коллекция — модалка карты:** как в лидерборде/истории фэнтези — полный список достижений, блок «Очки в сериях» из `GET /me/fantasy-teams`, детализация «По играм серии» через `GET /me/fantasy-teams/{seriesId}/details` (селектор серии, если карта участвовала в нескольких); переработка/продление в модалке и на сетке; общий компонент разбивки очков — `ScoreBreakdownBlock` (`LeaderboardPlayerTeamPage`, `FantasyHistoryPage`, `CardsPage`)
+- [x] **TMA:** типы и API экономики, коллекция и TeamPage, страница **«Справка»** `/help` (очки, перки из `GET /api/v1/perks`, экономика из `GET /me/economy-info`; подписи наград за лидерборд серии — из `economy_config.description`, числа — из `value`)
+- [x] **Коллекция — модалка карты:** как в лидерборде/истории фэнтези — полный список перков, блок «Очки в сериях» из `GET /me/fantasy-teams`, детализация «По играм серии» через `GET /me/fantasy-teams/{seriesId}/details` (селектор серии, если карта участвовала в нескольких); переработка/продление в модалке и на сетке; общий компонент разбивки очков — `ScoreBreakdownBlock` (`LeaderboardPlayerTeamPage`, `FantasyHistoryPage`, `CardsPage`)
 
-### Статистика для баланса достижений (этап 1)
-- [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **2026-05-24:** добавлены EV-аномалии `fantasy_player × achievement` (`globalOccurrencesPerGame`, `playerOccurrencesPerGame`, smoothing через `priorGames`, `lift`, `excessBonusPerGame`) и опциональные параметры запроса `minPlayerGames` / `minApplicableSlots` / `priorGames` / `maxAnomalies`
-- [x] Тест `AchievementStatisticsServiceTest`; исправление **`CardPackFindOrCreateTemplateIntegrationTest`** — вызов приватного метода на `AopTestUtils.getUltimateTargetObject` (иначе CGLIB-прокси с null полями)
+### Статистика для баланса перков (этап 1)
+- [x] **`PerkStatisticsService`** + **POST** `/api/v1/admin/perk-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **2026-05-24:** добавлены EV-аномалии `fantasy_player × perk` (`globalOccurrencesPerGame`, `playerOccurrencesPerGame`, smoothing через `priorGames`, `lift`, `excessBonusPerGame`) и опциональные параметры запроса `minPlayerGames` / `minApplicableSlots` / `priorGames` / `maxAnomalies`
+- [x] Тест `PerkStatisticsServiceTest`; исправление **`CardPackFindOrCreateTemplateIntegrationTest`** — вызов приватного метода на `AopTestUtils.getUltimateTargetObject` (иначе CGLIB-прокси с null полями)
 
 ### Отладка
 - [x] **`scripts/trace_series_game_sync.py`** — пошаговая трассировка `DefaultGameSyncService` (STANDALONE: профиль + пересечение + опционально `getMatch`/префикс; POLEMICA_COMPETITION: список игр турнира + диапазон `num` + полная загрузка). Требует `ADMIN_*`; для полного прогона STANDALONE с фильтром имени — `POLEMICA_USERNAME`/`POLEMICA_PASSWORD` (как на бэкенде для sync).
@@ -442,7 +449,7 @@
 - [x] **Recycle карты в ACTIVE-листинге:** `CardLifecycleService.recycleCard` больше не валидирует `existsByUserCard_IdAndStatus(..., ACTIVE)` как ошибку; распыление разрешено и удаляет связанные листинги (`deleteAllByUserCard_Id`) вместе с картой. Обновлены тесты: unit `CardLifecycleServiceTest` + интеграционный сценарий в `UserApiIntegrationTest`.
 - [x] **Обновление фэнтези-команды (`PUT .../series/{id}/fantasy-team`):** вместо bulk `deleteAllByFantasyTeam_Id` — `findAllByFantasyTeam_Id` + `deleteAll`, затем **`fantasyTeamCardRepository.flush()`** до `team.cards.clear()`. Иначе lazy-инициализация коллекции после отложенного DELETE снова поднимала старые строки из БД, а INSERT новых слотов давал `23505` на `fantasy_team_card_fantasy_team_id_slot_key`
 - [x] **Повторный расчёт скоринга серии (`POST .../calculate-scores`):** после `card.gameScores.clear()` вызывается `fantasyTeamRepository.flush()`, чтобы DELETE сирот ушёл в БД до INSERT новых строк с тем же `(fantasy_team_card_id, series_game_id)` — иначе Hibernate мог выполнять INSERT раньше DELETE и ловить `23505` на `fantasy_team_card_game_score_*_key`
-- [x] **Дубликаты достижений на автокартах:** `CardPackService.findOrCreateCardTemplate` сравнивает набор `achievement_id` через запрос к БД (не через in-memory `ct.achievements`); после сохранения `CardTemplateAchievement` строка добавляется в `saved.achievements`; в `UserCardItemMapping` дедуп по `achievementId` для выдачи; Flyway `V12` — удаление дублей в `card_template_achievement` + уникальный индекс `(card_template_id, achievement_id)`; админка `addAchievement` — отказ с `409 CONFLICT` при повторной привязке
+- [x] **Дубликаты перков на автокартах:** `CardPackService.findOrCreateCardTemplate` сравнивает набор `perk_id` через запрос к БД (не через in-memory `ct.perks`); после сохранения `CardTemplatePerk` строка добавляется в `saved.perks`; в `UserCardItemMapping` дедуп по `perkId` для выдачи; Flyway `V12` — удаление дублей в `card_template_perk` + уникальный индекс `(card_template_id, perk_id)`; админка `addPerk` — отказ с `409 CONFLICT` при повторной привязке
 
 ### Планировщик sync + скоринга (активные серии)
 - [x] **`ActiveSeriesSyncScheduler`** — каждые 10 минут для серий `ACTIVE`/`SCORING`, не `finalized`; в тестах отключение `spring.task.scheduling.enabled: false`
@@ -463,7 +470,7 @@
 - [x] AWS SDK v2 S3, `S3Config` (path-style, MinIO), `ImageStorageService` (upload/delete, ключи players/cards), создание bucket при старте (`S3BucketInitializer`, отключается в профиле `test`)
 - [x] Flyway `V1__initial_schema.sql` — все таблицы из DESIGN §4
 - [x] Flyway `V3__fantasy_player_global_cards.sql` — таблица `fantasy_player`, карточки на глобального игрока, `tournament_player` только связь с турниром
-- [x] JPA entities + enum-классы (`Rarity` с `scoreModifier`, `TournamentStatus`, `SeriesStatus`, …); **V2 (B1):** enum `AchievementType` заменён справочником `Achievement` + `card_template_achievement.achievement_id` FK
+- [x] JPA entities + enum-классы (`Rarity` с `scoreModifier`, `TournamentStatus`, `SeriesStatus`, …); **V2 (B1):** enum `PerkType` заменён справочником `Perk` + `card_template_perk.perk_id` FK
 - [x] `application.yml` по DESIGN §12.5 + профиль `dev`, опция `s3.ensure-bucket-on-startup`
 - [x] Три `SecurityFilterChain` @Order(1–3): admin Basic Auth; user `/api/v1/**` без `/api/v1/admin/**` — `TelegramAuthFilter` + authenticated; остальное — `permitAll`
 - [x] Зависимость `polemica-library:1.8.2` (Maven Central + `mavenLocal()`); `ProfileGameRow.mmr` — десериализация числа или вложенного объекта (публичный профиль)
@@ -482,12 +489,12 @@
 - [x] `PolemicaProperties`, `PolemicaConfig` — bean `PolemicaClient` (`PolemicaClientImpl` + `Jackson2ObjectMapperBuilder`)
 - [x] `PolemicaIntegrationService` — пагинация `getProfileGames`, `getMatch`, JSON в `JsonNode`
 - [x] `DefaultGameSyncService` — игроки серии → профильные match id → `getMatch` → фильтр по `namePrefix` → upsert `SeriesGame`, без кредов Polemica → HTTP 400
-- [x] `AchievementDetector` + 8 компонентов (логика как в polemica-achievement-service: `sniper`, `winThreeToThree`, …) + `AchievementDetectorRegistry` (**V2:** идентификаторы — строки `achievement.id`, не enum)
+- [x] `PerkDetector` + 8 компонентов (логика как в polemica-perk-service: `sniper`, `winThreeToThree`, …) + `PerkDetectorRegistry` (**V2:** идентификаторы — строки `perk.id`, не enum)
 - [x] `DefaultScoringService` — очки по формуле DESIGN §5.4, `FantasyTeamRepository.findAllWithCardsForScoring`; базовые очки из `GamePointsService` (polemica-library), префетч по `polemica_game_id` при расчёте серии
 - [x] Flyway `V2__series_game_unique.sql`
 - [x] Flyway `V4__tournament_kind_competition.sql` — `tournament.kind`, `tournament.polemica_competition_id`, `series.game_num_from` / `game_num_to`, `series.name_prefix` nullable
 - [x] `TournamentKind`, ветвление `DefaultGameSyncService` (STANDALONE vs POLEMICA_COMPETITION); `PolemicaIntegrationService` — competitions + `getGamesFromCompetition` / `getGameFromCompetition`; `PolemicaAdminController` — read-only список/деталь Competition
-- [x] Тесты: `AchievementDetectorRegistryTest`; admin integration — sync без кредов → 400
+- [x] Тесты: `PerkDetectorRegistryTest`; admin integration — sync без кредов → 400
 
 ### Backend (Agent A5 — User API + Telegram)
 - [x] `TelegramProperties`, `TelegramInitDataValidator` (HMAC по доке Telegram Web Apps), `TelegramAuthentication` / principal `TelegramUser`
@@ -510,9 +517,9 @@
 - [x] Турниры: список, create/edit, деталь — игроки (add/remove/photo), серии (список + create)
 - [x] **Batch start upcoming series:** на `TournamentsPage` (список турниров) кнопка `Start all UPCOMING` вызывает `POST /api/v1/admin/series/batch-start` с id всех `UPCOMING` серий **из всех турниров** (один батч-ивент уведомлений), добавлены frontend-контракты `BatchStartSeriesRequest` / `BatchStartSeriesResponseDto` в `api/seriesRequests.ts`, `api/types.ts`, `api/series.ts`
 - [x] Серия: редактирование полей, assign players, sync games, calculate scores
-- [x] Шаблоны карт и паки: CRUD-операции, фильтры, загрузка изображения карты, добавление achievement
+- [x] Шаблоны карт и паки: CRUD-операции, фильтры, загрузка изображения карты, добавление perk
 - [x] User tools: give cards, open pack по `telegramUserId`
-- [x] **Agent B5:** страница `/achievements` (каталог + редактирование через модалку); паки V2 в UI (auto, фантики, пул игроков турнира, подсказка auto); User Tools — начисление фантиков; шаблоны — выбор достижения из `GET /admin/achievements`, без bonus в форме; API `achievements.ts`, `users.ts`, `getCardPack` / `updateCardPackPlayers` в `packs.ts`
+- [x] **Agent B5:** страница `/perks` (каталог + редактирование через модалку); паки V2 в UI (auto, фантики, пул игроков турнира, подсказка auto); User Tools — начисление фантиков; шаблоны — выбор перки из `GET /admin/perks`, без bonus в форме; API `perks.ts`, `users.ts`, `getCardPack` / `updateCardPackPlayers` в `packs.ts`
 
 ### Backend (Agent B3 — Фантики + Store API)
 - [x] `TelegramUserRepository.addFantiki` / `deductFantikiIfSufficient` (`@Modifying` queries)
@@ -523,19 +530,19 @@
 
 ### Backend (Agent B1 — Foundation V2: schema + entities)
 - [x] Flyway `V5__fantiki.sql` — `telegram_user.fantiki`, `fantiki_transaction`
-- [x] Flyway `V6__achievement_system.sql` — `achievement`, `achievement_applicable_role`, seed 9 достижений, `card_template_achievement` → FK `achievement_id`, `bonus_points` nullable
+- [x] Flyway `V6__perk_system.sql` — `perk`, `perk_applicable_role`, seed 9 перков, `card_template_perk` → FK `perk_id`, `bonus_points` nullable
 - [x] Flyway `V7__auto_packs.sql` — колонки `card_pack` (auto_generated, price_fantiki, use_all_tournament_players), `card_pack_player`, drop `card_pack_rarity_config.probability`
-- [x] Flyway `V8__game_score_details.sql` — `fantasy_team_card_game_score`, `fantasy_team_card_game_achievement`
-- [x] Flyway `V10__replace_achievement_catalog.sql` — замена справочника достижений (8 шт., `voteForBlack` = `MULTIPLE_PER_GAME`; очистка `fantasy_team_card_game_achievement` и `card_template_achievement` перед вставкой)
-- [x] Flyway `V11__achievement_all_random_cards.sql` — `UPDATE achievement SET can_appear_on_random_cards = TRUE` для всего каталога
-- [x] JPA: `Achievement`, `AchievementApplicableRole`, `FantikiTransaction`, `CardPackPlayer`, `FantasyTeamCardGameScore`, `FantasyTeamCardGameAchievement`; обновлены `TelegramUser`, `CardTemplateAchievement`, `CardPack`, `CardPackRarityConfig`, `FantasyTeamCard`; репозитории для новых сущностей
-- [x] Admin/TMA типы и UI под `achievementId` / `achievementName` и паки без `probability`
+- [x] Flyway `V8__game_score_details.sql` — `fantasy_team_card_game_score`, `fantasy_team_card_game_perk`
+- [x] Flyway `V10__replace_perk_catalog.sql` — замена справочника перков (8 шт., `voteForBlack` = `MULTIPLE_PER_GAME`; очистка `fantasy_team_card_game_perk` и `card_template_perk` перед вставкой)
+- [x] Flyway `V11__perk_all_random_cards.sql` — `UPDATE perk SET can_appear_on_random_cards = TRUE` для всего каталога
+- [x] JPA: `Perk`, `PerkApplicableRole`, `FantikiTransaction`, `CardPackPlayer`, `FantasyTeamCardGameScore`, `FantasyTeamCardGamePerk`; обновлены `TelegramUser`, `CardTemplatePerk`, `CardPack`, `CardPackRarityConfig`, `FantasyTeamCard`; репозитории для новых сущностей
+- [x] Admin/TMA типы и UI под `perkId` / `perkName` и паки без `probability`
 
 ### polemica-library (опционально, не блокер)
 - [ ] Отдельный `getPlayerGames` / фильтрация на сервере — сейчас используется пагинация `getProfileGames` из артефакта 1.8.2
 
 ## Известные проблемы
-- Детекторы достижений зависят от полноты модели `PolemicaGame` (голосования, кики, лучший ход); при расхождениях с Полемикой уточнять по реальным логам API
+- Детекторы перков зависят от полноты модели `PolemicaGame` (голосования, кики, лучший ход); при расхождениях с Полемикой уточнять по реальным логам API
 - В `UserApiIntegrationTest` по-прежнему падает legacy-сценарий `POST fantasy team rejects more than one LEGENDARY per team()` (`expected 400, actual 200`) — не относится к complaints-функционалу и требует отдельного решения по актуальному правилу лимита legendary в лигах
 
 ## Технический долг

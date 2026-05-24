@@ -11,8 +11,8 @@ export interface UpdateCardTemplateRequest {
   description?: string | null
 }
 
-export interface AddCardTemplateAchievementRequest {
-  achievementId: string
+export interface AddCardTemplatePerkRequest {
+  perkId: string
   bonusPoints?: number | null
 }
 

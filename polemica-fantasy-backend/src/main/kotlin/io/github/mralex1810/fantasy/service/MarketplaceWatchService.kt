@@ -2,12 +2,12 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceWatchRequest
 import io.github.mralex1810.fantasy.dto.user.response.FantasyPlayerBriefDto
-import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchAchievementDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchPerkDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchesResponse
 import io.github.mralex1810.fantasy.dto.user.response.TournamentBriefDto
 import io.github.mralex1810.fantasy.entity.MarketplaceWatchFilter
-import io.github.mralex1810.fantasy.repository.AchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceWatchFilterRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -24,7 +24,7 @@ class MarketplaceWatchService(
     private val telegramUserRepository: TelegramUserRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
     private val tournamentRepository: TournamentRepository,
-    private val achievementRepository: AchievementRepository,
+    private val perkRepository: PerkRepository,
 ) {
     companion object {
         const val MAX_WATCHES_PER_USER = 10
@@ -51,12 +51,12 @@ class MarketplaceWatchService(
                 "Maximum $MAX_WATCHES_PER_USER watches reached",
             )
         }
-        val normalizedAchievementIds = normalizeAchievementIds(request.achievementIds)
+        val normalizedPerkIds = normalizePerkIds(request.perkIds)
         if (
             request.fantasyPlayerId == null &&
             request.tournamentId == null &&
             request.rarity == null &&
-            normalizedAchievementIds.isEmpty()
+            normalizedPerkIds.isEmpty()
         ) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -80,14 +80,14 @@ class MarketplaceWatchService(
                 ResponseStatusException(HttpStatus.BAD_REQUEST, "Tournament $tournamentId not found")
             }
         }
-        val achievements = if (normalizedAchievementIds.isEmpty()) {
+        val perks = if (normalizedPerkIds.isEmpty()) {
             emptyList()
         } else {
-            val found = achievementRepository.findAllByIdIn(normalizedAchievementIds)
+            val found = perkRepository.findAllByIdIn(normalizedPerkIds)
             val foundIds = found.map { it.id }.toSet()
-            val missing = normalizedAchievementIds.firstOrNull { it !in foundIds }
+            val missing = normalizedPerkIds.firstOrNull { it !in foundIds }
             if (missing != null) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement $missing not found")
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Perk $missing not found")
             }
             found.sortedBy { it.id }
         }
@@ -100,8 +100,8 @@ class MarketplaceWatchService(
                     tournament = tournament,
                     rarity = request.rarity,
                     maxPrice = request.maxPrice,
-                    achievementIdsKey = normalizedAchievementIds.joinToString(","),
-                    achievements = achievements.toMutableSet(),
+                    perkIdsKey = normalizedPerkIds.joinToString(","),
+                    perks = perks.toMutableSet(),
                 ),
             )
         } catch (_: DataIntegrityViolationException) {
@@ -137,16 +137,16 @@ class MarketplaceWatchService(
             },
             rarity = rarity?.name,
             maxPrice = maxPrice,
-            achievements = achievements.sortedBy { it.id }.map { achievement ->
-                MarketplaceWatchAchievementDto(
-                    id = achievement.id,
-                    name = achievement.name,
+            perks = perks.sortedBy { it.id }.map { perk ->
+                MarketplaceWatchPerkDto(
+                    id = perk.id,
+                    name = perk.name,
                 )
             },
             createdAt = createdAt,
         )
 
-    private fun normalizeAchievementIds(ids: Collection<String>?): List<String> =
+    private fun normalizePerkIds(ids: Collection<String>?): List<String> =
         ids.orEmpty()
             .map { it.trim() }
             .filter { it.isNotEmpty() }

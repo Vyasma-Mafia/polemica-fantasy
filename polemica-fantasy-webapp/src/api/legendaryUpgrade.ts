@@ -7,7 +7,7 @@ export function fetchLegendaryUpgradeInfo(initData: string) {
 
 export function postLegendaryUpgrade(
   initData: string,
-  body: { userCardId: number; achievementId: string },
+  body: { userCardId: number; perkId: string },
 ) {
   return apiSend<LegendaryUpgradeResponse>('POST', '/api/v1/legendary-upgrade', initData, body)
 }

@@ -1,6 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
-import io.github.mralex1810.fantasy.dto.user.response.MarketplaceCardAchievementDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceCardPerkDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceTransactionDetailDto
 import io.github.mralex1810.fantasy.dto.user.response.TransactionCardDto
 import io.github.mralex1810.fantasy.dto.user.response.TransactionComplaintInfoDto
@@ -70,7 +70,7 @@ class MarketplaceTransactionService(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Card template is missing for transaction $listingId",
         )
-        return cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(templateId)).firstOrNull() ?: template
+        return cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(templateId)).firstOrNull() ?: template
     }
 
     private fun TelegramUser.toParticipantDto(): TransactionParticipantDto =
@@ -86,12 +86,12 @@ class MarketplaceTransactionService(
             playerName = fantasyPlayer.nickname,
             playerPhotoUrl = imageStorageService.publicObjectUrl(fantasyPlayer.photoUrl),
             rarity = rarity,
-            achievements = achievements.distinctBy { it.achievement!!.id }.map { ach ->
-                val def = ach.achievement!!
-                MarketplaceCardAchievementDto(
-                    achievementId = def.id,
+            perks = perks.distinctBy { it.perk!!.id }.map { perk ->
+                val def = perk.perk!!
+                MarketplaceCardPerkDto(
+                    perkId = def.id,
                     name = def.name,
-                    bonusPoints = ach.bonusPoints ?: def.bonusPoints,
+                    bonusPoints = perk.bonusPoints ?: def.bonusPoints,
                 )
             },
             skinCode = skinCode,

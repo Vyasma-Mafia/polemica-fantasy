@@ -1,5 +1,5 @@
 import type {
-  AddCardTemplateAchievementRequest,
+  AddCardTemplatePerkRequest,
   CreateCardTemplateRequest,
   GiveCardsRequest,
   UpdateCardTemplateRequest,
@@ -15,7 +15,7 @@ import { apiJson } from './client'
 export type {
   CreateCardTemplateRequest,
   UpdateCardTemplateRequest,
-  AddCardTemplateAchievementRequest,
+  AddCardTemplatePerkRequest,
   GiveCardsRequest,
 } from './cardRequests'
 
@@ -54,11 +54,11 @@ export function updateCardTemplate(id: number, body: UpdateCardTemplateRequest) 
   })
 }
 
-export function addCardTemplateAchievement(
+export function addCardTemplatePerk(
   id: number,
-  body: AddCardTemplateAchievementRequest,
+  body: AddCardTemplatePerkRequest,
 ) {
-  return apiJson<CardTemplateDto>(`/v1/admin/card-templates/${id}/achievements`, {
+  return apiJson<CardTemplateDto>(`/v1/admin/card-templates/${id}/perks`, {
     method: 'POST',
     body: JSON.stringify(body),
   })

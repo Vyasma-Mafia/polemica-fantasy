@@ -10,7 +10,7 @@ import type {
   UserCardItem,
   UserSeriesDetail,
 } from '../api/types'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -292,7 +292,7 @@ export function LeaderboardPlayerTeamPage() {
                         {slot.score != null ? `${slot.score.toFixed(2)} pts` : '—'}
                       </span>
                     </div>
-                    <CardAchievementChips achievements={card.achievements} max={4} className="pf-card-ach-chips--tight" />
+                    <CardPerkChips perks={card.perks} max={4} className="pf-card-perk-chips--tight" />
                     <span className="pf-fantasy-card__hint">Нажмите для деталей</span>
                   </button>
                 )
@@ -322,9 +322,9 @@ export function LeaderboardPlayerTeamPage() {
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
             <ul className="pf-modal__ach">
-              {detailCard.achievements.map((a) => (
-                <li key={a.achievementId}>
-                  {a.achievementName}: +{a.bonusPoints}
+              {detailCard.perks.map((a) => (
+                <li key={a.perkId}>
+                  {a.perkName}: +{a.bonusPoints}
                 </li>
               ))}
             </ul>

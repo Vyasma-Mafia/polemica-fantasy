@@ -73,9 +73,9 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
-        AND (:achievementIdsEmpty = TRUE OR EXISTS (
-            SELECT 1 FROM CardTemplateAchievement cta
-            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        AND (:perkIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplatePerk cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.perk.id IN :perkIds
         ))
         """,
         countQuery = """
@@ -97,9 +97,9 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
-        AND (:achievementIdsEmpty = TRUE OR EXISTS (
-            SELECT 1 FROM CardTemplateAchievement cta
-            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        AND (:perkIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplatePerk cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.perk.id IN :perkIds
         ))
         """,
     )
@@ -111,8 +111,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("rarity") rarity: Rarity?,
         @Param("minPrice") minPrice: Long?,
         @Param("maxPrice") maxPrice: Long?,
-        @Param("achievementIdsEmpty") achievementIdsEmpty: Boolean,
-        @Param("achievementIds") achievementIds: Collection<String>,
+        @Param("perkIdsEmpty") perkIdsEmpty: Boolean,
+        @Param("perkIds") perkIds: Collection<String>,
         pageable: Pageable,
     ): Page<MarketplaceListing>
 

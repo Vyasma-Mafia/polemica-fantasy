@@ -2,7 +2,7 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceListingRequest
 import io.github.mralex1810.fantasy.dto.user.response.BuyCardResultDto
-import io.github.mralex1810.fantasy.dto.user.response.MarketplaceCardAchievementDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceCardPerkDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceFeedItemDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceAnalyticsDetailDto
@@ -64,7 +64,7 @@ class MarketplaceService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
         checkMarketplaceBan(me)
-        val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(request.userCardId, user.id!!)
+        val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplatePerks(request.userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.usesRemaining <= 0) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot sell an expired card")
@@ -114,7 +114,7 @@ class MarketplaceService(
             ),
         )
         val tid = uc.cardTemplate!!.id!!
-        val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
+        val tpl = cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
         return toListingEntryDto(
             listing,
@@ -168,7 +168,7 @@ class MarketplaceService(
         listing.price = newPrice
         marketplaceListingRepository.save(listing)
         val tid = uc.cardTemplate!!.id!!
-        val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
+        val tpl = cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
         return toListingEntryDto(
             listing,
@@ -268,7 +268,7 @@ class MarketplaceService(
         )
 
         val tid = uc.cardTemplate!!.id!!
-        val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(tid)).firstOrNull()
+        val tpl = cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
         val cardDto = uc.toUserCardItemDto(tpl, imageStorageService, cardValueService)
         val entry = toListingEntryDto(
@@ -302,7 +302,7 @@ class MarketplaceService(
         rarity: Rarity?,
         minPrice: Long?,
         maxPrice: Long?,
-        achievementIds: Collection<String>?,
+        perkIds: Collection<String>?,
         sortBy: String?,
         page: Int,
         size: Int,
@@ -310,7 +310,7 @@ class MarketplaceService(
         val sort = parseListingSort(sortBy)
         val pageable = PageRequest.of(page, size.coerceAtLeast(1).coerceAtMost(100), sort)
         val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
-        val normalizedAchievementIds = normalizeAchievementIdsForFilter(achievementIds)
+        val normalizedPerkIds = normalizePerkIdsForFilter(perkIds)
         val viewerPackOpens =
             telegramUserRepository.findById(viewer.id!!).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
@@ -323,14 +323,14 @@ class MarketplaceService(
             rarity,
             minPrice,
             maxPrice,
-            normalizedAchievementIds.isEmpty(),
-            normalizedAchievementIds.ifEmpty { listOf("__none__") },
+            normalizedPerkIds.isEmpty(),
+            normalizedPerkIds.ifEmpty { listOf("__none__") },
             pageable,
         )
         val templateIds = result.content.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
         val templatesById =
             if (templateIds.isEmpty()) emptyMap()
-            else cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+            else cardTemplateRepository.findAllByIdWithPerksLoaded(templateIds).associateBy { it.id!! }
         val content = result.content.map { ml ->
             val uc = ml.userCard!!
             val tid = uc.cardTemplate!!.id!!
@@ -369,7 +369,7 @@ class MarketplaceService(
                 ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
             }.packOpensCount
         val templateIds = listings.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
-        val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+        val templatesById = cardTemplateRepository.findAllByIdWithPerksLoaded(templateIds).associateBy { it.id!! }
         return listings.map { ml ->
             val uc = ml.userCard!!
             val tpl = templatesById[uc.cardTemplate!!.id!!] ?: uc.cardTemplate!!
@@ -397,7 +397,7 @@ class MarketplaceService(
         val templateIds = sold.map { ml ->
             ml.soldCardTemplate?.id ?: ml.userCard!!.cardTemplate!!.id!!
         }.distinct()
-        val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+        val templatesById = cardTemplateRepository.findAllByIdWithPerksLoaded(templateIds).associateBy { it.id!! }
         val listingIds = sold.mapNotNull { it.id }
         val sanctionedIds = if (listingIds.isEmpty()) {
             emptySet()
@@ -436,7 +436,7 @@ class MarketplaceService(
         }
     }
 
-    private fun normalizeAchievementIdsForFilter(ids: Collection<String>?): List<String> =
+    private fun normalizePerkIdsForFilter(ids: Collection<String>?): List<String> =
         ids.orEmpty()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -561,10 +561,10 @@ class MarketplaceService(
         skinCodeOverride: String? = null,
     ): MarketplaceListingCardDto {
         val fp = template.fantasyPlayer!!
-        val achievements = template.achievements.distinctBy { it.achievement!!.id }.map { a ->
-            val def = a.achievement!!
-            MarketplaceCardAchievementDto(
-                achievementId = def.id,
+        val perks = template.perks.distinctBy { it.perk!!.id }.map { a ->
+            val def = a.perk!!
+            MarketplaceCardPerkDto(
+                perkId = def.id,
                 name = def.name,
                 bonusPoints = a.bonusPoints ?: def.bonusPoints,
             )
@@ -575,7 +575,7 @@ class MarketplaceService(
             playerName = fp.nickname,
             playerPhotoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             rarity = template.rarity,
-            achievements = achievements,
+            perks = perks,
             value = if (includeValue) cardValueService.calculateValue(template) else null,
             skinCode = skinCodeOverride ?: uc.cardSkin?.code,
         )

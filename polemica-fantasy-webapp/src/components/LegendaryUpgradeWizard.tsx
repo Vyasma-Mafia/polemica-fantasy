@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiGet } from '../api/client'
-import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchPerkCatalog } from '../api/perksCatalog'
 import { fetchLegendaryUpgradeInfo, postLegendaryUpgrade } from '../api/legendaryUpgrade'
-import type { AchievementCatalogItem, LegendaryUpgradeResponse, UserCardItem } from '../api/types'
+import type { PerkCatalogItem, LegendaryUpgradeResponse, UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityScoreModifierLabel } from '../lib/rarity'
-import { CardAchievementChips } from './CardAchievementChips'
+import { CardPerkChips } from './CardPerkChips'
 
-type Step = 'card' | 'achievement' | 'confirm' | 'result'
+type Step = 'card' | 'perk' | 'confirm' | 'result'
 
 export function isEligibleEpicForLegendary(c: UserCardItem): boolean {
   return (
     c.rarity === 'EPIC' &&
     c.usesRemaining > 0 &&
-    c.achievements.length === 2
+    c.perks.length === 2
   )
 }
 
@@ -32,7 +32,7 @@ export function LegendaryUpgradeWizard({
   const qc = useQueryClient()
   const [step, setStep] = useState<Step>('card')
   const [userCardId, setUserCardId] = useState<number | null>(null)
-  const [achievementId, setAchievementId] = useState<string | null>(null)
+  const [perkId, setPerkId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [resultCard, setResultCard] = useState<UserCardItem | null>(null)
   const [easterEggResult, setEasterEggResult] = useState<LegendaryUpgradeResponse['easterEgg']>(null)
@@ -49,9 +49,9 @@ export function LegendaryUpgradeWizard({
     enabled: isOpen && !!initData,
   })
 
-  const achQ = useQuery({
-    queryKey: ['achievements-catalog', initData],
-    queryFn: () => fetchAchievementCatalog(initData),
+  const perkQ = useQuery({
+    queryKey: ['perks-catalog', initData],
+    queryFn: () => fetchPerkCatalog(initData),
     enabled: isOpen && !!initData,
   })
 
@@ -62,18 +62,18 @@ export function LegendaryUpgradeWizard({
 
   const selectedCard = userCardId != null ? cardsQ.data?.find((c) => c.id === userCardId) : undefined
 
-  const pickableAchievements = useMemo(() => {
-    if (!selectedCard || !achQ.data) return []
-    const existing = new Set(selectedCard.achievements.map((a) => a.achievementId))
-    return achQ.data.filter((a) => !existing.has(a.id))
-  }, [selectedCard, achQ.data])
+  const pickablePerks = useMemo(() => {
+    if (!selectedCard || !perkQ.data) return []
+    const existing = new Set(selectedCard.perks.map((a) => a.perkId))
+    return perkQ.data.filter((a) => !existing.has(a.id))
+  }, [selectedCard, perkQ.data])
 
   useEffect(() => {
     if (isOpen) return
     setError(null)
     setStep('card')
     setUserCardId(null)
-    setAchievementId(null)
+    setPerkId(null)
     setResultCard(null)
     setEasterEggResult(null)
   }, [isOpen])
@@ -83,14 +83,14 @@ export function LegendaryUpgradeWizard({
     const c = cardsQ.data.find((x) => x.id === initialUserCardId)
     if (c && isEligibleEpicForLegendary(c)) {
       setUserCardId(c.id)
-      setStep('achievement')
+      setStep('perk')
     }
   }, [isOpen, initialUserCardId, cardsQ.data])
 
   const upgradeM = useMutation({
     mutationFn: () => {
-      if (userCardId == null || achievementId == null) throw new Error('Не выбраны данные')
-      return postLegendaryUpgrade(initData, { userCardId, achievementId })
+      if (userCardId == null || perkId == null) throw new Error('Не выбраны данные')
+      return postLegendaryUpgrade(initData, { userCardId, perkId })
     },
     onSuccess: (result) => {
       void qc.invalidateQueries({ queryKey: ['cards'] })
@@ -122,22 +122,22 @@ export function LegendaryUpgradeWizard({
       return
     }
     if (step === 'confirm') {
-      setStep('achievement')
+      setStep('perk')
       return
     }
-    if (step === 'achievement') {
+    if (step === 'perk') {
       if (initialUserCardId != null && userCardId === initialUserCardId) {
         onClose()
       } else {
         setStep('card')
-        setAchievementId(null)
+        setPerkId(null)
       }
       return
     }
     onClose()
   }
 
-  const pickedAch = achievementId ? achQ.data?.find((a) => a.id === achievementId) : undefined
+  const pickedPerk = perkId ? perkQ.data?.find((a) => a.id === perkId) : undefined
 
   return (
     <div
@@ -159,7 +159,7 @@ export function LegendaryUpgradeWizard({
 
         <h3 className="pf-modal__title">Легендарный апгрейд</h3>
         <p className="pf-muted pf-legendary-wizard__lead">
-          Эпическая карта с двумя достижениями получает третье и становится легендарной. Стоимость:{' '}
+          Эпическая карта с двумя перками получает третье и становится легендарной. Стоимость:{' '}
           {cost != null ? (
             <strong>{cost.toLocaleString('ru-RU')}₣</strong>
           ) : (
@@ -180,7 +180,7 @@ export function LegendaryUpgradeWizard({
             {cardsQ.isError && <p className="pf-err">{(cardsQ.error as Error).message}</p>}
             {eligible.length === 0 && !cardsQ.isLoading && (
               <p className="pf-muted">
-                Нет подходящих карт: нужна EPIC с двумя достижениями и оставшимися использованиями.
+                Нет подходящих карт: нужна EPIC с двумя перками и оставшимися использованиями.
               </p>
             )}
             <ul className="pf-legendary-wizard__card-pick">
@@ -193,8 +193,8 @@ export function LegendaryUpgradeWizard({
                       className={`pf-legendary-wizard__pick-card pf-collection-card--epic`}
                       onClick={() => {
                         setUserCardId(c.id)
-                        setStep('achievement')
-                        setAchievementId(null)
+                        setStep('perk')
+                        setPerkId(null)
                         setError(null)
                       }}
                     >
@@ -206,7 +206,7 @@ export function LegendaryUpgradeWizard({
                         )}
                         <div className="pf-legendary-wizard__pick-cap">
                           <span className="pf-legendary-wizard__pick-name">{c.playerNickname}</span>
-                          <CardAchievementChips achievements={c.achievements} max={4} />
+                          <CardPerkChips perks={c.perks} max={4} />
                         </div>
                       </div>
                     </button>
@@ -217,25 +217,25 @@ export function LegendaryUpgradeWizard({
           </div>
         )}
 
-        {step === 'achievement' && selectedCard && (
+        {step === 'perk' && selectedCard && (
           <div className="pf-legendary-wizard__step">
-            <p className="pf-field__label">Третье достижение</p>
-            {achQ.isLoading && <p className="pf-muted">Каталог…</p>}
-            {pickableAchievements.length === 0 && !achQ.isLoading && (
-              <p className="pf-muted">Нет доступных достижений (все уже на карте).</p>
+            <p className="pf-field__label">Третье перк</p>
+            {perkQ.isLoading && <p className="pf-muted">Каталог…</p>}
+            {pickablePerks.length === 0 && !perkQ.isLoading && (
+              <p className="pf-muted">Нет доступных перков (все уже на карте).</p>
             )}
-            <ul className="pf-legendary-wizard__ach-list">
-              {pickableAchievements.map((a: AchievementCatalogItem) => (
+            <ul className="pf-legendary-wizard__perk-list">
+              {pickablePerks.map((a: PerkCatalogItem) => (
                 <li key={a.id}>
                   <button
                     type="button"
-                    className={`pf-legendary-wizard__ach-item ${achievementId === a.id ? 'pf-legendary-wizard__ach-item--selected' : ''}`}
+                    className={`pf-legendary-wizard__perk-item ${perkId === a.id ? 'pf-legendary-wizard__perk-item--selected' : ''}`}
                     onClick={() => {
-                      setAchievementId(a.id)
+                      setPerkId(a.id)
                       setError(null)
                     }}
                   >
-                    <span className="pf-legendary-wizard__ach-name">{a.name}</span>
+                    <span className="pf-legendary-wizard__perk-name">{a.name}</span>
                     <span className="pf-muted">+{a.bonusPoints}</span>
                   </button>
                 </li>
@@ -248,7 +248,7 @@ export function LegendaryUpgradeWizard({
               <button
                 type="button"
                 className="pf-btn"
-                disabled={!achievementId || !canAfford}
+                disabled={!perkId || !canAfford}
                 onClick={() => {
                   setStep('confirm')
                   setError(null)
@@ -260,7 +260,7 @@ export function LegendaryUpgradeWizard({
           </div>
         )}
 
-        {step === 'confirm' && selectedCard && pickedAch && (
+        {step === 'confirm' && selectedCard && pickedPerk && (
           <div className="pf-legendary-wizard__step">
             <p className="pf-field__label">Подтверждение</p>
             <div className="pf-legendary-wizard__compare">
@@ -277,9 +277,9 @@ export function LegendaryUpgradeWizard({
                   <p className="pf-legendary-wizard__mini-cap">{selectedCard.playerNickname}</p>
                   <p className="pf-muted">EPIC {rarityScoreModifierLabel('EPIC')}</p>
                   <ul className="pf-modal__ach" style={{ marginTop: 8 }}>
-                    {selectedCard.achievements.map((x) => (
-                      <li key={x.achievementId}>
-                        {x.achievementName}: +{x.bonusPoints}
+                    {selectedCard.perks.map((x) => (
+                      <li key={x.perkId}>
+                        {x.perkName}: +{x.bonusPoints}
                       </li>
                     ))}
                   </ul>
@@ -298,9 +298,9 @@ export function LegendaryUpgradeWizard({
                   <p className="pf-legendary-wizard__mini-cap">{selectedCard.playerNickname}</p>
                   <p className="pf-muted">LEGENDARY {rarityScoreModifierLabel('LEGENDARY')}</p>
                   <ul className="pf-modal__ach" style={{ marginTop: 8 }}>
-                    {[...selectedCard.achievements, { achievementId: pickedAch.id, achievementName: pickedAch.name, bonusPoints: pickedAch.bonusPoints }].map((x) => (
-                      <li key={x.achievementId}>
-                        {x.achievementName}: +{x.bonusPoints}
+                    {[...selectedCard.perks, { perkId: pickedPerk.id, perkName: pickedPerk.name, bonusPoints: pickedPerk.bonusPoints }].map((x) => (
+                      <li key={x.perkId}>
+                        {x.perkName}: +{x.bonusPoints}
                       </li>
                     ))}
                   </ul>

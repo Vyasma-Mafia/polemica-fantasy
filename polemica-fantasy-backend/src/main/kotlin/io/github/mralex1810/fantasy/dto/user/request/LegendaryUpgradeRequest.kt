@@ -7,5 +7,5 @@ data class LegendaryUpgradeRequest(
     @field:NotNull
     val userCardId: Long,
     @field:NotBlank
-    val achievementId: String,
+    val perkId: String,
 )

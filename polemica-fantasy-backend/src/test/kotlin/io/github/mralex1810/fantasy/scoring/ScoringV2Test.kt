@@ -8,8 +8,8 @@ import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaUser
 import com.github.mafia.vyasma.polemica.library.model.game.Position
 import com.github.mafia.vyasma.polemica.library.model.game.Role
-import io.github.mralex1810.fantasy.entity.Achievement
-import io.github.mralex1810.fantasy.entity.AchievementApplicableRole
+import io.github.mralex1810.fantasy.entity.Perk
+import io.github.mralex1810.fantasy.entity.PerkApplicableRole
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,28 +39,28 @@ class ScoringV2Test {
 
     @Test
     fun `role filter rejects when role not in applicable set`() {
-        val achievement = Achievement().apply {
+        val perk = Perk().apply {
             id = "X"
             applicableRoles.add(roleRow("SHERIFF"))
         }
         val peacePlayer = polemicaPlayer(Role.PEACE)
-        assertFalse(isRoleApplicable(achievement, peacePlayer))
+        assertFalse(isRoleApplicable(perk, peacePlayer))
     }
 
     @Test
     fun `role filter accepts matching role`() {
-        val achievement = Achievement().apply {
+        val perk = Perk().apply {
             id = "X"
             applicableRoles.add(roleRow("PEACE"))
         }
         val peacePlayer = polemicaPlayer(Role.PEACE)
-        assertTrue(isRoleApplicable(achievement, peacePlayer))
+        assertTrue(isRoleApplicable(perk, peacePlayer))
     }
 
     @Test
     fun `empty applicable roles never matches`() {
-        val achievement = Achievement().apply { id = "X" }
-        assertFalse(isRoleApplicable(achievement, polemicaPlayer(Role.PEACE)))
+        val perk = Perk().apply { id = "X" }
+        assertFalse(isRoleApplicable(perk, polemicaPlayer(Role.PEACE)))
     }
 
     @Test
@@ -105,8 +105,8 @@ class ScoringV2Test {
         assertTrue(game.isFinishedForScoring())
     }
 
-    private fun roleRow(role: String) = AchievementApplicableRole().apply {
-        achievementId = "X"
+    private fun roleRow(role: String) = PerkApplicableRole().apply {
+        perkId = "X"
         this.role = role
     }
 

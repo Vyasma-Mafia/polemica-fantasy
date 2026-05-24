@@ -36,10 +36,10 @@ interface CardTemplateRepository : JpaRepository<CardTemplate, Long> {
         """
         SELECT DISTINCT ct FROM CardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
-        LEFT JOIN FETCH ct.achievements ach
-        LEFT JOIN FETCH ach.achievement
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
         WHERE ct.id IN :ids
         """,
     )
-    fun findAllByIdWithAchievementsLoaded(@Param("ids") ids: Collection<Long>): List<CardTemplate>
+    fun findAllByIdWithPerksLoaded(@Param("ids") ids: Collection<Long>): List<CardTemplate>
 }

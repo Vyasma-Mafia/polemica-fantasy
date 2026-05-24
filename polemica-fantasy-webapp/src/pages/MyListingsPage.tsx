@@ -8,7 +8,7 @@ import {
   updateMarketplaceListingPrice,
 } from '../api/marketplace'
 import { fetchEconomyInfo } from '../api/userEconomy'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -77,9 +77,9 @@ export function MyListingsPage() {
           const c = row.card
           const skinMod = skinClass(c.skinCode)
           const img = cardDisplayImageUrl({ playerPhotoUrl: c.playerPhotoUrl, imageUrl: null })
-          const achForChips = c.achievements.map((a) => ({
-            achievementId: a.achievementId,
-            achievementName: a.name,
+          const perkForChips = c.perks.map((a) => ({
+            perkId: a.perkId,
+            perkName: a.name,
             bonusPoints: a.bonusPoints,
           }))
           return (
@@ -102,7 +102,7 @@ export function MyListingsPage() {
                         {rarityScoreModifierLabel(c.rarity)}
                       </span>
                     </span>
-                    <CardAchievementChips achievements={achForChips} max={4} />
+                    <CardPerkChips perks={perkForChips} max={4} />
                   </div>
                 </div>
                 <div className="pf-marketplace-card__meta">

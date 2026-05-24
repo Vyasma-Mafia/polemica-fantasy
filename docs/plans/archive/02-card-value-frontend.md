@@ -23,7 +23,7 @@ value: number;
 ```typescript
 cardValues: {
   baseValues: Record<Rarity, number>;
-  achievementBonus: number;
+  perkBonus: number;
 };
 ```
 
@@ -57,12 +57,12 @@ cardValues: {
 В детальной модалке карточки (при тапе на карту в коллекции) — секция:
 
 ```
-Ценность: 40 (редкость) + 10 (1 достижение) = 50₱
+Ценность: 40 (редкость) + 10 (1 перк) = 50₱
 ```
 
 Данные для расшифровки:
 - `baseValue` — из `economyInfo.cardValues.baseValues[card.rarity]`
-- `achievementBonus` — `card.achievements.length × economyInfo.cardValues.achievementBonus`
+- `perkBonus` — `card.perks.length × economyInfo.cardValues.perkBonus`
 - `totalValue` — `card.value` (уже посчитано на бэке)
 
 Загрузка `economyInfo` — через существующий `fetchEconomyInfo` (уже используется в `HelpPage`, `CardsPage`).
@@ -90,7 +90,7 @@ cardValues: {
 **Файл:** `polemica-fantasy-webapp/src/pages/HelpPage.tsx`
 
 Новая секция «Ценность карты»:
-- Формула: `ценность = базовая (по редкости) + количество достижений × бонус`
+- Формула: `ценность = базовая (по редкости) + количество перков × бонус`
 - Таблица значений (из `economyInfo.cardValues`):
 
 | Редкость | База | Ач. (типовые) | Итого |

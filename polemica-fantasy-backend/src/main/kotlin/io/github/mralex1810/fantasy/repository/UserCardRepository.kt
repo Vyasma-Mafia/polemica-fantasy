@@ -32,8 +32,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH uc.cardSkin
-        LEFT JOIN FETCH ct.achievements ach
-        LEFT JOIN FETCH ach.achievement
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
         WHERE uc.telegramUser.id = :telegramUserId
         AND uc.deletedAt IS NULL
         AND (:tournamentId IS NULL OR EXISTS (
@@ -45,9 +45,9 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
             WHERE sp.series.id = :seriesId AND sp.tournamentPlayer.fantasyPlayer.id = fp.id
         ))
         AND (:rarity IS NULL OR ct.rarity = :rarity)
-        AND (:achievementIdsEmpty = TRUE OR EXISTS (
-            SELECT 1 FROM CardTemplateAchievement cta
-            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        AND (:perkIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplatePerk cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.perk.id IN :perkIds
         ))
         ORDER BY uc.acquiredAt DESC
         """,
@@ -57,8 +57,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("tournamentId") tournamentId: Long?,
         @Param("seriesId") seriesId: Long?,
         @Param("rarity") rarity: Rarity?,
-        @Param("achievementIdsEmpty") achievementIdsEmpty: Boolean,
-        @Param("achievementIds") achievementIds: Collection<String>,
+        @Param("perkIdsEmpty") perkIdsEmpty: Boolean,
+        @Param("perkIds") perkIds: Collection<String>,
     ): List<UserCard>
 
     @Query(
@@ -67,8 +67,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH uc.cardSkin
-        LEFT JOIN FETCH ct.achievements ach
-        LEFT JOIN FETCH ach.achievement
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
         WHERE uc.telegramUser.id = :telegramUserId
           AND uc.id IN :ids
           AND uc.deletedAt IS NULL
@@ -86,14 +86,14 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH uc.cardSkin
         LEFT JOIN FETCH uc.craftedBy
-        LEFT JOIN FETCH ct.achievements ach
-        LEFT JOIN FETCH ach.achievement
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
         WHERE uc.id = :id
           AND uc.telegramUser.id = :telegramUserId
           AND uc.deletedAt IS NULL
         """,
     )
-    fun findByIdAndTelegramUser_IdWithTemplateAchievements(
+    fun findByIdAndTelegramUser_IdWithTemplatePerks(
         @Param("id") id: Long,
         @Param("telegramUserId") telegramUserId: Long,
     ): UserCard?
@@ -135,8 +135,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         JOIN FETCH uc.cardTemplate ct
         JOIN FETCH ct.fantasyPlayer fp
         LEFT JOIN FETCH uc.cardSkin
-        LEFT JOIN FETCH ct.achievements ach
-        LEFT JOIN FETCH ach.achievement
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
         WHERE uc.deletedAt IS NULL
         """,
     )

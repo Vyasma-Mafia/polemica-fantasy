@@ -26,7 +26,7 @@ class PolemicaIntegrationService(
         return chunk.rows
     }
 
-    /** First page of public profile games (newest first). Used for achievement frequency statistics. */
+    /** First page of public profile games (newest first). Used for perk frequency statistics. */
     fun fetchProfileGamesFirstPageForStatistics(userId: Long): List<ProfileGameRow> {
         val chunk = polemicaClient.getProfileGames(userId, PROFILE_STATS_PAGE, PROFILE_STATS_PAGE_SIZE)
         return chunk.rows

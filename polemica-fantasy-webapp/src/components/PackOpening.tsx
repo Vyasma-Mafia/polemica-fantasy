@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 import type { PackOpeningCard, PackOpeningUserCard, UserCardItem } from '../api/types'
 import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { CardAchievementChips } from './CardAchievementChips'
+import { CardPerkChips } from './CardPerkChips'
 import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
 const PACK_PHASE_MS = 1200
@@ -141,7 +141,7 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
                         {c.rarity}{' '}
                         <span className="pf-rarity-mod">{rarityScoreModifierLabel(c.rarity)}</span>
                       </span>
-                      {renderOpeningCardChips(c, 'pf-card-ach-chips--compact')}
+                      {renderOpeningCardChips(c, 'pf-card-perk-chips--compact')}
                     </div>
                   </div>
                 </li>
@@ -230,21 +230,21 @@ function openingCardSkinCode(card: PackOpeningCard): string | null {
   return card.card.skinCode ?? null
 }
 
-function openingCardAchievements(card: PackOpeningCard): UserCardItem['achievements'] {
-  if (isUserPackOpeningCard(card)) return card.card.achievements
+function openingCardPerks(card: PackOpeningCard): UserCardItem['perks'] {
+  if (isUserPackOpeningCard(card)) return card.card.perks
   return []
 }
 
 function renderOpeningCardChips(card: PackOpeningCard, className = '') {
   if (isUserPackOpeningCard(card)) {
-    return <CardAchievementChips achievements={openingCardAchievements(card)} className={className} />
+    return <CardPerkChips perks={openingCardPerks(card)} className={className} />
   }
 
-  const cn = ['pf-card-ach-chips', className].filter(Boolean).join(' ')
+  const cn = ['pf-card-perk-chips', className].filter(Boolean).join(' ')
   return (
     <ul className={cn} aria-label="Бонус Тюленчика">
-      <li className="pf-card-ach-chip">
-        <span className="pf-card-ach-chip__bonus">+{card.value.toLocaleString('ru-RU')} фантики</span>
+      <li className="pf-card-perk-chip">
+        <span className="pf-card-perk-chip__bonus">+{card.value.toLocaleString('ru-RU')} фантики</span>
       </li>
     </ul>
   )

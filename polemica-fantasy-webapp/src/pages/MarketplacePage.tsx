@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchPerkCatalog } from '../api/perksCatalog'
 import { ApiError, apiGet } from '../api/client'
 import { useCreateMarketplaceWatch } from '../api/notifications'
 import {
@@ -16,7 +16,7 @@ import type {
   Rarity,
   UserTournamentDetail,
 } from '../api/types'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -44,7 +44,7 @@ export function MarketplacePage() {
   const [tournamentId, setTournamentId] = useState('')
   const [seriesId, setSeriesId] = useState('')
   const [playerFilterId, setPlayerFilterId] = useState<number | ''>('')
-  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
+  const [selectedPerkIds, setSelectedPerkIds] = useState<string[]>([])
 
   const [buyConfirm, setBuyConfirm] = useState<MarketplaceListingEntry | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -69,9 +69,9 @@ export function MarketplacePage() {
     enabled: !!initData,
   })
 
-  const achievementsQ = useQuery({
-    queryKey: ['achievements-catalog', initData],
-    queryFn: () => fetchAchievementCatalog(initData!),
+  const perksQ = useQuery({
+    queryKey: ['perks-catalog', initData],
+    queryFn: () => fetchPerkCatalog(initData!),
     enabled: !!initData,
   })
 
@@ -91,16 +91,16 @@ export function MarketplacePage() {
       rarity: rarity || undefined,
       minPrice: minOk ? minP : undefined,
       maxPrice: maxOk ? maxP : undefined,
-      achievementIds: selectedAchievementIds,
+      perkIds: selectedPerkIds,
       sortBy,
       page,
       size: 20,
     }
-  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, selectedAchievementIds, sortBy, page])
+  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, selectedPerkIds, sortBy, page])
 
   const watchPayload = useMemo(() => {
     const hasCriteria =
-      playerFilterId !== '' || tournamentId !== '' || rarity !== '' || selectedAchievementIds.length > 0
+      playerFilterId !== '' || tournamentId !== '' || rarity !== '' || selectedPerkIds.length > 0
     if (!hasCriteria) return null
     const parsedMaxPrice = maxPrice.trim() === '' ? null : Number(maxPrice)
     return {
@@ -111,9 +111,9 @@ export function MarketplacePage() {
         parsedMaxPrice != null && Number.isFinite(parsedMaxPrice) && parsedMaxPrice > 0
           ? Math.floor(parsedMaxPrice)
           : null,
-      achievementIds: selectedAchievementIds,
+      perkIds: selectedPerkIds,
     }
-  }, [playerFilterId, tournamentId, rarity, maxPrice, selectedAchievementIds])
+  }, [playerFilterId, tournamentId, rarity, maxPrice, selectedPerkIds])
 
   const watchPayloadKey = useMemo(() => JSON.stringify(watchPayload), [watchPayload])
 
@@ -335,22 +335,22 @@ export function MarketplacePage() {
           </select>
         </label>
         <label className="pf-field">
-          <span className="pf-field__label">Достижения</span>
+          <span className="pf-field__label">Перки</span>
           <select
             className="pf-input"
             multiple
-            value={selectedAchievementIds}
+            value={selectedPerkIds}
             onChange={(e) => {
-              setSelectedAchievementIds(
+              setSelectedPerkIds(
                 Array.from(e.currentTarget.selectedOptions, (option) => option.value),
               )
               setPage(0)
             }}
-            disabled={achievementsQ.isLoading}
+            disabled={perksQ.isLoading}
           >
-            {(achievementsQ.data ?? []).map((achievement) => (
-              <option key={achievement.id} value={achievement.id}>
-                {achievement.name}
+            {(perksQ.data ?? []).map((perk) => (
+              <option key={perk.id} value={perk.id}>
+                {perk.name}
               </option>
             ))}
           </select>
@@ -424,9 +424,9 @@ export function MarketplacePage() {
             playerPhotoUrl: c.playerPhotoUrl,
             imageUrl: null,
           })
-          const achForChips = c.achievements.map((a) => ({
-            achievementId: a.achievementId,
-            achievementName: a.name,
+          const perkForChips = c.perks.map((a) => ({
+            perkId: a.perkId,
+            perkName: a.name,
             bonusPoints: a.bonusPoints,
           }))
           return (
@@ -449,7 +449,7 @@ export function MarketplacePage() {
                         {rarityScoreModifierLabel(c.rarity)}
                       </span>
                     </span>
-                    <CardAchievementChips achievements={achForChips} max={4} />
+                    <CardPerkChips perks={perkForChips} max={4} />
                   </div>
                 </div>
                 <div className="pf-marketplace-card__meta">

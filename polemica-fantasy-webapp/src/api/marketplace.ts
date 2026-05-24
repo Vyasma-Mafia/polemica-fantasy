@@ -20,7 +20,7 @@ export interface ListingsQueryParams {
   rarity?: Rarity
   minPrice?: number
   maxPrice?: number
-  achievementIds?: string[]
+  perkIds?: string[]
   sortBy?: MarketplaceSortBy
   page?: number
   size?: number
@@ -34,8 +34,8 @@ function listingsSearchParams(p: ListingsQueryParams): string {
   if (p.rarity) sp.set('rarity', p.rarity)
   if (p.minPrice != null) sp.set('minPrice', String(p.minPrice))
   if (p.maxPrice != null) sp.set('maxPrice', String(p.maxPrice))
-  for (const achievementId of p.achievementIds ?? []) {
-    sp.append('achievementIds', achievementId)
+  for (const perkId of p.perkIds ?? []) {
+    sp.append('perkIds', perkId)
   }
   if (p.sortBy) sp.set('sortBy', p.sortBy)
   sp.set('page', String(p.page ?? 0))

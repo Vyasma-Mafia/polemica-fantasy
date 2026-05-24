@@ -25,7 +25,7 @@ data class RewardTierDto(
 
 data class CardValueInfoDto(
     val baseValues: Map<Rarity, Long>,
-    val achievementBonus: Long,
+    val perkBonus: Long,
 )
 
 data class LeagueEconomyInfoDto(

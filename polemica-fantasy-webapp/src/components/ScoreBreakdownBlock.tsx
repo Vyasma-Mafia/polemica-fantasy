@@ -2,7 +2,7 @@ import type { CardGameBreakdown } from '../api/types'
 
 export function ScoreBreakdownBlock({ b }: { b: CardGameBreakdown }) {
   const base = b.basePoints
-  const ach = b.achievementBonus
+  const perk = b.perkBonus
   const mod = b.rarityModifier
   const total = b.totalScore
   return (
@@ -12,14 +12,14 @@ export function ScoreBreakdownBlock({ b }: { b: CardGameBreakdown }) {
         <strong>{base != null ? base.toFixed(2) : '—'}</strong>
       </div>
       <div className="pf-score-breakdown__row">
-        <span>Достижения</span>
-        <strong>{ach != null ? ach.toFixed(2) : '—'}</strong>
+        <span>Перки</span>
+        <strong>{perk != null ? perk.toFixed(2) : '—'}</strong>
       </div>
-      {b.achievements.length > 0 && (
+      {b.perks.length > 0 && (
         <ul className="pf-modal__ach" style={{ marginTop: 6 }}>
-          {b.achievements.map((a) => (
-            <li key={`${a.achievementId}-${a.bonusPoints}`}>
-              {a.achievementName}: +{a.bonusPoints.toFixed(2)}
+          {b.perks.map((a) => (
+            <li key={`${a.perkId}-${a.bonusPoints}`}>
+              {a.perkName}: +{a.bonusPoints.toFixed(2)}
             </li>
           ))}
         </ul>

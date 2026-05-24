@@ -80,14 +80,14 @@ class EconomyConfigService(
 
     fun getCardBaseValue(rarity: Rarity): Long = getLong("card.value.$rarity")
 
-    fun getCardAchievementBonus(): Long = getLong("card.value.achievement_bonus")
+    fun getCardPerkBonus(): Long = getLong("card.value.perk_bonus")
 
     fun buildCardValueInfo(): CardValueInfoDto {
         val cardBaseValues = Rarity.entries.associateWith { getCardBaseValue(it) }
-        val cardAchievementBonus = getCardAchievementBonus()
+        val cardPerkBonus = getCardPerkBonus()
         return CardValueInfoDto(
             baseValues = cardBaseValues,
-            achievementBonus = cardAchievementBonus,
+            perkBonus = cardPerkBonus,
         )
     }
 

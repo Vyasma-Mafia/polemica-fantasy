@@ -451,16 +451,16 @@ class UserApiIntegrationTest {
         )!!.groupValues[1].toLong()
 
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"voteForBlack"}"""),
+                .content("""{"perkId":"voteForBlack"}"""),
         ).andExpect(status().isOk)
 
         val sellerTelegramId = 888_777_204L
@@ -528,7 +528,7 @@ class UserApiIntegrationTest {
             post("/api/v1/legendary-upgrade")
                 .header("Authorization", buyerTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"userCardId":$userCardId,"achievementId":"findSheriff"}"""),
+                .content("""{"userCardId":$userCardId,"perkId":"findSheriff"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.card.rarity").value("LEGENDARY"))
@@ -662,20 +662,20 @@ class UserApiIntegrationTest {
     }
 
     @Test
-    fun `GET achievements without Authorization returns 401`() {
-        mockMvc.perform(get("/api/v1/achievements"))
+    fun `GET perks without Authorization returns 401`() {
+        mockMvc.perform(get("/api/v1/perks"))
             .andExpect(status().isUnauthorized)
     }
 
     @Test
-    fun `GET achievements returns non-empty catalog from seed`() {
+    fun `GET perks returns non-empty catalog from seed`() {
         val initData = buildSignedInitData(
             botToken = "test-token",
             authDate = Instant.now().epochSecond,
             userJson = """{"id":888903,"first_name":"AchCat"}""",
         )
         mockMvc.perform(
-            get("/api/v1/achievements").header("Authorization", "tma $initData"),
+            get("/api/v1/perks").header("Authorization", "tma $initData"),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(greaterThan(0)))
@@ -712,7 +712,7 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.marketplaceMaxPrices.COMMON").value(150))
             .andExpect(jsonPath("$.marketplaceMaxPrices.LEGENDARY").value(1500))
             .andExpect(jsonPath("$.minPackOpensBeforeMarketplacePurchase").value(3))
-            .andExpect(jsonPath("$.cardValues.achievementBonus").value(10))
+            .andExpect(jsonPath("$.cardValues.perkBonus").value(10))
             .andExpect(jsonPath("$.cardValues.baseValues.COMMON").value(25))
             .andExpect(jsonPath("$.cardValues.baseValues.RARE").value(40))
             .andExpect(jsonPath("$.cardValues.baseValues.EPIC").value(80))
@@ -730,7 +730,7 @@ class UserApiIntegrationTest {
             get("/api/v1/card-value/info").header("Authorization", "tma $initData"),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.achievementBonus").value(10))
+            .andExpect(jsonPath("$.perkBonus").value(10))
             .andExpect(jsonPath("$.baseValues.COMMON").value(25))
             .andExpect(jsonPath("$.baseValues.LEGENDARY").value(370))
     }
@@ -1652,17 +1652,17 @@ class UserApiIntegrationTest {
         )!!.groupValues[1].toLong()
 
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
 
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"voteForBlack"}"""),
+                .content("""{"perkId":"voteForBlack"}"""),
         ).andExpect(status().isOk)
 
         val telegramUserId = 889601L
@@ -1687,12 +1687,12 @@ class UserApiIntegrationTest {
             post("/api/v1/legendary-upgrade")
                 .header("Authorization", tma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"userCardId":$userCardId,"achievementId":"findSheriff"}"""),
+                .content("""{"userCardId":$userCardId,"perkId":"findSheriff"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.card.rarity").value("LEGENDARY"))
             .andExpect(jsonPath("$.card.usesRemaining").value(5))
-            .andExpect(jsonPath("$.card.achievements.length()").value(3))
+            .andExpect(jsonPath("$.card.perks.length()").value(3))
             .andExpect(jsonPath("$.card.craftedByTelegramUserId").value(telegramUserId))
 
         mockMvc.perform(get("/api/v1/me").header("Authorization", tma))
@@ -1733,16 +1733,16 @@ class UserApiIntegrationTest {
         )!!.groupValues[1].toLong()
 
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"voteForBlack"}"""),
+                .content("""{"perkId":"voteForBlack"}"""),
         ).andExpect(status().isOk)
 
         val sellerTelegramId = 889710L
@@ -1809,7 +1809,7 @@ class UserApiIntegrationTest {
             post("/api/v1/legendary-upgrade")
                 .header("Authorization", buyerTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"userCardId":$userCardId,"achievementId":"findSheriff"}"""),
+                .content("""{"userCardId":$userCardId,"perkId":"findSheriff"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.card.rarity").value("LEGENDARY"))
@@ -1837,13 +1837,13 @@ class UserApiIntegrationTest {
     }
 
     @Test
-    fun `POST legendary-upgrade rejects duplicate achievement on card`() {
+    fun `POST legendary-upgrade rejects duplicate perk on card`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tJson = mockMvc.perform(
             post("/api/v1/admin/tournaments")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Leg dup ach T","status":"DRAFT"}"""),
+                .content("""{"name":"Leg dup perk T","status":"DRAFT"}"""),
         )
             .andExpect(status().isOk)
             .andReturn().response.contentAsString
@@ -1869,16 +1869,16 @@ class UserApiIntegrationTest {
         )!!.groupValues[1].toLong()
 
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$epicTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$epicTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"voteForBlack"}"""),
+                .content("""{"perkId":"voteForBlack"}"""),
         ).andExpect(status().isOk)
 
         val telegramUserId = 889602L
@@ -1902,7 +1902,7 @@ class UserApiIntegrationTest {
             post("/api/v1/legendary-upgrade")
                 .header("Authorization", "tma $initData")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"userCardId":$userCardId,"achievementId":"sniper"}"""),
+                .content("""{"userCardId":$userCardId,"perkId":"sniper"}"""),
         ).andExpect(status().isBadRequest)
     }
 
@@ -1943,12 +1943,12 @@ class UserApiIntegrationTest {
                         .content("""{"fantasyPlayerId":$fpId,"rarity":"LEGENDARY"}"""),
                 ).andExpect(status().isOk).andReturn().response.contentAsString,
             )!!.groupValues[1].toLong()
-            for (ach in listOf("sniper", "voteForBlack", "findSheriff")) {
+            for (perk in listOf("sniper", "voteForBlack", "findSheriff")) {
                 mockMvc.perform(
-                    post("/api/v1/admin/card-templates/$tid/achievements")
+                    post("/api/v1/admin/card-templates/$tid/perks")
                         .header("Authorization", auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""{"achievementId":"$ach"}"""),
+                        .content("""{"perkId":"$perk"}"""),
                 ).andExpect(status().isOk)
             }
             return tid
@@ -2259,13 +2259,13 @@ class UserApiIntegrationTest {
     }
 
     @Test
-    fun `GET me cards and marketplace listings filter by any selected achievement`() {
+    fun `GET me cards and marketplace listings filter by any selected perk`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tournamentJson = mockMvc.perform(
             post("/api/v1/admin/tournaments")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Achievement filter T","status":"DRAFT"}"""),
+                .content("""{"name":"Perk filter T","status":"DRAFT"}"""),
         )
             .andExpect(status().isOk)
             .andReturn().response.contentAsString
@@ -2296,16 +2296,16 @@ class UserApiIntegrationTest {
         val voteTemplateId = createPlayerTemplate(992_102L, "AchVote")
         val plainTemplateId = createPlayerTemplate(992_103L, "AchPlain")
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$sniperTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$sniperTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$voteTemplateId/achievements")
+            post("/api/v1/admin/card-templates/$voteTemplateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"voteForBlack"}"""),
+                .content("""{"perkId":"voteForBlack"}"""),
         ).andExpect(status().isOk)
 
         val sellerTelegramId = 889_940_001L
@@ -2328,8 +2328,8 @@ class UserApiIntegrationTest {
         mockMvc.perform(
             get("/api/v1/me/cards")
                 .header("Authorization", sellerTma)
-                .param("achievementIds", "sniper")
-                .param("achievementIds", "voteForBlack"),
+                .param("perkIds", "sniper")
+                .param("perkIds", "voteForBlack"),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$", hasSize<Any>(2)))
@@ -2352,8 +2352,8 @@ class UserApiIntegrationTest {
         mockMvc.perform(
             get("/api/v1/marketplace/listings")
                 .header("Authorization", viewerTma)
-                .param("achievementIds", "sniper")
-                .param("achievementIds", "voteForBlack"),
+                .param("perkIds", "sniper")
+                .param("perkIds", "voteForBlack"),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.content", hasSize<Any>(2)))
@@ -2366,13 +2366,13 @@ class UserApiIntegrationTest {
     }
 
     @Test
-    fun `marketplace watches support achievement filters and match listings by intersection`() {
+    fun `marketplace watches support perk filters and match listings by intersection`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tournamentJson = mockMvc.perform(
             post("/api/v1/admin/tournaments")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name":"Watch achievement T","status":"DRAFT"}"""),
+                .content("""{"name":"Watch perk T","status":"DRAFT"}"""),
         )
             .andExpect(status().isOk)
             .andReturn().response.contentAsString
@@ -2397,10 +2397,10 @@ class UserApiIntegrationTest {
             .andReturn().response.contentAsString
         val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
         mockMvc.perform(
-            post("/api/v1/admin/card-templates/$templateId/achievements")
+            post("/api/v1/admin/card-templates/$templateId/perks")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementId":"sniper"}"""),
+                .content("""{"perkId":"sniper"}"""),
         ).andExpect(status().isOk)
 
         val watcherTelegramId = 889_950_001L
@@ -2420,31 +2420,31 @@ class UserApiIntegrationTest {
             post("/api/v1/settings/marketplace-watches")
                 .header("Authorization", watcherTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementIds":["voteForBlack","sniper"]}"""),
+                .content("""{"perkIds":["voteForBlack","sniper"]}"""),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.achievements", hasSize<Any>(2)))
-            .andExpect(jsonPath("$.achievements[*].id", containsInAnyOrder("sniper", "voteForBlack")))
+            .andExpect(jsonPath("$.perks", hasSize<Any>(2)))
+            .andExpect(jsonPath("$.perks[*].id", containsInAnyOrder("sniper", "voteForBlack")))
 
         mockMvc.perform(
             post("/api/v1/settings/marketplace-watches")
                 .header("Authorization", watcherTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementIds":["sniper","voteForBlack"]}"""),
+                .content("""{"perkIds":["sniper","voteForBlack"]}"""),
         ).andExpect(status().isConflict)
 
         mockMvc.perform(
             post("/api/v1/settings/marketplace-watches")
                 .header("Authorization", watcherTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementIds":["unknownAchievement"]}"""),
+                .content("""{"perkIds":["unknownPerk"]}"""),
         ).andExpect(status().isBadRequest)
 
         mockMvc.perform(
             post("/api/v1/settings/marketplace-watches")
                 .header("Authorization", otherWatcherTma)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"achievementIds":["findSheriff"]}"""),
+                .content("""{"perkIds":["findSheriff"]}"""),
         ).andExpect(status().isOk)
 
         val sellerTelegramId = 889_950_003L

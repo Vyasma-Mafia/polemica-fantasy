@@ -27,5 +27,5 @@ class LegendaryUpgradeController(
     fun upgrade(
         @AuthenticationPrincipal user: TelegramUser,
         @Valid @RequestBody body: LegendaryUpgradeRequest,
-    ): LegendaryUpgradeResponseDto = legendaryUpgradeService.upgrade(user, body.userCardId, body.achievementId)
+    ): LegendaryUpgradeResponseDto = legendaryUpgradeService.upgrade(user, body.userCardId, body.perkId)
 }

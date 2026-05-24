@@ -244,7 +244,7 @@ export function SeriesComparePage() {
                     description: null,
                     playerNickname: `Карта #${slot.userCardId}`,
                     playerPhotoUrl: null,
-                    achievements: [],
+                    perks: [],
                     usesRemaining: 0,
                     timesRenewed: 0,
                     value: 0,

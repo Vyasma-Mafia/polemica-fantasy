@@ -74,7 +74,7 @@
 ### 3.1 Назначение
 
 Отдельная страница для каждой завершённой сделки (`marketplace_listing` со статусом `SOLD`).
-Показывает полную информацию: участники, карта, цена, достижения, статус модерации.
+Показывает полную информацию: участники, карта, цена, перки, статус модерации.
 
 ### 3.2 API
 
@@ -104,9 +104,9 @@ Response `MarketplaceTransactionDetailDto`:
     "playerName": "Петров",
     "playerPhotoUrl": "https://...",
     "rarity": "EPIC",
-    "achievements": [
-      { "achievementId": "WON_GAME", "name": "Победа", "bonusPoints": 1.0 },
-      { "achievementId": "BEST_MOVE", "name": "Лучший ход", "bonusPoints": 1.0 }
+    "perks": [
+      { "perkId": "WON_GAME", "name": "Победа", "bonusPoints": 1.0 },
+      { "perkId": "BEST_MOVE", "name": "Лучший ход", "bonusPoints": 1.0 }
     ]
   },
   "complaint": {
@@ -156,7 +156,7 @@ data class TransactionCardDto(
     val playerName: String,
     val playerPhotoUrl: String?,
     val rarity: Rarity,
-    val achievements: List<MarketplaceCardAchievementDto>,
+    val perks: List<MarketplaceCardPerkDto>,
 )
 
 data class TransactionComplaintInfoDto(
@@ -187,7 +187,7 @@ data class TransactionSanctionInfoDto(
 ```
 
 Страница показывает:
-- Карту с фото, рамкой по редкости, списком достижений
+- Карту с фото, рамкой по редкости, списком перков
 - Цену, комиссию, полученную продавцом сумму
 - Продавца и покупателя (ссылки на `/players/:telegramId`)
 - Дату сделки
@@ -823,7 +823,7 @@ fun isMarketplaceBanned(user: TelegramUser): Boolean {
 
 ### 15.1 Страница сделки (`/marketplace/transactions/:listingId`)
 
-- Карта: фото, рамка по редкости, список достижений
+- Карта: фото, рамка по редкости, список перков
 - Продавец → ссылка на `/players/:telegramId`
 - Покупатель → ссылка на `/players/:telegramId`
 - Цена, комиссия, сумма продавцу

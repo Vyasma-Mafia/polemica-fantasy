@@ -2,7 +2,7 @@
 """
 Sanity check: docs/features/DESIGN-CARD-VALUE-AND-LEAGUES.md §14.
 
-Default economy: achievement 10, bases 25/40/80/370 → std totals C=25, R=50, E=100, L=400.
+Default economy: perk 10, bases 25/40/80/370 → std totals C=25, R=50, E=100, L=400.
 Accepted: league.budget.value_cap = 175 (3-card allowed: 6/20).
 
 Run: python3 scripts/budget_league_cap_check.py

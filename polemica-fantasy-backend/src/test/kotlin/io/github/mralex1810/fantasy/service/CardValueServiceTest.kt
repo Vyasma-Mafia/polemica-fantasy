@@ -19,9 +19,9 @@ class CardValueServiceTest {
     private lateinit var cardValueService: CardValueService
 
     @Test
-    fun `calculateValue for rarity and achievement count follows base plus bonus`() {
+    fun `calculateValue for rarity and perk count follows base plus bonus`() {
         val bonus = 10L
-        whenever(economyConfigService.getCardAchievementBonus()).thenReturn(bonus)
+        whenever(economyConfigService.getCardPerkBonus()).thenReturn(bonus)
         whenever(economyConfigService.getCardBaseValue(Rarity.COMMON)).thenReturn(25L)
         whenever(economyConfigService.getCardBaseValue(Rarity.RARE)).thenReturn(40L)
         whenever(economyConfigService.getCardBaseValue(Rarity.EPIC)).thenReturn(80L)

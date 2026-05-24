@@ -3,7 +3,7 @@ import { cardDisplayImageUrl } from '../lib/cardImage'
 import { collectionCardRootClass } from '../lib/cardFrameClasses'
 import { pickBestUserCard } from '../lib/collectionByPlayer'
 import { compareRarityDesc, rarityScoreModifierLabel } from '../lib/rarity'
-import { CardAchievementChips } from './CardAchievementChips'
+import { CardPerkChips } from './CardPerkChips'
 import { CardValueBadge } from './CardValueBadge'
 import { MarketplaceListedBadge } from './MarketplaceListedBadge'
 
@@ -136,7 +136,7 @@ export function PlayerCard(props: PlayerCardProps) {
                           {rarityScoreModifierLabel(c.rarity)}
                         </span>
                       </span>
-                      <CardAchievementChips achievements={c.achievements} max={4} />
+                      <CardPerkChips perks={c.perks} max={4} />
                     </div>
                   </div>
                 </div>
@@ -190,7 +190,7 @@ export function PlayerCard(props: PlayerCardProps) {
                   {rarityScoreModifierLabel(best.rarity)}
                 </span>
               </span>
-              <CardAchievementChips achievements={best.achievements} max={4} />
+              <CardPerkChips perks={best.perks} max={4} />
             </div>
           </div>
         </div>

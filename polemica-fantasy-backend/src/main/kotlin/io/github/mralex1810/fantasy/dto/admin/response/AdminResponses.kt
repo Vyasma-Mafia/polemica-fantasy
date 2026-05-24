@@ -78,7 +78,7 @@ data class SeriesPlayerMarketplaceUnlistResultDto(
     val cancelledListings: Int,
 )
 
-data class AchievementAdminDto(
+data class PerkAdminDto(
     val id: String,
     val name: String,
     val description: String?,
@@ -88,11 +88,11 @@ data class AchievementAdminDto(
     val canAppearOnRandomCards: Boolean,
 )
 
-data class CardTemplateAchievementDto(
+data class CardTemplatePerkDto(
     val id: Long,
-    val achievementId: String,
-    val achievementName: String,
-    /** Effective bonus (per-card override or achievement default). */
+    val perkId: String,
+    val perkName: String,
+    /** Effective bonus (per-card override or perk default). */
     val bonusPoints: Double,
 )
 
@@ -102,7 +102,7 @@ data class CardTemplateDto(
     val rarity: Rarity,
     val imageUrl: String?,
     val description: String?,
-    val achievements: List<CardTemplateAchievementDto>,
+    val perks: List<CardTemplatePerkDto>,
 )
 
 data class CardPackRarityConfigResponseDto(
@@ -127,7 +127,7 @@ data class CardPackDto(
     val freeOpensPerUser: Int,
     /** Max total opens per user; 0 = unlimited. */
     val maxOpensPerUser: Int,
-    val achievementIds: List<String>,
+    val perkIds: List<String>,
     val useAllTournamentPlayers: Boolean,
     val playerIds: List<Long>,
     val rarityConfigs: List<CardPackRarityConfigResponseDto>,

@@ -7,7 +7,7 @@ The admin panel has two roles:
 - **ADMIN**: full access to all admin functionality.
 - **MODERATOR**: limited access to tournaments, tournament players, series, leagues, and Polemica competition lookup.
 
-Moderators must not access user tools, users, card templates, card packs, economy settings, achievements, broadcasts, or marketplace moderation.
+Moderators must not access user tools, users, card templates, card packs, economy settings, perks, broadcasts, or marketplace moderation.
 
 ## Backend
 
@@ -163,7 +163,7 @@ data class AdminMeDto(
 | Card packs | `/api/v1/admin/card-packs/**` |
 | Card skins | `/api/v1/admin/card-skins` |
 | Economy config | `/api/v1/admin/economy-config/**` |
-| Achievements | `/api/v1/admin/achievements/**`, `/api/v1/admin/achievement-statistics/**` |
+| Perks | `/api/v1/admin/perks/**`, `/api/v1/admin/perk-statistics/**` |
 | Marketplace moderation | `/api/v1/admin/marketplace/**` |
 | Broadcasts | `/api/v1/admin/notifications/**` |
 
@@ -248,7 +248,7 @@ Add integration coverage in `AdminApiIntegrationTest.kt`:
 - `/api/v1/admin/me` returns `ADMIN` for admin.
 - `/api/v1/admin/me` returns `MODERATOR` for moderator.
 - Moderator can access tournaments, series, leagues, and Polemica lookup endpoints.
-- Moderator gets `403` for users, cards, packs, economy config, achievements, marketplace moderation, and broadcasts.
+- Moderator gets `403` for users, cards, packs, economy config, perks, marketplace moderation, and broadcasts.
 
 ### Frontend
 

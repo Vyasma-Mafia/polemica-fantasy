@@ -120,9 +120,9 @@ data class LeaderboardEntryDto(
     val fantasyPlayerIds: List<Long> = emptyList(),
 )
 
-data class CardAchievementBriefDto(
-    val achievementId: String,
-    val achievementName: String,
+data class CardPerkBriefDto(
+    val perkId: String,
+    val perkName: String,
     val bonusPoints: Double,
 )
 
@@ -141,7 +141,7 @@ data class UserCardItemDto(
     val description: String?,
     val playerNickname: String,
     val playerPhotoUrl: String?,
-    val achievements: List<CardAchievementBriefDto>,
+    val perks: List<CardPerkBriefDto>,
     val usesRemaining: Int,
     val timesRenewed: Int,
     val sourceCardPackId: Long?,
@@ -282,18 +282,18 @@ data class FantasyTeamSeriesGameInfoDto(
     val scored: Boolean,
 )
 
-data class AchievementInGameDto(
-    val achievementId: String,
-    val achievementName: String,
+data class PerkInGameDto(
+    val perkId: String,
+    val perkName: String,
     val bonusPoints: Double,
 )
 
 data class CardGameBreakdownDto(
     val basePoints: Double?,
-    val achievementBonus: Double?,
+    val perkBonus: Double?,
     val rarityModifier: Double?,
     val totalScore: Double?,
-    val achievements: List<AchievementInGameDto>,
+    val perks: List<PerkInGameDto>,
 )
 
 data class FantasyTeamDetailSlotDto(
@@ -309,7 +309,7 @@ data class FantasyTeamSeriesDetailsDto(
     val columns: List<FantasyTeamDetailSlotDto>,
 )
 
-data class AchievementCatalogItemDto(
+data class PerkCatalogItemDto(
     val id: String,
     val name: String,
     val description: String?,

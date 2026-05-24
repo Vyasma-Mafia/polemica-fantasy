@@ -131,7 +131,7 @@ class UserStoreService(
             if (templateIds.isEmpty()) {
                 emptyMap()
             } else {
-                cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds).associateBy { it.id!! }
+                cardTemplateRepository.findAllByIdWithPerksLoaded(templateIds).associateBy { it.id!! }
             }
         val cards =
             ids.map { id ->

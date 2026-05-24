@@ -15,10 +15,10 @@ export interface AdminMeDto {
   role: AdminRole
 }
 
-/** `achievement.id` from the backend catalog (Flyway V10: sniper, voteForBlack, …). */
-export type AchievementId = string
+/** `perk.id` from the backend catalog (Flyway V10: sniper, voteForBlack, …). */
+export type PerkId = string
 
-export interface AchievementAdminDto {
+export interface PerkAdminDto {
   id: string
   name: string
   description: string | null
@@ -230,10 +230,10 @@ export interface BatchStartSeriesResponseDto {
   notificationRecipientCount: number
 }
 
-export interface CardTemplateAchievementDto {
+export interface CardTemplatePerkDto {
   id: number
-  achievementId: string
-  achievementName: string
+  perkId: string
+  perkName: string
   bonusPoints: number
 }
 
@@ -243,7 +243,7 @@ export interface CardTemplateDto {
   rarity: Rarity
   imageUrl: string | null
   description: string | null
-  achievements: CardTemplateAchievementDto[]
+  perks: CardTemplatePerkDto[]
 }
 
 export interface CardPackRarityConfigResponseDto {
@@ -267,7 +267,7 @@ export interface CardPackDto {
   priceFantiki: number
   freeOpensPerUser: number
   maxOpensPerUser: number
-  achievementIds: string[]
+  perkIds: string[]
   useAllTournamentPlayers: boolean
   playerIds: number[]
   rarityConfigs: CardPackRarityConfigResponseDto[]

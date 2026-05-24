@@ -11,7 +11,7 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
         SELECT DISTINCT f FROM MarketplaceWatchFilter f
         LEFT JOIN FETCH f.fantasyPlayer
         LEFT JOIN FETCH f.tournament
-        LEFT JOIN FETCH f.achievements
+        LEFT JOIN FETCH f.perks
         WHERE f.telegramUser.id = :telegramUserId
         ORDER BY f.createdAt DESC
         """,
@@ -36,11 +36,11 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
               AND (mwf.max_price IS NULL OR mwf.max_price >= :price)
               AND (mwf.tournament_id IS NULL OR mwf.tournament_id IN (:tournamentIds))
               AND (
-                  mwf.achievement_ids_key = ''
+                  mwf.perk_ids_key = ''
                   OR EXISTS (
                       SELECT 1
-                      FROM marketplace_watch_filter_achievement mwfa
-                      JOIN card_template_achievement cta ON cta.achievement_id = mwfa.achievement_id
+                      FROM marketplace_watch_filter_perk mwfa
+                      JOIN card_template_perk cta ON cta.perk_id = mwfa.perk_id
                       WHERE mwfa.watch_filter_id = mwf.id
                         AND cta.card_template_id = :cardTemplateId
                   )

@@ -55,7 +55,7 @@ io.github.mralex1810.fantasy
 ├── repository/       # JpaRepository interfaces
 ├── dto/              # Request/Response DTOs (user/ and admin/ subpackages)
 ├── service/          # Business services (UserService, MarketplaceService, CardLifecycleService, etc.)
-├── scoring/          # ScoringService, AchievementDetector strategy pattern, AchievementDetectorRegistry
+├── scoring/          # ScoringService, PerkDetector strategy pattern, PerkDetectorRegistry
 ├── polemica/         # PolemicaIntegrationService, DefaultGameSyncService
 ├── controller/
 │   ├── user/         # User-facing controllers
@@ -70,11 +70,11 @@ io.github.mralex1810.fantasy
 
 - **`fantasy_player`** — global entity per real Mafia player (`polemica_user_id`, unique). Card templates reference this, not tournament-specific entries.
 - **`tournament_player`** — links a tournament to a fantasy_player (roster membership).
-- **`card_template`** — references `fantasy_player` with rarity (COMMON/RARE/EPIC/LEGENDARY) and achievements. Reusable across tournaments.
+- **`card_template`** — references `fantasy_player` with rarity (COMMON/RARE/EPIC/LEGENDARY) and perks. Reusable across tournaments.
 - **`user_card`** — owned card instance with `uses_remaining` and `times_renewed`.
 - **`TournamentKind`** — `STANDALONE` (match by player profile overlap + `name_prefix`) or `POLEMICA_COMPETITION` (games from competition by `game_num_from`/`game_num_to` range, optional `game_phase` filter).
 - **Leagues** — MAIN + BUDGET per series; budget has `value_cap`; rewards scale by `reward_scale`; uses decremented per league.
-- **Scoring** — `(base_points + Σ achievement_bonus) × rarity_modifier`, per-game breakdown stored in DB; base points from `GamePointsService` (Polemica public match page); only finished games (`result != null`) scored.
+- **Scoring** — `(base_points + Σ perk_bonus) × rarity_modifier`, per-game breakdown stored in DB; base points from `GamePointsService` (Polemica public match page); only finished games (`result != null`) scored.
 - **Economy** — fantiki (in-game currency), card contracts (uses/renewal/recycle), series rewards, marketplace (commission, min/max prices).
 
 ## Patterns and Conventions
@@ -82,7 +82,7 @@ io.github.mralex1810.fantasy
 ### Backend
 - **Layered architecture**: Controller → Service → Repository. Entities never leave the service layer — controllers work with DTOs.
 - **JSONB caching**: Full Polemica game data cached in PostgreSQL JSONB for offline scoring.
-- **Strategy pattern for achievements**: Each `AchievementDetector` has `type: String` matching `achievement.id` in DB, method `matchCount(game, player)`.
+- **Strategy pattern for perks**: Each `PerkDetector` has `type: String` matching `perk.id` in DB, method `matchCount(game, player)`.
 - **Sync/scoring outside transaction**: HTTP calls to Polemica API are NOT inside `@Transactional`. Data is fetched first, then persisted in a short transaction via `TransactionTemplate` to avoid Hikari pool exhaustion.
 - **Event-driven notifications**: `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` for Telegram messages (finalization, marketplace sale, roster changes, deadline reminders, marketplace watches). `NotificationDeliveryService` centralizes delivery with retry on 429, mark `bot_blocked` on 403.
 - **Telegram Bot API**: `TelegramBotApiClient` using `RestClient`. URL built as absolute `URI.create("https://api.telegram.org/bot{token}/...")` — NOT via RestClient template (Spring encodes `:` in token as `%3A` → 404).
@@ -112,7 +112,7 @@ Migrations are in `polemica-fantasy-backend/src/main/resources/db/migration/` (V
 ## Testing
 
 - **Quick cross-module check**: `./scripts/codex-check.sh quick` runs backend Kotlin compilation plus both frontend builds.
-- **Backend**: Testcontainers PostgreSQL 16. Key test classes: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackRarityConfigValidationTest`, `CardPackFindOrCreateTemplateIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, achievement detector tests.
+- **Backend**: Testcontainers PostgreSQL 16. Key test classes: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `CardPackRarityConfigValidationTest`, `CardPackFindOrCreateTemplateIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, perk detector tests.
 - **Frontend**: `npm run build` as verification (no unit test suite).
 - Run backend compile check: `cd polemica-fantasy-backend && ./gradlew compileKotlin compileTestKotlin`
 - Run backend tests: `cd polemica-fantasy-backend && ./gradlew test`

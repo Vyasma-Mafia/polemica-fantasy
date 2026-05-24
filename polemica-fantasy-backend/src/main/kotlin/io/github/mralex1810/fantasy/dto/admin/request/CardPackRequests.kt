@@ -27,7 +27,7 @@ data class CreateCardPackRequest(
     val freeOpensPerUser: Int = 0,
     @field:PositiveOrZero
     val maxOpensPerUser: Int = 0,
-    val achievementIds: List<String> = emptyList(),
+    val perkIds: List<String> = emptyList(),
     val useAllTournamentPlayers: Boolean = false,
     val skinId: Long? = null,
     val playerIds: List<Long>? = null,
@@ -46,7 +46,7 @@ data class UpdateCardPackRequest(
     val freeOpensPerUser: Int? = null,
     @field:PositiveOrZero
     val maxOpensPerUser: Int? = null,
-    val achievementIds: List<String>? = null,
+    val perkIds: List<String>? = null,
     val useAllTournamentPlayers: Boolean? = null,
     val skinId: Long? = null,
     val playerIds: List<Long>? = null,

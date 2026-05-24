@@ -37,7 +37,7 @@ class CardTemplate(
 
     @OneToMany(mappedBy = "cardTemplate")
     @BatchSize(size = 32)
-    var achievements: MutableList<CardTemplateAchievement> = mutableListOf(),
+    var perks: MutableList<CardTemplatePerk> = mutableListOf(),
 
     @OneToMany(mappedBy = "cardTemplate")
     var userCards: MutableList<UserCard> = mutableListOf(),

@@ -2,7 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMarkOnboardingStep } from '../api/antiChurn'
-import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchPerkCatalog } from '../api/perksCatalog'
 import { ApiError, apiGet } from '../api/client'
 import {
   cancelMarketplaceListing,
@@ -23,7 +23,7 @@ import type {
   UserSeriesDetail,
   UserTournament,
 } from '../api/types'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { CardValueBadge } from '../components/CardValueBadge'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
@@ -56,14 +56,14 @@ function slotScoreForCard(team: FantasyTeamDto, userCardId: number): number | nu
   return slot?.score ?? null
 }
 
-function ruAchievementsLabel(n: number): string {
-  if (n === 0) return 'достижений'
+function ruPerksLabel(n: number): string {
+  if (n === 0) return 'перков'
   const m = n % 100
-  if (m >= 11 && m <= 14) return 'достижений'
+  if (m >= 11 && m <= 14) return 'перков'
   const m10 = n % 10
-  if (m10 === 1) return 'достижение'
-  if (m10 >= 2 && m10 <= 4) return 'достижения'
-  return 'достижений'
+  if (m10 === 1) return 'перк'
+  if (m10 >= 2 && m10 <= 4) return 'перки'
+  return 'перков'
 }
 
 function formatMarketplaceSummary(item: MarketplaceAnalyticsSummaryItem): string {
@@ -98,7 +98,7 @@ export function CardsPage() {
     setTournamentId(tournamentFromQuery)
   }, [tournamentFromQuery])
   const [rarity, setRarity] = useState<Rarity | ''>('')
-  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
+  const [selectedPerkIds, setSelectedPerkIds] = useState<string[]>([])
   const [playerFilter, setPlayerFilter] = useState('')
   const [lifeFilter, setLifeFilter] = useState<LifecycleFilter>('all')
   const [sortUses, setSortUses] = useState<'none' | 'asc' | 'desc'>('none')
@@ -134,12 +134,12 @@ export function CardsPage() {
     const sp = new URLSearchParams()
     if (tournamentId) sp.set('tournamentId', tournamentId)
     if (rarity) sp.set('rarity', rarity)
-    for (const achievementId of selectedAchievementIds) {
-      sp.append('achievementIds', achievementId)
+    for (const perkId of selectedPerkIds) {
+      sp.append('perkIds', perkId)
     }
     const q = sp.toString()
     return q ? `?${q}` : ''
-  }, [tournamentId, rarity, selectedAchievementIds])
+  }, [tournamentId, rarity, selectedPerkIds])
 
   const legendaryUpgradeParam = searchParams.get('legendaryUpgrade')
   useEffect(() => {
@@ -182,9 +182,9 @@ export function CardsPage() {
     enabled: !!initData,
   })
 
-  const achievementsQ = useQuery({
-    queryKey: ['achievements-catalog', initData],
-    queryFn: () => fetchAchievementCatalog(initData!),
+  const perksQ = useQuery({
+    queryKey: ['perks-catalog', initData],
+    queryFn: () => fetchPerkCatalog(initData!),
     enabled: !!initData,
   })
 
@@ -518,21 +518,21 @@ export function CardsPage() {
           </select>
         </label>
         <label className="pf-field">
-          <span className="pf-field__label">Достижения</span>
+          <span className="pf-field__label">Перки</span>
           <select
             className="pf-input"
             multiple
-            value={selectedAchievementIds}
+            value={selectedPerkIds}
             onChange={(e) => {
-              setSelectedAchievementIds(
+              setSelectedPerkIds(
                 Array.from(e.currentTarget.selectedOptions, (option) => option.value),
               )
             }}
-            disabled={achievementsQ.isLoading}
+            disabled={perksQ.isLoading}
           >
-            {(achievementsQ.data ?? []).map((achievement) => (
-              <option key={achievement.id} value={achievement.id}>
-                {achievement.name}
+            {(perksQ.data ?? []).map((perk) => (
+              <option key={perk.id} value={perk.id}>
+                {perk.name}
               </option>
             ))}
           </select>
@@ -643,7 +643,7 @@ export function CardsPage() {
                           {rarityScoreModifierLabel(c.rarity)}
                         </span>
                       </span>
-                      <CardAchievementChips achievements={c.achievements} max={4} />
+                      <CardPerkChips perks={c.perks} max={4} />
                     </div>
                   </div>
                 </div>
@@ -693,21 +693,21 @@ export function CardsPage() {
                 {(() => {
                   const cv = economyQ.data!.cardValues
                   const base = cv.baseValues[detailCard.rarity] ?? 0
-                  const n = detailCard.achievements.length
-                  const fromAch = n * cv.achievementBonus
-                  if (fromAch === 0) {
+                  const n = detailCard.perks.length
+                  const fromPerk = n * cv.perkBonus
+                  if (fromPerk === 0) {
                     return `Ценность: ${base} (редкость) = ${detailCard.value}₱`
                   }
-                  return `Ценность: ${base} (редкость) + ${fromAch} (${n} ${ruAchievementsLabel(n)}) = ${detailCard.value}₱`
+                  return `Ценность: ${base} (редкость) + ${fromPerk} (${n} ${ruPerksLabel(n)}) = ${detailCard.value}₱`
                 })()}
               </p>
             ) : (
               <p className="pf-card-value-breakdown">Ценность: {detailCard.value}₱</p>
             )}
             <ul className="pf-modal__ach">
-              {detailCard.achievements.map((a) => (
-                <li key={a.achievementId}>
-                  {a.achievementName}: +{a.bonusPoints}
+              {detailCard.perks.map((a) => (
+                <li key={a.perkId}>
+                  {a.perkName}: +{a.bonusPoints}
                 </li>
               ))}
             </ul>

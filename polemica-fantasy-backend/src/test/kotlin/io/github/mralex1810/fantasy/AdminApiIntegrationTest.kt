@@ -122,7 +122,7 @@ class AdminApiIntegrationTest {
 
     @Test
     @Order(1003)
-    fun `moderator cannot access users cards packs economy achievements marketplace or notifications`() {
+    fun `moderator cannot access users cards packs economy perks marketplace or notifications`() {
         val auth = basicAuth("moderator", "test-moderator-secret")
         mockMvc.perform(get("/api/v1/admin/users").header("Authorization", auth))
             .andExpect(status().isForbidden)
@@ -132,7 +132,7 @@ class AdminApiIntegrationTest {
             .andExpect(status().isForbidden)
         mockMvc.perform(get("/api/v1/admin/economy-config").header("Authorization", auth))
             .andExpect(status().isForbidden)
-        mockMvc.perform(get("/api/v1/admin/achievements").header("Authorization", auth))
+        mockMvc.perform(get("/api/v1/admin/perks").header("Authorization", auth))
             .andExpect(status().isForbidden)
         mockMvc.perform(get("/api/v1/admin/marketplace/pair-analysis").header("Authorization", auth))
             .andExpect(status().isForbidden)

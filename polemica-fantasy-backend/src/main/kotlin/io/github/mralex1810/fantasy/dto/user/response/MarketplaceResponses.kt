@@ -7,8 +7,8 @@ data class MarketplaceSellerBriefDto(
     val displayName: String,
 )
 
-data class MarketplaceCardAchievementDto(
-    val achievementId: String,
+data class MarketplaceCardPerkDto(
+    val perkId: String,
     val name: String,
     val bonusPoints: Double,
 )
@@ -19,7 +19,7 @@ data class MarketplaceListingCardDto(
     val playerName: String,
     val playerPhotoUrl: String?,
     val rarity: Rarity,
-    val achievements: List<MarketplaceCardAchievementDto>,
+    val perks: List<MarketplaceCardPerkDto>,
     val value: Long?,
     val skinCode: String?,
 )
@@ -51,7 +51,7 @@ data class MarketplaceFeedItemDto(
     val sellerDisplayName: String,
     val buyerDisplayName: String,
     val sanctioned: Boolean,
-    /** Карта сделки — для превью в ленте (фото, ачивки). */
+    /** Карта сделки — для превью в ленте (фото, перки). */
     val card: MarketplaceListingCardDto,
 )
 

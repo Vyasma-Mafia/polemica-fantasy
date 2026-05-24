@@ -1,21 +1,21 @@
 package io.github.mralex1810.fantasy.service
 
-import io.github.mralex1810.fantasy.dto.admin.request.AddCardTemplateAchievementRequest
+import io.github.mralex1810.fantasy.dto.admin.request.AddCardTemplatePerkRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateCardTemplateRequest
 import io.github.mralex1810.fantasy.dto.admin.request.GiveCardsRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateCardTemplateRequest
-import io.github.mralex1810.fantasy.dto.admin.response.CardTemplateAchievementDto
+import io.github.mralex1810.fantasy.dto.admin.response.CardTemplatePerkDto
 import io.github.mralex1810.fantasy.dto.admin.response.CardTemplateDto
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
 import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardTemplate
-import io.github.mralex1810.fantasy.entity.CardTemplateAchievement
+import io.github.mralex1810.fantasy.entity.CardTemplatePerk
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
-import io.github.mralex1810.fantasy.repository.AchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.CardSkinRepository
-import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
+import io.github.mralex1810.fantasy.repository.CardTemplatePerkRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
@@ -29,9 +29,9 @@ import java.time.Instant
 @Service
 class CardService(
     private val cardTemplateRepository: CardTemplateRepository,
-    private val achievementRepository: AchievementRepository,
+    private val perkRepository: PerkRepository,
     private val cardSkinRepository: CardSkinRepository,
-    private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
+    private val cardTemplatePerkRepository: CardTemplatePerkRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
     private val userCardRepository: UserCardRepository,
     private val userService: UserService,
@@ -71,23 +71,23 @@ class CardService(
         cardTemplateRepository.findAllFiltered(tournamentId, fantasyPlayerId, rarity).map { it.toDto() }
 
     @Transactional
-    fun addAchievement(cardTemplateId: Long, request: AddCardTemplateAchievementRequest): CardTemplateDto {
+    fun addPerk(cardTemplateId: Long, request: AddCardTemplatePerkRequest): CardTemplateDto {
         val ct = cardTemplateRepository.findById(cardTemplateId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Card template $cardTemplateId not found")
         }
-        val achievement = achievementRepository.findById(request.achievementId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Achievement ${request.achievementId} not found")
+        val perk = perkRepository.findById(request.perkId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Perk ${request.perkId} not found")
         }
-        if (cardTemplateAchievementRepository.existsByCardTemplate_IdAndAchievement_Id(cardTemplateId, request.achievementId)) {
+        if (cardTemplatePerkRepository.existsByCardTemplate_IdAndPerk_Id(cardTemplateId, request.perkId)) {
             throw ResponseStatusException(
                 HttpStatus.CONFLICT,
-                "Achievement ${request.achievementId} is already linked to card template $cardTemplateId",
+                "Perk ${request.perkId} is already linked to card template $cardTemplateId",
             )
         }
-        cardTemplateAchievementRepository.save(
-            CardTemplateAchievement(
+        cardTemplatePerkRepository.save(
+            CardTemplatePerk(
                 cardTemplate = ct,
-                achievement = achievement,
+                perk = perk,
                 bonusPoints = request.bonusPoints,
             ),
         )
@@ -149,12 +149,12 @@ class CardService(
         cardPackService.openPack(telegramUserId, packId)
 
     private fun CardTemplate.toDto(): CardTemplateDto {
-        val ach = achievements.map { a ->
-            val def = a.achievement!!
-            CardTemplateAchievementDto(
+        val perk = perks.map { a ->
+            val def = a.perk!!
+            CardTemplatePerkDto(
                 id = a.id!!,
-                achievementId = def.id,
-                achievementName = def.name,
+                perkId = def.id,
+                perkName = def.name,
                 bonusPoints = a.bonusPoints ?: def.bonusPoints,
             )
         }
@@ -164,7 +164,7 @@ class CardService(
             rarity = rarity,
             imageUrl = imageStorageService.publicObjectUrl(imageUrl),
             description = description,
-            achievements = ach,
+            perks = perk,
         )
     }
 

@@ -5,7 +5,7 @@
 ## 1. Overview
 
 Polemica Fantasy — сервис для создания фэнтези-команд по игре «спортивная мафия».
-Пользователи собирают карточки игроков с различными уровнями редкости и бонусами за достижения,
+Пользователи собирают карточки игроков с различными уровнями редкости и бонусами за перки,
 формируют команды из **1–3** карточек на серию игр (неполный состав уменьшает награду за место в лидерборде при финализации) и соревнуются по набранным очкам.
 
 Данные об играх и игроках поступают из внешнего API **Polemica** через библиотеку `polemica-library`.
@@ -24,13 +24,13 @@ Polemica Fantasy — сервис для создания фэнтези-ком�
 | **Game** | Конкретная игра из Полемики (`PolemicaGame`), привязанная к серии. |
 | **Fantasy Player** | Глобальный игрок сервиса: один на каждый `polemica_user_id` (ник, фото). Создаётся или подставляется при добавлении игрока в турнир. Не привязан к одному турниру. |
 | **Tournament Player** | Участие конкретного fantasy player в ростере конкретного турнира (связь турнир ↔ игрок). |
-| **Card Template** | Определение карточки: привязка к **fantasy player** (не к турниру) + уровень редкости + набор достижений. Один и тот же шаблон может использоваться в разных турнирах, если игрок включён в серию. Шаблоны могут создаваться как вручную (через админку), так и автоматически при открытии auto-gen пака (с переиспользованием при совпадении игрок + редкость + набор ачивок). |
+| **Card Template** | Определение карточки: привязка к **fantasy player** (не к турниру) + уровень редкости + набор перков. Один и тот же шаблон может использоваться в разных турнирах, если игрок включён в серию. Шаблоны могут создаваться как вручную (через админку), так и автоматически при открытии auto-gen пака (с переиспользованием при совпадении игрок + редкость + набор перков). |
 | **User Card** | Конкретный экземпляр карточки, принадлежащий пользователю. У одного пользователя может быть несколько одинаковых карточек. |
 | **Card Pack** | Набор для получения карточек. Может быть **legacy** (выбирает из существующих шаблонов) или **auto-generated** (генерирует шаблоны на лету из пула игроков). Задаёт точное количество карт каждой редкости. Может иметь стоимость в фантиках для покупки через магазин. |
 | **Fantasy Team** | Команда из **1–3** карточек разных игроков (`fantasy_player_id` в слотах уникален), выставленная пользователем на серию. |
-| **Legendary upgrade** | Апгрейд EPIC → LEGENDARY in-place (`UserCard` тот же): новый `CardTemplate`, +1 достижение, списание фантиков; на карте может храниться `crafted_by_telegram_user_id`. Лимит LEGENDARY в одной команде на серию задаётся `economy_config` (`legendary.team.max_per_series`). Подробнее — [`features/DESIGN-LEGENDARY-CARDS.md`](../features/DESIGN-LEGENDARY-CARDS.md). |
+| **Legendary upgrade** | Апгрейд EPIC → LEGENDARY in-place (`UserCard` тот же): новый `CardTemplate`, +1 перк, списание фантиков; на карте может храниться `crafted_by_telegram_user_id`. Лимит LEGENDARY в одной команде на серию задаётся `economy_config` (`legendary.team.max_per_series`). Подробнее — [`features/DESIGN-LEGENDARY-CARDS.md`](../features/DESIGN-LEGENDARY-CARDS.md). |
 | **Display name** | Кастомный ник в TMA: колонка `telegram_user.display_name`, не перетирается синхронизацией из Telegram; отдаётся в публичных DTO. |
-| **Achievement** | Системная сущность (справочник) — тип игрового события с метаданными: системный бонус, тип повторяемости (`ONCE_PER_GAME` / `MULTIPLE_PER_GAME`), допустимые роли (`applicableRoles`), флаг возможности появления на случайных картах (`canAppearOnRandomCards`). |
+| **Perk** | Системная сущность (справочник) — тип игрового события с метаданными: системный бонус, тип повторяемости (`ONCE_PER_GAME` / `MULTIPLE_PER_GAME`), допустимые роли (`applicableRoles`), флаг возможности появления на случайных картах (`canAppearOnRandomCards`). |
 | **Фантики** | Внутриигровая валюта. Стартовый баланс — 1000. Используется для покупки паков в магазине. Начисляется админом. Все операции с балансом логируются в `fantiki_transaction`. |
 | **Store** | Магазин паков в TMA. Пользователь видит доступные паки с ценами и покупает их за фантики. |
 | **TMA** | Telegram Mini App — пользовательский интерфейс внутри Telegram. |
@@ -122,7 +122,7 @@ polemica-fantasy/
 │       │   │   ├── repository/      # Spring Data JPA repositories
 │       │   │   ├── dto/             # Request / Response DTOs
 │       │   │   ├── service/         # Business logic + ImageStorageService
-│       │   │   ├── scoring/         # Achievement detection + scoring
+│       │   │   ├── scoring/         # Perk detection + scoring
 │       │   │   ├── polemica/        # Polemica integration layer
 │       │   │   └── controller/
 │       │   │       ├── user/        # User-facing endpoints
@@ -159,18 +159,18 @@ CardTemplate (*)                 │
     │         │                  │
     │ (*)     │ (1)              │
     ▼         ▼                  ▼
-CardTemplateAchievement    Series (*)
+CardTemplatePerk    Series (*)
     │                           │
     │ (*:1)                     ▼
     ▼                      SeriesGame
-Achievement (1)                 │
+Perk (1)                 │
     │                           │ (1)
     │ (*)                       ▼
     ▼               FantasyTeamCardGameScore (*)
-AchievementApplicableRole       │
+PerkApplicableRole       │
                                 │ (*)
                                 ▼
-                   FantasyTeamCardGameAchievement
+                   FantasyTeamCardGamePerk
 
 TelegramUser (1) ──── (*) UserCard ──── (*) FantasyTeamCard (*) ── FantasyTeamCardGameScore
     │                     │ uses_remaining, times_renewed              │
@@ -192,7 +192,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
     └──── (1) Tournament
 ```
 
-**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию — **1–3** слота, только карточки игроков из ростера серии; в одной команде нельзя две карты одного `fantasy_player_id`; **V3:** в команду нельзя поставить карту с `uses_remaining ≤ 0`; в команде не больше `legendary.team.max_per_series` карт редкости LEGENDARY. До дедлайна при смене ростера серии лишние карты снимаются с команды (`FantasyTeamRosterPruningService`). Все серии одного турнира соответствуют одному `TournamentKind` родителя. Achievement — справочник; `CardTemplateAchievement.bonus_points` nullable (NULL = системный из `Achievement`, иначе override). **V3:** списание одного «использования» контракта и награда за место в лидерборде (с масштабированием при 1–2 картах в команде, см. `SeriesFinalizationService.scaleSeriesRewardByRosterSize`) происходят при **финализации** серии (`series.finalized`), а не при каждой отдельной игре. **API:** список серий в ответе `GET /tournaments/{id}` — **от новых к старым** (`series.id` DESC).
+**Инварианты:** шаблон карточки (`CardTemplate`) ссылается на `FantasyPlayer`, а не на `TournamentPlayer`. Участие в турнире и серии идёт через `TournamentPlayer` / `SeriesPlayer`. Сборка фэнтези-команды на серию — **1–3** слота, только карточки игроков из ростера серии; в одной команде нельзя две карты одного `fantasy_player_id`; **V3:** в команду нельзя поставить карту с `uses_remaining ≤ 0`; в команде не больше `legendary.team.max_per_series` карт редкости LEGENDARY. До дедлайна при смене ростера серии лишние карты снимаются с команды (`FantasyTeamRosterPruningService`). Все серии одного турнира соответствуют одному `TournamentKind` родителя. Perk — справочник; `CardTemplatePerk.bonus_points` nullable (NULL = системный из `Perk`, иначе override). **V3:** списание одного «использования» контракта и награда за место в лидерборде (с масштабированием при 1–2 картах в команде, см. `SeriesFinalizationService.scaleSeriesRewardByRosterSize`) происходят при **финализации** серии (`series.finalized`), а не при каждой отдельной игре. **API:** список серий в ответе `GET /tournaments/{id}` — **от новых к старым** (`series.id` DESC).
 
 ### 4.2 Core Entities
 
@@ -275,7 +275,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | image_url | VARCHAR | Card artwork URL |
 | description | TEXT | Flavor text |
 
-#### Achievement
+#### Perk
 | Field | Type | Description |
 |-------|------|-------------|
 | id | VARCHAR(64) | PK (ключ: `SHERIFF_FOUND_BLACK`, `WON_GAME`, …) |
@@ -285,20 +285,20 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | occurrence_type | VARCHAR(32) | `ONCE_PER_GAME` / `MULTIPLE_PER_GAME` |
 | can_appear_on_random_cards | BOOLEAN | Может ли выпасть на автосгенерированной карте (DEFAULT false) |
 
-#### AchievementApplicableRole
+#### PerkApplicableRole
 | Field | Type | Description |
 |-------|------|-------------|
-| achievement_id | VARCHAR(64) | FK → Achievement, часть composite PK |
+| perk_id | VARCHAR(64) | FK → Perk, часть composite PK |
 | role | VARCHAR(32) | `DON`, `MAFIA`, `PEACE`, `SHERIFF` |
-| | | PK = (achievement_id, role) |
+| | | PK = (perk_id, role) |
 
-#### CardTemplateAchievement
+#### CardTemplatePerk
 | Field | Type | Description |
 |-------|------|-------------|
 | id | BIGSERIAL | PK |
 | card_template_id | BIGINT | FK → CardTemplate |
-| achievement_id | VARCHAR(64) | FK → Achievement |
-| bonus_points | DOUBLE | **Nullable.** NULL = системный `Achievement.bonus_points`; если задан — override |
+| perk_id | VARCHAR(64) | FK → Perk |
+| bonus_points | DOUBLE | **Nullable.** NULL = системный `Perk.bonus_points`; если задан — override |
 
 #### UserCard
 | Field | Type | Description |
@@ -343,7 +343,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 
 **Legacy-пак** (`auto_generated = false`): при открытии шаблоны выбираются по редкости из **глобального** набора `CardTemplate`.
 
-**Auto-gen пак** (`auto_generated = true`): при открытии карточки генерируются на лету из пула игроков. COMMON — без ачивок; RARE — 1 случайная (`canAppearOnRandomCards = true`); EPIC — 2 случайных различных; LEGENDARY — не участвует. Если найден существующий `CardTemplate` с идентичным набором (игрок + редкость + ачивки) — переиспользуется; иначе создаётся новый. При генерации `applicableRoles` **не** фильтруется — проверка роли только при скоринге.
+**Auto-gen пак** (`auto_generated = true`): при открытии карточки генерируются на лету из пула игроков. COMMON — без перков; RARE — 1 случайная (`canAppearOnRandomCards = true`); EPIC — 2 случайных различных; LEGENDARY — не участвует. Если найден существующий `CardTemplate` с идентичным набором (игрок + редкость + перки) — переиспользуется; иначе создаётся новый. При генерации `applicableRoles` **не** фильтруется — проверка роли только при скоринге.
 
 #### CardPackPlayer
 | Field | Type | Description |
@@ -387,36 +387,36 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | fantasy_team_card_id | BIGINT | FK → FantasyTeamCard (ON DELETE CASCADE) |
 | series_game_id | BIGINT | FK → SeriesGame |
 | base_points | DOUBLE | Базовые очки игрока в этой игре |
-| achievement_bonus | DOUBLE | Суммарный бонус за все сработавшие достижения |
+| perk_bonus | DOUBLE | Суммарный бонус за все сработавшие перки |
 | rarity_modifier | DOUBLE | Множитель редкости карточки |
-| total_score | DOUBLE | `(base_points + achievement_bonus) × rarity_modifier` |
+| total_score | DOUBLE | `(base_points + perk_bonus) × rarity_modifier` |
 | | | UNIQUE (fantasy_team_card_id, series_game_id) |
 
-#### FantasyTeamCardGameAchievement
+#### FantasyTeamCardGamePerk
 | Field | Type | Description |
 |-------|------|-------------|
 | id | BIGSERIAL | PK |
 | card_game_score_id | BIGINT | FK → FantasyTeamCardGameScore (ON DELETE CASCADE) |
-| achievement_id | VARCHAR(64) | FK → Achievement |
-| bonus_points | DOUBLE | Бонус за конкретное сработавшее достижение |
-| | | UNIQUE (card_game_score_id, achievement_id) |
+| perk_id | VARCHAR(64) | FK → Perk |
+| bonus_points | DOUBLE | Бонус за конкретный сработавший перк |
+| | | UNIQUE (card_game_score_id, perk_id) |
 
 ---
 
-## 5. Achievement System
+## 5. Perk System
 
-Достижения — **системный справочник** (таблица `achievement`). Каждое достижение хранит метаданные: бонус, тип повторяемости, допустимые роли, флаг доступности для автогенерации карт. Детекция происходит при скоринге — для каждого игрока в каждой игре анализируются события из `PolemicaGame`.
+Перки — **системный справочник** (таблица `perk`). Каждый перк хранит метаданные: бонус, тип повторяемости, допустимые роли, флаг доступности для автогенерации карт. Детекция происходит при скоринге — для каждого игрока в каждой игре анализируются события из `PolemicaGame`.
 
-### 5.1 Achievement Properties
+### 5.1 Perk Properties
 
 | Свойство | Описание |
 |----------|----------|
-| `bonus_points` | Системный бонус (default 1). Может быть переопределён на уровне `CardTemplateAchievement.bonus_points` (nullable override). |
+| `bonus_points` | Системный бонус (default 1). Может быть переопределён на уровне `CardTemplatePerk.bonus_points` (nullable override). |
 | `occurrence_type` | `ONCE_PER_GAME` — засчитывается максимум 1 раз за игру. `MULTIPLE_PER_GAME` — сколько раз сработало, столько раз начисляется. |
-| `applicable_roles` | Список ролей (`DON`, `MAFIA`, `PEACE`, `SHERIFF`), на которых достижение может сработать. Пустой список = достижение не применяется ни к кому. Проверяется **только при скоринге**, не при генерации карт. |
+| `applicable_roles` | Список ролей (`DON`, `MAFIA`, `PEACE`, `SHERIFF`), на которых перк может сработать. Пустой список = перк не применяется ни к кому. Проверяется **только при скоринге**, не при генерации карт. |
 | `can_appear_on_random_cards` | Может ли попасть на автосгенерированную карточку (RARE/EPIC) при открытии auto-gen пака. |
 
-### 5.2 Available Game Data for Achievement Detection
+### 5.2 Available Game Data for Perk Detection
 
 Из `polemica-library` доступны:
 
@@ -435,9 +435,9 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | `bonuses` | Бонусы игры |
 | `GameUtils.*` | Утилиты: getKilled, getSheriff, getDon, playersOnTable и др. |
 
-### 5.3 Achievement Types
+### 5.3 Perk Types
 
-| Achievement Key | Description | Detection Logic | Default Random |
+| Perk Key | Description | Detection Logic | Default Random |
 |-----------------|-------------|-----------------|----------------|
 | `SHERIFF_FOUND_BLACK` | Шериф проверил чёрного | `checks` where checker=SHERIFF, target role is MAFIA/DON | No |
 | `DON_FOUND_SHERIFF` | Дон нашёл шерифа | `checks` where checker=DON, target role is SHERIFF | No |
@@ -449,20 +449,20 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | `CORRECT_GUESS` | Угадал 3 мафии | `guess` matches actual roles | No |
 | `NO_FOULS` | Сыграл без фолов | `fouls.isEmpty() && techs.isEmpty()` | No |
 
-По умолчанию все 9 достижений seed-ятся с `bonus_points = 1`, `occurrence_type = ONCE_PER_GAME`, `applicable_roles` = все 4 роли. В миграции **V11** для **всех** записей справочника выставлено `can_appear_on_random_cards = true` (раньше в V9 часть была `false`) — чтобы auto-gen паки могли брать любую ачивку из каталога; фильтрация по роли остаётся только на этапе скоринга.
+По умолчанию все 9 перков seed-ятся с `bonus_points = 1`, `occurrence_type = ONCE_PER_GAME`, `applicable_roles` = все 4 роли. В миграции **V11** для **всех** записей справочника выставлено `can_appear_on_random_cards = true` (раньше в V9 часть была `false`) — чтобы auto-gen паки могли брать любой перк из каталога; фильтрация по роли остаётся только на этапе скоринга.
 
 ### 5.4 Score Calculation Formula
 
 For each card in a fantasy team, per game in the series:
 
 ```
-card_game_score = (player_base_points + Σ(achievement_bonus)) × rarity_modifier
+card_game_score = (player_base_points + Σ(perk_bonus)) × rarity_modifier
 ```
 
 Where:
 - `player_base_points` = очки игрока в этой игре с **публичной страницы матча** Polemica (то же поле `points`, что на `/match/{id}` по позиции за столом). В коде: `GamePointsService.fetchPlayerStats(polemicaGameId)` → словарь позиция → очки; игрок сопоставляется с карточкой по `polemica_user_id` из `FantasyPlayer`. **Не** используется сырое `PolemicaPlayer.award` из JSON матча как единственный источник базы.
 - В расчёт попадают **только завершённые** игры (`PolemicaGame.result != null`); для таких игр выставляется `series_game.scored = true`.
-- `achievement_bonus` = `CardTemplateAchievement.bonus_points ?? Achievement.bonus_points` for each triggered achievement (с учётом `occurrence_type` и `applicable_roles`)
+- `perk_bonus` = `CardTemplatePerk.bonus_points ?? Perk.bonus_points` for each triggered perk (с учётом `occurrence_type` и `applicable_roles`)
 - `rarity_modifier` = модификатор редкости карточки:
 
 | Rarity | Modifier |
@@ -486,8 +486,8 @@ team_total = Σ(card_total) for all cards in the team (1 to 3 slots)
 
 При скоринге сохраняется полная детализация:
 - `FantasyTeamCard.score` = `card_total`
-- `FantasyTeamCardGameScore` — per-game breakdown (base_points, achievement_bonus, rarity_modifier, total_score)
-- `FantasyTeamCardGameAchievement` — какие конкретно достижения сработали в каждой игре с бонусом каждого
+- `FantasyTeamCardGameScore` — per-game breakdown (base_points, perk_bonus, rarity_modifier, total_score)
+- `FantasyTeamCardGamePerk` — какие конкретно перки сработали в каждой игре с бонусом каждого
 - `FantasyTeam.total_score` = `team_total`
 
 Перед повторным расчётом старые per-game записи очищаются (CASCADE).
@@ -508,16 +508,16 @@ Authentication: Telegram `initData` in `Authorization` header, validated via HMA
 |--------|------|-------------|
 | GET | `/me` | Current user profile (`fantiki`, `displayName`, …) |
 | PATCH | `/me` | Обновить `displayName` (тело `{"displayName":…}`; `null` / `""` — сброс на дефолт из Telegram) |
-| GET | `/me/cards` | User's card collection (filters: optional `tournamentId`, **`seriesId`** — только карты игроков из ростера серии, `rarity`). В ответе: `fantasyPlayerId`, `rarity`, `imageUrl`, `playerPhotoUrl`, ник, достижения; **`usesRemaining`**, **`timesRenewed`**, **`craftedByTelegramUserId`** (V3+). Истёкшие карты не скрываются — клиент помечает по `usesRemaining`. |
+| GET | `/me/cards` | User's card collection (filters: optional `tournamentId`, **`seriesId`** — только карты игроков из ростера серии, `rarity`). В ответе: `fantasyPlayerId`, `rarity`, `imageUrl`, `playerPhotoUrl`, ник, перки; **`usesRemaining`**, **`timesRenewed`**, **`craftedByTelegramUserId`** (V3+). Истёкшие карты не скрываются — клиент помечает по `usesRemaining`. |
 | GET | `/me/economy-info` | Агрегат параметров экономики для UI: uses по редкостям, recycle/renewal, max renewals, таблица наград серии (V3) |
-| GET | `/achievements` | Публичный каталог достижений (read-only; для экрана «Справка» в TMA) |
+| GET | `/perks` | Публичный каталог перков (read-only; для экрана «Справка» в TMA) |
 | POST | `/me/cards/{id}/recycle` | Переработать карту → фантики, карта удаляется (V3) |
 | POST | `/me/cards/{id}/renew` | Продлить контракт истёкшей карты за фантики (V3) |
 | GET | `/legendary-upgrade/info` | Стоимость апгрейда, лимит LEGENDARY в команде на серию, прочие параметры из `economy_config` |
-| POST | `/legendary-upgrade` | EPIC → LEGENDARY: тело с `userCardId` и `achievementId` (+1 достижение к шаблону) |
+| POST | `/legendary-upgrade` | EPIC → LEGENDARY: тело с `userCardId` и `perkId` (+1 перк к шаблону) |
 | GET | `/me/fantasy-teams` | All user's fantasy teams |
 | GET | `/me/fantasy-teams/{seriesId}` | Fantasy team for specific series |
-| GET | `/me/fantasy-teams/{seriesId}/details` | Полная per-game детализация: по каждой карте → по каждой игре → base/achievements/modifier/total |
+| GET | `/me/fantasy-teams/{seriesId}/details` | Полная per-game детализация: по каждой карте → по каждой игре → base/perks/modifier/total |
 
 **Tournaments & Series:**
 
@@ -581,12 +581,12 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 | PUT | `/economy-config/{key}` | Обновить значение по ключу (`{ "value": "..." }`, валидация — целое число) |
 | PUT | `/economy-config` | Bulk-обновление: `{ "items": [ { "key", "value" }, ... ] }` |
 
-**Achievement Management:**
+**Perk Management:**
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/achievements` | Список всех достижений из справочника |
-| PUT | `/achievements/{id}` | Обновить достижение (bonus_points, occurrence_type, applicable_roles, can_appear_on_random_cards) |
+| GET | `/perks` | Список всех перков из справочника |
+| PUT | `/perks/{id}` | Обновить перк (bonus_points, occurrence_type, applicable_roles, can_appear_on_random_cards) |
 
 **Card Management:**
 
@@ -595,7 +595,7 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 | POST | `/card-templates` | Create card template (body: `fantasyPlayerId`, rarity, …) |
 | PUT | `/card-templates/{id}` | Update card template |
 | GET | `/card-templates` | List templates: опционально `tournamentId`, `fantasyPlayerId`, `rarity` |
-| POST | `/card-templates/{id}/achievements` | Add achievement to card template (achievement_id + optional bonus_points override) |
+| POST | `/card-templates/{id}/perks` | Add perk to card template (perk_id + optional bonus_points override) |
 | POST | `/card-templates/{id}/image` | Upload card artwork (multipart) → S3 |
 | POST | `/card-packs` | Create card pack (body: name, tournamentId, active, autoGenerated, priceFantiki, useAllTournamentPlayers, rarityConfigs, playerIds) |
 | PUT | `/card-packs/{id}` | Update pack configuration |
@@ -682,7 +682,7 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 - **A1 (Foundation):** Gradle, Spring Boot, Flyway V1–V4, JPA entities, S3, Docker, CI/CD
 - **A2 (polemica-library):** поле `name` в `PolemicaGame`, `getPlayerGames`
 - **A3 (Admin Backend):** Tournament/Series/Card admin API, CardPackService, Basic Auth
-- **A4 (Scoring + Game Sync):** PolemicaIntegrationService, GameSyncService, AchievementDetector (9 штук), ScoringService
+- **A4 (Scoring + Game Sync):** PolemicaIntegrationService, GameSyncService, PerkDetector (9 штук), ScoringService
 - **A5 (User Backend + TMA):** TelegramAuthFilter, User API, TMA (React + TS + TanStack Query)
 - **A6 (Admin Frontend):** Ant Design admin panel
 
@@ -690,11 +690,11 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 
 Реализация выполнена 7 агентами (B1–B7):
 
-- **B1 (Schema V2):** Flyway V5–V9, новые entities (Achievement, FantikiTransaction, CardPackPlayer, FantasyTeamCardGameScore, FantasyTeamCardGameAchievement), `Rarity.scoreModifier`, удалён `AchievementType` enum
-- **B2 (Achievement Refactor + Scoring V2):** справочник достижений, `applicableRoles` + `occurrenceType` при скоринге, формула с `rarity_modifier`, per-game breakdown
+- **B1 (Schema V2):** Flyway V5–V9, новые entities (Perk, FantikiTransaction, CardPackPlayer, FantasyTeamCardGameScore, FantasyTeamCardGamePerk), `Rarity.scoreModifier`, удалён `PerkType` enum
+- **B2 (Perk Refactor + Scoring V2):** справочник перков, `applicableRoles` + `occurrenceType` при скоринге, формула с `rarity_modifier`, per-game breakdown
 - **B3 (Фантики + Store):** баланс пользователя, `fantiki_transaction`, `UserStoreService`, Store API (`GET /store/packs`, `POST /store/packs/{id}/buy`), admin `give-fantiki`
 - **B4 (Auto-gen Packs):** генерация карт при открытии, пул игроков, переиспользование шаблонов, валидация LEGENDARY
-- **B5 (Admin Frontend V2):** страница достижений, паки V2 (auto-gen, цена, пул игроков), начисление фантиков
+- **B5 (Admin Frontend V2):** страница перков, паки V2 (auto-gen, цена, пул игроков), начисление фантиков
 - **B6 (TMA Frontend V2):** баланс фантиков в хедере, магазин паков, per-game детализация очков
 - **B7 (Pack Opening Animation):** анимация открытия пака (glow по редкости, flip, particles)
 
@@ -706,7 +706,7 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 - **C2 (Backend lifecycle):** `EconomyConfigService`, `CardLifecycleService` (recycle/renew), `SeriesFinalizationService`; выдача карт с uses из конфига; проверка uses при `POST/PUT` fantasy-team; user/admin API см. §6.1–6.2.
 - **C3 (Economy admin API):** CRUD-обновление `economy_config`, инвалидация кэша.
 - **C4 (Admin SPA):** страница `/economy`, кнопка финализации серии, признак `finalized` в списке/деталке серии.
-- **C5 (TMA):** бейджи использований, коллекция (фильтры/переработка/продление), экран **«Справка»** `/help` (механика очков, достижения, экономика из `economy-info`; редирект со старого `/economy`), сборка команды с блокировкой истёкших карт и предупреждением о последнем использовании.
+- **C5 (TMA):** бейджи использований, коллекция (фильтры/переработка/продление), экран **«Справка»** `/help` (механика очков, перки, экономика из `economy-info`; редирект со старого `/economy`), сборка команды с блокировкой истёкших карт и предупреждением о последнем использовании.
 
 ### Phase 4+ (после V3): UX, легендарки, инфраструктура
 

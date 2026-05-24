@@ -4,7 +4,7 @@ export type SeriesStatus = 'UPCOMING' | 'ACTIVE' | 'SCORING' | 'FINISHED'
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
 
-export interface AchievementCatalogItem {
+export interface PerkCatalogItem {
   id: string
   name: string
   description: string | null
@@ -80,18 +80,18 @@ export interface FantasyTeamSeriesGameInfo {
   scored: boolean
 }
 
-export interface AchievementInGame {
-  achievementId: string
-  achievementName: string
+export interface PerkInGame {
+  perkId: string
+  perkName: string
   bonusPoints: number
 }
 
 export interface CardGameBreakdown {
   basePoints: number | null
-  achievementBonus: number | null
+  perkBonus: number | null
   rarityModifier: number | null
   totalScore: number | null
-  achievements: AchievementInGame[]
+  perks: PerkInGame[]
 }
 
 export interface FantasyTeamDetailSlot {
@@ -245,14 +245,14 @@ export interface UserCardItem {
   description: string | null
   playerNickname: string
   playerPhotoUrl: string | null
-  achievements: { achievementId: string; achievementName: string; bonusPoints: number }[]
+  perks: { perkId: string; perkName: string; bonusPoints: number }[]
   usesRemaining: number
   timesRenewed: number
   /** Present when the card came from opening a pack */
   sourceCardPackId?: number | null
   /** Telegram user id of the crafter; set after legendary upgrade from a pack card */
   craftedByTelegramUserId?: number | null
-  /** Вычисляемая ценность (база по редкости + бонус за достижения). */
+  /** Вычисляемая ценность (база по редкости + бонус за перки). */
   value: number
   /** Коды лиг этой серии, где карта уже используется (при `seriesId` запросе). */
   leaguesInSeries?: string[] | null
@@ -302,7 +302,7 @@ export interface EconomyInfo {
   minPackOpensBeforeMarketplacePurchase: number
   cardValues: {
     baseValues: Record<Rarity, number>
-    achievementBonus: number
+    perkBonus: number
   }
   leagues: Record<string, { valueCap: number | null; rewardScale: number }>
 }
@@ -338,8 +338,8 @@ export interface FantasyPlayerBrief {
 /** GET /api/v1/marketplace/listings */
 export type MarketplaceSortBy = 'price_asc' | 'price_desc' | 'created_at_desc'
 
-export interface MarketplaceCardAchievement {
-  achievementId: string
+export interface MarketplaceCardPerk {
+  perkId: string
   name: string
   bonusPoints: number
 }
@@ -350,7 +350,7 @@ export interface MarketplaceListingCard {
   playerName: string
   playerPhotoUrl: string | null
   rarity: Rarity
-  achievements: MarketplaceCardAchievement[]
+  perks: MarketplaceCardPerk[]
   value: number | null
   skinCode?: string | null
 }
@@ -417,7 +417,7 @@ export interface TransactionCard {
   playerName: string
   playerPhotoUrl: string | null
   rarity: Rarity
-  achievements: MarketplaceCardAchievement[]
+  perks: MarketplaceCardPerk[]
   skinCode?: string | null
 }
 

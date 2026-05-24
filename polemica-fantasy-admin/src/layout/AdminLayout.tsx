@@ -11,8 +11,8 @@ const allMenuItems = [
     label: <Link to="/card-templates">Card templates</Link>,
   },
   {
-    key: '/achievements',
-    label: <Link to="/achievements">Achievements</Link>,
+    key: '/perks',
+    label: <Link to="/perks">Perks</Link>,
   },
   { key: '/card-packs', label: <Link to="/card-packs">Card packs</Link> },
   { key: '/users', label: <Link to="/users">Users</Link> },

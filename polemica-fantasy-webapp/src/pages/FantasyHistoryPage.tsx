@@ -296,9 +296,9 @@ export function FantasyHistoryPage() {
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
             <ul className="pf-modal__ach">
-              {detailCard.achievements.map((a) => (
-                <li key={a.achievementId}>
-                  {a.achievementName}: +{a.bonusPoints}
+              {detailCard.perks.map((a) => (
+                <li key={a.perkId}>
+                  {a.perkName}: +{a.bonusPoints}
                 </li>
               ))}
             </ul>

@@ -41,16 +41,16 @@ class MarketplaceWatchFilter(
     @Column(name = "max_price")
     var maxPrice: Long? = null,
 
-    @Column(name = "achievement_ids_key", nullable = false, length = 1024)
-    var achievementIdsKey: String = "",
+    @Column(name = "perk_ids_key", nullable = false, length = 1024)
+    var perkIdsKey: String = "",
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "marketplace_watch_filter_achievement",
+        name = "marketplace_watch_filter_perk",
         joinColumns = [JoinColumn(name = "watch_filter_id")],
-        inverseJoinColumns = [JoinColumn(name = "achievement_id")],
+        inverseJoinColumns = [JoinColumn(name = "perk_id")],
     )
-    var achievements: MutableSet<Achievement> = linkedSetOf(),
+    var perks: MutableSet<Perk> = linkedSetOf(),
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

@@ -16,7 +16,7 @@ import {
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { listAchievements } from '../api/achievements'
+import { listPerks } from '../api/perks'
 import { createCardPack, listCardPacks, listCardSkins, updateCardPack } from '../api/packs'
 import { listTournaments, getTournament } from '../api/tournaments'
 import type { Rarity } from '../api/types'
@@ -37,7 +37,7 @@ export function CardPacksPage() {
     priceFantiki: number
     freeOpensPerUser: number
     maxOpensPerUser: number
-    achievementIds: string[]
+    perkIds: string[]
     useAllTournamentPlayers: boolean
     skinId: number | null
     playerIds: number[]
@@ -49,9 +49,9 @@ export function CardPacksPage() {
     queryFn: listTournaments,
   })
 
-  const achievementsQ = useQuery({
-    queryKey: ['admin', 'achievements'],
-    queryFn: listAchievements,
+  const perksQ = useQuery({
+    queryKey: ['admin', 'perks'],
+    queryFn: listPerks,
   })
 
   const skinsQ = useQuery({
@@ -119,7 +119,7 @@ export function CardPacksPage() {
       priceFantiki: 0,
       freeOpensPerUser: 0,
       maxOpensPerUser: 0,
-      achievementIds: [],
+      perkIds: [],
       useAllTournamentPlayers: true,
       skinId: null,
       playerIds: [],
@@ -242,7 +242,7 @@ export function CardPacksPage() {
               priceFantiki: v.priceFantiki ?? 0,
               freeOpensPerUser: v.freeOpensPerUser ?? 0,
               maxOpensPerUser: v.maxOpensPerUser ?? 0,
-              achievementIds: v.achievementIds ?? [],
+              perkIds: v.perkIds ?? [],
               useAllTournamentPlayers: v.useAllTournamentPlayers ?? false,
               skinId: v.skinId ?? null,
               playerIds: v.useAllTournamentPlayers ? null : v.playerIds,
@@ -284,7 +284,7 @@ export function CardPacksPage() {
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
-              message="Auto packs: Rare adds 1 random achievement, Epic adds 2. Legendary is not available."
+              message="Auto packs: Rare adds 1 random perk, Epic adds 2. Legendary is not available."
             />
           ) : null}
           <Form.Item name="priceFantiki" label="Price (fantiki)">
@@ -305,16 +305,16 @@ export function CardPacksPage() {
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
-            name="achievementIds"
-            label="Пул достижений для RNG (пусто = глобальный пул)"
-            tooltip="Для авто-паков: редкие/эпик слоты берут ачивки только из выбранного списка."
+            name="perkIds"
+            label="Пул перков для RNG (пусто = глобальный пул)"
+            tooltip="Для авто-паков: редкие/эпик слоты берут перки только из выбранного списка."
           >
             <Select
               mode="multiple"
               allowClear
-              loading={achievementsQ.isLoading}
+              loading={perksQ.isLoading}
               placeholder="Пусто — как в глобальном каталоге (can appear on random cards)"
-              options={achievementsQ.data?.map((a) => ({
+              options={perksQ.data?.map((a) => ({
                 value: a.id,
                 label: `${a.id} — ${a.name}`,
               }))}
@@ -434,8 +434,8 @@ export function CardPacksPage() {
             rarityOptions={rarityOptions}
             loading={updatePackMut.isPending}
             onSubmit={(body) => updatePackMut.mutate({ id: editing.id, body })}
-            achievementOptions={achievementsQ.data}
-            achievementsLoading={achievementsQ.isLoading}
+            perkOptions={perksQ.data}
+            perksLoading={perksQ.isLoading}
             skins={skinsQ.data}
             skinsLoading={skinsQ.isLoading}
           />
@@ -451,8 +451,8 @@ function EditPackForm({
   playersLoading,
   rarityOptions,
   loading,
-  achievementOptions,
-  achievementsLoading,
+  perkOptions,
+  perksLoading,
   skins,
   skinsLoading,
   onSubmit,
@@ -464,7 +464,7 @@ function EditPackForm({
     priceFantiki: number
     freeOpensPerUser: number
     maxOpensPerUser: number
-    achievementIds: string[]
+    perkIds: string[]
     useAllTournamentPlayers: boolean
     skinId: number | null
     playerIds: number[]
@@ -474,8 +474,8 @@ function EditPackForm({
   playersLoading: boolean
   rarityOptions: { value: Rarity; label: string }[]
   loading: boolean
-  achievementOptions: { id: string; name: string }[] | undefined
-  achievementsLoading: boolean
+  perkOptions: { id: string; name: string }[] | undefined
+  perksLoading: boolean
   skins: { id: number; code: string; name: string }[] | undefined
   skinsLoading: boolean
   onSubmit: (body: {
@@ -485,7 +485,7 @@ function EditPackForm({
     priceFantiki: number
     freeOpensPerUser: number
     maxOpensPerUser: number
-    achievementIds: string[]
+    perkIds: string[]
     useAllTournamentPlayers: boolean
     skinId: number | null
     playerIds: number[] | null
@@ -499,7 +499,7 @@ function EditPackForm({
     priceFantiki: number
     freeOpensPerUser: number
     maxOpensPerUser: number
-    achievementIds: string[]
+    perkIds: string[]
     useAllTournamentPlayers: boolean
     skinId: number | null
     playerIds: number[]
@@ -517,7 +517,7 @@ function EditPackForm({
       priceFantiki: editing.priceFantiki,
       freeOpensPerUser: editing.freeOpensPerUser,
       maxOpensPerUser: editing.maxOpensPerUser,
-      achievementIds: editing.achievementIds ?? [],
+      perkIds: editing.perkIds ?? [],
       useAllTournamentPlayers: editing.useAllTournamentPlayers,
       skinId: editing.skinId,
       playerIds: editing.playerIds ?? [],
@@ -540,7 +540,7 @@ function EditPackForm({
           priceFantiki: v.priceFantiki ?? 0,
           freeOpensPerUser: v.freeOpensPerUser ?? 0,
           maxOpensPerUser: v.maxOpensPerUser ?? 0,
-          achievementIds: v.achievementIds ?? [],
+          perkIds: v.perkIds ?? [],
           useAllTournamentPlayers: v.useAllTournamentPlayers,
           skinId: v.skinId ?? null,
           playerIds: v.useAllTournamentPlayers ? null : v.playerIds,
@@ -566,7 +566,7 @@ function EditPackForm({
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message="Auto packs: Rare adds 1 random achievement, Epic adds 2. Legendary is not available."
+          message="Auto packs: Rare adds 1 random perk, Epic adds 2. Legendary is not available."
         />
       ) : null}
       <Form.Item name="priceFantiki" label="Price (fantiki)">
@@ -587,16 +587,16 @@ function EditPackForm({
         <InputNumber min={0} precision={0} style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item
-        name="achievementIds"
-        label="Пул достижений для RNG (пусто = глобальный пул)"
-        tooltip="Для авто-паков: редкие/эпик слоты берут ачивки только из выбранного списка."
+        name="perkIds"
+        label="Пул перков для RNG (пусто = глобальный пул)"
+        tooltip="Для авто-паков: редкие/эпик слоты берут перки только из выбранного списка."
       >
         <Select
           mode="multiple"
           allowClear
-          loading={achievementsLoading}
+          loading={perksLoading}
           placeholder="Пусто — как в глобальном каталоге (can appear on random cards)"
-          options={achievementOptions?.map((a) => ({
+          options={perkOptions?.map((a) => ({
             value: a.id,
             label: `${a.id} — ${a.name}`,
           }))}

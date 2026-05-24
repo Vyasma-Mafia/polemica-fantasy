@@ -55,7 +55,7 @@ class OnboardingService(
             OnboardingChecklistItemDto(
                 step = OnboardingStep.VIEW_COLLECTION.name,
                 title = "Посмотрите коллекцию",
-                description = "Оцените редкости, достижения и оставшиеся использования карт.",
+                description = "Оцените редкости, перки и оставшиеся использования карт.",
                 completed = collectionDone,
                 ctaLabel = "Коллекция",
                 ctaPath = "/cards",

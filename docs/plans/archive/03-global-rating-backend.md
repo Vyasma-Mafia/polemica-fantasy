@@ -40,7 +40,7 @@ data class GlobalRatingDto(
 
 **Ключевые решения:**
 - Учитываются **все** карточки пользователя, включая `uses_remaining = 0` и карты в ACTIVE листинге (§3.1)
-- Ценность вычисляется через формулу `base_rarity_value + achievement_count × achievement_bonus` прямо в SQL
+- Ценность вычисляется через формулу `base_rarity_value + perk_count × perk_bonus` прямо в SQL
 
 ### 3. SQL-запрос в Repository
 
@@ -69,18 +69,18 @@ LEFT JOIN (
              FROM economy_config ec_base
              WHERE ec_base.key = 'card.value.' || ct.rarity)
             +
-            COALESCE(ach.cnt, 0) *
+            COALESCE(perk.cnt, 0) *
             (SELECT COALESCE(ec_bonus.value, '0')::BIGINT
              FROM economy_config ec_bonus
-             WHERE ec_bonus.key = 'card.value.achievement_bonus')
+             WHERE ec_bonus.key = 'card.value.perk_bonus')
         ) AS cards_value
     FROM user_card uc
     JOIN card_template ct ON ct.id = uc.card_template_id
     LEFT JOIN (
-        SELECT card_template_id, COUNT(DISTINCT achievement_id) AS cnt
-        FROM card_template_achievement
+        SELECT card_template_id, COUNT(DISTINCT perk_id) AS cnt
+        FROM card_template_perk
         GROUP BY card_template_id
-    ) ach ON ach.card_template_id = ct.id
+    ) perk ON perk.card_template_id = ct.id
     GROUP BY uc.telegram_user_id
 ) cv ON cv.telegram_user_id = tu.id
 ORDER BY total_value DESC
@@ -142,7 +142,7 @@ class RatingController(
 
 ### 7. Тесты
 
-- Юнит-тест `CardValueService`: проверить формулу для каждой редкости с разным числом ачивок
+- Юнит-тест `CardValueService`: проверить формулу для каждой редкости с разным числом перков
 - Интеграционный тест `GlobalRatingService`: два пользователя с разным балансом и картами → правильный порядок
 - Тест на пользователя без карт (только баланс)
 - Тест на пользователя с `uses_remaining = 0` (карта всё равно считается)

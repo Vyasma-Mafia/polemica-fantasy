@@ -38,7 +38,7 @@ export interface TransactionCard {
   playerName: string;
   playerPhotoUrl: string | null;
   rarity: Rarity;
-  achievements: CardAchievement[];
+  perks: CardPerk[];
 }
 
 export interface TransactionComplaintInfo {
@@ -150,7 +150,7 @@ export function useComplainTransaction(listingId: number) {
 
 Контент страницы (`§15.1`):
 
-1. **Карта:** фото игрока, рамка по редкости (`pf-collection-card__frame--{rarity}`), список достижений (чипы `CardAchievementChips`)
+1. **Карта:** фото игрока, рамка по редкости (`pf-collection-card__frame--{rarity}`), список перков (чипы `CardPerkChips`)
 2. **Информация о сделке:**
    - Цена, комиссия, получено продавцом
    - Дата сделки (формат `formatDateShortWithTime`)
@@ -263,7 +263,7 @@ export function useComplainTransaction(listingId: number) {
 
 - [ ] `npm run build` (`polemica-fantasy-webapp`) — успешно
 - [ ] Route `/marketplace/transactions/:listingId` открывается, данные подгружаются
-- [ ] Карта с рамкой по редкости и достижениями отображается на странице сделки
+- [ ] Карта с рамкой по редкости и перками отображается на странице сделки
 - [ ] Участники кликабельны → переход в профиль
 - [ ] Кнопка «Пожаловаться» работает, disabled в правильных состояниях
 - [ ] Обработка ошибок: 429, 409, 400 — user-friendly сообщения

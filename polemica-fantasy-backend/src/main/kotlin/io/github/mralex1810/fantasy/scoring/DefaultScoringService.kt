@@ -5,14 +5,14 @@ import com.github.mafia.vyasma.polemica.library.client.GamePointsService
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
 import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
-import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameAchievement
+import io.github.mralex1810.fantasy.entity.FantasyTeamCardGamePerk
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
-import io.github.mralex1810.fantasy.scoring.achievement.AchievementDetectorRegistry
-import io.github.mralex1810.fantasy.scoring.achievement.ScoringContext
+import io.github.mralex1810.fantasy.scoring.perk.PerkDetectorRegistry
+import io.github.mralex1810.fantasy.scoring.perk.ScoringContext
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -24,7 +24,7 @@ class DefaultScoringService(
     private val seriesRepository: SeriesRepository,
     private val seriesGameRepository: SeriesGameRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
-    private val achievementRegistry: AchievementDetectorRegistry,
+    private val perkRegistry: PerkDetectorRegistry,
     private val objectMapper: ObjectMapper,
     private val gamePointsService: GamePointsService,
     platformTransactionManager: PlatformTransactionManager,
@@ -94,7 +94,7 @@ class DefaultScoringService(
         val userCard = fantasyCard.userCard!!
         val template = userCard.cardTemplate!!
         val polemicaUserId = template.fantasyPlayer!!.polemicaUserId
-        val templateAchievements = template.achievements
+        val templatePerks = template.perks
         val rarityModifier = template.rarity.scoreModifier
 
         var total = 0.0
@@ -107,41 +107,41 @@ class DefaultScoringService(
                 ?.get(player.position.value)
                 ?: 0.0
             val scoringContext = ScoringContext(basePoints = basePoints)
-            val bonusByAchievementId = LinkedHashMap<String, Double>()
+            val bonusByPerkId = LinkedHashMap<String, Double>()
 
-            for (cta in templateAchievements) {
-                val ach = cta.achievement ?: continue
-                if (!isRoleApplicable(ach, player)) continue
-                val det = achievementRegistry.detector(ach.id) ?: continue
+            for (cta in templatePerks) {
+                val perk = cta.perk ?: continue
+                if (!isRoleApplicable(perk, player)) continue
+                val det = perkRegistry.detector(perk.id) ?: continue
                 val raw = det.matchCount(polemicaGame, player, scoringContext)
-                val applied = appliedOccurrences(raw, ach.occurrenceType)
+                val applied = appliedOccurrences(raw, perk.occurrenceType)
                 if (applied <= 0) continue
-                val effectiveBonus = cta.bonusPoints ?: ach.bonusPoints
+                val effectiveBonus = cta.bonusPoints ?: perk.bonusPoints
                 val contribution = effectiveBonus * applied
-                bonusByAchievementId.merge(ach.id, contribution) { a, b -> a + b }
+                bonusByPerkId.merge(perk.id, contribution) { a, b -> a + b }
             }
 
-            val achievementBonus = bonusByAchievementId.values.sum()
-            val gameTotal = cardGameTotalScore(basePoints, achievementBonus, rarityModifier)
+            val perkBonus = bonusByPerkId.values.sum()
+            val gameTotal = cardGameTotalScore(basePoints, perkBonus, rarityModifier)
             total += gameTotal
 
             val gameScoreRow = FantasyTeamCardGameScore().apply {
                 fantasyTeamCard = fantasyCard
                 seriesGame = sg
                 this.basePoints = basePoints
-                this.achievementBonus = achievementBonus
+                this.perkBonus = perkBonus
                 this.rarityModifier = rarityModifier
                 totalScore = gameTotal
             }
-            for ((achievementId, bonusPoints) in bonusByAchievementId) {
-                val achEntity = templateAchievements
-                    .mapNotNull { it.achievement }
-                    .firstOrNull { it.id == achievementId }
+            for ((perkId, bonusPoints) in bonusByPerkId) {
+                val achEntity = templatePerks
+                    .mapNotNull { it.perk }
+                    .firstOrNull { it.id == perkId }
                     ?: continue
-                gameScoreRow.achievements.add(
-                    FantasyTeamCardGameAchievement().apply {
+                gameScoreRow.perks.add(
+                    FantasyTeamCardGamePerk().apply {
                         gameScore = gameScoreRow
-                        achievement = achEntity
+                        perk = achEntity
                         this.bonusPoints = bonusPoints
                     },
                 )

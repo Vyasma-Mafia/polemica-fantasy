@@ -20,9 +20,9 @@ data class UpdateCardTemplateRequest(
     val description: String? = null,
 )
 
-data class AddCardTemplateAchievementRequest(
+data class AddCardTemplatePerkRequest(
     @field:NotBlank
-    val achievementId: String,
+    val perkId: String,
     val bonusPoints: Double? = null,
 )
 

@@ -16,7 +16,7 @@ export interface CreateCardPackRequest {
   /** Max total pack opens per user; 0 = unlimited. */
   maxOpensPerUser?: number
   /** RNG pool for this pack; empty = global canAppearOnRandomCards pool. */
-  achievementIds?: string[]
+  perkIds?: string[]
   useAllTournamentPlayers?: boolean
   skinId?: number | null
   playerIds?: number[] | null
@@ -30,7 +30,7 @@ export interface UpdateCardPackRequest {
   priceFantiki?: number | null
   freeOpensPerUser?: number | null
   maxOpensPerUser?: number | null
-  achievementIds?: string[] | null
+  perkIds?: string[] | null
   useAllTournamentPlayers?: boolean | null
   skinId?: number | null
   playerIds?: number[] | null

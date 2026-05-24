@@ -7,5 +7,5 @@ data class CreateMarketplaceWatchRequest(
     val tournamentId: Long?,
     val rarity: Rarity?,
     val maxPrice: Long?,
-    val achievementIds: List<String> = emptyList(),
+    val perkIds: List<String> = emptyList(),
 )

@@ -1,7 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.request.SubmitFantasyTeamRequest
-import io.github.mralex1810.fantasy.dto.user.response.AchievementInGameDto
+import io.github.mralex1810.fantasy.dto.user.response.PerkInGameDto
 import io.github.mralex1810.fantasy.dto.user.response.CardGameBreakdownDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamDetailSlotDto
 import io.github.mralex1810.fantasy.dto.user.response.FantasyTeamDto
@@ -99,7 +99,7 @@ class UserFantasyTeamService(
         val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(owner.id!!, seriesId, leagueCode)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")
         val templateIds = team.cards.map { it.userCard!!.cardTemplate!!.id!! }
-        val templatesById = cardTemplateRepository.findAllByIdWithAchievementsLoaded(templateIds)
+        val templatesById = cardTemplateRepository.findAllByIdWithPerksLoaded(templateIds)
             .associateBy { it.id!! }
         val ownerDto = UserPublicDto(
             telegramId = owner.telegramId,
@@ -183,19 +183,19 @@ class UserFantasyTeamService(
     }
 
     private fun FantasyTeamCardGameScore.toBreakdownDto(): CardGameBreakdownDto {
-        val ach = achievements.map { a ->
-            AchievementInGameDto(
-                achievementId = a.achievement!!.id,
-                achievementName = a.achievement!!.name,
+        val perk = perks.map { a ->
+            PerkInGameDto(
+                perkId = a.perk!!.id,
+                perkName = a.perk!!.name,
                 bonusPoints = a.bonusPoints,
             )
         }
         return CardGameBreakdownDto(
             basePoints = basePoints,
-            achievementBonus = achievementBonus,
+            perkBonus = perkBonus,
             rarityModifier = rarityModifier,
             totalScore = totalScore,
-            achievements = ach,
+            perks = perk,
         )
     }
 

@@ -8,9 +8,9 @@ import org.springframework.data.repository.query.Param
 interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
 
     /**
-     * Teams with cards/templates for scoring. Does not JOIN FETCH template achievements: Hibernate
-     * forbids multiple bag FETCH joins (`FantasyTeam.cards` + `CardTemplate.achievements`).
-     * Achievements load lazily in the same transaction; `CardTemplate.achievements` is `@BatchSize`.
+     * Teams with cards/templates for scoring. Does not JOIN FETCH template perks: Hibernate
+     * forbids multiple bag FETCH joins (`FantasyTeam.cards` + `CardTemplate.perks`).
+     * Perks load lazily in the same transaction; `CardTemplate.perks` is `@BatchSize`.
      */
     @Query(
         """

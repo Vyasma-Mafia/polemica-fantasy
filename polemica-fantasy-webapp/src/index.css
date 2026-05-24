@@ -2427,7 +2427,7 @@ button.pf-mini-card:disabled {
   z-index: 4;
 }
 
-.pf-collection-card--legendary-crafted .pf-card-ach-chip {
+.pf-collection-card--legendary-crafted .pf-card-perk-chip {
   border-color: rgba(232, 197, 71, 0.45);
   background: rgba(15, 23, 42, 0.92);
   box-shadow: 0 0 12px rgba(232, 197, 71, 0.08);
@@ -2497,33 +2497,33 @@ button.pf-mini-card:disabled {
   margin: 0 0 0.75rem;
 }
 
-.pf-help__achievement {
+.pf-help__perk {
   border: 1px solid var(--pf-border);
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 10px;
 }
 
-.pf-help__achievement-name {
+.pf-help__perk-name {
   font-weight: 600;
   margin: 0 0 6px;
   font-size: 0.95rem;
 }
 
-.pf-help__achievement-desc {
+.pf-help__perk-desc {
   margin: 0 0 8px;
   font-size: 0.88rem;
   line-height: 1.35;
 }
 
-.pf-help__achievement-meta {
+.pf-help__perk-meta {
   font-size: 0.78rem;
   color: var(--pf-muted);
   margin: 0;
   line-height: 1.4;
 }
 
-.pf-help__achievement-meta + .pf-help__achievement-meta {
+.pf-help__perk-meta + .pf-help__perk-meta {
   margin-top: 4px;
 }
 
@@ -2562,8 +2562,8 @@ button.pf-mini-card:disabled {
   letter-spacing: 0;
 }
 
-/* Achievement chips (collection, pack reveal, team builder, pack summary) */
-.pf-card-ach-chips {
+/* Perk chips (collection, pack reveal, team builder, pack summary) */
+.pf-card-perk-chips {
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
@@ -2572,17 +2572,17 @@ button.pf-mini-card:disabled {
   gap: 5px;
 }
 
-.pf-card-ach-chips--compact {
+.pf-card-perk-chips--compact {
   margin-top: 5px;
   gap: 3px;
 }
 
-.pf-card-ach-chips--tight {
+.pf-card-perk-chips--tight {
   margin-top: 5px;
   gap: 3px;
 }
 
-.pf-card-ach-chip {
+.pf-card-perk-chip {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -2598,35 +2598,35 @@ button.pf-mini-card:disabled {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-.pf-card-ach-chip__name {
+.pf-card-perk-chip__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 10em;
 }
 
-.pf-card-ach-chip__bonus {
+.pf-card-perk-chip__bonus {
   font-variant-numeric: tabular-nums;
   color: var(--pf-gold-dim);
   flex-shrink: 0;
 }
 
-.pf-card-ach-chips--compact .pf-card-ach-chip {
+.pf-card-perk-chips--compact .pf-card-perk-chip {
   font-size: 0.56rem;
   padding: 2px 5px;
   border-radius: 4px;
 }
 
-.pf-card-ach-chips--compact .pf-card-ach-chip__name {
+.pf-card-perk-chips--compact .pf-card-perk-chip__name {
   max-width: 5.5em;
 }
 
-.pf-card-ach-chips--tight .pf-card-ach-chip {
+.pf-card-perk-chips--tight .pf-card-perk-chip {
   font-size: 0.62rem;
   padding: 3px 6px;
 }
 
-.pf-card-ach-chips--tight .pf-card-ach-chip__name {
+.pf-card-perk-chips--tight .pf-card-perk-chip__name {
   max-width: 8em;
 }
 
@@ -3069,7 +3069,7 @@ button.pf-mini-card:disabled {
   margin-bottom: 4px;
 }
 
-.pf-legendary-wizard__ach-list {
+.pf-legendary-wizard__perk-list {
   list-style: none;
   margin: 0 0 12px;
   padding: 0;
@@ -3077,7 +3077,7 @@ button.pf-mini-card:disabled {
   overflow-y: auto;
 }
 
-.pf-legendary-wizard__ach-item {
+.pf-legendary-wizard__perk-item {
   display: flex;
   width: 100%;
   justify-content: space-between;
@@ -3094,12 +3094,12 @@ button.pf-mini-card:disabled {
   cursor: pointer;
 }
 
-.pf-legendary-wizard__ach-item--selected {
+.pf-legendary-wizard__perk-item--selected {
   border-color: var(--pf-gold);
   box-shadow: 0 0 0 1px rgba(232, 197, 71, 0.35);
 }
 
-.pf-legendary-wizard__ach-name {
+.pf-legendary-wizard__perk-name {
   font-weight: 600;
   font-size: 0.88rem;
 }
@@ -5039,7 +5039,7 @@ button.pf-mini-card:disabled {
   font-size: 0.68rem;
 }
 
-.pf-transaction-detail__card .pf-card-ach-chips {
+.pf-transaction-detail__card .pf-card-perk-chips {
   margin-top: 4px;
 }
 
@@ -5195,22 +5195,22 @@ a.pf-rating__name-link:hover {
   will-change: background-position;
 }
 
-.pf-collection-card--skin-tournament_gold .pf-card-ach-chip,
-.pf-team-card--skin-tournament_gold .pf-card-ach-chip,
-.pf-fantasy-card--skin-tournament_gold .pf-card-ach-chip,
-.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-ach-chip,
-.pf-pack-open__summary-card--skin-tournament_gold .pf-card-ach-chip,
-.pf-transaction-detail__card.pf-collection-card--skin-tournament_gold .pf-card-ach-chip {
+.pf-collection-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-team-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-fantasy-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-tournament_gold .pf-card-perk-chip {
   border-color: rgba(154, 225, 196, 0.52);
   background: rgba(14, 28, 24, 0.88);
   box-shadow: 0 0 10px rgba(154, 225, 196, 0.14);
 }
 
-.pf-collection-card--skin-tournament_gold .pf-card-ach-chip__bonus,
-.pf-team-card--skin-tournament_gold .pf-card-ach-chip__bonus,
-.pf-fantasy-card--skin-tournament_gold .pf-card-ach-chip__bonus,
-.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-ach-chip__bonus,
-.pf-pack-open__summary-card--skin-tournament_gold .pf-card-ach-chip__bonus {
+.pf-collection-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-team-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-card-perk-chip__bonus {
   color: #8de0be;
 }
 

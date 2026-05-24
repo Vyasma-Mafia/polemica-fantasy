@@ -7,7 +7,7 @@ import {
   fetchMarketplaceTransactionDetail,
 } from '../api/marketplace'
 import type { UserProfile } from '../api/types'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -75,9 +75,9 @@ export function TransactionDetailPage() {
     playerPhotoUrl: transaction.card.playerPhotoUrl,
     imageUrl: null,
   })
-  const achievements = transaction.card.achievements.map((item) => ({
-    achievementId: item.achievementId,
-    achievementName: item.name,
+  const perks = transaction.card.perks.map((item) => ({
+    perkId: item.perkId,
+    perkName: item.name,
     bonusPoints: item.bonusPoints,
   }))
 
@@ -118,7 +118,7 @@ export function TransactionDetailPage() {
                     {rarityScoreModifierLabel(transaction.card.rarity)}
                   </span>
                 </span>
-                <CardAchievementChips achievements={achievements} max={6} className="pf-card-ach-chips--compact" />
+                <CardPerkChips perks={perks} max={6} className="pf-card-perk-chips--compact" />
               </div>
             </div>
           </div>

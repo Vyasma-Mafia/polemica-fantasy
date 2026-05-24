@@ -184,7 +184,7 @@ curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" 
 - Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 + Spring Boot 3.4.2
 - JPA, Flyway, Security, Actuator/Prometheus, PostgreSQL driver, AWS S3 SDK v2, polemica-library 1.8.8
 - `src/main`: `FantasyApplication`, `config/`, `auth/`, `telegram/`, `event/`, `entity/`, `repository/`, `service/`, `controller/user/*`, `controller/admin/*`, `dto/user/*`, `dto/admin/*`, `polemica/`, `scoring/`, `schedule/`, `resources/application.yml`; Flyway migrations: `V1` … `V42`
-- `src/test`: Testcontainers PostgreSQL 16; ключевые классы: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `MarketplacePairBanFantikiIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, achievement/scoring unit tests
+- `src/test`: Testcontainers PostgreSQL 16; ключевые классы: `AdminApiIntegrationTest`, `UserApiIntegrationTest`, `TelegramInitDataValidatorTest`, `MarketplacePairBanFantikiIntegrationTest`, `SeriesFinalizationServiceTest`, `CardLifecycleServiceTest`, perk/scoring unit tests
 - Docker: multi-stage `Dockerfile`, артефакт `build/libs/app.jar` (bootJar)
 - Корень репозитория: `docker-compose.yml`, `.env.example`
 

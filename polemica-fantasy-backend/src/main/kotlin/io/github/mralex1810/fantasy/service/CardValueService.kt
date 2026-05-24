@@ -9,16 +9,16 @@ import org.springframework.stereotype.Service
 class CardValueService(
     private val economyConfigService: EconomyConfigService,
 ) {
-    fun calculateValue(rarity: Rarity, achievementCount: Int): Long {
+    fun calculateValue(rarity: Rarity, perkCount: Int): Long {
         val base = economyConfigService.getCardBaseValue(rarity)
-        val bonus = economyConfigService.getCardAchievementBonus()
-        return base + achievementCount * bonus
+        val bonus = economyConfigService.getCardPerkBonus()
+        return base + perkCount * bonus
     }
 
     fun calculateValue(cardTemplate: CardTemplate): Long {
         return calculateValue(
             cardTemplate.rarity,
-            cardTemplate.achievements.distinctBy { it.achievement!!.id }.size,
+            cardTemplate.perks.distinctBy { it.perk!!.id }.size,
         )
     }
 

@@ -1,6 +1,6 @@
 package io.github.mralex1810.fantasy.controller.admin
 
-import io.github.mralex1810.fantasy.dto.admin.request.AddCardTemplateAchievementRequest
+import io.github.mralex1810.fantasy.dto.admin.request.AddCardTemplatePerkRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateCardPackRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateCardTemplateRequest
 import io.github.mralex1810.fantasy.dto.admin.request.GiveCardsRequest
@@ -62,11 +62,11 @@ class CardAdminController(
         @RequestParam(required = false) rarity: Rarity?,
     ): List<CardTemplateDto> = cardService.listTemplates(tournamentId, fantasyPlayerId, rarity)
 
-    @PostMapping("/card-templates/{id}/achievements")
-    fun addAchievement(
+    @PostMapping("/card-templates/{id}/perks")
+    fun addPerk(
         @PathVariable id: Long,
-        @Valid @RequestBody body: AddCardTemplateAchievementRequest,
-    ): CardTemplateDto = cardService.addAchievement(id, body)
+        @Valid @RequestBody body: AddCardTemplatePerkRequest,
+    ): CardTemplateDto = cardService.addPerk(id, body)
 
     @PostMapping("/card-templates/{id}/image", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadCardImage(

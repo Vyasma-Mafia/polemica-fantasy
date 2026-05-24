@@ -40,8 +40,8 @@ class FantasyTeamCardGameScore(
     @Column(name = "base_points")
     var basePoints: Double? = null,
 
-    @Column(name = "achievement_bonus")
-    var achievementBonus: Double? = null,
+    @Column(name = "perk_bonus")
+    var perkBonus: Double? = null,
 
     @Column(name = "rarity_modifier")
     var rarityModifier: Double? = null,
@@ -51,5 +51,5 @@ class FantasyTeamCardGameScore(
 
     @OneToMany(mappedBy = "gameScore", cascade = [CascadeType.ALL], orphanRemoval = true)
     @BatchSize(size = 32)
-    var achievements: MutableList<FantasyTeamCardGameAchievement> = mutableListOf(),
+    var perks: MutableList<FantasyTeamCardGamePerk> = mutableListOf(),
 )

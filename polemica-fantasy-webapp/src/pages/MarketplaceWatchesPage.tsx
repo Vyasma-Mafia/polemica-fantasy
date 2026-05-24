@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchPerkCatalog } from '../api/perksCatalog'
 import { ApiError, apiGet } from '../api/client'
 import {
   useCreateMarketplaceWatch,
@@ -28,9 +28,9 @@ export function MarketplaceWatchesPage() {
     enabled: !!initData,
   })
 
-  const achievementsQ = useQuery({
-    queryKey: ['achievements-catalog', initData],
-    queryFn: () => fetchAchievementCatalog(initData!),
+  const perksQ = useQuery({
+    queryKey: ['perks-catalog', initData],
+    queryFn: () => fetchPerkCatalog(initData!),
     enabled: !!initData,
   })
 
@@ -39,7 +39,7 @@ export function MarketplaceWatchesPage() {
   const [playerId, setPlayerId] = useState('')
   const [tournamentId, setTournamentId] = useState('')
   const [rarity, setRarity] = useState<Rarity | ''>('')
-  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
+  const [selectedPerkIds, setSelectedPerkIds] = useState<string[]>([])
   const [maxPrice, setMaxPrice] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -67,7 +67,7 @@ export function MarketplaceWatchesPage() {
     setPlayerId('')
     setTournamentId('')
     setRarity('')
-    setSelectedAchievementIds([])
+    setSelectedPerkIds([])
     setMaxPrice('')
     setFormError(null)
   }
@@ -83,9 +83,9 @@ export function MarketplaceWatchesPage() {
   }
 
   function submitForm() {
-    const hasCriteria = playerId !== '' || tournamentId !== '' || rarity !== '' || selectedAchievementIds.length > 0
+    const hasCriteria = playerId !== '' || tournamentId !== '' || rarity !== '' || selectedPerkIds.length > 0
     if (!hasCriteria) {
-      setFormError('Выберите хотя бы один фильтр: игрок, турнир, редкость или достижение.')
+      setFormError('Выберите хотя бы один фильтр: игрок, турнир, редкость или перк.')
       return
     }
 
@@ -102,7 +102,7 @@ export function MarketplaceWatchesPage() {
         tournamentId: tournamentId === '' ? null : Number(tournamentId),
         rarity: rarity || null,
         maxPrice: parsedMaxPrice == null ? null : Math.floor(parsedMaxPrice),
-        achievementIds: selectedAchievementIds,
+        perkIds: selectedPerkIds,
       },
       {
         onSuccess: () => {
@@ -127,16 +127,16 @@ export function MarketplaceWatchesPage() {
           const tournament = watch.tournament?.name ?? 'Любой турнир'
           const watchRarity = watch.rarity ?? 'Любая редкость'
           const price = watch.maxPrice != null ? `до ${watch.maxPrice} ₣` : 'любая цена'
-          const achievements =
-            watch.achievements.length > 0
-              ? watch.achievements.map((achievement) => achievement.name).join(', ')
-              : 'любые достижения'
+          const perks =
+            watch.perks.length > 0
+              ? watch.perks.map((perk) => perk.name).join(', ')
+              : 'любые перки'
           return (
             <li key={watch.id} className="pf-notify-watch">
               <div className="pf-notify-watch__text">
                 {player} · {watchRarity} · {price}
                 <div className="pf-notify-watch__meta">
-                  {tournament} · {achievements}
+                  {tournament} · {perks}
                 </div>
               </div>
               <button
@@ -224,21 +224,21 @@ export function MarketplaceWatchesPage() {
           </label>
 
           <label className="pf-field">
-            <span className="pf-field__label">Достижения</span>
+            <span className="pf-field__label">Перки</span>
             <select
               className="pf-input"
               multiple
-              value={selectedAchievementIds}
+              value={selectedPerkIds}
               onChange={(e) => {
-                setSelectedAchievementIds(
+                setSelectedPerkIds(
                   Array.from(e.currentTarget.selectedOptions, (option) => option.value),
                 )
               }}
-              disabled={achievementsQ.isLoading}
+              disabled={perksQ.isLoading}
             >
-              {(achievementsQ.data ?? []).map((achievement) => (
-                <option key={achievement.id} value={achievement.id}>
-                  {achievement.name}
+              {(perksQ.data ?? []).map((perk) => (
+                <option key={perk.id} value={perk.id}>
+                  {perk.name}
                 </option>
               ))}
             </select>
@@ -257,7 +257,7 @@ export function MarketplaceWatchesPage() {
 
           {(formError || createError) && <p className="pf-err">{formError ?? createError}</p>}
           {playersQ.isLoading && <p className="pf-muted">Загрузка списка игроков…</p>}
-          {achievementsQ.isLoading && <p className="pf-muted">Загрузка списка достижений…</p>}
+          {perksQ.isLoading && <p className="pf-muted">Загрузка списка перков…</p>}
 
           <button
             type="button"

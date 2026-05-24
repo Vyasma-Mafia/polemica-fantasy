@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
-import { fetchAchievementCatalog } from '../api/achievementsCatalog'
+import { fetchPerkCatalog } from '../api/perksCatalog'
 import { fetchLegendaryUpgradeInfo } from '../api/legendaryUpgrade'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import { useInitData } from '../context/useInitData'
@@ -30,9 +30,9 @@ export function HelpPage() {
     queryFn: () => fetchEconomyInfo(initData!),
     enabled: !!initData,
   })
-  const achievementsQ = useQuery({
-    queryKey: ['achievements-catalog', initData],
-    queryFn: () => fetchAchievementCatalog(initData!),
+  const perksQ = useQuery({
+    queryKey: ['perks-catalog', initData],
+    queryFn: () => fetchPerkCatalog(initData!),
     enabled: !!initData,
   })
 
@@ -84,15 +84,15 @@ export function HelpPage() {
           <article className="pf-prose">
             <p>
               За каждую игру серии по карточке считается:{' '}
-              <strong>(базовые очки + бонус за достижения) × множитель редкости</strong>.
+              <strong>(базовые очки + бонус за перки) × множитель редкости</strong>.
             </p>
             <p>
               <strong>Базовые очки</strong> — это игровые баллы Polemica для места игрока за столом в этой игре
               (те же значения, что на публичной странице матча).
             </p>
             <p>
-              <strong>Бонусы</strong> начисляются только за те достижения, которые привязаны к вашей карточке, и только
-              если роль игрока в партии входит в список ролей достижения. У конкретной карточки бонус по ачивке может
+              <strong>Бонусы</strong> начисляются только за те перки, которые привязаны к вашей карточке, и только
+              если роль игрока в партии входит в список ролей перка. У конкретной карточки бонус по перку может
               отличаться от «базы» в справочнике ниже — смотрите подсказку на карточке в коллекции.
             </p>
             <p>
@@ -183,26 +183,26 @@ export function HelpPage() {
           )}
         </section>
 
-        <section className="pf-help__section pf-help__anchor" id="achievements">
-          <h2 className="pf-help__section-title">Достижения</h2>
+        <section className="pf-help__section pf-help__anchor" id="perks">
+          <h2 className="pf-help__section-title">Перки</h2>
           <p className="pf-muted pf-help__roles-note">
             Роли в списке — внутренние ключи ролей Polemica; учитывается роль игрока в конкретной игре.
           </p>
-          {achievementsQ.isLoading && <p className="pf-muted">Загрузка каталога…</p>}
-          {achievementsQ.isError && <p className="pf-err">{(achievementsQ.error as Error).message}</p>}
-          {achievementsQ.data && (
-            <div className="pf-help__achievements">
-              {achievementsQ.data.map((a) => (
-                <div key={a.id} className="pf-help__achievement">
-                  <p className="pf-help__achievement-name">{a.name}</p>
-                  {a.description && <p className="pf-help__achievement-desc">{a.description}</p>}
-                  <p className="pf-help__achievement-meta">
+          {perksQ.isLoading && <p className="pf-muted">Загрузка каталога…</p>}
+          {perksQ.isError && <p className="pf-err">{(perksQ.error as Error).message}</p>}
+          {perksQ.data && (
+            <div className="pf-help__perks">
+              {perksQ.data.map((a) => (
+                <div key={a.id} className="pf-help__perk">
+                  <p className="pf-help__perk-name">{a.name}</p>
+                  {a.description && <p className="pf-help__perk-desc">{a.description}</p>}
+                  <p className="pf-help__perk-meta">
                     Базовые очки бонуса: <strong>{a.bonusPoints}</strong>
                     {' · '}
                     {occurrenceLabel(a.occurrenceType)}
                     {a.canAppearOnRandomCards ? ' · может попасть в рандом-пак' : ''}
                   </p>
-                  <p className="pf-help__achievement-meta">
+                  <p className="pf-help__perk-meta">
                     Роли: {a.applicableRoles.length ? a.applicableRoles.join(', ') : '—'}
                   </p>
                 </div>
@@ -215,8 +215,8 @@ export function HelpPage() {
           <h2 className="pf-help__section-title">Легендарные карты</h2>
           <article className="pf-prose">
             <p>
-              Эпическую карту с <strong>двумя</strong> достижениями на борту можно улучить до <strong>легендарной</strong> в
-              коллекции или с экрана магазина: добавляется <strong>третье достижение</strong> на выбор из каталога, редкость
+              Эпическую карту с <strong>двумя</strong> перками на борту можно улучить до <strong>легендарной</strong> в
+              коллекции или с экрана магазина: добавляется <strong>третье перк</strong> на выбор из каталога, редкость
               и множитель очков растут, к экземпляру карты прибавляется <strong>одно использование</strong>. Сам экземпляр (
               <code>id</code> карты) сохраняется.
             </p>
@@ -241,7 +241,7 @@ export function HelpPage() {
           <article className="pf-prose">
             <p>
               <strong>Ценность</strong> считается по формуле:{' '}
-              <strong>базовая величина по редкости + число достижений на карточке × бонус за достижение</strong>. База и
+              <strong>базовая величина по редкости + число перков на карточке × бонус за перк</strong>. База и
               бонус задаются в экономике сервера и могут меняться.
             </p>
             <p className="pf-muted">
@@ -256,32 +256,32 @@ export function HelpPage() {
               <section className="pf-economy__section">
                 <h3 className="pf-economy__h">База и примеры итого (₱)</h3>
                 <p className="pf-muted" style={{ marginBottom: 8 }}>
-                  Бонус за одно достижение: <strong>{economyQ.data.cardValues.achievementBonus}₱</strong>. В колонке «Ач.»
-                  — суммарный бонус за указанное число достижений; итог = база + эта сумма.
+                  Бонус за один перк: <strong>{economyQ.data.cardValues.perkBonus}₱</strong>. В колонке «Перки»
+                  — суммарный бонус за указанное число перков; итог = база + эта сумма.
                 </p>
                 <table className="pf-economy__table">
                   <thead>
                     <tr>
                       <th>Редкость</th>
                       <th>База (₱)</th>
-                      <th>Ач. (пример)</th>
+                      <th>Перки (пример)</th>
                       <th>Итого (₱)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {RARITIES.map((r, i) => {
                       const base = economyQ.data!.cardValues.baseValues[r] ?? 0
-                      const achCount = i
-                      const achPart = achCount * economyQ.data!.cardValues.achievementBonus
-                      const total = base + achPart
+                      const perkCount = i
+                      const perkPart = perkCount * economyQ.data!.cardValues.perkBonus
+                      const total = base + perkPart
                       return (
                         <tr key={r}>
                           <td>{r}</td>
                           <td>{base}</td>
                           <td>
-                            {achCount === 0
+                            {perkCount === 0
                               ? '0'
-                              : `${achPart} (${achCount} ${achCount === 1 ? 'достиж.' : 'дост.'})`}
+                              : `${perkPart} (${perkCount} ${perkCount === 1 ? 'перк' : 'перка'})`}
                           </td>
                           <td>
                             <strong>{total}</strong>

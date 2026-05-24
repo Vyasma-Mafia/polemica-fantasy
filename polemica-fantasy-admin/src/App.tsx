@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedLayout } from './layout/ProtectedLayout'
-import { AchievementsPage } from './pages/AchievementsPage'
+import { PerksPage } from './pages/PerksPage'
 import { CardPacksPage } from './pages/CardPacksPage'
 import { CardTemplatesPage } from './pages/CardTemplatesPage'
 import { LoginPage } from './pages/LoginPage'
@@ -24,7 +24,7 @@ export default function App() {
         <Route path="tournaments/:id" element={<TournamentDetailPage />} />
         <Route path="series/:id" element={<SeriesDetailPage />} />
         <Route path="card-templates" element={<CardTemplatesPage />} />
-        <Route path="achievements" element={<AchievementsPage />} />
+        <Route path="perks" element={<PerksPage />} />
         <Route path="card-packs" element={<CardPacksPage />} />
         <Route path="user-tools" element={<UserToolsPage />} />
         <Route path="broadcast" element={<BroadcastPage />} />

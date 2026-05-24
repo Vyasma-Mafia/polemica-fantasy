@@ -6,7 +6,7 @@ import io.github.mralex1810.fantasy.entity.MarketplaceWatchFilter
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
-import io.github.mralex1810.fantasy.repository.AchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceWatchFilterRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -40,7 +40,7 @@ class MarketplaceWatchServiceTest {
     private lateinit var tournamentRepository: TournamentRepository
 
     @Mock
-    private lateinit var achievementRepository: AchievementRepository
+    private lateinit var perkRepository: PerkRepository
 
     @InjectMocks
     private lateinit var marketplaceWatchService: MarketplaceWatchService

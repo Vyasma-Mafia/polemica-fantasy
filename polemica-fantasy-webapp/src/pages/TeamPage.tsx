@@ -13,7 +13,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
 import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
-import { CardAchievementChips } from '../components/CardAchievementChips'
+import { CardPerkChips } from '../components/CardPerkChips'
 import { CardValueBadge } from '../components/CardValueBadge'
 import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
@@ -482,7 +482,7 @@ export function TeamPage() {
                     {lastUse && (
                       <span className="pf-last-use-warn">Последнее использование!</span>
                     )}
-                    <CardAchievementChips achievements={c.achievements} max={3} className="pf-card-ach-chips--tight" />
+                    <CardPerkChips perks={c.perks} max={3} className="pf-card-perk-chips--tight" />
                   </div>
                 </div>
               </button>

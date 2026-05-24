@@ -21,7 +21,7 @@
 | `card.value.RARE` | `40` | Базовая ценность RARE |
 | `card.value.EPIC` | `80` | Базовая ценность EPIC |
 | `card.value.LEGENDARY` | `370` | Базовая ценность LEGENDARY |
-| `card.value.achievement_bonus` | `10` | Бонус за каждое достижение |
+| `card.value.perk_bonus` | `10` | Бонус за каждое перк |
 
 ```sql
 INSERT INTO economy_config (key, value, description) VALUES
@@ -29,7 +29,7 @@ INSERT INTO economy_config (key, value, description) VALUES
     ('card.value.RARE',             '40',  'Базовая ценность RARE карты'),
     ('card.value.EPIC',             '80',  'Базовая ценность EPIC карты'),
     ('card.value.LEGENDARY',        '370', 'Базовая ценность LEGENDARY карты'),
-    ('card.value.achievement_bonus', '10',  'Бонус к ценности за каждое достижение шаблона');
+    ('card.value.perk_bonus', '10',  'Бонус к ценности за каждое перк шаблона');
 ```
 
 ### 2. `EconomyConfigService` — методы доступа
@@ -40,7 +40,7 @@ INSERT INTO economy_config (key, value, description) VALUES
 
 ```kotlin
 fun getCardBaseValue(rarity: Rarity): Long = getLong("card.value.$rarity")
-fun getCardAchievementBonus(): Long = getLong("card.value.achievement_bonus")
+fun getCardPerkBonus(): Long = getLong("card.value.perk_bonus")
 ```
 
 ### 3. `CardValueService` — вычисление ценности
@@ -52,16 +52,16 @@ fun getCardAchievementBonus(): Long = getLong("card.value.achievement_bonus")
 class CardValueService(
     private val economyConfigService: EconomyConfigService,
 ) {
-    fun calculateValue(rarity: Rarity, achievementCount: Int): Long {
+    fun calculateValue(rarity: Rarity, perkCount: Int): Long {
         val base = economyConfigService.getCardBaseValue(rarity)
-        val bonus = economyConfigService.getCardAchievementBonus()
-        return base + achievementCount * bonus
+        val bonus = economyConfigService.getCardPerkBonus()
+        return base + perkCount * bonus
     }
 
     fun calculateValue(cardTemplate: CardTemplate): Long {
         return calculateValue(
             cardTemplate.rarity,
-            cardTemplate.achievements.distinctBy { it.achievement!!.id }.size,
+            cardTemplate.perks.distinctBy { it.perk!!.id }.size,
         )
     }
 
@@ -120,7 +120,7 @@ fun UserCard.toUserCardItemDto(
 ```kotlin
 data class CardValueInfoDto(
     val baseValues: Map<Rarity, Long>,
-    val achievementBonus: Long,
+    val perkBonus: Long,
 )
 
 data class EconomyInfoDto(
@@ -135,13 +135,13 @@ data class EconomyInfoDto(
 
 ```kotlin
 val cardBaseValues = Rarity.entries.associateWith { getCardBaseValue(it) }
-val cardAchievementBonus = getCardAchievementBonus()
+val cardPerkBonus = getCardPerkBonus()
 
 return EconomyInfoDto(
     // ... существующие поля ...
     cardValues = CardValueInfoDto(
         baseValues = cardBaseValues,
-        achievementBonus = cardAchievementBonus,
+        perkBonus = cardPerkBonus,
     ),
 )
 ```
@@ -150,7 +150,7 @@ return EconomyInfoDto(
 
 **Файл:** `controller/user/CardValueController.kt` (новый)
 
-Возвращает параметры формулы ценности (base per rarity + achievement bonus). Данные берутся из `EconomyConfigService`.
+Возвращает параметры формулы ценности (base per rarity + perk bonus). Данные берутся из `EconomyConfigService`.
 
 Альтернатива: не создавать отдельный контроллер, а использовать расширенный `EconomyInfoDto` (шаг 7–8). Зависит от предпочтений — отдельный endpoint чище для документации.
 

@@ -232,7 +232,7 @@
 - Время сделки
 - Ник покупателя (displayName)
 
-Редкость и превью достижений берутся из **снимка шаблона на момент продажи** (`marketplace_listing.sold_card_template_id` → `card_template`), а не из текущего `user_card.card_template`: иначе после апгрейда EPIC→LEGENDARY in-place лента ошибочно показывала бы легенду для сделки, где продавали эпик. Старые строки без снимка (до появления колонки) используют fallback на текущий шаблон карты.
+Редкость и превью перков берутся из **снимка шаблона на момент продажи** (`marketplace_listing.sold_card_template_id` → `card_template`), а не из текущего `user_card.card_template`: иначе после апгрейда EPIC→LEGENDARY in-place лента ошибочно показывала бы легенду для сделки, где продавали эпик. Старые строки без снимка (до появления колонки) используют fallback на текущий шаблон карты.
 
 **Не** показываются: ник продавца (приватность), внутренние id.
 
@@ -365,9 +365,9 @@ Response:
         "playerName": "МихалычЪ",
         "playerPhotoUrl": "https://...",
         "rarity": "EPIC",
-        "achievements": [
-          { "achievementId": "WON_GAME", "name": "Победа", "bonusPoints": 1.0 },
-          { "achievementId": "BEST_MOVE", "name": "Лучший ход", "bonusPoints": 1.0 }
+        "perks": [
+          { "perkId": "WON_GAME", "name": "Победа", "bonusPoints": 1.0 },
+          { "perkId": "BEST_MOVE", "name": "Лучший ход", "bonusPoints": 1.0 }
         ]
       },
       "seller": {
@@ -615,7 +615,7 @@ fun getMarketplaceCommissionPercent(): Int   // marketplace.commission_percent
 - Сортировка: цена ↑, цена ↓, новые
 
 **Сетка листингов:** карточка с фото игрока, рамкой по редкости,
-ценой, ачивками. Кнопка «Купить за N ₣» или метка «Недоступна»
+ценой, перками. Кнопка «Купить за N ₣» или метка «Недоступна»
 с причиной (ваша карта / уже владели / не хватает фантиков).
 
 ### 10.4 Продажа из коллекции

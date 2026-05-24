@@ -2,8 +2,8 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.Rarity
-import io.github.mralex1810.fantasy.repository.AchievementRepository
-import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
+import io.github.mralex1810.fantasy.repository.CardTemplatePerkRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -28,13 +28,13 @@ class CardPackFindOrCreateTemplateIntegrationTest {
     private lateinit var fantasyPlayerRepository: FantasyPlayerRepository
 
     @Autowired
-    private lateinit var achievementRepository: AchievementRepository
+    private lateinit var perkRepository: PerkRepository
 
     @Autowired
     private lateinit var cardTemplateRepository: CardTemplateRepository
 
     @Autowired
-    private lateinit var cardTemplateAchievementRepository: CardTemplateAchievementRepository
+    private lateinit var cardTemplatePerkRepository: CardTemplatePerkRepository
 
     @Test
     @Transactional
@@ -42,15 +42,15 @@ class CardPackFindOrCreateTemplateIntegrationTest {
         val fp = fantasyPlayerRepository.save(
             FantasyPlayer(polemicaUserId = 884_001L, nickname = "pack-reuse-rare"),
         )
-        val ach = achievementRepository.findById("voteForBlack").orElseThrow()
+        val perk = perkRepository.findById("voteForBlack").orElseThrow()
 
-        val first = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.RARE, listOf(ach))
-        val second = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.RARE, listOf(ach))
+        val first = cardPackService.findOrCreateCardTemplateForPerks(fp, Rarity.RARE, listOf(perk))
+        val second = cardPackService.findOrCreateCardTemplateForPerks(fp, Rarity.RARE, listOf(perk))
 
         assertEquals(first.id, second.id)
         assertEquals(
-            listOf(ach.id),
-            cardTemplateAchievementRepository.findAchievementIdsByCardTemplateId(first.id!!).sorted(),
+            listOf(perk.id),
+            cardTemplatePerkRepository.findPerkIdsByCardTemplateId(first.id!!).sorted(),
         )
         assertEquals(
             1,
@@ -60,20 +60,20 @@ class CardPackFindOrCreateTemplateIntegrationTest {
 
     @Test
     @Transactional
-    fun `findOrCreateCardTemplate reuses template for EPIC independent of achievement order`() {
+    fun `findOrCreateCardTemplate reuses template for EPIC independent of perk order`() {
         val fp = fantasyPlayerRepository.save(
             FantasyPlayer(polemicaUserId = 884_002L, nickname = "pack-reuse-epic"),
         )
-        val a = achievementRepository.findById("voteForBlack").orElseThrow()
-        val b = achievementRepository.findById("sniper").orElseThrow()
+        val a = perkRepository.findById("voteForBlack").orElseThrow()
+        val b = perkRepository.findById("sniper").orElseThrow()
 
-        val first = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.EPIC, listOf(a, b))
-        val second = cardPackService.findOrCreateCardTemplateForAchievements(fp, Rarity.EPIC, listOf(b, a))
+        val first = cardPackService.findOrCreateCardTemplateForPerks(fp, Rarity.EPIC, listOf(a, b))
+        val second = cardPackService.findOrCreateCardTemplateForPerks(fp, Rarity.EPIC, listOf(b, a))
 
         assertEquals(first.id, second.id)
         assertEquals(
             setOf(a.id, b.id),
-            cardTemplateAchievementRepository.findAchievementIdsByCardTemplateId(first.id!!).toSet(),
+            cardTemplatePerkRepository.findPerkIdsByCardTemplateId(first.id!!).toSet(),
         )
         assertEquals(1, cardTemplateRepository.findAllByFantasyPlayer_IdAndRarity(fp.id!!, Rarity.EPIC).size)
     }

@@ -8,24 +8,24 @@ import io.github.mralex1810.fantasy.dto.admin.response.CardPackRarityConfigRespo
 import io.github.mralex1810.fantasy.dto.admin.response.CardSkinDto
 import io.github.mralex1810.fantasy.dto.admin.response.OpenPackResultDto
 import io.github.mralex1810.fantasy.dto.admin.response.UserCardDto
-import io.github.mralex1810.fantasy.entity.Achievement
+import io.github.mralex1810.fantasy.entity.Perk
 import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardPack
-import io.github.mralex1810.fantasy.entity.CardPackAchievement
+import io.github.mralex1810.fantasy.entity.CardPackPerk
 import io.github.mralex1810.fantasy.entity.CardPackPlayer
 import io.github.mralex1810.fantasy.entity.CardPackRarityConfig
 import io.github.mralex1810.fantasy.entity.CardTemplate
-import io.github.mralex1810.fantasy.entity.CardTemplateAchievement
+import io.github.mralex1810.fantasy.entity.CardTemplatePerk
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
-import io.github.mralex1810.fantasy.repository.AchievementRepository
-import io.github.mralex1810.fantasy.repository.CardPackAchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
+import io.github.mralex1810.fantasy.repository.CardPackPerkRepository
 import io.github.mralex1810.fantasy.repository.CardPackPlayerRepository
 import io.github.mralex1810.fantasy.repository.CardPackRarityConfigRepository
 import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardSkinRepository
-import io.github.mralex1810.fantasy.repository.CardTemplateAchievementRepository
+import io.github.mralex1810.fantasy.repository.CardTemplatePerkRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -44,15 +44,15 @@ import java.util.Random
 class CardPackService(
     private val cardPackRepository: CardPackRepository,
     private val cardPackRarityConfigRepository: CardPackRarityConfigRepository,
-    private val cardPackAchievementRepository: CardPackAchievementRepository,
+    private val cardPackPerkRepository: CardPackPerkRepository,
     private val cardPackPlayerRepository: CardPackPlayerRepository,
     private val cardSkinRepository: CardSkinRepository,
     private val tournamentRepository: TournamentRepository,
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
-    private val achievementRepository: AchievementRepository,
+    private val perkRepository: PerkRepository,
     private val cardTemplateRepository: CardTemplateRepository,
-    private val cardTemplateAchievementRepository: CardTemplateAchievementRepository,
+    private val cardTemplatePerkRepository: CardTemplatePerkRepository,
     private val userCardRepository: UserCardRepository,
     private val userCardPackOpenCountRepository: UserCardPackOpenCountRepository,
     private val userService: UserService,
@@ -74,7 +74,7 @@ class CardPackService(
             cardPackRepository.findAllByOrderByIdAsc()
         }
         return packs.map {
-            it.toDto(loadPlayerIds(it.id!!), loadPackAchievementIds(it.id!!))
+            it.toDto(loadPlayerIds(it.id!!), loadPackPerkIds(it.id!!))
         }
     }
 
@@ -95,7 +95,7 @@ class CardPackService(
         }
         return pack.toDto(
             cardPackPlayerRepository.findAllByCardPack_Id(id).map { it.fantasyPlayer!!.id!! },
-            loadPackAchievementIds(id),
+            loadPackPerkIds(id),
         )
     }
 
@@ -107,7 +107,7 @@ class CardPackService(
             request.playerIds,
             request.tournamentId,
         )
-        validatePackAchievementIds(request.achievementIds)
+        validatePackPerkIds(request.perkIds)
         val tournament = tournamentRepository.findById(request.tournamentId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament ${request.tournamentId} not found")
         }
@@ -124,7 +124,7 @@ class CardPackService(
                 cardSkin = resolveSkin(request.skinId),
             ),
         )
-        replacePackAchievements(pack.id!!, request.achievementIds)
+        replacePackPerks(pack.id!!, request.perkIds)
         request.rarityConfigs.forEach { dto ->
             cardPackRarityConfigRepository.save(
                 CardPackRarityConfig(
@@ -151,9 +151,9 @@ class CardPackService(
         request.priceFantiki?.let { pack.priceFantiki = it }
         request.freeOpensPerUser?.let { pack.freeOpensPerUser = it }
         request.maxOpensPerUser?.let { pack.maxOpensPerUser = it }
-        request.achievementIds?.let { ids ->
-            validatePackAchievementIds(ids)
-            replacePackAchievements(id, ids)
+        request.perkIds?.let { ids ->
+            validatePackPerkIds(ids)
+            replacePackPerks(id, ids)
         }
         request.skinId?.let { pack.cardSkin = resolveSkin(it) }
 
@@ -240,21 +240,21 @@ class CardPackService(
         if (playerPool.isEmpty()) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Player pool for this pack is empty")
         }
-        val packLinks = cardPackAchievementRepository.findAllByCardPackId(packId)
-        val randomAchievements =
+        val packLinks = cardPackPerkRepository.findAllByCardPackId(packId)
+        val randomPerks =
             if (packLinks.isNotEmpty()) {
-                val achIds = packLinks.mapNotNull { it.achievementId }
-                achievementRepository.findAllById(achIds).toList()
+                val achIds = packLinks.mapNotNull { it.perkId }
+                perkRepository.findAllById(achIds).toList()
             } else {
-                achievementRepository.findAllByCanAppearOnRandomCardsTrueOrderById()
+                perkRepository.findAllByCanAppearOnRandomCardsTrueOrderById()
             }
         val now = Instant.now()
         val drawn = mutableListOf<UserCard>()
         pack.rarityConfigs.forEach { cfg ->
             repeat(cfg.cardsCount) {
                 val fantasyPlayer = playerPool[random.nextInt(playerPool.size)]
-                val achievements = pickAchievementsForSlot(cfg.rarity, randomAchievements)
-                val template = findOrCreateCardTemplateForAchievements(fantasyPlayer, cfg.rarity, achievements)
+                val perks = pickPerksForSlot(cfg.rarity, randomPerks)
+                val template = findOrCreateCardTemplateForPerks(fantasyPlayer, cfg.rarity, perks)
                 val saved = userCardRepository.save(
                     UserCard(
                         telegramUser = user,
@@ -291,14 +291,14 @@ class CardPackService(
         }
     }
 
-    private fun pickAchievementsForSlot(rarity: Rarity, pool: List<Achievement>): List<Achievement> {
+    private fun pickPerksForSlot(rarity: Rarity, pool: List<Perk>): List<Perk> {
         return when (rarity) {
             Rarity.COMMON -> emptyList()
             Rarity.RARE -> {
                 if (pool.isEmpty()) {
                     throw ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "No achievements marked for random cards",
+                        "No perks marked for random cards",
                     )
                 }
                 listOf(pool[random.nextInt(pool.size)])
@@ -307,7 +307,7 @@ class CardPackService(
                 if (pool.size < 2) {
                     throw ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Need at least 2 achievements marked for random cards for EPIC slots",
+                        "Need at least 2 perks marked for random cards for EPIC slots",
                     )
                 }
                 pool.shuffled(random).take(2)
@@ -321,17 +321,17 @@ class CardPackService(
 
     /**
      * Shared by pack opening and EPIC → LEGENDARY upgrade: reuse [CardTemplate] when the same
-     * player, rarity, and achievement id set already exists.
+     * player, rarity, and perk id set already exists.
      */
-    fun findOrCreateCardTemplateForAchievements(
+    fun findOrCreateCardTemplateForPerks(
         fantasyPlayer: FantasyPlayer,
         rarity: Rarity,
-        achievements: List<Achievement>,
+        perks: List<Perk>,
     ): CardTemplate {
-        val wantedIds = achievements.map { it.id }.toSet()
+        val wantedIds = perks.map { it.id }.toSet()
         val candidates = cardTemplateRepository.findAllByFantasyPlayer_IdAndRarity(fantasyPlayer.id!!, rarity)
         val existing = candidates.find { ct ->
-            val ids = cardTemplateAchievementRepository.findAchievementIdsByCardTemplateId(ct.id!!).toSet()
+            val ids = cardTemplatePerkRepository.findPerkIdsByCardTemplateId(ct.id!!).toSet()
             ids == wantedIds
         }
         if (existing != null) {
@@ -343,14 +343,14 @@ class CardPackService(
                 rarity = rarity,
             ),
         )
-        achievements.forEach { a ->
-            val row = CardTemplateAchievement(
+        perks.forEach { a ->
+            val row = CardTemplatePerk(
                 cardTemplate = saved,
-                achievement = a,
+                perk = a,
                 bonusPoints = null,
             )
-            cardTemplateAchievementRepository.save(row)
-            saved.achievements.add(row)
+            cardTemplatePerkRepository.save(row)
+            saved.perks.add(row)
         }
         return cardTemplateRepository.findById(saved.id!!).orElseThrow()
     }
@@ -367,35 +367,35 @@ class CardPackService(
     private fun loadPlayerIds(packId: Long): List<Long> =
         cardPackPlayerRepository.findAllByCardPack_Id(packId).map { it.fantasyPlayer!!.id!! }
 
-    private fun loadPackAchievementIds(packId: Long): List<String> =
-        cardPackAchievementRepository
+    private fun loadPackPerkIds(packId: Long): List<String> =
+        cardPackPerkRepository
             .findAllByCardPackId(packId)
-            .mapNotNull { it.achievementId }
+            .mapNotNull { it.perkId }
             .sorted()
 
-    private fun replacePackAchievements(packId: Long, achievementIds: List<String>) {
-        cardPackAchievementRepository.deleteAllByCardPackId(packId)
-        cardPackAchievementRepository.flush()
-        if (achievementIds.isEmpty()) return
-        for (achId in achievementIds) {
-            val row = CardPackAchievement()
+    private fun replacePackPerks(packId: Long, perkIds: List<String>) {
+        cardPackPerkRepository.deleteAllByCardPackId(packId)
+        cardPackPerkRepository.flush()
+        if (perkIds.isEmpty()) return
+        for (achId in perkIds) {
+            val row = CardPackPerk()
             row.cardPackId = packId
-            row.achievementId = achId
-            cardPackAchievementRepository.save(row)
+            row.perkId = achId
+            cardPackPerkRepository.save(row)
         }
     }
 
-    private fun validatePackAchievementIds(achievementIds: List<String>) {
-        if (achievementIds.isEmpty()) return
-        val unique = achievementIds.toSet()
-        if (unique.size != achievementIds.size) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "achievementIds must not contain duplicates")
+    private fun validatePackPerkIds(perkIds: List<String>) {
+        if (perkIds.isEmpty()) return
+        val unique = perkIds.toSet()
+        if (unique.size != perkIds.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "perkIds must not contain duplicates")
         }
-        val found = achievementRepository.findAllById(unique)
+        val found = perkRepository.findAllById(unique)
         if (found.size != unique.size) {
             val known = found.map { it.id }.toSet()
             val missing = unique - known
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown achievement ids: $missing")
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown perk ids: $missing")
         }
     }
 
@@ -406,7 +406,7 @@ class CardPackService(
             }
         }
 
-    private fun CardPack.toDto(playerIds: List<Long>, achievementIds: List<String>): CardPackDto {
+    private fun CardPack.toDto(playerIds: List<Long>, perkIds: List<String>): CardPackDto {
         val cfgs = rarityConfigs.map { c ->
             CardPackRarityConfigResponseDto(
                 id = c.id!!,
@@ -423,7 +423,7 @@ class CardPackService(
             priceFantiki = priceFantiki,
             freeOpensPerUser = freeOpensPerUser,
             maxOpensPerUser = maxOpensPerUser,
-            achievementIds = achievementIds,
+            perkIds = perkIds,
             useAllTournamentPlayers = useAllTournamentPlayers,
             playerIds = playerIds,
             rarityConfigs = cfgs,

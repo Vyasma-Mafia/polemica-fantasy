@@ -683,7 +683,7 @@ data class TransactionCardDto(
     val playerName: String,
     val playerPhotoUrl: String?,
     val rarity: Rarity,
-    val achievements: List<MarketplaceCardAchievementDto>,
+    val perks: List<MarketplaceCardPerkDto>,
 )
 
 data class TransactionComplaintInfoDto(

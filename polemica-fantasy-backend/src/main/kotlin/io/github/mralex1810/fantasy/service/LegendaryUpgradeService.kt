@@ -8,7 +8,7 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
-import io.github.mralex1810.fantasy.repository.AchievementRepository
+import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
@@ -22,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException
 class LegendaryUpgradeService(
     private val userCardRepository: UserCardRepository,
     private val fantasyTeamCardRepository: FantasyTeamCardRepository,
-    private val achievementRepository: AchievementRepository,
+    private val perkRepository: PerkRepository,
     private val cardPackService: CardPackService,
     private val cardTemplateRepository: CardTemplateRepository,
     private val economyConfigService: EconomyConfigService,
@@ -46,8 +46,8 @@ class LegendaryUpgradeService(
     }
 
     @Transactional
-    fun upgrade(user: TelegramUser, userCardId: Long, achievementId: String): LegendaryUpgradeResponseDto {
-        val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(userCardId, user.id!!)
+    fun upgrade(user: TelegramUser, userCardId: Long, perkId: String): LegendaryUpgradeResponseDto {
+        val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplatePerks(userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.cardTemplate!!.rarity != Rarity.EPIC) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only EPIC cards can be upgraded")
@@ -62,20 +62,20 @@ class LegendaryUpgradeService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot upgrade a card that is listed on the marketplace")
         }
 
-        val existingRows = uc.cardTemplate!!.achievements.distinctBy { it.achievement!!.id }
+        val existingRows = uc.cardTemplate!!.perks.distinctBy { it.perk!!.id }
         if (existingRows.size != 2) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "EPIC card must have exactly 2 achievements to upgrade",
+                "EPIC card must have exactly 2 perks to upgrade",
             )
         }
-        val existingIds = existingRows.map { it.achievement!!.id }.toSet()
-        if (achievementId in existingIds) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement already on this card")
+        val existingIds = existingRows.map { it.perk!!.id }.toSet()
+        if (perkId in existingIds) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Perk already on this card")
         }
 
-        val extra = achievementRepository.findById(achievementId).orElseThrow {
-            ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown achievement: $achievementId")
+        val extra = perkRepository.findById(perkId).orElseThrow {
+            ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown perk: $perkId")
         }
 
         val cost = economyConfigService.getLegendaryUpgradeCost()
@@ -92,11 +92,11 @@ class LegendaryUpgradeService(
         val fantasyPlayer = uc.cardTemplate!!.fantasyPlayer!!
         val fantasyPlayerId = fantasyPlayer.id
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Card fantasy player is not persisted")
-        val legendaryAchievements = existingRows.map { it.achievement!! } + extra
-        val newTemplate = cardPackService.findOrCreateCardTemplateForAchievements(
+        val legendaryPerks = existingRows.map { it.perk!! } + extra
+        val newTemplate = cardPackService.findOrCreateCardTemplateForPerks(
             fantasyPlayer,
             Rarity.LEGENDARY,
-            legendaryAchievements,
+            legendaryPerks,
         )
 
         uc.cardTemplate = newTemplate
@@ -109,9 +109,9 @@ class LegendaryUpgradeService(
             internalUserId = internalId,
         )
 
-        val fresh = userCardRepository.findByIdAndTelegramUser_IdWithTemplateAchievements(uc.id!!, user.id!!)
+        val fresh = userCardRepository.findByIdAndTelegramUser_IdWithTemplatePerks(uc.id!!, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to reload upgraded card")
-        val tpl = cardTemplateRepository.findAllByIdWithAchievementsLoaded(listOf(fresh.cardTemplate!!.id!!))
+        val tpl = cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(fresh.cardTemplate!!.id!!))
             .firstOrNull() ?: fresh.cardTemplate!!
         return LegendaryUpgradeResponseDto(
             card = fresh.toUserCardItemDto(tpl, imageStorageService, cardValueService),

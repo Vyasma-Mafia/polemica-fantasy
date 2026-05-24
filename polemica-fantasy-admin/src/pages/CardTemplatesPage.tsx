@@ -15,13 +15,13 @@ import {
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
-  addCardTemplateAchievement,
+  addCardTemplatePerk,
   createCardTemplate,
   listCardTemplates,
   updateCardTemplate,
   uploadCardImage,
 } from '../api/cards'
-import { listAchievements } from '../api/achievements'
+import { listPerks } from '../api/perks'
 import { listTournaments } from '../api/tournaments'
 import type { Rarity } from '../api/types'
 
@@ -40,9 +40,9 @@ export function CardTemplatesPage() {
     queryFn: listTournaments,
   })
 
-  const achievementsQ = useQuery({
-    queryKey: ['admin', 'achievements'],
-    queryFn: listAchievements,
+  const perksQ = useQuery({
+    queryKey: ['admin', 'perks'],
+    queryFn: listPerks,
   })
 
   const cq = useQuery({
@@ -82,11 +82,11 @@ export function CardTemplatesPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
-  const achMut = useMutation({
-    mutationFn: ({ id, achievementId }: { id: number; achievementId: string }) =>
-      addCardTemplateAchievement(id, { achievementId }),
+  const perkMut = useMutation({
+    mutationFn: ({ id, perkId }: { id: number; perkId: string }) =>
+      addCardTemplatePerk(id, { perkId }),
     onSuccess: () => {
-      message.success('Achievement added')
+      message.success('Perk added')
       setAchOpen(null)
       void cq.refetch()
     },
@@ -104,10 +104,10 @@ export function CardTemplatesPage() {
   })
 
   const editing = cq.data?.find((c) => c.id === editId)
-  const achRow = cq.data?.find((c) => c.id === achOpen)
+  const perkRow = cq.data?.find((c) => c.id === achOpen)
 
-  const achievementOptions =
-    achievementsQ.data?.map((a) => ({
+  const perkOptions =
+    perksQ.data?.map((a) => ({
       value: a.id,
       label: `${a.name} (${a.id})`,
     })) ?? []
@@ -172,11 +172,11 @@ export function CardTemplatesPage() {
           },
           { title: 'Description', dataIndex: 'description', ellipsis: true },
           {
-            title: 'Achievements',
-            dataIndex: 'achievements',
-            render: (a: { achievementName: string }[]) =>
+            title: 'Perks',
+            dataIndex: 'perks',
+            render: (a: { perkName: string }[]) =>
               a?.length ? (
-                <span>{a.map((x) => x.achievementName).join(', ')}</span>
+                <span>{a.map((x) => x.perkName).join(', ')}</span>
               ) : (
                 '—'
               ),
@@ -205,7 +205,7 @@ export function CardTemplatesPage() {
                   size="small"
                   onClick={() => setAchOpen(row.id)}
                 >
-                  +Achievement
+                  +Perk
                 </Button>
               </Space>
             ),
@@ -297,33 +297,33 @@ export function CardTemplatesPage() {
       </Modal>
 
       <Modal
-        title="Add achievement"
+        title="Add perk"
         open={achOpen != null}
         onCancel={() => setAchOpen(null)}
         footer={null}
         destroyOnClose
       >
-        {achRow && (
+        {perkRow && (
           <Form
             layout="vertical"
-            onFinish={(v: { achievementId: string }) =>
-              achMut.mutate({ id: achRow.id, achievementId: v.achievementId })
+            onFinish={(v: { perkId: string }) =>
+              perkMut.mutate({ id: perkRow.id, perkId: v.perkId })
             }
           >
             <Form.Item
-              name="achievementId"
-              label="Achievement"
+              name="perkId"
+              label="Perk"
               rules={[{ required: true }]}
             >
               <Select
                 showSearch
-                loading={achievementsQ.isLoading}
-                options={achievementOptions}
+                loading={perksQ.isLoading}
+                options={perkOptions}
                 placeholder="From catalog (bonus from catalog)"
               />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={achMut.isPending}>
+              <Button type="primary" htmlType="submit" loading={perkMut.isPending}>
                 Add
               </Button>
             </Form.Item>
