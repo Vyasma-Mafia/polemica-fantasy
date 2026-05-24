@@ -10,6 +10,26 @@ CREATE TABLE marketplace_watch_filter_achievement (
 ALTER TABLE marketplace_watch_filter
     DROP CONSTRAINT uk_marketplace_watch;
 
+WITH ranked_duplicates AS (
+    SELECT
+        id,
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                telegram_user_id,
+                COALESCE(fantasy_player_id, -1),
+                COALESCE(tournament_id, -1),
+                COALESCE(rarity, ''),
+                COALESCE(max_price, -1),
+                achievement_ids_key
+            ORDER BY created_at ASC, id ASC
+        ) AS rn
+    FROM marketplace_watch_filter
+)
+DELETE FROM marketplace_watch_filter mwf
+USING ranked_duplicates rd
+WHERE mwf.id = rd.id
+  AND rd.rn > 1;
+
 CREATE UNIQUE INDEX uk_marketplace_watch_normalized
     ON marketplace_watch_filter (
         telegram_user_id,
