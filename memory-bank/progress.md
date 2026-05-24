@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### TMA: social share and compare P1 (май 2026)
+- [x] Добавлен frontend helper Telegram share links: короткие `startapp` payload для `team`/`place`/`card`/`profile`/`compareS`/`compareT`, direct Mini App link через `VITE_TMA_BOT_USERNAME` или fallback `VITE_TELEGRAM_BOT_USERNAME`, fallback на `t.me/share/url`
+- [x] `App.tsx` обрабатывает `start_param` / `tgWebAppStartParam` и переводит пользователя на существующие TMA routes: команда/место/карточка, профиль, series/tournament compare
+- [x] Кнопки share добавлены в TMA: команда на `TeamPage` и `LeaderboardPlayerTeamPage`, место на `LeaderboardPage`/team detail, карточка только в контексте команды/серии, профиль на `PlayerProfilePage` и в глобальном рейтинге
+- [x] Добавлены compare views `/series/:seriesId/compare/:telegramId?league=...` и `/tournaments/:tournamentId/compare/:telegramId?league=...` на существующих authenticated/public API без backend-миграций и без новых privacy-моделей
+- [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно; `npm run lint` всё ещё падает на ранее существующих lint-ошибках вне этой фичи
+
 ### Memory bank: glossary and operational insights (май 2026)
 - [x] Добавлен `memory-bank/glossary.md` как канонический словарь: пользователь vs игрок, турнир vs соревнование Polemica, серия vs игра, `card_template` vs `user_card`, sync/scoring/finalize и остальные основные доменные сущности
 - [x] Добавлен `memory-bank/operationalInsights.md` с same-day insight по сериям: серии часто создаются в день проведения игр, поэтому админский workflow, TMA CTA, уведомления и sync не должны требовать долгого периода `UPCOMING`

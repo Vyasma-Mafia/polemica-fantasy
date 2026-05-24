@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { rememberCampaign, useReleaseNotes, useTrackProductEvent } from './api/antiChurn'
 import { FantikiBalance } from './components/FantikiBalance'
 import { TopBarDisplayName } from './components/TopBarDisplayName'
@@ -15,6 +15,7 @@ import { LeaderboardPlayerTeamPage } from './pages/LeaderboardPlayerTeamPage'
 import { ParticipantsPage } from './pages/ParticipantsPage'
 import { SeriesPickerPage } from './pages/SeriesPickerPage'
 import { SeriesPage } from './pages/SeriesPage'
+import { SeriesComparePage } from './pages/SeriesComparePage'
 import { MarketplacePage } from './pages/MarketplacePage'
 import { MyListingsPage } from './pages/MyListingsPage'
 import { MarketplaceWatchesPage } from './pages/MarketplaceWatchesPage'
@@ -25,9 +26,11 @@ import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
 import { TransactionDetailPage } from './pages/TransactionDetailPage'
 import { TournamentSubscriptionsPage } from './pages/TournamentSubscriptionsPage'
+import { TournamentComparePage } from './pages/TournamentComparePage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
 import { TournamentPage } from './pages/TournamentPage'
 import { WhatsNewPage } from './pages/WhatsNewPage'
+import { parseShareStartParam, readInitialShareStartParam } from './lib/shareLinks'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,8 +42,18 @@ function Shell() {
   const releaseNotesQ = useReleaseNotes()
   const unseenNotes = releaseNotesQ.data?.unseenCount ?? 0
   const location = useLocation()
+  const navigate = useNavigate()
   const track = useTrackProductEvent()
   const trackedCampaigns = useRef(new Set<string>())
+  const handledStartParam = useRef(false)
+
+  useEffect(() => {
+    if (handledStartParam.current) return
+    handledStartParam.current = true
+    const target = parseShareStartParam(readInitialShareStartParam())
+    if (!target) return
+    navigate(`${target.path}${target.search ? `?${target.search}` : ''}`, { replace: true })
+  }, [navigate])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -108,11 +121,13 @@ function Shell() {
           <Route path="/tournaments/:tournamentId" element={<TournamentPage />} />
           <Route path="/tournaments/:tournamentId/series" element={<SeriesPickerPage />} />
           <Route path="/tournaments/:tournamentId/leaderboard" element={<TournamentLeaderboardPage />} />
+          <Route path="/tournaments/:tournamentId/compare/:telegramId" element={<TournamentComparePage />} />
           <Route path="/tournaments/:tournamentId/rules" element={<FantasyRulesPage />} />
           <Route path="/tournaments/:tournamentId/history" element={<FantasyHistoryPage />} />
           <Route path="/tournaments/:tournamentId/participants" element={<ParticipantsPage />} />
           <Route path="/series/:seriesId" element={<SeriesPage />} />
           <Route path="/series/:seriesId/team" element={<TeamPage />} />
+          <Route path="/series/:seriesId/compare/:telegramId" element={<SeriesComparePage />} />
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />

@@ -18,6 +18,7 @@ import type {
   Rarity,
   SeriesStatus,
   UserCardItem,
+  UserProfile,
   UserSeriesDetail,
   UserTournament,
 } from '../api/types'
@@ -33,7 +34,9 @@ import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { collectionCardRootClass, modalImgFrameClass } from '../lib/cardFrameClasses'
+import { leagueShortName } from '../lib/leagues'
 import { RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
+import { shareToTelegram } from '../lib/shareLinks'
 
 type LifecycleFilter = 'all' | 'active' | 'expired'
 
@@ -177,6 +180,11 @@ export function CardsPage() {
   const economyQ = useQuery({
     queryKey: ['economy-info', initData],
     queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+  const meQ = useQuery({
+    queryKey: ['me', initData],
+    queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
     enabled: !!initData,
   })
 
@@ -453,6 +461,10 @@ export function CardsPage() {
   const teamsSortedForHistory = [...teamsWithCard].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
   )
+  const shareTeamForDetail =
+    selectedSeriesId != null
+      ? teamsSortedForHistory.find((team) => team.seriesId === selectedSeriesId) ?? teamsSortedForHistory[0]
+      : teamsSortedForHistory[0]
 
   return (
     <div className="pf-page">
@@ -674,6 +686,27 @@ export function CardsPage() {
                 <span className="pf-market-summary-inline" title="Срез активных лотов этой карты">
                   {formatMarketplaceSummary(detailCardMarketSummary)}
                 </span>
+              )}
+              {shareTeamForDetail && meQ.data && (
+                <button
+                  type="button"
+                  className="pf-btn pf-btn--small pf-btn--outline"
+                  onClick={() => {
+                    const label = seriesNameById.get(shareTeamForDetail.seriesId) ?? `Серия #${shareTeamForDetail.seriesId}`
+                    shareToTelegram(
+                      {
+                        kind: 'card',
+                        seriesId: shareTeamForDetail.seriesId,
+                        telegramId: meQ.data.telegramId,
+                        leagueCode: shareTeamForDetail.leagueCode,
+                        userCardId: detailCard.id,
+                      },
+                      `${detailCard.playerNickname} в моей команде: ${label}, ${leagueShortName(shareTeamForDetail.leagueCode)}`,
+                    )
+                  }}
+                >
+                  Поделиться карточкой
+                </button>
               )}
               {isEligibleEpicForLegendary(detailCard) && (
                 <button

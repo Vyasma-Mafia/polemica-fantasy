@@ -6,6 +6,7 @@ import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
+import { shareToTelegram } from '../lib/shareLinks'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 import type { RatingEntry } from '../api/types'
 
@@ -27,12 +28,32 @@ function ratingRow(e: RatingEntry): { rank: number; telegramId: number; name: st
   }
 }
 
-function RatingTableRow({ row, current }: { row: ReturnType<typeof ratingRow>; current: boolean }) {
+function RatingTableRow({
+  row,
+  current,
+}: {
+  row: ReturnType<typeof ratingRow>
+  current: boolean
+}) {
   return (
     <tr className={current ? 'pf-rating-row pf-rating-row--current' : 'pf-rating-row'}>
       <td className="pf-rating__cell pf-rating__cell--rank">#{row.rank}</td>
       <td className="pf-rating__cell pf-rating__cell--name">
         <Link to={`/players/${row.telegramId}`} className="pf-rating__name-link">{row.name}</Link>
+        <button
+          type="button"
+          className="pf-icon-action"
+          title="Поделиться профилем"
+          aria-label={`Поделиться профилем ${row.name}`}
+          onClick={() =>
+            shareToTelegram(
+              { kind: 'profile', telegramId: row.telegramId },
+              `Профиль ${row.name} в Polemica Fantasy: #${row.rank}, всего ${row.t}`,
+            )
+          }
+        >
+          ↗
+        </button>
       </td>
       <td className="pf-rating__cell pf-rating__num" title="Фантики">
         <span className="pf-rating__sym" aria-hidden>
@@ -128,6 +149,20 @@ export function RatingPage() {
             <div className="pf-rating-pinned__row">
               <span className="pf-rating__cell--rank">#{bottomRow.rank}</span>
               <Link to={`/players/${bottomRow.telegramId}`} className="pf-rating__name-link pf-rating__name-truncate">{bottomRow.name}</Link>
+              <button
+                type="button"
+                className="pf-icon-action"
+                title="Поделиться профилем"
+                aria-label={`Поделиться профилем ${bottomRow.name}`}
+                onClick={() =>
+                  shareToTelegram(
+                    { kind: 'profile', telegramId: bottomRow.telegramId },
+                    `Профиль ${bottomRow.name} в Polemica Fantasy: #${bottomRow.rank}, всего ${bottomRow.t}`,
+                  )
+                }
+              >
+                ↗
+              </button>
               <span className="pf-rating__num">
                 <span className="pf-rating__sym" aria-hidden>
                   ₣

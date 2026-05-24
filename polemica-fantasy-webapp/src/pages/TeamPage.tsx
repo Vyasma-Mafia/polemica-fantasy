@@ -5,7 +5,7 @@ import { ApiError, apiGet } from '../api/client'
 import { fetchSeriesLeagues, submitLeagueTeam, updateLeagueTeam } from '../api/leagues'
 import { cancelMarketplaceListing } from '../api/marketplace'
 import { fetchEconomyInfo } from '../api/userEconomy'
-import type { FantasyTeamDto, Rarity, UserCardItem, UserSeriesDetail } from '../api/types'
+import type { FantasyTeamDto, Rarity, UserCardItem, UserProfile, UserSeriesDetail } from '../api/types'
 import { BudgetProgressBar } from '../components/BudgetProgressBar'
 import { LeagueTabs } from '../components/LeagueTabs'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -18,6 +18,7 @@ import { CardValueBadge } from '../components/CardValueBadge'
 import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
 import { compareRarityDesc, RARITY_UI, rarityScoreModifierLabel } from '../lib/rarity'
+import { shareToTelegram } from '../lib/shareLinks'
 import { useNow } from '../lib/useNow'
 
 function cardsQueryString(tournamentId: number, seriesId: number) {
@@ -68,6 +69,11 @@ export function TeamPage() {
   const economyQ = useQuery({
     queryKey: ['economy-info', initData],
     queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+  const meQ = useQuery({
+    queryKey: ['me', initData],
+    queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
     enabled: !!initData,
   })
 
@@ -245,6 +251,7 @@ export function TeamPage() {
   const back = fromHome ? '/' : `/tournaments/${s.tournamentId}/series`
   const activeLeagueName = leagueShortName(activeLeague.code, activeLeague.name)
   const seriesOverviewPath = `/series/${sid}?league=${encodeURIComponent(activeLeagueCode)}`
+  const submittedTeam = teamQ.data
   const setLeague = (code: string) => {
     const next = new URLSearchParams(searchParams)
     next.set('league', code.toUpperCase())
@@ -319,6 +326,27 @@ export function TeamPage() {
         <p className="pf-footer-link">
           <Link to={seriesOverviewPath}>Обзор серии</Link>
         </p>
+        {submittedTeam && meQ.data && (
+          <div className="pf-share-row pf-share-row--center">
+            <button
+              type="button"
+              className="pf-btn pf-btn--small pf-btn--outline"
+              onClick={() =>
+                shareToTelegram(
+                  {
+                    kind: 'team',
+                    seriesId: sid,
+                    telegramId: meQ.data.telegramId,
+                    leagueCode: activeLeagueCode,
+                  },
+                  `Моя команда в ${s.name}, ${activeLeagueName}: ${submittedTeam.totalScore != null ? `${submittedTeam.totalScore.toFixed(2)} очков` : 'состав отправлен'}`,
+                )
+              }
+            >
+              Поделиться командой
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="pf-filters">

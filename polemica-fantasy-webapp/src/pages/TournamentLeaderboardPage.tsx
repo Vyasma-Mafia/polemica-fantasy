@@ -179,6 +179,12 @@ export function TournamentLeaderboardPage() {
                   {generalSplit.pinned.totalScore.toFixed(2)}
                   <span className="pf-lb-score-label">очков</span>
                 </span>
+                <Link
+                  className="pf-lb-action"
+                  to={`/tournaments/${id}/compare/${generalSplit.pinned.telegramId}?league=${encodeURIComponent(activeLeagueCode)}`}
+                >
+                  Сравнить
+                </Link>
               </div>
             </LeaderboardPinnedBlock>
           )}
@@ -191,6 +197,12 @@ export function TournamentLeaderboardPage() {
                   {r.totalScore.toFixed(2)}
                   <span className="pf-lb-score-label">очков</span>
                 </span>
+                <Link
+                  className="pf-lb-action"
+                  to={`/tournaments/${id}/compare/${r.telegramId}?league=${encodeURIComponent(activeLeagueCode)}`}
+                >
+                  Сравнить
+                </Link>
               </li>
             ))}
           </ul>

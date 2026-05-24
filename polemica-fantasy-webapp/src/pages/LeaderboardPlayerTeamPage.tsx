@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../api/client'
+import { fetchLeagueLeaderboard } from '../api/leagues'
 import type {
   FantasyTeamDetailSlot,
   FantasyTeamSeriesDetails,
@@ -19,6 +20,7 @@ import { modalImgFrameClass, skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { defaultLeagueCode, leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
+import { shareToTelegram } from '../lib/shareLinks'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
 function highlightMaxes(columns: FantasyTeamDetailSlot[], gameCount: number) {
@@ -43,6 +45,7 @@ export function LeaderboardPlayerTeamPage() {
   const initData = useInitData()
   const [searchParams] = useSearchParams()
   const leagueCode = defaultLeagueCode(searchParams.get('league'))
+  const requestedCardId = Number(searchParams.get('cardId'))
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
   const [expandedCell, setExpandedCell] = useState<{ gameIndex: number; colIndex: number } | null>(null)
 
@@ -72,6 +75,12 @@ export function LeaderboardPlayerTeamPage() {
     enabled: !!initData && Number.isFinite(sid) && !!telegramId && !!teamQ.data,
   })
 
+  const leaderboardQ = useQuery({
+    queryKey: ['leaderboard', sid, leagueCode, initData],
+    queryFn: () => fetchLeagueLeaderboard(sid, leagueCode, initData),
+    enabled: !!initData && Number.isFinite(sid),
+  })
+
   const cardByUserCardId = useMemo(() => {
     const m = new Map<number, UserCardItem>()
     for (const s of teamQ.data?.slots ?? []) {
@@ -90,6 +99,12 @@ export function LeaderboardPlayerTeamPage() {
     const slots = teamQ.data?.slots ?? []
     return [...slots].sort((a, b) => a.slot - b.slot)
   }, [teamQ.data])
+
+  useEffect(() => {
+    if (!Number.isFinite(requestedCardId) || requestedCardId <= 0) return
+    if (!cardByUserCardId.has(requestedCardId)) return
+    queueMicrotask(() => setDetailCardId(requestedCardId))
+  }, [cardByUserCardId, requestedCardId])
 
   if (!initData) return <MissingInitDataNotice />
   if (seriesMeta.isLoading || teamQ.isLoading) return <p className="pf-loading">Загрузка…</p>
@@ -119,6 +134,7 @@ export function LeaderboardPlayerTeamPage() {
   const ownerLabel = formatUserDisplayName(team.owner)
   const s = seriesMeta.data
   const backLb = `/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`
+  const rank = leaderboardQ.data?.find((row) => row.user.telegramId === team.owner.telegramId)?.rank ?? null
 
   const detailCard = detailCardId != null ? cardByUserCardId.get(detailCardId) : undefined
   const detailImgSrc = detailCard ? cardDisplayImageUrl(detailCard) : null
@@ -136,6 +152,40 @@ export function LeaderboardPlayerTeamPage() {
         subtitle={`${s?.name ?? `Серия #${sid}`} · ${leagueShortName(team.leagueCode ?? leagueCode)}`}
         backTo={backLb}
       />
+      <div className="pf-share-row">
+        <button
+          type="button"
+          className="pf-btn pf-btn--small pf-btn--outline"
+          onClick={() =>
+            shareToTelegram(
+              { kind: 'team', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
+              `Команда ${ownerLabel} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)}: ${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
+            )
+          }
+        >
+          Поделиться командой
+        </button>
+        {rank != null && (
+          <button
+            type="button"
+            className="pf-btn pf-btn--small pf-btn--outline"
+            onClick={() =>
+              shareToTelegram(
+                { kind: 'place', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
+                `${ownerLabel}: #${rank} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)} (${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'})`,
+              )
+            }
+          >
+            Поделиться местом
+          </button>
+        )}
+        <Link
+          className="pf-btn pf-btn--small"
+          to={`/series/${sid}/compare/${team.owner.telegramId}?league=${encodeURIComponent(leagueCode)}`}
+        >
+          Сравнить
+        </Link>
+      </div>
 
       <section className="pf-history">
         <div className="pf-acc">
@@ -278,6 +328,27 @@ export function LeaderboardPlayerTeamPage() {
                 </li>
               ))}
             </ul>
+
+            <div className="pf-modal__economy-actions">
+              <button
+                type="button"
+                className="pf-btn pf-btn--small pf-btn--outline"
+                onClick={() =>
+                  shareToTelegram(
+                    {
+                      kind: 'card',
+                      seriesId: sid,
+                      telegramId: team.owner.telegramId,
+                      leagueCode,
+                      userCardId: detailCard.id,
+                    },
+                    `${detailCard.playerNickname} в команде ${ownerLabel}: ${s?.name ?? `серия #${sid}`}, ${leagueShortName(leagueCode)}`,
+                  )
+                }
+              >
+                Поделиться карточкой
+              </button>
+            </div>
 
             <CardOwnershipHistoryBlock userCardId={detailCard.id} />
 

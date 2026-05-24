@@ -11,6 +11,7 @@ import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { useInitData } from '../context/useInitData'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
 import { splitLeaderboardByTelegramId } from '../lib/leaderboardSelf'
+import { shareToTelegram } from '../lib/shareLinks'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function LeaderboardPage() {
@@ -90,6 +91,25 @@ export function LeaderboardPage() {
               <span className="pf-lb-score-label">очков</span>
             </span>
           </Link>
+          <div className="pf-share-row pf-share-row--compact">
+            <button
+              type="button"
+              className="pf-btn pf-btn--small pf-btn--outline"
+              onClick={() =>
+                shareToTelegram(
+                  {
+                    kind: 'place',
+                    seriesId: id,
+                    telegramId: pinned.user.telegramId,
+                    leagueCode: activeLeagueCode,
+                  },
+                  `Моё место в ${s?.name ?? `серии #${id}`}, ${leagueName}: #${pinned.rank}, ${pinned.totalScore != null ? `${pinned.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
+                )
+              }
+            >
+              Поделиться местом
+            </button>
+          </div>
         </LeaderboardPinnedBlock>
       )}
 

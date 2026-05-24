@@ -8,6 +8,7 @@ import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
 import { leagueShortName } from '../lib/leagues'
 import { rarityClass } from '../lib/rarity'
+import { shareToTelegram } from '../lib/shareLinks'
 import { formatDateShort } from '../lib/tournamentDates'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 
@@ -206,6 +207,20 @@ export function PlayerProfilePage() {
         <p className="pf-profile-header__since">
           Участник с {formatDateShort(new Date(profile.memberSince))}
         </p>
+        <div className="pf-share-row">
+          <button
+            type="button"
+            className="pf-btn pf-btn--small pf-btn--outline"
+            onClick={() =>
+              shareToTelegram(
+                { kind: 'profile', telegramId: profile.user.telegramId },
+                `Профиль ${name} в Polemica Fantasy`,
+              )
+            }
+          >
+            Поделиться профилем
+          </button>
+        </div>
       </div>
 
       <RatingSection profile={profile} />
