@@ -18,7 +18,7 @@ type ParsedShareStart =
   | null
 
 const PRODUCTION_WEBAPP_HOST = 'fantasy.maftourbot.ru'
-const DEFAULT_PRODUCTION_BOT_USERNAME = 'maftourbot'
+const DEFAULT_PRODUCTION_BOT_USERNAME = 'polemica_fantasy_bot'
 const DEFAULT_PRODUCTION_TMA_SHORT_NAME = 'fantasy'
 
 const KIND_PREFIX: Record<ShareTarget['kind'], string> = {
