@@ -35,8 +35,9 @@ class OnboardingNudgeService(
             val path = candidate.seriesId?.let { "/series/$it/team" } ?: "/"
             notificationButtonFactory.singleButton("Подать состав", path)
         }
-        send(AFTER_FIRST_TEAM_TEXT, OnboardingNudgeType.AFTER_FIRST_TEAM, candidates(AFTER_FIRST_TEAM_SQL)) {
-            notificationButtonFactory.singleButton("Где смотреть результаты", "/help#scoring")
+        send(AFTER_FIRST_TEAM_TEXT, OnboardingNudgeType.AFTER_FIRST_TEAM, candidates(AFTER_FIRST_TEAM_SQL)) { candidate ->
+            candidate.seriesId?.let(notificationButtonFactory::openSeriesLeaderboardButton)
+                ?: notificationButtonFactory.singleButton("Где смотреть результаты", "/help#scoring")
         }
     }
 
