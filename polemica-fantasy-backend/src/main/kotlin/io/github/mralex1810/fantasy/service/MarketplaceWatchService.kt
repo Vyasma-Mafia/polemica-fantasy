@@ -2,10 +2,12 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.request.CreateMarketplaceWatchRequest
 import io.github.mralex1810.fantasy.dto.user.response.FantasyPlayerBriefDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchAchievementDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchesResponse
 import io.github.mralex1810.fantasy.dto.user.response.TournamentBriefDto
 import io.github.mralex1810.fantasy.entity.MarketplaceWatchFilter
+import io.github.mralex1810.fantasy.repository.AchievementRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceWatchFilterRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -22,6 +24,7 @@ class MarketplaceWatchService(
     private val telegramUserRepository: TelegramUserRepository,
     private val fantasyPlayerRepository: FantasyPlayerRepository,
     private val tournamentRepository: TournamentRepository,
+    private val achievementRepository: AchievementRepository,
 ) {
     companion object {
         const val MAX_WATCHES_PER_USER = 10
@@ -48,7 +51,13 @@ class MarketplaceWatchService(
                 "Maximum $MAX_WATCHES_PER_USER watches reached",
             )
         }
-        if (request.fantasyPlayerId == null && request.tournamentId == null && request.rarity == null) {
+        val normalizedAchievementIds = normalizeAchievementIds(request.achievementIds)
+        if (
+            request.fantasyPlayerId == null &&
+            request.tournamentId == null &&
+            request.rarity == null &&
+            normalizedAchievementIds.isEmpty()
+        ) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "At least one filter criterion required",
@@ -71,6 +80,17 @@ class MarketplaceWatchService(
                 ResponseStatusException(HttpStatus.BAD_REQUEST, "Tournament $tournamentId not found")
             }
         }
+        val achievements = if (normalizedAchievementIds.isEmpty()) {
+            emptyList()
+        } else {
+            val found = achievementRepository.findAllByIdIn(normalizedAchievementIds)
+            val foundIds = found.map { it.id }.toSet()
+            val missing = normalizedAchievementIds.firstOrNull { it !in foundIds }
+            if (missing != null) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Achievement $missing not found")
+            }
+            found.sortedBy { it.id }
+        }
 
         val saved = try {
             marketplaceWatchFilterRepository.save(
@@ -80,6 +100,8 @@ class MarketplaceWatchService(
                     tournament = tournament,
                     rarity = request.rarity,
                     maxPrice = request.maxPrice,
+                    achievementIdsKey = normalizedAchievementIds.joinToString(","),
+                    achievements = achievements.toMutableSet(),
                 ),
             )
         } catch (_: DataIntegrityViolationException) {
@@ -90,10 +112,11 @@ class MarketplaceWatchService(
 
     @Transactional
     fun deleteWatch(internalUserId: Long, watchId: Long) {
-        val deleted = marketplaceWatchFilterRepository.deleteByIdAndTelegramUser_Id(watchId, internalUserId)
-        if (deleted == 0) {
+        val filter = marketplaceWatchFilterRepository.findByIdAndTelegramUser_Id(watchId, internalUserId)
+        if (filter == null) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Watch filter not found")
         }
+        marketplaceWatchFilterRepository.delete(filter)
     }
 
     private fun MarketplaceWatchFilter.toDto(): MarketplaceWatchDto =
@@ -114,6 +137,19 @@ class MarketplaceWatchService(
             },
             rarity = rarity?.name,
             maxPrice = maxPrice,
+            achievements = achievements.sortedBy { it.id }.map { achievement ->
+                MarketplaceWatchAchievementDto(
+                    id = achievement.id,
+                    name = achievement.name,
+                )
+            },
             createdAt = createdAt,
         )
+
+    private fun normalizeAchievementIds(ids: Collection<String>?): List<String> =
+        ids.orEmpty()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
 }

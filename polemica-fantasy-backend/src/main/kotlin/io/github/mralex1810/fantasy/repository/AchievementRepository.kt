@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query
 interface AchievementRepository : JpaRepository<Achievement, String> {
     fun findAllByCanAppearOnRandomCardsTrueOrderById(): List<Achievement>
 
+    fun findAllByIdIn(ids: Collection<String>): List<Achievement>
+
     @Query("SELECT DISTINCT a FROM Achievement a LEFT JOIN FETCH a.applicableRoles")
     fun findAllWithApplicableRoles(): List<Achievement>
 

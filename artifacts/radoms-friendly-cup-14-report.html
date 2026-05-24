@@ -9,7 +9,7 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: radial-gradient(circle at 18% 0%, rgba(240, 193, 95, .22), transparent 28rem), radial-gradient(circle at 90% 16%, rgba(101, 212, 154, .18), transparent 24rem), linear-gradient(145deg, #11120f 0%, #181712 52%, #101412 100%); line-height: 1.35; }
     .page { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 44px; }
-    .poster { min-height: 1320px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.035)), linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.30)); box-shadow: 0 24px 80px rgba(0, 0, 0, .38); }
+    .poster { min-height: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.035)), linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.30)); box-shadow: 0 24px 80px rgba(0, 0, 0, .38); }
     .hero { position: relative; min-height: 360px; padding: 44px; display: grid; grid-template-columns: 1.35fr .65fr; gap: 28px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, rgba(17,18,15,.96), rgba(17,18,15,.64)), url('https://storage.yandexcloud.net/polemica-fantasy/players/34/photo.png') center 24% / cover no-repeat; }
     .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(17,18,15,.72) 100%); pointer-events: none; }
     .hero > * { position: relative; z-index: 1; }
@@ -106,12 +106,34 @@
     .team-row__main span { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .team-row strong { justify-self: end; color: var(--gold); }
     .footer { padding: 18px 44px 28px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+    .deck-toolbar { position: sticky; top: 12px; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(17,18,15,.90); backdrop-filter: blur(14px); box-shadow: 0 16px 44px rgba(0,0,0,.28); }
+    .deck-toolbar b { margin-right: 6px; font-size: 13px; color: var(--muted); }
+    .deck-tab, .screen-mode-button { appearance: none; border: 1px solid rgba(240,193,95,.34); border-radius: 8px; background: rgba(240,193,95,.10); color: var(--text); padding: 9px 12px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+    .deck-tab:hover, .screen-mode-button:hover { background: rgba(240,193,95,.18); }
+    .deck-tab.is-active { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+    .screen-mode-button { margin-left: auto; border-color: rgba(101,212,154,.38); background: rgba(101,212,154,.12); }
+    .slide-panel { display: none; }
+    .slide-panel.is-active { display: block; }
+    body.screen-mode .deck-toolbar { display: none; }
+    body.screen-mode .page { width: min(1120px, 100%); padding-top: 0; padding-bottom: 0; }
+    body.screen-mode .poster { border-radius: 0; border-left: 0; border-right: 0; }
     @media (max-width: 840px) { .page { width: min(100% - 20px, 1120px); padding-top: 10px; } .poster { min-height: 0; } .hero, .two-col, .highlight-grid, .series-strip { grid-template-columns: 1fr; } .hero { padding: 28px 22px; } h1 { font-size: 40px; } .summary-grid, .fun-grid { grid-template-columns: repeat(2, 1fr); } .section { padding: 24px 18px; } .team-cards { grid-template-columns: 1fr; } .team-card-mini { min-height: 0; } .team-card-mini__photo { height: 210px; } .footer { padding: 18px; } }
   </style>
 </head>
 <body>
   <main class="page">
-    <article class="poster">
+    <div class="deck-toolbar" aria-label="Вкладки репорта">
+      <b>Слайды:</b>
+      <button class="deck-tab is-active" type="button" data-slide-target="report-cover">Обложка</button>
+      <button class="deck-tab" type="button" data-slide-target="report-leaders">Лидеры лиг</button>
+      <button class="deck-tab" type="button" data-slide-target="report-records">Рекорды</button>
+      <button class="deck-tab" type="button" data-slide-target="report-stats">Статистика</button>
+      <button class="deck-tab" type="button" data-slide-target="report-series">Серии</button>
+      <button class="deck-tab" type="button" data-slide-target="report-details">Топы карточек</button>
+      <button class="screen-mode-button" type="button">Режим скрина</button>
+    </div>
+    <article class="poster" id="report-full">
+      <div class="slide-panel is-active" id="report-cover">
       <section class="hero">
         <div>
           <p class="eyebrow">Fantasy recap · 24.05.2026 20:07 MSK</p>
@@ -125,7 +147,8 @@
         </div>
       </section>
       <section class="summary-grid"><div class="summary-cell"><b>4</b><span>серии</span></div><div class="summary-cell"><b>24/24</b><span>игр засчитано</span></div><div class="summary-cell"><b>176</b><span>фэнтези-менеджеров</span></div><div class="summary-cell"><b>828</b><span>составов в лигах</span></div></section>
-      <section class="section"><div class="section-title"><h2>Лидеры лиг</h2><span>сумма очков по всем сериям</span></div><div class="two-col"><div class="panel"><div class="panel__head"><b>Основная лига</b><span>169 игроков</span></div>
+      </div>
+      <section class="section slide-panel" id="report-leaders"><div class="section-title"><h2>Лидеры лиг</h2><span>сумма очков по всем сериям</span></div><div class="two-col"><div class="panel"><div class="panel__head"><b>Основная лига</b><span>169 игроков</span></div>
     <div class="leader-row leader-row--top leader-row--1">
       <div class="rank">1</div>
       <div class="leader-main">
@@ -346,7 +369,7 @@
         <span>4 состава</span>
       </div>
     </div></div></div></section>
-      <section class="section"><div class="section-title"><h2>Рекорды турнира</h2><span>лучшие single-series результаты</span></div><div class="highlight-grid"><div class="record-card"><div class="record-photo-wrap"><img class="record-photo" src="https://storage.yandexcloud.net/polemica-fantasy/players/34/photo.png" alt="vitya061" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar-fallback record-photo',textContent:'VI'}))"><div><div class="muted">Карточка турнира</div><div class="record-title">vitya061<span>16.33</span></div><div class="muted">Epic · Stoum · Основная</div><div class="chips"><span>Верные цвета ПУ</span><span>Убийство шерифа</span></div></div></div></div><div class="team-showcase"><div class="team-showcase__top"><div><div class="muted">Состав турнира</div><h2>Stoum</h2><div class="muted">RFC #14. Серия 4 · Основная</div></div><div class="team-score">27.54<span>очков</span></div></div><div class="team-cards">
+      <section class="section slide-panel" id="report-records"><div class="section-title"><h2>Рекорды турнира</h2><span>лучшие single-series результаты</span></div><div class="highlight-grid"><div class="record-card"><div class="record-photo-wrap"><img class="record-photo" src="https://storage.yandexcloud.net/polemica-fantasy/players/34/photo.png" alt="vitya061" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar-fallback record-photo',textContent:'VI'}))"><div><div class="muted">Карточка турнира</div><div class="record-title">vitya061<span>16.33</span></div><div class="muted">Epic · Stoum · Основная</div><div class="chips"><span>Верные цвета ПУ</span><span>Убийство шерифа</span></div></div></div></div><div class="team-showcase"><div class="team-showcase__top"><div><div class="muted">Состав турнира</div><h2>Stoum</h2><div class="muted">RFC #14. Серия 4 · Основная</div></div><div class="team-score">27.54<span>очков</span></div></div><div class="team-cards">
     <div class="team-card-mini rarity-border--epic">
       <img class="team-card-mini__photo" src="https://storage.yandexcloud.net/polemica-fantasy/players/34/photo.png" alt="vitya061" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar-fallback team-card-mini__photo',textContent:'VI'}))">
       <div class="team-card-mini__name">vitya061</div>
@@ -365,7 +388,7 @@
       <div class="team-card-mini__score">4.50</div>
       <div class="team-card-mini__rarity">Common</div>
     </div></div></div></div></section>
-      <section class="section"><div class="section-title"><h2>Статистические приколы</h2><span>по всем составам и карточкам</span></div><div class="fun-grid"><div class="fun-card"><span>Народный выбор</span><b>Cristo</b><strong>146 пиков</strong></div><div class="fun-card"><span>Самый эффективный пик</span><b>vitya061</b><strong>8.67 ср.</strong></div><div class="fun-card"><span>Средний состав</span><b>по турниру</b><strong>12.07</strong></div><div class="fun-card"><span>Редкость с лучшим средним</span><b>Legendary</b><strong>7.24</strong></div></div><div class="two-col"><div class="panel"><div class="panel__head"><b>Самые популярные игроки</b><span>пики карточек</span></div><div class="player-row">
+      <section class="section slide-panel" id="report-stats"><div class="section-title"><h2>Статистические приколы</h2><span>по всем составам и карточкам</span></div><div class="fun-grid"><div class="fun-card"><span>Народный выбор</span><b>Cristo</b><strong>146 пиков</strong></div><div class="fun-card"><span>Самый эффективный пик</span><b>vitya061</b><strong>8.67 ср.</strong></div><div class="fun-card"><span>Средний состав</span><b>по турниру</b><strong>12.07</strong></div><div class="fun-card"><span>Редкость с лучшим средним</span><b>Legendary</b><strong>7.24</strong></div></div><div class="two-col"><div class="panel"><div class="panel__head"><b>Самые популярные игроки</b><span>пики карточек</span></div><div class="player-row">
       <img class="player-row__photo" src="https://storage.yandexcloud.net/polemica-fantasy/players/20/photo.png" alt="Cristo" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar-fallback player-row__photo',textContent:'CR'}))">
       <div class="player-row__main">
         <div class="player-row__top"><b>Cristo</b><strong>146</strong></div>
@@ -478,7 +501,7 @@
         <small>42 пиков · максимум 9.72</small>
       </div>
     </div></div></div></section>
-      <section class="section"><div class="section-title"><h2>Серии</h2><span>активность и скоринг</span></div><div class="series-strip">
+      <section class="section slide-panel" id="report-series"><div class="section-title"><h2>Серии</h2><span>активность и скоринг</span></div><div class="series-strip">
     <div class="series-card ">
       <div class="series-kicker">20.05 11:08 · finished</div>
       <h3>RFC #14. Серия 1</h3>
@@ -515,7 +538,7 @@
         <span><b>176</b> составов</span>
       </div>
     </div></div></section>
-      <section class="section detail"><div class="two-col"><div class="panel"><div class="panel__head"><b>Топ карточек</b><span>одна карточка может быть в двух лигах</span></div>
+      <section class="section detail slide-panel" id="report-details"><div class="two-col"><div class="panel"><div class="panel__head"><b>Топ карточек</b><span>одна карточка может быть в двух лигах</span></div>
     <div class="card-row">
       <div class="rank rank--small">1</div>
       <img class="card-row__photo" src="https://storage.yandexcloud.net/polemica-fantasy/players/34/photo.png" alt="vitya061" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'avatar-fallback card-row__photo',textContent:'VI'}))">
@@ -619,5 +642,40 @@
       <footer class="footer">Polemica Fantasy · tournament id 9 · generated from production data at 24.05.2026 20:07 MSK</footer>
     </article>
   </main>
+  <script>
+    const tabs = [...document.querySelectorAll('.deck-tab')];
+    const slides = [...document.querySelectorAll('.slide-panel')];
+    const screenModeButton = document.querySelector('.screen-mode-button');
+
+    function activateSlide(targetId) {
+      slides.forEach((slide) => {
+        slide.classList.toggle('is-active', slide.id === targetId);
+      });
+      tabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.slideTarget === targetId);
+      });
+      const url = new URL(window.location.href);
+      url.hash = targetId;
+      history.replaceState(null, '', url);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activateSlide(tab.dataset.slideTarget));
+    });
+
+    screenModeButton.addEventListener('click', () => {
+      document.body.classList.toggle('screen-mode');
+      screenModeButton.textContent = document.body.classList.contains('screen-mode')
+        ? 'Показать вкладки'
+        : 'Режим скрина';
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+
+    const initialHash = window.location.hash.replace('#', '');
+    if (initialHash && document.getElementById(initialHash)?.classList.contains('slide-panel')) {
+      activateSlide(initialHash);
+    }
+  </script>
 </body>
 </html>

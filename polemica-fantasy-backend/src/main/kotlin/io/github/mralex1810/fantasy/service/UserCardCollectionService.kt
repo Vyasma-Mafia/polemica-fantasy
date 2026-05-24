@@ -30,15 +30,19 @@ class UserCardCollectionService(
         tournamentId: Long?,
         seriesId: Long?,
         rarity: Rarity?,
+        achievementIds: Collection<String>?,
     ): List<UserCardItemDto> {
         if (seriesId != null && !seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
+        val normalizedAchievementIds = normalizeAchievementIdsForFilter(achievementIds)
         val rows = userCardRepository.findAllForUserFiltered(
             telegramUserId = user.id!!,
             tournamentId = tournamentId,
             seriesId = seriesId,
             rarity = rarity,
+            achievementIdsEmpty = normalizedAchievementIds.isEmpty(),
+            achievementIds = normalizedAchievementIds.ifEmpty { listOf("__none__") },
         )
         val userCardIds = rows.mapNotNull { it.id }
         val leaguesByCardId: Map<Long, List<String>> =
@@ -76,4 +80,10 @@ class UserCardCollectionService(
             )
         }
     }
+
+    private fun normalizeAchievementIdsForFilter(ids: Collection<String>?): List<String> =
+        ids.orEmpty()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
 }

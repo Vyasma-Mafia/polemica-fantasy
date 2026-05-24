@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { ApiError, apiGet } from '../api/client'
 import { useCreateMarketplaceWatch } from '../api/notifications'
 import {
@@ -43,6 +44,7 @@ export function MarketplacePage() {
   const [tournamentId, setTournamentId] = useState('')
   const [seriesId, setSeriesId] = useState('')
   const [playerFilterId, setPlayerFilterId] = useState<number | ''>('')
+  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
 
   const [buyConfirm, setBuyConfirm] = useState<MarketplaceListingEntry | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -67,6 +69,12 @@ export function MarketplacePage() {
     enabled: !!initData,
   })
 
+  const achievementsQ = useQuery({
+    queryKey: ['achievements-catalog', initData],
+    queryFn: () => fetchAchievementCatalog(initData!),
+    enabled: !!initData,
+  })
+
   const minP = minPrice.trim() === '' ? undefined : Number(minPrice)
   const maxP = maxPrice.trim() === '' ? undefined : Number(maxPrice)
   const minOk = minP === undefined || Number.isFinite(minP)
@@ -83,14 +91,16 @@ export function MarketplacePage() {
       rarity: rarity || undefined,
       minPrice: minOk ? minP : undefined,
       maxPrice: maxOk ? maxP : undefined,
+      achievementIds: selectedAchievementIds,
       sortBy,
       page,
       size: 20,
     }
-  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, sortBy, page])
+  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, selectedAchievementIds, sortBy, page])
 
   const watchPayload = useMemo(() => {
-    const hasCriteria = playerFilterId !== '' || tournamentId !== '' || rarity !== ''
+    const hasCriteria =
+      playerFilterId !== '' || tournamentId !== '' || rarity !== '' || selectedAchievementIds.length > 0
     if (!hasCriteria) return null
     const parsedMaxPrice = maxPrice.trim() === '' ? null : Number(maxPrice)
     return {
@@ -101,8 +111,9 @@ export function MarketplacePage() {
         parsedMaxPrice != null && Number.isFinite(parsedMaxPrice) && parsedMaxPrice > 0
           ? Math.floor(parsedMaxPrice)
           : null,
+      achievementIds: selectedAchievementIds,
     }
-  }, [playerFilterId, tournamentId, rarity, maxPrice])
+  }, [playerFilterId, tournamentId, rarity, maxPrice, selectedAchievementIds])
 
   const watchPayloadKey = useMemo(() => JSON.stringify(watchPayload), [watchPayload])
 
@@ -319,6 +330,27 @@ export function MarketplacePage() {
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          <span className="pf-field__label">Достижения</span>
+          <select
+            className="pf-input"
+            multiple
+            value={selectedAchievementIds}
+            onChange={(e) => {
+              setSelectedAchievementIds(
+                Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+              )
+              setPage(0)
+            }}
+            disabled={achievementsQ.isLoading}
+          >
+            {(achievementsQ.data ?? []).map((achievement) => (
+              <option key={achievement.id} value={achievement.id}>
+                {achievement.name}
               </option>
             ))}
           </select>

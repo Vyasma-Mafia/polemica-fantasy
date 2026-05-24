@@ -2,6 +2,14 @@
 
 ## Что реализовано
 
+### Backend+TMA: фильтр по достижениям в коллекции, маркетплейсе и отслеживании (май 2026)
+- [x] Backend `GET /api/v1/me/cards` и `GET /api/v1/marketplace/listings` получили повторяемый query-параметр `achievementIds`; фильтр работает как OR внутри выбранных достижений и AND с остальными фильтрами
+- [x] Flyway **V44** добавил `marketplace_watch_filter_achievement`, `achievement_ids_key` и нормализованный unique index для marketplace watch-фильтров
+- [x] `POST /api/v1/settings/marketplace-watches` принимает `achievementIds`, валидирует неизвестные id, нормализует порядок и возвращает выбранные достижения в `MarketplaceWatchDto`
+- [x] Watch-уведомления при создании листинга учитывают пересечение достижений карты и watch-фильтра
+- [x] TMA: мультивыбор достижений добавлен в коллекцию `/cards`, маркетплейс `/marketplace` и страницу отслеживания `/notifications/marketplace-watches`
+- [x] Проверки: `./gradlew compileKotlin compileTestKotlin`, targeted backend tests для filters/watch, `npm run build` (`polemica-fantasy-webapp`) — успешно
+
 ### DX: production DB readonly skill (май 2026)
 - [x] Добавлен проектный skill `.codex/skills/polemica-prod-db-readonly` для безопасного чтения production PostgreSQL через VPS и контейнер `fantasy-db`
 - [x] В skill описаны read-only правила, штатный SSH/Docker Compose путь, fallback-команда и SQL-интроспекция таблиц/колонок/Flyway

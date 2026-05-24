@@ -6,11 +6,21 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilter, Long> {
+    @Query(
+        """
+        SELECT DISTINCT f FROM MarketplaceWatchFilter f
+        LEFT JOIN FETCH f.fantasyPlayer
+        LEFT JOIN FETCH f.tournament
+        LEFT JOIN FETCH f.achievements
+        WHERE f.telegramUser.id = :telegramUserId
+        ORDER BY f.createdAt DESC
+        """,
+    )
     fun findAllByTelegramUser_IdOrderByCreatedAtDesc(telegramUserId: Long): List<MarketplaceWatchFilter>
 
     fun countByTelegramUser_Id(telegramUserId: Long): Int
 
-    fun deleteByIdAndTelegramUser_Id(id: Long, telegramUserId: Long): Int
+    fun findByIdAndTelegramUser_Id(id: Long, telegramUserId: Long): MarketplaceWatchFilter?
 
     @Query(
         nativeQuery = true,
@@ -25,6 +35,16 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
               AND (mwf.rarity IS NULL OR mwf.rarity = :rarity)
               AND (mwf.max_price IS NULL OR mwf.max_price >= :price)
               AND (mwf.tournament_id IS NULL OR mwf.tournament_id IN (:tournamentIds))
+              AND (
+                  mwf.achievement_ids_key = ''
+                  OR EXISTS (
+                      SELECT 1
+                      FROM marketplace_watch_filter_achievement mwfa
+                      JOIN card_template_achievement cta ON cta.achievement_id = mwfa.achievement_id
+                      WHERE mwfa.watch_filter_id = mwf.id
+                        AND cta.card_template_id = :cardTemplateId
+                  )
+              )
               AND NOT EXISTS (
                   SELECT 1 FROM notification_preference np
                   WHERE np.telegram_user_id = mwf.telegram_user_id
@@ -36,6 +56,7 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
     fun findMatchingUserIds(
         @Param("sellerId") sellerId: Long,
         @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("cardTemplateId") cardTemplateId: Long,
         @Param("rarity") rarity: String,
         @Param("price") price: Long,
         @Param("tournamentIds") tournamentIds: List<Long>,

@@ -13,7 +13,13 @@ data class MarketplaceWatchDto(
     val tournament: TournamentBriefDto?,
     val rarity: String?,
     val maxPrice: Long?,
+    val achievements: List<MarketplaceWatchAchievementDto>,
     val createdAt: Instant,
+)
+
+data class MarketplaceWatchAchievementDto(
+    val id: String,
+    val name: String,
 )
 
 data class MarketplaceWatchesResponse(

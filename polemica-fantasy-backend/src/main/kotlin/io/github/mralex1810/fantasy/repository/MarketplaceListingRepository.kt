@@ -73,6 +73,10 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
+        AND (:achievementIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplateAchievement cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        ))
         """,
         countQuery = """
         SELECT count(ml) FROM MarketplaceListing ml
@@ -93,6 +97,10 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
+        AND (:achievementIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplateAchievement cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        ))
         """,
     )
     fun findAllActiveFiltered(
@@ -103,6 +111,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("rarity") rarity: Rarity?,
         @Param("minPrice") minPrice: Long?,
         @Param("maxPrice") maxPrice: Long?,
+        @Param("achievementIdsEmpty") achievementIdsEmpty: Boolean,
+        @Param("achievementIds") achievementIds: Collection<String>,
         pageable: Pageable,
     ): Page<MarketplaceListing>
 

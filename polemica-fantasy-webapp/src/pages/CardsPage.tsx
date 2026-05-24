@@ -2,6 +2,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMarkOnboardingStep } from '../api/antiChurn'
+import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { ApiError, apiGet } from '../api/client'
 import {
   cancelMarketplaceListing,
@@ -97,6 +98,7 @@ export function CardsPage() {
     setTournamentId(tournamentFromQuery)
   }, [tournamentFromQuery])
   const [rarity, setRarity] = useState<Rarity | ''>('')
+  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
   const [playerFilter, setPlayerFilter] = useState('')
   const [lifeFilter, setLifeFilter] = useState<LifecycleFilter>('all')
   const [sortUses, setSortUses] = useState<'none' | 'asc' | 'desc'>('none')
@@ -132,9 +134,12 @@ export function CardsPage() {
     const sp = new URLSearchParams()
     if (tournamentId) sp.set('tournamentId', tournamentId)
     if (rarity) sp.set('rarity', rarity)
+    for (const achievementId of selectedAchievementIds) {
+      sp.append('achievementIds', achievementId)
+    }
     const q = sp.toString()
     return q ? `?${q}` : ''
-  }, [tournamentId, rarity])
+  }, [tournamentId, rarity, selectedAchievementIds])
 
   const legendaryUpgradeParam = searchParams.get('legendaryUpgrade')
   useEffect(() => {
@@ -174,6 +179,12 @@ export function CardsPage() {
   const tournamentsQ = useQuery({
     queryKey: ['tournaments', initData],
     queryFn: () => apiGet<UserTournament[]>('/api/v1/tournaments', initData),
+    enabled: !!initData,
+  })
+
+  const achievementsQ = useQuery({
+    queryKey: ['achievements-catalog', initData],
+    queryFn: () => fetchAchievementCatalog(initData!),
     enabled: !!initData,
   })
 
@@ -502,6 +513,26 @@ export function CardsPage() {
             {tournaments.map((t) => (
               <option key={t.id} value={String(t.id)}>
                 {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
+          <span className="pf-field__label">Достижения</span>
+          <select
+            className="pf-input"
+            multiple
+            value={selectedAchievementIds}
+            onChange={(e) => {
+              setSelectedAchievementIds(
+                Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+              )
+            }}
+            disabled={achievementsQ.isLoading}
+          >
+            {(achievementsQ.data ?? []).map((achievement) => (
+              <option key={achievement.id} value={achievement.id}>
+                {achievement.name}
               </option>
             ))}
           </select>

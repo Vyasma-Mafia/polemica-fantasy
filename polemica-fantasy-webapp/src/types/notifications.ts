@@ -54,6 +54,7 @@ export interface MarketplaceWatchDto {
   tournament: TournamentBriefDto | null
   rarity: Rarity | null
   maxPrice: number | null
+  achievements: { id: string; name: string }[]
   createdAt: string
 }
 
@@ -67,4 +68,5 @@ export interface CreateMarketplaceWatchRequest {
   tournamentId: number | null
   rarity: Rarity | null
   maxPrice: number | null
+  achievementIds: string[]
 }

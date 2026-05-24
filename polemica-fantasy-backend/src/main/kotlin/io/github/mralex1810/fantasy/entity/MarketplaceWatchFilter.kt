@@ -9,6 +9,8 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.JoinTable
+import jakarta.persistence.ManyToMany
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.time.Instant
@@ -38,6 +40,17 @@ class MarketplaceWatchFilter(
 
     @Column(name = "max_price")
     var maxPrice: Long? = null,
+
+    @Column(name = "achievement_ids_key", nullable = false, length = 1024)
+    var achievementIdsKey: String = "",
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "marketplace_watch_filter_achievement",
+        joinColumns = [JoinColumn(name = "watch_filter_id")],
+        inverseJoinColumns = [JoinColumn(name = "achievement_id")],
+    )
+    var achievements: MutableSet<Achievement> = linkedSetOf(),
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),

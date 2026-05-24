@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { fetchAchievementCatalog } from '../api/achievementsCatalog'
 import { ApiError, apiGet } from '../api/client'
 import {
   useCreateMarketplaceWatch,
@@ -27,11 +28,18 @@ export function MarketplaceWatchesPage() {
     enabled: !!initData,
   })
 
+  const achievementsQ = useQuery({
+    queryKey: ['achievements-catalog', initData],
+    queryFn: () => fetchAchievementCatalog(initData!),
+    enabled: !!initData,
+  })
+
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [playerSearch, setPlayerSearch] = useState('')
   const [playerId, setPlayerId] = useState('')
   const [tournamentId, setTournamentId] = useState('')
   const [rarity, setRarity] = useState<Rarity | ''>('')
+  const [selectedAchievementIds, setSelectedAchievementIds] = useState<string[]>([])
   const [maxPrice, setMaxPrice] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -59,6 +67,7 @@ export function MarketplaceWatchesPage() {
     setPlayerId('')
     setTournamentId('')
     setRarity('')
+    setSelectedAchievementIds([])
     setMaxPrice('')
     setFormError(null)
   }
@@ -74,9 +83,9 @@ export function MarketplaceWatchesPage() {
   }
 
   function submitForm() {
-    const hasCriteria = playerId !== '' || tournamentId !== '' || rarity !== ''
+    const hasCriteria = playerId !== '' || tournamentId !== '' || rarity !== '' || selectedAchievementIds.length > 0
     if (!hasCriteria) {
-      setFormError('Выберите хотя бы один фильтр: игрок, турнир или редкость.')
+      setFormError('Выберите хотя бы один фильтр: игрок, турнир, редкость или достижение.')
       return
     }
 
@@ -93,6 +102,7 @@ export function MarketplaceWatchesPage() {
         tournamentId: tournamentId === '' ? null : Number(tournamentId),
         rarity: rarity || null,
         maxPrice: parsedMaxPrice == null ? null : Math.floor(parsedMaxPrice),
+        achievementIds: selectedAchievementIds,
       },
       {
         onSuccess: () => {
@@ -117,11 +127,17 @@ export function MarketplaceWatchesPage() {
           const tournament = watch.tournament?.name ?? 'Любой турнир'
           const watchRarity = watch.rarity ?? 'Любая редкость'
           const price = watch.maxPrice != null ? `до ${watch.maxPrice} ₣` : 'любая цена'
+          const achievements =
+            watch.achievements.length > 0
+              ? watch.achievements.map((achievement) => achievement.name).join(', ')
+              : 'любые достижения'
           return (
             <li key={watch.id} className="pf-notify-watch">
               <div className="pf-notify-watch__text">
                 {player} · {watchRarity} · {price}
-                <div className="pf-notify-watch__meta">{tournament}</div>
+                <div className="pf-notify-watch__meta">
+                  {tournament} · {achievements}
+                </div>
               </div>
               <button
                 type="button"
@@ -208,6 +224,27 @@ export function MarketplaceWatchesPage() {
           </label>
 
           <label className="pf-field">
+            <span className="pf-field__label">Достижения</span>
+            <select
+              className="pf-input"
+              multiple
+              value={selectedAchievementIds}
+              onChange={(e) => {
+                setSelectedAchievementIds(
+                  Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+                )
+              }}
+              disabled={achievementsQ.isLoading}
+            >
+              {(achievementsQ.data ?? []).map((achievement) => (
+                <option key={achievement.id} value={achievement.id}>
+                  {achievement.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="pf-field">
             <span className="pf-field__label">Макс. цена</span>
             <input
               className="pf-input"
@@ -220,6 +257,7 @@ export function MarketplaceWatchesPage() {
 
           {(formError || createError) && <p className="pf-err">{formError ?? createError}</p>}
           {playersQ.isLoading && <p className="pf-muted">Загрузка списка игроков…</p>}
+          {achievementsQ.isLoading && <p className="pf-muted">Загрузка списка достижений…</p>}
 
           <button
             type="button"

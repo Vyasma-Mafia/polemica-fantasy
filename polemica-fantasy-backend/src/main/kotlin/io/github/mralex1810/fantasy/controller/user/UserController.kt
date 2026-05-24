@@ -41,7 +41,8 @@ class UserController(
         @RequestParam(required = false) tournamentId: Long?,
         @RequestParam(required = false) seriesId: Long?,
         @RequestParam(required = false) rarity: Rarity?,
-    ): List<UserCardItemDto> = userCardCollectionService.listCards(user, tournamentId, seriesId, rarity)
+        @RequestParam(required = false) achievementIds: List<String>?,
+    ): List<UserCardItemDto> = userCardCollectionService.listCards(user, tournamentId, seriesId, rarity, achievementIds)
 
     @GetMapping("/me/fantasy-teams")
     fun fantasyTeams(@AuthenticationPrincipal user: TelegramUser) =

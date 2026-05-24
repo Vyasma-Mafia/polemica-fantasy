@@ -6,6 +6,7 @@ import io.github.mralex1810.fantasy.entity.MarketplaceWatchFilter
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.Tournament
+import io.github.mralex1810.fantasy.repository.AchievementRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceWatchFilterRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
@@ -37,6 +38,9 @@ class MarketplaceWatchServiceTest {
 
     @Mock
     private lateinit var tournamentRepository: TournamentRepository
+
+    @Mock
+    private lateinit var achievementRepository: AchievementRepository
 
     @InjectMocks
     private lateinit var marketplaceWatchService: MarketplaceWatchService
@@ -102,13 +106,13 @@ class MarketplaceWatchServiceTest {
 
     @Test
     fun `deleteWatch throws not found when filter does not belong to user`() {
-        whenever(marketplaceWatchFilterRepository.deleteByIdAndTelegramUser_Id(77L, 1L)).thenReturn(0)
+        whenever(marketplaceWatchFilterRepository.findByIdAndTelegramUser_Id(77L, 1L)).thenReturn(null)
 
         val ex = assertThrows(ResponseStatusException::class.java) {
             marketplaceWatchService.deleteWatch(1L, 77L)
         }
 
         assertEquals(HttpStatus.NOT_FOUND, ex.statusCode)
-        verify(marketplaceWatchFilterRepository).deleteByIdAndTelegramUser_Id(77L, 1L)
+        verify(marketplaceWatchFilterRepository).findByIdAndTelegramUser_Id(77L, 1L)
     }
 }

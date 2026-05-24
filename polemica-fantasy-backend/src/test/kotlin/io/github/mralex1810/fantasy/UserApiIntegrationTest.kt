@@ -22,6 +22,8 @@ import com.jayway.jsonpath.JsonPath
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import io.github.mralex1810.fantasy.repository.MarketplaceWatchPendingRepository
+import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.Base64
@@ -36,6 +38,12 @@ class UserApiIntegrationTest {
 
     @Autowired
     private lateinit var mockMvc: MockMvc
+
+    @Autowired
+    private lateinit var marketplaceWatchPendingRepository: MarketplaceWatchPendingRepository
+
+    @Autowired
+    private lateinit var telegramUserRepository: TelegramUserRepository
 
     @Test
     fun `GET me without Authorization returns 401`() {
@@ -2251,6 +2259,223 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `GET me cards and marketplace listings filter by any selected achievement`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Achievement filter T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        fun createPlayerTemplate(polemicaUserId: Long, nickname: String): Long {
+            val playerJson = mockMvc.perform(
+                post("/api/v1/admin/tournaments/$tournamentId/players")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"polemicaUserId":$polemicaUserId,"nickname":"$nickname"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+            val templateJson = mockMvc.perform(
+                post("/api/v1/admin/card-templates")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            return Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+        }
+
+        val sniperTemplateId = createPlayerTemplate(992_101L, "AchSniper")
+        val voteTemplateId = createPlayerTemplate(992_102L, "AchVote")
+        val plainTemplateId = createPlayerTemplate(992_103L, "AchPlain")
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$sniperTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"sniper"}"""),
+        ).andExpect(status().isOk)
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$voteTemplateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"voteForBlack"}"""),
+        ).andExpect(status().isOk)
+
+        val sellerTelegramId = 889_940_001L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$sniperTemplateId,$voteTemplateId,$plainTemplateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val cardIds = JsonPath.parse(giveJson).read<List<Number>>("$[*].id").map { it.toLong() }
+
+        val sellerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$sellerTelegramId,"first_name":"AchSeller"}""",
+        )
+
+        mockMvc.perform(
+            get("/api/v1/me/cards")
+                .header("Authorization", sellerTma)
+                .param("achievementIds", "sniper")
+                .param("achievementIds", "voteForBlack"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(2)))
+            .andExpect(jsonPath("$[*].id", containsInAnyOrder(cardIds[0].toInt(), cardIds[1].toInt())))
+
+        for ((index, cardId) in cardIds.withIndex()) {
+            mockMvc.perform(
+                post("/api/v1/marketplace/listings")
+                    .header("Authorization", sellerTma)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"userCardId":$cardId,"price":${60 + index}}"""),
+            ).andExpect(status().isOk)
+        }
+
+        val viewerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":889940002,"first_name":"AchViewer"}""",
+        )
+        mockMvc.perform(
+            get("/api/v1/marketplace/listings")
+                .header("Authorization", viewerTma)
+                .param("achievementIds", "sniper")
+                .param("achievementIds", "voteForBlack"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content", hasSize<Any>(2)))
+            .andExpect(
+                jsonPath(
+                    "$.content[*].card.userCardId",
+                    containsInAnyOrder(cardIds[0].toInt(), cardIds[1].toInt()),
+                ),
+            )
+    }
+
+    @Test
+    fun `marketplace watches support achievement filters and match listings by intersection`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Watch achievement T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":992201,"nickname":"WatchAchPlayer"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$templateId/achievements")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementId":"sniper"}"""),
+        ).andExpect(status().isOk)
+
+        val watcherTelegramId = 889_950_001L
+        val otherWatcherTelegramId = 889_950_002L
+        val watcherTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$watcherTelegramId,"first_name":"WatchOne"}""",
+        )
+        val otherWatcherTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$otherWatcherTelegramId,"first_name":"WatchTwo"}""",
+        )
+
+        mockMvc.perform(
+            post("/api/v1/settings/marketplace-watches")
+                .header("Authorization", watcherTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementIds":["voteForBlack","sniper"]}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.achievements", hasSize<Any>(2)))
+            .andExpect(jsonPath("$.achievements[*].id", containsInAnyOrder("sniper", "voteForBlack")))
+
+        mockMvc.perform(
+            post("/api/v1/settings/marketplace-watches")
+                .header("Authorization", watcherTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementIds":["sniper","voteForBlack"]}"""),
+        ).andExpect(status().isConflict)
+
+        mockMvc.perform(
+            post("/api/v1/settings/marketplace-watches")
+                .header("Authorization", watcherTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementIds":["unknownAchievement"]}"""),
+        ).andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/settings/marketplace-watches")
+                .header("Authorization", otherWatcherTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"achievementIds":["findSheriff"]}"""),
+        ).andExpect(status().isOk)
+
+        val sellerTelegramId = 889_950_003L
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$sellerTelegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = JsonPath.parse(giveJson).read<Number>("$[0].id").toLong()
+        val sellerTma = "tma " + buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$sellerTelegramId,"first_name":"WatchSeller"}""",
+        )
+        mockMvc.perform(
+            post("/api/v1/marketplace/listings")
+                .header("Authorization", sellerTma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardId":$userCardId,"price":60}"""),
+        ).andExpect(status().isOk)
+
+        val watcherInternalId = telegramUserRepository.findByTelegramId(watcherTelegramId)!!.id!!
+        val otherWatcherInternalId = telegramUserRepository.findByTelegramId(otherWatcherTelegramId)!!.id!!
+        waitForPendingCount(watcherInternalId, 1)
+        waitForPendingCount(otherWatcherInternalId, 0)
+    }
+
+    @Test
     fun `marketplace transaction detail and complain endpoint work for sold listing`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tournamentJson = mockMvc.perform(
@@ -2540,6 +2765,18 @@ class UserApiIntegrationTest {
         val hashBytes = hmacSha256(secretKey, dataCheckString.toByteArray(StandardCharsets.UTF_8))
         val hashHex = hashBytes.joinToString("") { b -> "%02x".format(b) }
         return "auth_date=$authDate&user=$userEncoded&hash=$hashHex"
+    }
+
+    private fun waitForPendingCount(internalUserId: Long, expected: Int) {
+        repeat(20) {
+            val actual = marketplaceWatchPendingRepository.findAllByTelegramUser_Id(internalUserId).size
+            if (actual == expected) return
+            Thread.sleep(100)
+        }
+        val actual = marketplaceWatchPendingRepository.findAllByTelegramUser_Id(internalUserId).size
+        check(actual == expected) {
+            "Expected $expected marketplace watch pending rows for user $internalUserId, got $actual"
+        }
     }
 
     private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {

@@ -107,6 +107,7 @@ class MarketplaceService(
                 sellerId = me.id!!,
                 fantasyPlayerId = fantasyPlayer.id!!,
                 tournamentIds = tournamentIds,
+                cardTemplateId = uc.cardTemplate!!.id!!,
                 rarity = uc.cardTemplate!!.rarity,
                 price = listing.price,
                 playerName = fantasyPlayer.nickname,
@@ -301,6 +302,7 @@ class MarketplaceService(
         rarity: Rarity?,
         minPrice: Long?,
         maxPrice: Long?,
+        achievementIds: Collection<String>?,
         sortBy: String?,
         page: Int,
         size: Int,
@@ -308,6 +310,7 @@ class MarketplaceService(
         val sort = parseListingSort(sortBy)
         val pageable = PageRequest.of(page, size.coerceAtLeast(1).coerceAtMost(100), sort)
         val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
+        val normalizedAchievementIds = normalizeAchievementIdsForFilter(achievementIds)
         val viewerPackOpens =
             telegramUserRepository.findById(viewer.id!!).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
@@ -320,6 +323,8 @@ class MarketplaceService(
             rarity,
             minPrice,
             maxPrice,
+            normalizedAchievementIds.isEmpty(),
+            normalizedAchievementIds.ifEmpty { listOf("__none__") },
             pageable,
         )
         val templateIds = result.content.map { it.userCard!!.cardTemplate!!.id!! }.distinct()
@@ -430,6 +435,12 @@ class MarketplaceService(
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sortBy")
         }
     }
+
+    private fun normalizeAchievementIdsForFilter(ids: Collection<String>?): List<String> =
+        ids.orEmpty()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
 
     private fun toListingEntryDto(
         listing: MarketplaceListing,

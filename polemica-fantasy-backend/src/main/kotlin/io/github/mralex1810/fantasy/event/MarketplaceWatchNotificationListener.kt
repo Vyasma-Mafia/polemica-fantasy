@@ -27,6 +27,7 @@ class MarketplaceWatchNotificationListener(
         val matchingUserIds = marketplaceWatchFilterRepository.findMatchingUserIds(
             sellerId = event.sellerId,
             fantasyPlayerId = event.fantasyPlayerId,
+            cardTemplateId = event.cardTemplateId,
             rarity = event.rarity.name,
             price = event.price,
             tournamentIds = tournamentIds,

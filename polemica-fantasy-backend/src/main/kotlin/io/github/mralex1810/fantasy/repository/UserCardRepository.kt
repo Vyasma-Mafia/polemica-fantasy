@@ -45,6 +45,10 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
             WHERE sp.series.id = :seriesId AND sp.tournamentPlayer.fantasyPlayer.id = fp.id
         ))
         AND (:rarity IS NULL OR ct.rarity = :rarity)
+        AND (:achievementIdsEmpty = TRUE OR EXISTS (
+            SELECT 1 FROM CardTemplateAchievement cta
+            WHERE cta.cardTemplate.id = ct.id AND cta.achievement.id IN :achievementIds
+        ))
         ORDER BY uc.acquiredAt DESC
         """,
     )
@@ -53,6 +57,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("tournamentId") tournamentId: Long?,
         @Param("seriesId") seriesId: Long?,
         @Param("rarity") rarity: Rarity?,
+        @Param("achievementIdsEmpty") achievementIdsEmpty: Boolean,
+        @Param("achievementIds") achievementIds: Collection<String>,
     ): List<UserCard>
 
     @Query(

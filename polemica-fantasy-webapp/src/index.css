@@ -1748,6 +1748,10 @@ button.pf-mini-card:disabled {
   font-size: 0.92rem;
 }
 
+.pf-input[multiple] {
+  min-height: 112px;
+}
+
 .pf-view-toggle {
   display: inline-flex;
   flex-wrap: wrap;
