@@ -40,6 +40,11 @@ enum class NotificationCategory(
         enabledByDefault = true,
         description = "Отслеживание карт на маркетплейсе",
     ),
+    ONBOARDING_TIPS(
+        userToggleable = true,
+        enabledByDefault = true,
+        description = "Обучающие подсказки и новости продукта",
+    ),
     MARKETPLACE_COMPLAINT_RESOLVED(
         userToggleable = true,
         enabledByDefault = true,

@@ -28,7 +28,7 @@ Two API groups on the same backend:
 
 ## Codex Workflow
 
-- Start non-trivial tasks by reading this file plus the relevant `memory-bank/` files. For broad/product work, read `activeContext.md`, `progress.md`, `systemPatterns.md`, and `techContext.md`; for small fixes, read the narrowly relevant files first.
+- Start non-trivial tasks by reading this file plus the relevant `memory-bank/` files. For broad/product work, read `activeContext.md`, `progress.md`, `systemPatterns.md`, `techContext.md`, and the domain language files `glossary.md` / `operationalInsights.md`; for small fixes, read the narrowly relevant files first.
 - Check `git status --short` before editing. Preserve user changes and keep edits scoped to the requested feature or fix.
 - Keep backend/user/admin API contracts synchronized: Kotlin DTOs, frontend `src/api/types.ts`, API clients, and UI call sites should move together.
 - After meaningful feature, architecture, dependency, or deployment changes, append a short dated note to `memory-bank/activeContext.md` and update `memory-bank/progress.md` when status changed.

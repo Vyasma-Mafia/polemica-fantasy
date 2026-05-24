@@ -42,6 +42,84 @@ export interface BroadcastAcceptedDto {
   recipientCount: number
 }
 
+export type ProductAudience =
+  | 'ALL'
+  | 'NEVER_ACTIVATED'
+  | 'ACTION_NO_TEAM'
+  | 'AT_RISK'
+  | 'ACTIVE_CORE'
+
+export interface ProductCampaignAudienceCountDto {
+  audience: ProductAudience | string
+  rawCount: number
+  eligibleCount: number
+}
+
+export interface ProductCampaignPreviewDto extends ProductCampaignAudienceCountDto {
+  text: string
+  buttonText: string | null
+  buttonUrl: string | null
+}
+
+export interface ProductCampaignDto {
+  id: number
+  title: string
+  text: string
+  audience: ProductAudience | string
+  buttonText: string | null
+  buttonUrl: string | null
+  status: 'QUEUED' | 'SENT' | 'FAILED' | string
+  rawRecipientCount: number
+  eligibleRecipientCount: number
+  sentCount: number
+  skippedBlockedCount: number
+  skippedPreferenceCount: number
+  failedCount: number
+  createdAt: string
+  sentAt: string | null
+}
+
+export interface ReleaseNoteAdminDto {
+  id: number
+  title: string
+  body: string
+  audience: ProductAudience | string
+  minAppVersion: string | null
+  active: boolean
+  publishedAt: string
+  createdAt: string
+}
+
+export interface ProductAnalyticsSummaryDto {
+  totalUsers: number
+  botBlockedUsers: number
+  botBlockedPercent: number
+  startToFirstAction24h: number
+  startToFirstTeam7d: number
+  actionNoTeamUsers: number
+  actionNoTeamTeamSubmit7d: number
+  checklistCompletedUsers: number
+  checklistCompletedPercent: number
+}
+
+export interface ProductCampaignAnalyticsDto {
+  campaignId: number
+  title: string
+  audience: string
+  sentCount: number
+  openedCount: number
+  clickedCount: number
+  actedCount: number
+}
+
+export interface ReleaseNoteAnalyticsDto {
+  releaseNoteId: number
+  title: string
+  audience: string
+  seenCount: number
+  featureUsedCount: number
+}
+
 /** Admin user list row; cardsInSeries is null when no tournament+series filter is applied. */
 export interface AdminUserListItemDto {
   id: number

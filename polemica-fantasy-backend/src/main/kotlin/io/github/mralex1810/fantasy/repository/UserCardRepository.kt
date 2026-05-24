@@ -11,6 +11,8 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
 
     fun countByTelegramUser_IdAndSourceCardPack_Id(telegramUserId: Long, sourceCardPackId: Long): Long
 
+    fun countByTelegramUser_IdAndDeletedAtIsNull(telegramUserId: Long): Long
+
     @Query(
         """
         SELECT uc FROM UserCard uc

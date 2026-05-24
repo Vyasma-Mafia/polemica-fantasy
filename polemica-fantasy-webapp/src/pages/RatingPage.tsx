@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { fetchGlobalRating } from '../api/rating'
 import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -60,6 +61,7 @@ function RatingTableRow({ row, current }: { row: ReturnType<typeof ratingRow>; c
 
 export function RatingPage() {
   const initData = useInitData()
+  useMarkOnboardingStep('VIEW_RESULTS')
   const q = useQuery({
     queryKey: ['global-rating', initData],
     queryFn: () => fetchGlobalRating(initData!),

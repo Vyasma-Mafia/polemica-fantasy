@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { ApiError, apiGet, apiSend } from '../api/client'
 import type { BuyPackResponse, PackOpeningCard, StorePackItem, UserCardItem, UserProfile } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -13,6 +14,7 @@ import { formatUserDisplayName } from '../lib/userDisplayName'
 
 export function StorePage() {
   const initData = useInitData()
+  useMarkOnboardingStep('OPEN_STORE')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [confirmPackId, setConfirmPackId] = useState<number | null>(null)

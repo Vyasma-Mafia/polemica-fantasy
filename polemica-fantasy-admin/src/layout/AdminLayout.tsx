@@ -17,6 +17,7 @@ const allMenuItems = [
   { key: '/card-packs', label: <Link to="/card-packs">Card packs</Link> },
   { key: '/users', label: <Link to="/users">Users</Link> },
   { key: '/broadcast', label: <Link to="/broadcast">Broadcast</Link> },
+  { key: '/product-comms', label: <Link to="/product-comms">Product comms</Link> },
   { key: '/user-tools', label: <Link to="/user-tools">User tools</Link> },
   { key: '/economy', label: <Link to="/economy">Economy</Link> },
   {

@@ -28,6 +28,8 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
 
     fun findByTelegramUser_IdAndSeriesLeague_Id(telegramUserId: Long, seriesLeagueId: Long): FantasyTeam?
 
+    fun countByTelegramUser_Id(telegramUserId: Long): Long
+
     @Query(
         """
         SELECT DISTINCT ft FROM FantasyTeam ft

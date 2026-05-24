@@ -15,6 +15,7 @@ import io.github.mralex1810.fantasy.entity.FantasyTeam
 import io.github.mralex1810.fantasy.entity.FantasyTeamCard
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
+import io.github.mralex1810.fantasy.entity.OnboardingStep
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.TelegramUser
@@ -54,6 +55,7 @@ class UserFantasyTeamService(
     private val entityManager: EntityManager,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
+    private val onboardingService: OnboardingService,
 ) {
 
     @Transactional(readOnly = true)
@@ -221,6 +223,7 @@ class UserFantasyTeamService(
         attachCards(team, user, seriesId, seriesLeague, request.userCardIds)
         entityManager.flush()
         entityManager.refresh(team)
+        onboardingService.markStep(user.id!!, OnboardingStep.SUBMIT_FIRST_TEAM)
         return team.toDto()
     }
 

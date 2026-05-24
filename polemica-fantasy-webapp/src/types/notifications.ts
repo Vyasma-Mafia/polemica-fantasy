@@ -8,6 +8,9 @@ export type NotificationCategory =
   | 'SERIES_ROSTER_CHANGE'
   | 'MARKETPLACE_SALE'
   | 'MARKETPLACE_WATCH'
+  | 'ONBOARDING_TIPS'
+  | 'MARKETPLACE_COMPLAINT_RESOLVED'
+  | 'MARKETPLACE_SANCTION_APPLIED'
   | 'PAIR_BAN'
 
 export interface NotificationCategoryDto {

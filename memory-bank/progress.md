@@ -2,6 +2,19 @@
 
 ## Что реализовано
 
+### Memory bank: glossary and operational insights (май 2026)
+- [x] Добавлен `memory-bank/glossary.md` как канонический словарь: пользователь vs игрок, турнир vs соревнование Polemica, серия vs игра, `card_template` vs `user_card`, sync/scoring/finalize и остальные основные доменные сущности
+- [x] Добавлен `memory-bank/operationalInsights.md` с same-day insight по сериям: серии часто создаются в день проведения игр, поэтому админский workflow, TMA CTA, уведомления и sync не должны требовать долгого периода `UPCOMING`
+- [x] `AGENTS.md` обновлен: для broad/product work нужно читать `glossary.md` и `operationalInsights.md` вместе с остальным `memory-bank`
+
+### Anti-churn onboarding and product communication V1 (май 2026)
+- [x] **Backend data/API:** Flyway **V43** добавил `onboarding_progress`, `release_note`, `release_note_view`, `product_campaign`, `product_event`; user API — `/api/v1/onboarding`, `/api/v1/release-notes`, `/api/v1/product-events`; admin API — campaigns, release notes, analytics under `/api/v1/admin/notifications`
+- [x] **Bot `/start` 2.0:** короткое state-based меню для неизвестных/новичков/action-no-team/open-deadline пользователей; inline-кнопки `Открыть игру`, `Как начать`, `Собрать команду`, `Написать в поддержку`; support callback отвечает подсказкой
+- [x] **Contextual nudges:** hourly scheduler для no-action, action-no-team, open-deadline и after-first-team; фильтрует `bot_blocked`, preference `ONBOARDING_TIPS`, throttling max 1/day и 3 lifetime
+- [x] **TMA onboarding:** чеклист на главной, primary CTA на сбор команды для `action_no_team`, `/whats-new` с badge/read-state, auto-complete шагов через магазин/коллекцию/команду/уведомления/результаты, campaign event tracking через `product_event`
+- [x] **Admin Product comms:** страница `/product-comms` с tabs Campaigns / Release notes / Analytics; dry-run counts, preview/send, delivery report table, release-note creation/publish toggle, funnel summary
+- [x] **Проверки:** `./gradlew compileKotlin compileTestKotlin`, targeted `TelegramSupportUpdateServiceTest` + `TelegramStartMenuServiceTest`, `npm run build` для `polemica-fantasy-webapp` и `polemica-fantasy-admin` — успешно
+
 ### Backend: ban-pair без удаления карт и повторных списаний (май 2026)
 - [x] `MarketplaceAdminService.banPair` больше не удаляет и не soft-delete'ит карты при санкции пары; `user_card.deleted_at` остаётся неизменным, SOLD-листинг сохраняет статус `SOLD`
 - [x] Учтённые при бане пары SOLD-листинги маркируются через `MarketplaceListingSanction(reason = "Pair ban", adminUsername = "pair-ban:<low>:<high>")`

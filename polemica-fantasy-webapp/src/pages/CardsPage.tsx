@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { ApiError, apiGet } from '../api/client'
 import {
   cancelMarketplaceListing,
@@ -69,6 +70,7 @@ function formatMarketplaceSummary(item: MarketplaceAnalyticsSummaryItem): string
 
 export function CardsPage() {
   const initData = useInitData()
+  useMarkOnboardingStep('VIEW_COLLECTION')
   const qc = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const tournamentFromQuery = searchParams.get('tournamentId') ?? ''

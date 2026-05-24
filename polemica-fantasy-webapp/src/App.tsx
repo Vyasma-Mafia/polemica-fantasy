@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { rememberCampaign, useReleaseNotes, useTrackProductEvent } from './api/antiChurn'
 import { FantikiBalance } from './components/FantikiBalance'
 import { TopBarDisplayName } from './components/TopBarDisplayName'
 import { InitDataProvider } from './context/InitDataContext.tsx'
@@ -25,6 +27,7 @@ import { TransactionDetailPage } from './pages/TransactionDetailPage'
 import { TournamentSubscriptionsPage } from './pages/TournamentSubscriptionsPage'
 import { TournamentLeaderboardPage } from './pages/TournamentLeaderboardPage'
 import { TournamentPage } from './pages/TournamentPage'
+import { WhatsNewPage } from './pages/WhatsNewPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +36,24 @@ const queryClient = new QueryClient({
 })
 
 function Shell() {
+  const releaseNotesQ = useReleaseNotes()
+  const unseenNotes = releaseNotesQ.data?.unseenCount ?? 0
+  const location = useLocation()
+  const track = useTrackProductEvent()
+  const trackedCampaigns = useRef(new Set<string>())
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const campaignId = params.get('campaignId')
+    if (!campaignId || trackedCampaigns.current.has(campaignId)) return
+    const parsed = Number(campaignId)
+    if (!Number.isFinite(parsed)) return
+    rememberCampaign(parsed)
+    trackedCampaigns.current.add(campaignId)
+    track({ eventType: 'CAMPAIGN_OPEN', campaignId: parsed, metadata: { path: location.pathname } })
+    track({ eventType: 'CAMPAIGN_CLICK', campaignId: parsed, metadata: { path: location.pathname } })
+  }, [location.pathname, location.search, track])
+
   return (
     <div className="shell">
       <header className="top">
@@ -44,6 +65,10 @@ function Shell() {
           <div className="top__balance">
             <FantikiBalance />
           </div>
+          <NavLink to="/whats-new" className={({ isActive }) => `top__whats-new${isActive ? ' active' : ''}`}>
+            Новое
+            {unseenNotes > 0 && <span className="top__badge">{unseenNotes}</span>}
+          </NavLink>
           <NavLink
             to="/notifications"
             className={({ isActive }) => `top__notifications${isActive ? ' active' : ''}`}
@@ -93,6 +118,7 @@ function Shell() {
           <Route path="/notifications" element={<NotificationSettingsPage />} />
           <Route path="/notifications/tournaments" element={<TournamentSubscriptionsPage />} />
           <Route path="/notifications/marketplace-watches" element={<MarketplaceWatchesPage />} />
+          <Route path="/whats-new" element={<WhatsNewPage />} />
         </Routes>
       </main>
     </div>

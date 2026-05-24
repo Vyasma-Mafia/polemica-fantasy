@@ -5,6 +5,8 @@ import io.github.mralex1810.fantasy.config.TelegramProperties
 import io.github.mralex1810.fantasy.config.TelegramSupportProperties
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
+import io.github.mralex1810.fantasy.telegram.InlineKeyboardButton
+import io.github.mralex1810.fantasy.telegram.InlineKeyboardMarkup
 import io.github.mralex1810.fantasy.telegram.TelegramBotApiClient
 import io.github.mralex1810.fantasy.telegram.TelegramSupportBotIdentity
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +27,7 @@ class TelegramSupportUpdateServiceTest {
     private lateinit var relay: TelegramSupportRelayService
     private lateinit var telegramBotApiClient: TelegramBotApiClient
     private lateinit var botIdentity: TelegramSupportBotIdentity
+    private lateinit var telegramStartMenuService: TelegramStartMenuService
     private lateinit var service: TelegramSupportUpdateService
 
     @BeforeEach
@@ -37,6 +40,7 @@ class TelegramSupportUpdateServiceTest {
         relay = mock(TelegramSupportRelayService::class.java)
         telegramBotApiClient = mock(TelegramBotApiClient::class.java)
         botIdentity = mock(TelegramSupportBotIdentity::class.java)
+        telegramStartMenuService = mock(TelegramStartMenuService::class.java)
         whenever(botIdentity.botUserId()).thenReturn(BOT_ID)
         service = TelegramSupportUpdateService(
             telegramSupportProperties,
@@ -45,6 +49,7 @@ class TelegramSupportUpdateServiceTest {
             relay,
             telegramBotApiClient,
             botIdentity,
+            telegramStartMenuService,
         )
     }
 
@@ -78,7 +83,14 @@ class TelegramSupportUpdateServiceTest {
     @Test
     fun `start command sends hint only`() {
         val user = TelegramUser(telegramId = USER_TG_ID).apply { id = 5L }
+        val menu = TelegramStartMenu(
+            text = "start text",
+            replyMarkup = InlineKeyboardMarkup(
+                listOf(listOf(InlineKeyboardButton.WebApp(text = "Открыть игру", url = "https://fantasy.example"))),
+            ),
+        )
         whenever(telegramUserRepository.findByTelegramId(USER_TG_ID)).thenReturn(user)
+        whenever(telegramStartMenuService.build(USER_TG_ID)).thenReturn(menu)
         val json = """
             {"update_id":1,"message":{"message_id":1,"from":{"id":$USER_TG_ID},"chat":{"id":$USER_TG_ID,"type":"private"},"text":"/start"}}
         """.trimIndent()
@@ -86,7 +98,10 @@ class TelegramSupportUpdateServiceTest {
         verify(telegramBotApiClient).sendMessage(
             "test-token",
             USER_TG_ID,
-            TelegramSupportUpdateService.START_REPLY,
+            "start text",
+            null,
+            null,
+            menu.replyMarkup,
         )
         verify(relay, never()).ensureTopicAndForwardToForum(anyLong(), anyInt())
     }

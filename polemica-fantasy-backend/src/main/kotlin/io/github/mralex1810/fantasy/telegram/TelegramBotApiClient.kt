@@ -137,6 +137,17 @@ class TelegramBotApiClient(
         requireTelegramOk(tree, "copyMessage")
     }
 
+    fun answerCallbackQuery(botToken: String, callbackQueryId: String, text: String? = null) {
+        val body = buildMap<String, Any> {
+            put("callback_query_id", callbackQueryId)
+            if (!text.isNullOrBlank()) {
+                put("text", text)
+            }
+        }
+        val tree = apiPost(botToken, "answerCallbackQuery", body)
+        requireTelegramOk(tree, "answerCallbackQuery")
+    }
+
     private fun apiPost(botToken: String, method: String, body: Map<String, Any>): JsonNode {
         val token = requireBotToken(botToken)
         val uri = URI.create("https://api.telegram.org/bot$token/$method")

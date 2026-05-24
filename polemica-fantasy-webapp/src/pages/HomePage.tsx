@@ -1,5 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useOnboardingChecklist, useReleaseNotes, useTrackProductEvent } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import { fetchSeriesLeagues } from '../api/leagues'
 import type { SeriesLeagueInfo, SeriesOpenForTeam, UserTournament } from '../api/types'
@@ -29,6 +30,9 @@ export function HomePage() {
       enabled: !!initData && openSeriesIds.length > 0,
     })),
   })
+  const onboardingQ = useOnboardingChecklist()
+  const releaseNotesQ = useReleaseNotes()
+  const track = useTrackProductEvent()
 
   if (!initData) {
     return <MissingInitDataNotice />
@@ -78,6 +82,20 @@ export function HomePage() {
     <div className="pf-page pf-page--home">
       <h1 className="pf-home-title">Турниры</h1>
       <p className="pf-home-sub">Выберите событие, чтобы собрать команду и следить за очками.</p>
+
+      <OnboardingChecklistBlock
+        data={onboardingQ.data}
+        loading={onboardingQ.isLoading}
+        onCtaClick={(step, path) =>
+          track({
+            eventType: 'ONBOARDING_CTA_CLICK',
+            subjectType: step,
+            metadata: { path },
+          })
+        }
+      />
+
+      <WhatsNewHomeEntry unseenCount={releaseNotesQ.data?.unseenCount ?? 0} />
 
       {openSeriesQ.isError ? (
         <p className="pf-err pf-home-open-series-err">{(openSeriesQ.error as Error).message}</p>
@@ -141,5 +159,65 @@ export function HomePage() {
         </ul>
       )}
     </div>
+  )
+}
+
+function OnboardingChecklistBlock({
+  data,
+  loading,
+  onCtaClick,
+}: {
+  data: ReturnType<typeof useOnboardingChecklist>['data']
+  loading: boolean
+  onCtaClick: (step: string, path: string) => void
+}) {
+  if (loading && !data) {
+    return <section className="pf-onboarding-card pf-muted">Загрузка чеклиста…</section>
+  }
+  if (!data || data.completedCount >= data.totalCount) return null
+  const primary = data.primaryCta
+  return (
+    <section className="pf-onboarding-card" aria-labelledby="home-onboarding-heading">
+      <div className="pf-onboarding-card__head">
+        <div>
+          <h2 id="home-onboarding-heading" className="pf-section-title">
+            Стартовый чеклист
+          </h2>
+          <p className="pf-muted">
+            {data.completedCount} из {data.totalCount}
+          </p>
+        </div>
+        {primary && (
+          <Link
+            className="pf-btn pf-btn--small"
+            to={primary.ctaPath}
+            onClick={() => onCtaClick(primary.step, primary.ctaPath)}
+          >
+            {primary.ctaLabel}
+          </Link>
+        )}
+      </div>
+      <ul className="pf-onboarding-list">
+        {data.items.map((item) => (
+          <li key={item.step} className={item.completed ? 'pf-onboarding-step is-done' : 'pf-onboarding-step'}>
+            <span className="pf-onboarding-step__mark">{item.completed ? '✓' : ''}</span>
+            <div>
+              <p className="pf-onboarding-step__title">{item.title}</p>
+              <p className="pf-onboarding-step__desc">{item.description}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function WhatsNewHomeEntry({ unseenCount }: { unseenCount: number }) {
+  if (unseenCount <= 0) return null
+  return (
+    <Link className="pf-whats-new-home" to="/whats-new">
+      <span>Что нового</span>
+      <strong>{unseenCount}</strong>
+    </Link>
   )
 }

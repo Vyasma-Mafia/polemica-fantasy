@@ -7,6 +7,7 @@ import io.github.mralex1810.fantasy.dto.user.response.StorePackItemDto
 import io.github.mralex1810.fantasy.dto.user.response.StorePackRaritySlotDto
 import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.entity.OnboardingStep
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
@@ -34,6 +35,7 @@ class UserStoreService(
     private val cardValueService: CardValueService,
     private val economyConfigService: EconomyConfigService,
     private val easterEggProperties: EasterEggProperties,
+    private val onboardingService: OnboardingService,
 ) {
 
     @Transactional(readOnly = true)
@@ -121,6 +123,7 @@ class UserStoreService(
             }
         }
         val opened = cardService.openPack(user.telegramId, packId)
+        onboardingService.markStep(internalId, OnboardingStep.OPEN_PACK)
         val ids = opened.userCards.map { it.id }
         val byId = userCardRepository.findAllByIdInAndTelegramUser_Id(ids, internalId).associateBy { it.id!! }
         val templateIds = byId.values.map { it.cardTemplate!!.id!! }.distinct()

@@ -5,6 +5,7 @@ import io.github.mralex1810.fantasy.config.TelegramProperties
 import io.github.mralex1810.fantasy.config.TelegramSupportProperties
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.telegram.TelegramBotApiClient
+import io.github.mralex1810.fantasy.telegram.NotificationButtonFactory
 import io.github.mralex1810.fantasy.telegram.TelegramSupportBotIdentity
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -17,6 +18,7 @@ class TelegramSupportUpdateService(
     private val telegramSupportRelayService: TelegramSupportRelayService,
     private val telegramBotApiClient: TelegramBotApiClient,
     private val telegramSupportBotIdentity: TelegramSupportBotIdentity,
+    private val telegramStartMenuService: TelegramStartMenuService,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -30,6 +32,11 @@ class TelegramSupportUpdateService(
     }
 
     private fun processUpdateInner(root: JsonNode) {
+        val callback = root.path("callback_query")
+        if (!callback.isMissingNode && !callback.isNull) {
+            handleCallback(callback)
+            return
+        }
         val msg = root.path("message")
         if (msg.isMissingNode || msg.isNull) {
             return
@@ -66,7 +73,8 @@ class TelegramSupportUpdateService(
         }
         val text = msg.path("text").asText("").trim()
         if (text.startsWith("/start")) {
-            telegramBotApiClient.sendMessage(token, userTgId, START_REPLY)
+            val menu = telegramStartMenuService.build(userTgId)
+            telegramBotApiClient.sendMessage(token, userTgId, menu.text, replyMarkup = menu.replyMarkup)
             return
         }
         val dbUser = telegramUserRepository.findByTelegramId(userTgId)
@@ -98,9 +106,29 @@ class TelegramSupportUpdateService(
         telegramSupportRelayService.copyAdminReplyToUser(threadId, messageId)
     }
 
+    private fun handleCallback(callback: JsonNode) {
+        val token = telegramProperties.token.trim()
+        if (token.isEmpty()) {
+            return
+        }
+        val id = callback.path("id").asText("")
+        val data = callback.path("data").asText("")
+        val from = callback.path("from")
+        if (data == NotificationButtonFactory.SUPPORT_HELP_CALLBACK && from.has("id")) {
+            val userTgId = from.path("id").asLong()
+            telegramBotApiClient.sendMessage(token, userTgId, SUPPORT_HELP_REPLY)
+            if (id.isNotBlank()) {
+                telegramBotApiClient.answerCallbackQuery(token, id, "Напишите сообщение в этот чат")
+            }
+        }
+    }
+
     companion object {
         const val NOT_REGISTERED_REPLY =
             "Чтобы написать в поддержку, сначала откройте приложение Polemica Fantasy."
+
+        const val SUPPORT_HELP_REPLY =
+            "Чтобы написать в поддержку, отправьте вопрос обычным сообщением в этот чат. Ответ придёт сюда же от бота."
 
         /** Сообщение на команду /start в личке с ботом (мини-приложение + как написать в поддержку). */
         val START_REPLY: String =

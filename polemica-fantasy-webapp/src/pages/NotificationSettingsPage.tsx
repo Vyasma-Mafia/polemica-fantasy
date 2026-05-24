@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { ApiError } from '../api/client'
 import {
   useMarketplaceWatches,
@@ -22,7 +23,7 @@ const GROUPS: Array<{ title: string; categories: NotificationCategory[] }> = [
   },
   {
     title: 'Системные',
-    categories: ['ADMIN_BROADCAST', 'PAIR_BAN'],
+    categories: ['ONBOARDING_TIPS', 'ADMIN_BROADCAST', 'PAIR_BAN'],
   },
 ]
 
@@ -34,6 +35,9 @@ const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   SERIES_ROSTER_CHANGE: 'Замена карт в составе',
   MARKETPLACE_SALE: 'Продажа вашей карты',
   MARKETPLACE_WATCH: 'Отслеживание карт',
+  ONBOARDING_TIPS: 'Подсказки и новости продукта',
+  MARKETPLACE_COMPLAINT_RESOLVED: 'Решения по жалобам',
+  MARKETPLACE_SANCTION_APPLIED: 'Санкции маркетплейса',
   PAIR_BAN: 'Уведомления о санкциях',
 }
 
@@ -65,6 +69,7 @@ function watchesHint(
 
 export function NotificationSettingsPage() {
   const initData = useInitData()
+  useMarkOnboardingStep('OPEN_NOTIFICATIONS')
   const settingsQ = useNotificationSettings()
   const updateM = useUpdateNotificationSettings()
   const subscriptionsQ = useTournamentSubscriptions()

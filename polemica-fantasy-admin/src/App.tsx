@@ -9,6 +9,7 @@ import { TournamentDetailPage } from './pages/TournamentDetailPage'
 import { TournamentsPage } from './pages/TournamentsPage'
 import { EconomyPage } from './pages/EconomyPage'
 import { BroadcastPage } from './pages/BroadcastPage'
+import { ProductCommsPage } from './pages/ProductCommsPage'
 import { UserToolsPage } from './pages/UserToolsPage'
 import { UsersOverviewPage } from './pages/UsersOverviewPage'
 import { MarketplaceModerationPage } from './pages/MarketplaceModerationPage'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="card-packs" element={<CardPacksPage />} />
         <Route path="user-tools" element={<UserToolsPage />} />
         <Route path="broadcast" element={<BroadcastPage />} />
+        <Route path="product-comms" element={<ProductCommsPage />} />
         <Route path="users" element={<UsersOverviewPage />} />
         <Route path="economy" element={<EconomyPage />} />
         <Route path="marketplace-moderation" element={<MarketplaceModerationPage />} />

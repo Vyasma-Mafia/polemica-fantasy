@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import type {
   FantasyTeamDetailSlot,
@@ -38,6 +39,7 @@ export function FantasyHistoryPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>()
   const id = Number(tournamentId)
   const initData = useInitData()
+  useMarkOnboardingStep('VIEW_RESULTS')
   const [openTeam, setOpenTeam] = useState<{ seriesId: number; leagueCode: string } | null>(null)
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
   const [detailSeries, setDetailSeries] = useState<{ seriesId: number; leagueCode: string } | null>(null)

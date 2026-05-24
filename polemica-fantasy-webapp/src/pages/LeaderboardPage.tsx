@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useMarkOnboardingStep } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import { fetchLeagueLeaderboard, fetchSeriesLeagues } from '../api/leagues'
 import type { SeriesLeagueBrief, UserProfile, UserSeriesDetail } from '../api/types'
@@ -16,6 +17,7 @@ export function LeaderboardPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const id = Number(seriesId)
   const initData = useInitData()
+  useMarkOnboardingStep('VIEW_RESULTS')
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
 
