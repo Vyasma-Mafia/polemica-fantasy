@@ -11,3 +11,13 @@ data class UpdateAchievementRequest(
     val applicableRoles: List<String>? = null,
     val canAppearOnRandomCards: Boolean? = null,
 )
+
+data class AchievementStatisticsRequest(
+    /** Minimum loaded games for a fantasy player to appear in anomaly results. */
+    val minPlayerGames: Int? = null,
+    /** Minimum role-applicable games for this player + achievement pair. */
+    val minApplicableSlots: Int? = null,
+    /** Empirical-Bayes prior strength, in player-games, used to dampen small samples. */
+    val priorGames: Double? = null,
+    val maxAnomalies: Int? = null,
+)

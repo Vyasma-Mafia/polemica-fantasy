@@ -8,6 +8,7 @@ data class PlayerProfileDto(
     val user: UserPublicDto,
     val memberSince: Instant,
     val rating: PlayerRatingSnapshotDto?,
+    val seriesWins: PlayerSeriesWinsDto,
     val seriesHistory: List<PlayerSeriesResultDto>,
     val collectionSummary: PlayerCollectionSummaryDto,
     val marketplaceStats: PlayerMarketplaceStatsDto,
@@ -21,6 +22,17 @@ data class PlayerRatingSnapshotDto(
     val cardsCount: Int,
     val prizeWinnings: Long,
     val totalValue: Long,
+)
+
+data class PlayerSeriesWinsDto(
+    val total: Int,
+    val byLeague: List<PlayerLeagueWinsDto>,
+)
+
+data class PlayerLeagueWinsDto(
+    val leagueCode: String,
+    val leagueName: String,
+    val winsCount: Int,
 )
 
 data class PlayerSeriesResultDto(

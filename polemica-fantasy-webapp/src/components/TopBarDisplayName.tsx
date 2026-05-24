@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { apiGet } from '../api/client'
 import type { UserProfile } from '../api/types'
 import { useInitData } from '../context/useInitData'
@@ -21,6 +22,14 @@ export function TopBarDisplayName() {
     label = '—'
   } else {
     label = formatUserDisplayName(q.data)
+  }
+
+  if (q.data) {
+    return (
+      <Link className="top__user" to={`/players/${q.data.telegramId}`} title={label}>
+        {label}
+      </Link>
+    )
   }
 
   return (

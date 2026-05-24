@@ -97,9 +97,14 @@ a {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--pf-text-muted);
+  text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+a.top__user:hover {
+  color: var(--pf-text-heading);
 }
 
 .top__balance {
@@ -4596,6 +4601,41 @@ button.pf-mini-card:disabled {
   font-weight: 700;
   color: var(--pf-text-heading);
   font-variant-numeric: tabular-nums;
+}
+
+.pf-profile-wins {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  background: var(--pf-bg-elevated);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+}
+
+.pf-profile-wins__total,
+.pf-profile-wins__item {
+  min-width: 0;
+  text-align: center;
+}
+
+.pf-profile-wins__value {
+  display: block;
+  color: var(--pf-gold);
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-profile-wins__label {
+  display: block;
+  margin-top: 2px;
+  color: var(--pf-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 
 /* --- Social compare --- */

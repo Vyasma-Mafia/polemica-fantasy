@@ -2,11 +2,13 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.config.AppRatingProperties
 import io.github.mralex1810.fantasy.dto.user.response.PlayerCollectionSummaryDto
+import io.github.mralex1810.fantasy.dto.user.response.PlayerLeagueWinsDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerMarketplaceStatsDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerMarketplaceTradeDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerProfileDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerRatingSnapshotDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerSeriesResultDto
+import io.github.mralex1810.fantasy.dto.user.response.PlayerSeriesWinsDto
 import io.github.mralex1810.fantasy.dto.user.response.TradeType
 import io.github.mralex1810.fantasy.dto.user.response.UserPublicDto
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
@@ -44,6 +46,7 @@ class PlayerProfileService(
         val userId = user.id!!
 
         val rating = buildRatingSnapshot(userId, telegramId)
+        val seriesWins = buildSeriesWins(userId)
         val seriesHistory = buildSeriesHistory(userId)
         val collectionSummary = buildCollectionSummary(userId)
         val marketplaceStats = buildMarketplaceStats(userId)
@@ -58,10 +61,26 @@ class PlayerProfileService(
             ),
             memberSince = user.createdAt,
             rating = rating,
+            seriesWins = seriesWins,
             seriesHistory = seriesHistory,
             collectionSummary = collectionSummary,
             marketplaceStats = marketplaceStats,
             recentTrades = recentTrades,
+        )
+    }
+
+    private fun buildSeriesWins(userId: Long): PlayerSeriesWinsDto {
+        val byLeague = fantasyTeamRepository.countFinishedSeriesWinsByUserGroupedByLeague(userId)
+            .map { row ->
+                PlayerLeagueWinsDto(
+                    leagueCode = row[0] as String,
+                    leagueName = row[1] as String,
+                    winsCount = (row[2] as Number).toInt(),
+                )
+            }
+        return PlayerSeriesWinsDto(
+            total = byLeague.sumOf { it.winsCount },
+            byLeague = byLeague,
         )
     }
 

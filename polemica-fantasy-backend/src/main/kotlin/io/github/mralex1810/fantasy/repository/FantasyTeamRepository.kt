@@ -119,4 +119,32 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
         """,
     )
     fun findAllByUserIdWithSeriesAndLeague(@Param("userId") userId: Long): List<FantasyTeam>
+
+    @Query(
+        value = """
+        SELECT ranked.league_code, ranked.league_name, COUNT(*) AS wins_count
+        FROM (
+            SELECT
+                ft.telegram_user_id,
+                l.code AS league_code,
+                l.name AS league_name,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ft.series_league_id
+                    ORDER BY ft.total_score DESC NULLS LAST, ft.id ASC
+                ) AS winner_rank
+            FROM fantasy_team ft
+            JOIN series s ON s.id = ft.series_id
+            JOIN series_league sl ON sl.id = ft.series_league_id
+            JOIN league l ON l.id = sl.league_id
+            WHERE s.status = 'FINISHED'
+              AND ft.total_score IS NOT NULL
+        ) ranked
+        WHERE ranked.telegram_user_id = :userId
+          AND ranked.winner_rank = 1
+        GROUP BY ranked.league_code, ranked.league_name
+        ORDER BY ranked.league_code
+        """,
+        nativeQuery = true,
+    )
+    fun countFinishedSeriesWinsByUserGroupedByLeague(@Param("userId") userId: Long): List<Array<Any>>
 }

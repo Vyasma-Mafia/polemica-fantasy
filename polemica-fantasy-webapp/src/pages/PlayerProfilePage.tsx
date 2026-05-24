@@ -21,6 +21,11 @@ const RARITY_LABEL: Record<Rarity, string> = {
   LEGENDARY: 'Легенды',
 }
 
+const PROFILE_WIN_LEAGUES = [
+  { code: 'MAIN', fallbackName: 'Основная лига' },
+  { code: 'BUDGET', fallbackName: 'Бюджетная лига' },
+]
+
 function formatValue(n: number): string {
   return n.toLocaleString('ru-RU')
 }
@@ -49,6 +54,32 @@ function RatingSection({ profile }: { profile: PlayerProfile }) {
           <span className="pf-profile-rating__label">Всего</span>
           <span className="pf-profile-rating__value">{formatValue(r.totalValue)}</span>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function SeriesWinsSection({ profile }: { profile: PlayerProfile }) {
+  const winsByCode = new Map(profile.seriesWins.byLeague.map((league) => [league.leagueCode.toUpperCase(), league]))
+
+  return (
+    <section className="pf-section">
+      <h2 className="pf-section-title">Победы в сериях</h2>
+      <div className="pf-profile-wins">
+        <div className="pf-profile-wins__total">
+          <span className="pf-profile-wins__value">{formatValue(profile.seriesWins.total)}</span>
+          <span className="pf-profile-wins__label">Всего</span>
+        </div>
+        {PROFILE_WIN_LEAGUES.map(({ code, fallbackName }) => {
+          const league = winsByCode.get(code)
+          const wins = league?.winsCount ?? 0
+          return (
+            <div key={code} className="pf-profile-wins__item">
+              <span className="pf-profile-wins__value">{formatValue(wins)}</span>
+              <span className="pf-profile-wins__label">{leagueShortName(code, league?.leagueName ?? fallbackName)}</span>
+            </div>
+          )
+        })}
       </div>
     </section>
   )
@@ -224,6 +255,7 @@ export function PlayerProfilePage() {
       </div>
 
       <RatingSection profile={profile} />
+      <SeriesWinsSection profile={profile} />
       <SeriesHistorySection history={profile.seriesHistory} telegramId={telegramId!} />
       <CollectionSection profile={profile} />
       <MarketplaceSection profile={profile} />

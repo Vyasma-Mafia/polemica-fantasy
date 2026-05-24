@@ -491,6 +491,17 @@ export interface PlayerRatingSnapshot {
   totalValue: number
 }
 
+export interface PlayerLeagueWins {
+  leagueCode: string
+  leagueName: string
+  winsCount: number
+}
+
+export interface PlayerSeriesWins {
+  total: number
+  byLeague: PlayerLeagueWins[]
+}
+
 export interface PlayerSeriesResult {
   seriesId: number
   seriesName: string
@@ -532,6 +543,7 @@ export interface PlayerProfile {
   user: UserPublic
   memberSince: string
   rating: PlayerRatingSnapshot | null
+  seriesWins: PlayerSeriesWins
   seriesHistory: PlayerSeriesResult[]
   collectionSummary: PlayerCollectionSummary
   marketplaceStats: PlayerMarketplaceStats

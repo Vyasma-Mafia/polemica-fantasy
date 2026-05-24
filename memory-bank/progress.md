@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### TMA: победы в профиле игрока (май 2026)
+- [x] Backend `PlayerProfileDto` расширен блоком `seriesWins`: общее число побед и разбивка по лигам
+- [x] `FantasyTeamRepository` считает победы как первое место в завершённой серии/лиге (`series.status = FINISHED`, leaderboard order `total_score DESC NULLS LAST, id ASC`)
+- [x] TMA `PlayerProfilePage` показывает блок «Победы в сериях» с total, основной и бюджетной лигой
+- [x] Ник текущего пользователя в верхней панели TMA ведёт на `/players/{telegramId}`
+- [x] Проверки: `./gradlew compileKotlin` (`polemica-fantasy-backend`) и `npm run build` (`polemica-fantasy-webapp`) — успешно
+
 ### TMA: social share and compare P1 (май 2026)
 - [x] Добавлен frontend helper Telegram share links: короткие `startapp` payload для `team`/`place`/`card`/`profile`/`compareS`/`compareT`, direct Mini App link через `VITE_TMA_BOT_USERNAME` или fallback `VITE_TELEGRAM_BOT_USERNAME`, production runtime default `polemica_fantasy_bot` без short name, fallback на `t.me/share/url`
 - [x] `App.tsx` обрабатывает `start_param` / `tgWebAppStartParam` и переводит пользователя на существующие TMA routes: команда/место/карточка, профиль, series/tournament compare
@@ -394,7 +401,7 @@
 - [x] **Коллекция — модалка карты:** как в лидерборде/истории фэнтези — полный список достижений, блок «Очки в сериях» из `GET /me/fantasy-teams`, детализация «По играм серии» через `GET /me/fantasy-teams/{seriesId}/details` (селектор серии, если карта участвовала в нескольких); переработка/продление в модалке и на сетке; общий компонент разбивки очков — `ScoreBreakdownBlock` (`LeaderboardPlayerTeamPage`, `FantasyHistoryPage`, `CardsPage`)
 
 ### Статистика для баланса достижений (этап 1)
-- [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **`FantasyPlayerRepository.findAllPolemicaUserIds`**
+- [x] **`AchievementStatisticsService`** + **POST** `/api/v1/admin/achievement-statistics/collect` — выборка игр через публичный профиль (100 игр на игрока) и `getMatch`, дедуп по матчу, агрегаты по детекторам; **2026-05-24:** добавлены EV-аномалии `fantasy_player × achievement` (`globalOccurrencesPerGame`, `playerOccurrencesPerGame`, smoothing через `priorGames`, `lift`, `excessBonusPerGame`) и опциональные параметры запроса `minPlayerGames` / `minApplicableSlots` / `priorGames` / `maxAnomalies`
 - [x] Тест `AchievementStatisticsServiceTest`; исправление **`CardPackFindOrCreateTemplateIntegrationTest`** — вызов приватного метода на `AopTestUtils.getUltimateTargetObject` (иначе CGLIB-прокси с null полями)
 
 ### Отладка

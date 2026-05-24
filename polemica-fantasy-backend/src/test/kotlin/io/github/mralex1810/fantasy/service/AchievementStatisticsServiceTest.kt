@@ -22,7 +22,7 @@ class AchievementStatisticsServiceTest {
         val polemicaIntegrationService = mock(PolemicaIntegrationService::class.java)
         val gamePointsService = mock(GamePointsService::class.java)
 
-        `when`(fantasyPlayerRepository.findAllPolemicaUserIds()).thenReturn(emptyList())
+        `when`(fantasyPlayerRepository.findAll()).thenReturn(emptyList())
         val a = Achievement().apply {
             id = "sniper"
             name = "Sniper"
@@ -45,5 +45,7 @@ class AchievementStatisticsServiceTest {
         assertEquals(1, report.byAchievement.size)
         assertEquals("sniper", report.byAchievement[0].achievementId)
         assertEquals(0L, report.byAchievement[0].applicableSlots)
+        assertEquals(0L, report.totalPlayerSlots)
+        assertEquals(0, report.anomalies.size)
     }
 }
