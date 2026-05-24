@@ -65,8 +65,17 @@ function Shell() {
           <div className="top__balance">
             <FantikiBalance />
           </div>
-          <NavLink to="/whats-new" className={({ isActive }) => `top__whats-new${isActive ? ' active' : ''}`}>
-            Новое
+          <NavLink
+            to="/whats-new"
+            className={({ isActive }) => `top__whats-new${isActive ? ' active' : ''}`}
+            aria-label={unseenNotes > 0 ? `Новое: ${unseenNotes} непросмотрено` : 'Новое'}
+            title="Новое"
+          >
+            <svg className="top__news-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4.75 5.25h11.5a3 3 0 0 1 3 3v10.5H7.75a3 3 0 0 1-3-3V5.25Z" />
+              <path d="M8 9h7.5M8 12h7.5M8 15h4.25" />
+              <path d="M19.25 9.75h1.5v6a3 3 0 0 1-3 3" />
+            </svg>
             {unseenNotes > 0 && <span className="top__badge">{unseenNotes}</span>}
           </NavLink>
           <NavLink
@@ -82,8 +91,6 @@ function Shell() {
             Турниры
           </NavLink>
           <NavLink to="/cards">Коллекция</NavLink>
-          <NavLink to="/rating">Рейтинг</NavLink>
-          <NavLink to="/help">Справка</NavLink>
           <NavLink to="/marketplace">Маркетплейс</NavLink>
           <NavLink to="/store" className="nav__store">
             <span className="nav__store-icon" aria-hidden>
@@ -91,6 +98,8 @@ function Shell() {
             </span>
             Магазин
           </NavLink>
+          <NavLink to="/rating">Рейтинг</NavLink>
+          <NavLink to="/help">Справка</NavLink>
         </nav>
       </header>
       <main className="main">

@@ -124,9 +124,18 @@ a {
 
 .top__whats-new {
   position: relative;
-  padding: 0 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  width: 30px;
+  padding: 0;
+}
+
+.top__news-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .top__notifications:hover,
