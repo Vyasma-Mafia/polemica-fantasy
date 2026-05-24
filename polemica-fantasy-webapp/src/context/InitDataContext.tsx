@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { retrieveRawInitData } from '@telegram-apps/sdk'
 import { InitDataContext, type InitDataStatus } from './initDataContext'
+import { redirectShareRouteToTelegram } from '../lib/shareLinks'
 
 function initialState(): InitDataStatus {
   const dev = import.meta.env.VITE_DEV_INIT_DATA
@@ -20,6 +21,7 @@ export function InitDataProvider({ children }: { children: ReactNode }) {
       try {
         const raw = retrieveRawInitData()
         if (typeof raw !== 'string' || !raw.trim()) {
+          if (redirectShareRouteToTelegram()) return
           setState({
             initData: undefined,
             error: 'Пустая строка initData (приложение открыто не в Telegram?)',
@@ -29,6 +31,7 @@ export function InitDataProvider({ children }: { children: ReactNode }) {
         }
         setState({ initData: raw, error: null, pending: false })
       } catch (e) {
+        if (redirectShareRouteToTelegram()) return
         const message = e instanceof Error ? e.message : String(e)
         setState({ initData: undefined, error: message, pending: false })
       }

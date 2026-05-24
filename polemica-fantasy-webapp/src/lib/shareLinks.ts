@@ -17,6 +17,10 @@ type ParsedShareStart =
   | { path: string; search?: string }
   | null
 
+const PRODUCTION_WEBAPP_HOST = 'fantasy.maftourbot.ru'
+const DEFAULT_PRODUCTION_BOT_USERNAME = 'maftourbot'
+const DEFAULT_PRODUCTION_TMA_SHORT_NAME = 'fantasy'
+
 const KIND_PREFIX: Record<ShareTarget['kind'], string> = {
   team: 'team',
   place: 'place',
@@ -68,13 +72,17 @@ function botUsername(): string | null {
     import.meta.env.VITE_TELEGRAM_BOT_USERNAME ??
     ''
   const normalized = raw.trim().replace(/^@/, '')
-  return normalized || null
+  if (normalized) return normalized
+  if (window.location.hostname === PRODUCTION_WEBAPP_HOST) return DEFAULT_PRODUCTION_BOT_USERNAME
+  return null
 }
 
 function tmaShortName(): string | null {
   const raw = import.meta.env.VITE_TMA_APP_SHORT_NAME ?? ''
   const normalized = raw.trim().replace(/^\/+|\/+$/g, '')
-  return normalized || null
+  if (normalized) return normalized
+  if (window.location.hostname === PRODUCTION_WEBAPP_HOST) return DEFAULT_PRODUCTION_TMA_SHORT_NAME
+  return null
 }
 
 function routeForTarget(target: ShareTarget): ParsedShareStart {
@@ -153,16 +161,77 @@ export function readInitialShareStartParam(): string | null {
 }
 
 export function buildShareUrl(target: ShareTarget): string {
+  return buildShareUrlForTarget(target) ?? buildWebRouteUrl(target)
+}
+
+function buildShareUrlForTarget(target: ShareTarget): string | null {
   const bot = botUsername()
   const shortName = tmaShortName()
   if (bot) {
     const base = shortName ? `https://t.me/${bot}/${shortName}` : `https://t.me/${bot}`
     return `${base}?startapp=${encodeURIComponent(encodeStartParam(target))}`
   }
+  return null
+}
 
+function buildWebRouteUrl(target: ShareTarget): string {
   const route = routeForTarget(target)
   const search = route?.search ? `?${route.search}` : ''
   return `${window.location.origin}${route?.path ?? '/'}${search}`
+}
+
+export function shareTargetFromRoute(pathname: string, search: string): ShareTarget | null {
+  const params = new URLSearchParams(search)
+  const leagueCode = params.get('league') ?? 'MAIN'
+  const path = pathname.replace(/\/+$/, '') || '/'
+  const n = (value: string | undefined) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  let match = path.match(/^\/series\/(\d+)\/leaderboard\/player\/(\d+)$/)
+  if (match) {
+    const seriesId = n(match[1])
+    const telegramId = n(match[2])
+    if (seriesId == null || telegramId == null) return null
+    const userCardId = n(params.get('cardId') ?? undefined)
+    if (userCardId != null) return { kind: 'card', seriesId, telegramId, leagueCode, userCardId }
+    return { kind: 'team', seriesId, telegramId, leagueCode }
+  }
+
+  match = path.match(/^\/series\/(\d+)\/compare\/(\d+)$/)
+  if (match) {
+    const seriesId = n(match[1])
+    const telegramId = n(match[2])
+    if (seriesId == null || telegramId == null) return null
+    return { kind: 'compareS', seriesId, telegramId, leagueCode }
+  }
+
+  match = path.match(/^\/tournaments\/(\d+)\/compare\/(\d+)$/)
+  if (match) {
+    const tournamentId = n(match[1])
+    const telegramId = n(match[2])
+    if (tournamentId == null || telegramId == null) return null
+    return { kind: 'compareT', tournamentId, telegramId, leagueCode }
+  }
+
+  match = path.match(/^\/players\/(\d+)$/)
+  if (match) {
+    const telegramId = n(match[1])
+    if (telegramId == null) return null
+    return { kind: 'profile', telegramId }
+  }
+
+  return null
+}
+
+export function redirectShareRouteToTelegram(): boolean {
+  const target = shareTargetFromRoute(window.location.pathname, window.location.search)
+  if (!target) return false
+  const telegramUrl = buildShareUrlForTarget(target)
+  if (!telegramUrl) return false
+  window.location.replace(telegramUrl)
+  return true
 }
 
 export function shareToTelegram(target: ShareTarget, text: string) {

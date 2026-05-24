@@ -3,8 +3,9 @@
 ## Что реализовано
 
 ### TMA: social share and compare P1 (май 2026)
-- [x] Добавлен frontend helper Telegram share links: короткие `startapp` payload для `team`/`place`/`card`/`profile`/`compareS`/`compareT`, direct Mini App link через `VITE_TMA_BOT_USERNAME` или fallback `VITE_TELEGRAM_BOT_USERNAME`, fallback на `t.me/share/url`
+- [x] Добавлен frontend helper Telegram share links: короткие `startapp` payload для `team`/`place`/`card`/`profile`/`compareS`/`compareT`, direct Mini App link через `VITE_TMA_BOT_USERNAME` или fallback `VITE_TELEGRAM_BOT_USERNAME`, production runtime default `maftourbot/fantasy`, fallback на `t.me/share/url`
 - [x] `App.tsx` обрабатывает `start_param` / `tgWebAppStartParam` и переводит пользователя на существующие TMA routes: команда/место/карточка, профиль, series/tournament compare
+- [x] При открытии share-route в обычном браузере без Telegram initData приложение редиректит в TMA deep link, а не показывает ошибку отсутствующего initData
 - [x] Кнопки share добавлены в TMA: команда на `TeamPage` и `LeaderboardPlayerTeamPage`, место на `LeaderboardPage`/team detail, карточка только в контексте команды/серии, профиль на `PlayerProfilePage` и в глобальном рейтинге
 - [x] Добавлены compare views `/series/:seriesId/compare/:telegramId?league=...` и `/tournaments/:tournamentId/compare/:telegramId?league=...` на существующих authenticated/public API без backend-миграций и без новых privacy-моделей
 - [x] Проверка: `npm run build` (`polemica-fantasy-webapp`) — успешно; `npm run lint` всё ещё падает на ранее существующих lint-ошибках вне этой фичи
