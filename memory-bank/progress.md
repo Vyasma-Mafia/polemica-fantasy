@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### DX: production DB readonly skill (май 2026)
+- [x] Добавлен проектный skill `.codex/skills/polemica-prod-db-readonly` для безопасного чтения production PostgreSQL через VPS и контейнер `fantasy-db`
+- [x] В skill описаны read-only правила, штатный SSH/Docker Compose путь, fallback-команда и SQL-интроспекция таблиц/колонок/Flyway
+- [x] Добавлен helper `scripts/prod-db-readonly.sh`: оборачивает SQL в read-only транзакцию с `statement_timeout`/`lock_timeout`, отключает pager и блокирует очевидные write/maintenance SQL и psql meta-команды
+- [x] Проверки: `bash -n` helper-скрипта, `--help`, блокировка `delete from telegram_user`; `quick_validate.py` не запущен из-за отсутствующего локального Python-модуля `yaml`
+
 ### TMA: победы в профиле игрока (май 2026)
 - [x] Backend `PlayerProfileDto` расширен блоком `seriesWins`: общее число побед и разбивка по лигам
 - [x] `FantasyTeamRepository` считает победы как первое место в завершённой серии/лиге (`series.status = FINISHED`, leaderboard order `total_score DESC NULLS LAST, id ASC`)
