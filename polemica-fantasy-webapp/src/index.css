@@ -4695,7 +4695,29 @@ button.pf-mini-card:disabled {
 }
 
 .pf-compare-table {
-  min-width: 430px;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.pf-compare-table th:first-child,
+.pf-compare-table td:first-child {
+  width: 48%;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-compare-table th:not(:first-child),
+.pf-compare-table td:not(:first-child) {
+  width: 26%;
+  max-width: 26%;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.pf-compare-table .pf-rating__num {
+  font-size: clamp(0.8rem, 3.6vw, 0.88rem);
 }
 
 @media (max-width: 560px) {

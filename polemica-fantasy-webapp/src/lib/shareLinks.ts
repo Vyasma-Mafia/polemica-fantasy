@@ -19,7 +19,6 @@ type ParsedShareStart =
 
 const PRODUCTION_WEBAPP_HOST = 'fantasy.maftourbot.ru'
 const DEFAULT_PRODUCTION_BOT_USERNAME = 'polemica_fantasy_bot'
-const DEFAULT_PRODUCTION_TMA_SHORT_NAME = 'fantasy'
 
 const KIND_PREFIX: Record<ShareTarget['kind'], string> = {
   team: 'team',
@@ -81,7 +80,6 @@ function tmaShortName(): string | null {
   const raw = import.meta.env.VITE_TMA_APP_SHORT_NAME ?? ''
   const normalized = raw.trim().replace(/^\/+|\/+$/g, '')
   if (normalized) return normalized
-  if (window.location.hostname === PRODUCTION_WEBAPP_HOST) return DEFAULT_PRODUCTION_TMA_SHORT_NAME
   return null
 }
 
