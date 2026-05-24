@@ -802,10 +802,87 @@ Admin:
 
 ---
 
-## 16. Открытые вопросы
+## 16. Production backfill estimate
+
+Снимок ниже посчитан по production DB на **2026-05-25** read-only запросами через `polemica-prod-db-readonly`. Это не статичная продуктовая истина: перед релизом достижений dry-run нужно повторить.
+
+Важный вывод: текущий V1 seed с полными retroactive fantiki-наградами создает слишком большую потенциальную разовую выдачу. Если все пользователи заберут уже выполненные награды, верхняя оценка по текущему production snapshot: **343 695₣**.
+
+Разбивка потенциальной мгновенной выдачи:
+
+| Блок | Potential ₣ liability |
+|------|-----------------------|
+| Участие + бюджет | 77 505₣ |
+| Результаты | 45 725₣ |
+| Коллекция | 123 200₣ |
+| Marketplace | 30 435₣ |
+| Паки и апгрейды | 66 830₣ |
+| Social/from-launch | 0₣ |
+| **Итого** | **343 695₣** |
+
+### 16.1 Instant completion by achievement
+
+| Code | История | Instant users | Potential ₣ |
+|------|---------|---------------|-------------|
+| `team_submit_1` | `RETROACTIVE_CUMULATIVE` | 438 | 4 380 |
+| `team_submit_5` | `RETROACTIVE_CUMULATIVE` | 313 | 7 825 |
+| `team_submit_15` | `RETROACTIVE_CUMULATIVE` | 240 | 12 000 |
+| `team_submit_30` | `RETROACTIVE_CUMULATIVE` | 169 | 16 900 |
+| `dual_league_1` | `RETROACTIVE_CUMULATIVE` | 285 | 7 125 |
+| `dual_league_10` | `RETROACTIVE_CUMULATIVE` | 134 | 10 050 |
+| `budget_team_1` | `RETROACTIVE_CUMULATIVE` | 290 | 2 900 |
+| `budget_team_5` | `RETROACTIVE_CUMULATIVE` | 191 | 4 775 |
+| `budget_team_15` | `RETROACTIVE_CUMULATIVE` | 108 | 8 100 |
+| `budget_team_30` | `RETROACTIVE_CUMULATIVE` | 23 | 3 450 |
+| `budget_win_1` | `RETROACTIVE_CUMULATIVE` | 31 | 2 325 |
+| `budget_top10_5` | `RETROACTIVE_CUMULATIVE` | 135 | 6 750 |
+| `series_win_1` | `RETROACTIVE_CUMULATIVE` | 78 | 5 850 |
+| `series_win_3` | `RETROACTIVE_CUMULATIVE` | 9 | 900 |
+| `series_win_10` | `RETROACTIVE_CUMULATIVE` | 0 | 0 |
+| `top3_5` | `RETROACTIVE_CUMULATIVE` | 14 | 1 050 |
+| `top10_10` | `RETROACTIVE_CUMULATIVE` | 206 | 15 450 |
+| `top_quarter_10` | `RETROACTIVE_CUMULATIVE` | 134 | 13 400 |
+| `cards_total_10` | `CURRENT_STATE` | 540 | 13 500 |
+| `cards_total_30` | `CURRENT_STATE` | 453 | 33 975 |
+| `cards_total_100` | `CURRENT_STATE` | 104 | 15 600 |
+| `first_epic` | `CURRENT_STATE` | 554 | 13 850 |
+| `first_legendary` | `CURRENT_STATE` | 189 | 14 175 |
+| `first_skin_card` | `CURRENT_STATE` | 182 | 9 100 |
+| `same_player_3_rarities` | `CURRENT_STATE` | 230 | 23 000 |
+| `market_buy_1` | `RETROACTIVE_CUMULATIVE` | 259 | 2 590 |
+| `market_buy_5` | `RETROACTIVE_CUMULATIVE` | 134 | 6 700 |
+| `market_sell_1` | `RETROACTIVE_CUMULATIVE` | 215 | 2 150 |
+| `market_sell_5` | `RETROACTIVE_CUMULATIVE` | 110 | 5 500 |
+| `market_watch_1` | `CURRENT_STATE` | 37 | 370 |
+| `market_unique_counterparties_5` | `RETROACTIVE_CUMULATIVE` | 175 | 13 125 |
+| `pack_open_1` | `RETROACTIVE_CUMULATIVE` | 558 | 5 580 |
+| `pack_open_5` | `RETROACTIVE_CUMULATIVE` | 484 | 12 100 |
+| `pack_open_15` | `RETROACTIVE_CUMULATIVE` | 212 | 15 900 |
+| `pack_open_30` | `RETROACTIVE_CUMULATIVE` | 34 | 5 100 |
+| `pack_epic_drop_1` | `CURRENT_STATE` | 553 | 13 825 |
+| `legendary_upgrade_1` | `RETROACTIVE_CUMULATIVE` | 191 | 14 325 |
+| `crafted_legendary_3` | `RETROACTIVE_CUMULATIVE` | 55 | 0 |
+| `share_profile_1` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+| `share_team_1` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+| `compare_open_1` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+| `view_public_profile_5` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+| `secret_first_frame` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+| `secret_full_showcase` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
+
+### 16.2 Launch payout recommendation
+
+Do not ship the current seed with full retroactive fantiki claim enabled. Recommended policy for V1 launch:
+
+1. Retroactive completion should unlock achievement status, badges and profile frames immediately.
+2. Fantiki for retroactive completions should be either disabled, capped, or moved to future post-launch completions.
+3. If retroactive fantiki remain enabled, add a hard per-user launch cap and show the total potential liability in admin dry-run before enabling claim.
+4. High-volume `CURRENT_STATE` achievements (`cards_total_*`, `first_epic`, `pack_epic_drop_1`) are the first candidates to become cosmetic-only for retroactive completion.
+5. Keep `FROM_ACHIEVEMENTS_LAUNCH` social achievements unchanged: they already have zero launch liability.
+
+## 17. Открытые вопросы
 
 1. Финальные названия, иконки, цвета и точные cosmetic rewards для seed-каталога V1.
 2. Нужен ли отдельный каталог `profile_frame` или достаточно `user_cosmetic_unlock` с metadata в `achievement_reward`.
 3. Делать ли card skin unlock применяемым к конкретной карте в V1 или отложить до V2.
 4. Показывать ли `COMPLETED_UNCLAIMED` достижения в публичном профиле до claim. Рекомендация: не показывать в featured до claim, но считать completed в личной статистике.
-5. Нужно ли ограничить общий payout backfill на пользователя на старте.
+5. Какую launch payout policy выбрать: no retroactive fantiki, per-user cap, category cap или отдельные награды только за будущие completions.
