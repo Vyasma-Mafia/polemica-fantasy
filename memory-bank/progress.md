@@ -3,12 +3,20 @@
 ## Что реализовано
 
 ### Design: система пользовательских достижений (май 2026)
-- [x] Добавлен `docs/features/DESIGN-ACHIEVEMENTS.md` с V1-рамкой: достижения как витрина публичного профиля, автоматический прогресс, claim-based награды и backfill существующих данных
+- [x] Все ранее dormant/future достижения включены и подключены к реальному прогрессу: marketplace buy/sell/watch/unique counterparties, social share/profile/compare/view public profile, legendary upgrade 1/3
+- [x] Backend future achievements: Flyway **V48** добавил `user_legendary_upgrade_event` и включает 12 definitions для существующих DB; V46 seed для fresh DB теперь включает все 42 definitions; evaluators учитывают только post-launch факты, SOLD без sanctions, product events и timestamped legendary upgrade facts
+- [x] TMA future achievements: share profile/team/place, compare views и открытие публичного профиля отправляют product events, после которых инвалидируется achievements cache
+- [x] Профильные рамки достижений расширены на публичные списки: `user.profileFrameCode` добавлен в user snippets глобального рейтинга и лидербордов, TMA рисует компактную обводку имени в rating/leaderboard rows и pinned rows
+- [x] Реализован Stage 3 Admin для пользовательских достижений: admin list/edit metadata/rewards, aggregate stats, dry-run UI, инвариант `tracking_started_at` при первом включении dormant rows, без новых marketplace/social/legendary evaluators
+- [x] Реализован Stage 1 backend+TMA slice пользовательских достижений: Flyway **V46** schema/seed на 42 определения (30 enabled visible + 12 dormant disabled), catalog/claim API, admin dry-run с `instantCompleted=0`/`instantFantikiLiability=0`, post-commit progress events, lock-safe claim, `ACHIEVEMENT_REWARD`, pack-open fact table, `fantasy_team.created_at`, `series.finalized_at`, минимальная TMA `/achievements`
+- [x] Stage 1 evaluators включают participation, BUDGET, results, collection, packs; dormant marketplace/social/legendary-upgrade definitions seeded but hidden/disabled
+- [x] Проверки Stage 1: targeted `AchievementStage1IntegrationTest` — успешно; `cd polemica-fantasy-backend && ./gradlew compileKotlin compileTestKotlin` — успешно; `cd polemica-fantasy-webapp && npm run build` — успешно; `cd polemica-fantasy-admin && npm run build` — успешно; `./scripts/codex-check.sh quick` — успешно
+- [x] Добавлен `docs/features/DESIGN-ACHIEVEMENTS.md` с V1-рамкой: достижения как витрина публичного профиля, автоматический прогресс, claim-based награды и launch baseline без выдачи за старые действия
 - [x] Термины разведены: `perk` остаётся механикой карты/скоринга, `achievement` используется для пользовательского мета-прогресса
 - [x] Продуктовые ограничения зафиксированы: награды только экономика/косметика, без бонусов к скорингу, uses, силе карт или правилам лиг
 - [x] В дизайн включен явный seed-каталог V1: 42 основных достижения + 2 optional secret по категориям участие, бюджетная лига, результаты, коллекция, marketplace, паки/апгрейды, социальность и особые достижения
-- [x] Зафиксирована политика истории для backfill: `CURRENT_STATE` (например, 100 активных карт выполняется сразу), `RETROACTIVE_CUMULATIVE` (например, старые BUDGET-команды засчитываются), `FROM_ACHIEVEMENTS_LAUNCH` (например, social/share события)
-- [x] По production DB snapshot на 2026-05-25 посчитан instant completion по каждому achievement; полный retroactive fantiki claim по текущему seed даёт potential launch liability **343 695₣**, поэтому дизайн требует отдельную launch payout policy перед реализацией claim
+- [x] Зафиксирована политика истории для V1 seed: все достижения запускаются как `FROM_ACHIEVEMENTS_LAUNCH`; `CURRENT_STATE` и `RETROACTIVE_CUMULATIVE` оставлены только как future-only технические policy после отдельной оценки экономики
+- [x] По production DB snapshot на 2026-05-25 посчитан rejected instant completion: retroactive/current-state вариант дал бы potential launch liability **343 695₣**, поэтому V1 seed требует `0₣` instant payout на dry-run
 - [x] Зафиксированы осторожные вилки fantiki-наград: малые 10-25, средние 30-75, длинные цепочки 100-200, редкие исключения до 250
 
 ### Backend+TMA+admin: переименование достижений в перки (май 2026)
@@ -519,6 +527,14 @@
 - [x] UI: тёмная тема, градиентные CTA, карточки по редкости (фото игрока с fallback на арт шаблона, цветная рамка по редкости в коллекции/команде/истории фэнтези), `PageHeader` / бейджи статусов
 - [x] TanStack Query, React Router, proxy `/api` в `vite.config.ts`
 - [x] **Agent B7:** анимация открытия пака — `components/PackOpening.tsx` + стили `pf-pack-open-*` в `index.css`; интеграция в `StorePage` (имя пака из кэша query), кнопка «В коллекцию» → `/cards`
+- [x] **Achievements Stage 2 profile showcase (2026-05-25):** публичный профиль показывает `achievementSummary`, selected `profileFrame`, ordered `featuredAchievements`, `nextAchievement`; `/profile-customization` позволяет выбрать unlocked `PROFILE_FRAME` и до 5 claimed public badges с reorder. Hooks: `useProfileCustomization`, `useUpdateProfileCustomization`.
+
+### Backend (Achievements Stage 2 — Profile Showcase)
+- [x] Flyway `V47__profile_showcase.sql`: `user_profile_customization`, `user_profile_featured_achievement`, unique `(telegram_user_id, display_order)`.
+- [x] `ProfileCustomizationService` + `ProfileCustomizationController`: read/update profile frame and featured badges, validates `PROFILE_FRAME` unlocks, claimed public achievements, duplicates/max count, and does delete + `flush()` before reorder inserts.
+- [x] `PlayerProfileService` composes public achievement showcase and enforces hidden/private exclusion, stale frame nulling, disabled public featured visibility, and deterministic next-achievement ranking.
+- [x] Integration test: `AchievementStage2ProfileShowcaseIntegrationTest` covers customization read/write validation, public rendering, next achievement, hidden rejection, stale frame null, and reorder collision safety.
+- [x] Verification: `./gradlew test --rerun-tasks --tests "io.github.mralex1810.fantasy.AchievementStage2ProfileShowcaseIntegrationTest"`, `./gradlew compileKotlin compileTestKotlin --rerun-tasks`, `polemica-fantasy-webapp npm run build`, and `./scripts/codex-check.sh quick`.
 
 ### Frontend (Admin)
 - [x] Проект `polemica-fantasy-admin/` (Vite + React 19 + TS + Ant Design 6 + TanStack Query + React Router 7)

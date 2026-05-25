@@ -8,11 +8,16 @@ import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.entity.UserLegendaryUpgradeEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import io.github.mralex1810.fantasy.repository.UserLegendaryUpgradeEventRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -31,6 +36,8 @@ class LegendaryUpgradeService(
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
     private val easterEggProperties: EasterEggProperties,
+    private val userLegendaryUpgradeEventRepository: UserLegendaryUpgradeEventRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional(readOnly = true)
@@ -47,6 +54,8 @@ class LegendaryUpgradeService(
 
     @Transactional
     fun upgrade(user: TelegramUser, userCardId: Long, perkId: String): LegendaryUpgradeResponseDto {
+        userCardRepository.findByIdAndTelegramUser_IdForUpdate(userCardId, user.id!!)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplatePerks(userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.cardTemplate!!.rarity != Rarity.EPIC) {
@@ -103,6 +112,15 @@ class LegendaryUpgradeService(
         uc.usesRemaining += 1
         uc.craftedBy = user
         userCardRepository.save(uc)
+        userLegendaryUpgradeEventRepository.save(
+            UserLegendaryUpgradeEvent(
+                telegramUser = user,
+                userCard = uc,
+            ),
+        )
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.LEGENDARY_UPGRADE, setOf(internalId)),
+        )
 
         val easterEgg = buildLegendaryEasterEggIfEligible(
             fantasyPlayerId = fantasyPlayerId,

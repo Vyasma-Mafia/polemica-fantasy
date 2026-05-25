@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
+import { useTrackProductEvent } from '../api/antiChurn'
+import { apiGet } from '../api/client'
 import { fetchPlayerProfile } from '../api/playerProfile'
-import type { PlayerMarketplaceTrade, PlayerProfile, PlayerSeriesResult, Rarity } from '../api/types'
+import type { PlayerMarketplaceTrade, PlayerNextAchievement, PlayerProfile, PlayerSeriesResult, Rarity, UserProfile } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { SeriesStatusBadge } from '../components/StatusBadge'
@@ -28,6 +31,11 @@ const PROFILE_WIN_LEAGUES = [
 
 function formatValue(n: number): string {
   return n.toLocaleString('ru-RU')
+}
+
+function nextAchievementPercent(achievement: PlayerNextAchievement): number {
+  if (achievement.targetValue <= 0) return 0
+  return Math.min(100, Math.round((achievement.progressValue / achievement.targetValue) * 100))
 }
 
 function RatingSection({ profile }: { profile: PlayerProfile }) {
@@ -214,12 +222,28 @@ export function PlayerProfilePage() {
   const location = useLocation()
   const tgId = Number(telegramId)
   const initData = useInitData()
+  const track = useTrackProductEvent()
 
   const q = useQuery({
     queryKey: ['player-profile', tgId, initData],
     queryFn: () => fetchPlayerProfile(tgId, initData!),
     enabled: !!initData && Number.isFinite(tgId),
   })
+  const meQ = useQuery({
+    queryKey: ['me', initData],
+    queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
+    enabled: !!initData,
+  })
+  const profileTelegramId = q.data?.user.telegramId
+
+  useEffect(() => {
+    if (!profileTelegramId) return
+    track({
+      eventType: 'PUBLIC_PROFILE_VIEW',
+      subjectType: 'PROFILE',
+      subjectId: profileTelegramId,
+    })
+  }, [profileTelegramId, track])
 
   if (!initData) return <MissingInitDataNotice />
   if (q.isLoading) return <p className="pf-loading">Загрузка…</p>
@@ -228,6 +252,7 @@ export function PlayerProfilePage() {
   const profile = q.data!
   const name = formatUserDisplayName(profile.user)
   const username = profile.user.username ? `@${profile.user.username}` : null
+  const isOwnProfile = meQ.data?.telegramId === profile.user.telegramId
 
   return (
     <div className="pf-page">
@@ -238,16 +263,56 @@ export function PlayerProfilePage() {
         <p className="pf-profile-header__since">
           Участник с {formatDateShort(new Date(profile.memberSince))}
         </p>
+        <div className={`pf-profile-frame ${profile.profileFrame ? `pf-profile-frame--${profile.profileFrame.code}` : ''}`}>
+          <div className="pf-profile-showcase">
+            <div className="pf-profile-showcase__summary">
+              <strong>{profile.achievementSummary.claimed}</strong>
+              <span>из {profile.achievementSummary.totalVisible}</span>
+            </div>
+            <div className="pf-profile-showcase__badges">
+              {profile.featuredAchievements.map((achievement) => (
+                <span
+                  key={achievement.code}
+                  className={`pf-profile-badge pf-profile-badge--${rarityClass(achievement.rarity)}`}
+                  style={achievement.accentColor ? { borderColor: achievement.accentColor } : undefined}
+                >
+                  {achievement.title}
+                </span>
+              ))}
+            </div>
+          </div>
+          {profile.nextAchievement ? (
+            <div className="pf-profile-next">
+              <span>{profile.nextAchievement.title}</span>
+              <div className="pf-profile-next__bar">
+                <span style={{ width: `${nextAchievementPercent(profile.nextAchievement)}%` }} />
+              </div>
+              <small>
+                {profile.nextAchievement.progressValue} / {profile.nextAchievement.targetValue}
+              </small>
+            </div>
+          ) : null}
+        </div>
         <div className="pf-share-row">
+          {isOwnProfile ? (
+            <Link to="/profile-customization" className="pf-btn pf-btn--small">
+              Настроить витрину
+            </Link>
+          ) : null}
           <button
             type="button"
             className="pf-btn pf-btn--small pf-btn--outline"
-            onClick={() =>
+            onClick={() => {
+              track({
+                eventType: 'SHARE_PROFILE',
+                subjectType: 'PROFILE',
+                subjectId: profile.user.telegramId,
+              })
               shareToTelegram(
                 { kind: 'profile', telegramId: profile.user.telegramId },
                 `Профиль ${name} в Polemica Fantasy`,
               )
-            }
+            }}
           >
             Поделиться профилем
           </button>

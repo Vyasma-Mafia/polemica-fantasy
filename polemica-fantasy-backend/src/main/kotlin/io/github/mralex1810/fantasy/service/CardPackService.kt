@@ -19,6 +19,9 @@ import io.github.mralex1810.fantasy.entity.CardTemplatePerk
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.entity.UserCardPackOpenEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.CardPackPerkRepository
 import io.github.mralex1810.fantasy.repository.CardPackPlayerRepository
@@ -32,8 +35,11 @@ import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackOpenCountRepository
+import io.github.mralex1810.fantasy.repository.UserCardPackOpenEventRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
@@ -55,10 +61,13 @@ class CardPackService(
     private val cardTemplatePerkRepository: CardTemplatePerkRepository,
     private val userCardRepository: UserCardRepository,
     private val userCardPackOpenCountRepository: UserCardPackOpenCountRepository,
+    private val userCardPackOpenEventRepository: UserCardPackOpenEventRepository,
     private val userService: UserService,
     private val telegramUserRepository: TelegramUserRepository,
     private val economyConfigService: EconomyConfigService,
     private val userCardOwnershipService: UserCardOwnershipService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
+    private val jdbcTemplate: JdbcTemplate,
 ) {
 
     private val random = Random()
@@ -248,7 +257,7 @@ class CardPackService(
             } else {
                 perkRepository.findAllByCanAppearOnRandomCardsTrueOrderById()
             }
-        val now = Instant.now()
+        val now = jdbcTemplate.queryForObject("SELECT clock_timestamp()", java.sql.Timestamp::class.java)!!.toInstant()
         val drawn = mutableListOf<UserCard>()
         pack.rarityConfigs.forEach { cfg ->
             repeat(cfg.cardsCount) {
@@ -270,8 +279,18 @@ class CardPackService(
                 drawn.add(saved)
             }
         }
+        userCardPackOpenEventRepository.save(
+            UserCardPackOpenEvent(
+                telegramUser = user,
+                cardPack = pack,
+                openedAt = now,
+            ),
+        )
         userCardPackOpenCountRepository.incrementOpenCount(user.id!!, packId)
         telegramUserRepository.incrementPackOpensCount(user.id!!)
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.PACK_OPENED, setOf(user.id!!)),
+        )
         return OpenPackResultDto(userCards = drawn.map { it.toUserCardDto() })
     }
 

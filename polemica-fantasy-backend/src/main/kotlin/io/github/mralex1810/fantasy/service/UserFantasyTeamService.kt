@@ -19,6 +19,8 @@ import io.github.mralex1810.fantasy.entity.OnboardingStep
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
@@ -31,6 +33,7 @@ import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import jakarta.persistence.EntityManager
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -56,6 +59,7 @@ class UserFantasyTeamService(
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
     private val onboardingService: OnboardingService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional(readOnly = true)
@@ -212,11 +216,13 @@ class UserFantasyTeamService(
         }
         val series = seriesLeague.series!!
         assertDeadline(series.teamDeadline)
+        val now = Instant.now()
         val team = FantasyTeam(
             telegramUser = user,
             series = series,
             seriesLeague = seriesLeague,
-            submittedAt = Instant.now(),
+            submittedAt = now,
+            createdAt = now,
             totalScore = null,
         )
         fantasyTeamRepository.save(team)
@@ -224,6 +230,9 @@ class UserFantasyTeamService(
         entityManager.flush()
         entityManager.refresh(team)
         onboardingService.markStep(user.id!!, OnboardingStep.SUBMIT_FIRST_TEAM)
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.TEAM_CHANGED, setOf(user.id!!)),
+        )
         return team.toDto()
     }
 
@@ -249,6 +258,9 @@ class UserFantasyTeamService(
         attachCards(team, user, seriesId, seriesLeague, request.userCardIds)
         entityManager.flush()
         entityManager.refresh(team)
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.TEAM_CHANGED, setOf(user.id!!)),
+        )
         return team.toDto()
     }
 

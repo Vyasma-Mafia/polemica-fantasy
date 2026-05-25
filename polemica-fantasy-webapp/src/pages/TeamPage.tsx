@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { useTrackProductEvent } from '../api/antiChurn'
 import { ApiError, apiGet } from '../api/client'
 import { fetchSeriesLeagues, submitLeagueTeam, updateLeagueTeam } from '../api/leagues'
 import { cancelMarketplaceListing } from '../api/marketplace'
@@ -39,6 +40,7 @@ export function TeamPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initData = useInitData()
   const qc = useQueryClient()
+  const track = useTrackProductEvent()
   const fromHome = (location.state as { fromHome?: boolean } | null)?.fromHome === true
   const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
 
@@ -331,7 +333,13 @@ export function TeamPage() {
             <button
               type="button"
               className="pf-btn pf-btn--small pf-btn--outline"
-              onClick={() =>
+              onClick={() => {
+                track({
+                  eventType: 'SHARE_TEAM',
+                  subjectType: 'SERIES_TEAM',
+                  subjectId: sid,
+                  metadata: { leagueCode: activeLeagueCode, telegramId: meQ.data.telegramId },
+                })
                 shareToTelegram(
                   {
                     kind: 'team',
@@ -341,7 +349,7 @@ export function TeamPage() {
                   },
                   `Моя команда в ${s.name}, ${activeLeagueName}: ${submittedTeam.totalScore != null ? `${submittedTeam.totalScore.toFixed(2)} очков` : 'состав отправлен'}`,
                 )
-              }
+              }}
             >
               Поделиться командой
             </button>

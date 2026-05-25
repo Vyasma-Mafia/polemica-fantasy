@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useTrackProductEvent } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import { fetchLeagueLeaderboard } from '../api/leagues'
 import type {
@@ -43,6 +44,7 @@ export function LeaderboardPlayerTeamPage() {
   const { seriesId, telegramId } = useParams<{ seriesId: string; telegramId: string }>()
   const sid = Number(seriesId)
   const initData = useInitData()
+  const track = useTrackProductEvent()
   const [searchParams] = useSearchParams()
   const leagueCode = defaultLeagueCode(searchParams.get('league'))
   const requestedCardId = Number(searchParams.get('cardId'))
@@ -156,12 +158,18 @@ export function LeaderboardPlayerTeamPage() {
         <button
           type="button"
           className="pf-btn pf-btn--small pf-btn--outline"
-          onClick={() =>
+          onClick={() => {
+            track({
+              eventType: 'SHARE_TEAM',
+              subjectType: 'SERIES_TEAM',
+              subjectId: sid,
+              metadata: { leagueCode, telegramId: team.owner.telegramId },
+            })
             shareToTelegram(
               { kind: 'team', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
               `Команда ${ownerLabel} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)}: ${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
             )
-          }
+          }}
         >
           Поделиться командой
         </button>
@@ -169,12 +177,18 @@ export function LeaderboardPlayerTeamPage() {
           <button
             type="button"
             className="pf-btn pf-btn--small pf-btn--outline"
-            onClick={() =>
+            onClick={() => {
+              track({
+                eventType: 'SHARE_TEAM',
+                subjectType: 'SERIES_PLACE',
+                subjectId: sid,
+                metadata: { leagueCode, telegramId: team.owner.telegramId },
+              })
               shareToTelegram(
                 { kind: 'place', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
                 `${ownerLabel}: #${rank} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)} (${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'})`,
               )
-            }
+            }}
           >
             Поделиться местом
           </button>

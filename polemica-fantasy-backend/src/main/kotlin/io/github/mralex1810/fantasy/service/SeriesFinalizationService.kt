@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.event.LeagueResult
 import io.github.mralex1810.fantasy.event.SeriesFinalizedNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesFinalizedRecipient
@@ -16,6 +18,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import java.time.Instant
 
 @Service
 class SeriesFinalizationService(
@@ -105,6 +108,7 @@ class SeriesFinalizationService(
         }
         series.status = SeriesStatus.FINISHED
         series.finalized = true
+        series.finalizedAt = Instant.now()
         seriesRepository.save(series)
 
         val notificationRecipients = leagueResultsByTelegramId.entries.map { (telegramId, leagueResults) ->
@@ -122,6 +126,12 @@ class SeriesFinalizationService(
                 tournamentName = tournamentName,
                 seriesName = seriesName,
                 recipients = notificationRecipients,
+            ),
+        )
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(
+                type = AchievementProgressEventType.SERIES_FINALIZED,
+                internalTelegramUserIds = internalIdByTelegramId.values.toSet(),
             ),
         )
         return SeriesFinalizationResultDto(

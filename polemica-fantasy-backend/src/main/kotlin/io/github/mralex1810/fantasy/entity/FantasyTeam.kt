@@ -46,6 +46,9 @@ class FantasyTeam(
     @Column(name = "submitted_at", nullable = false)
     var submittedAt: Instant = Instant.now(),
 
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now(),
+
     @OneToMany(mappedBy = "fantasyTeam")
     var cards: MutableList<FantasyTeamCard> = mutableListOf(),
 )

@@ -5,8 +5,8 @@ import { fetchGlobalRating } from '../api/rating'
 import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { UserFrameName } from '../components/UserFrameName'
 import { useInitData } from '../context/useInitData'
-import { shareToTelegram } from '../lib/shareLinks'
 import { formatUserDisplayName } from '../lib/userDisplayName'
 import type { RatingEntry } from '../api/types'
 
@@ -16,11 +16,21 @@ function formatValue(n: number): string {
   return n.toLocaleString('ru-RU')
 }
 
-function ratingRow(e: RatingEntry): { rank: number; telegramId: number; name: string; f: string; c: string; p: string; t: string } {
+function ratingRow(e: RatingEntry): {
+  rank: number
+  telegramId: number
+  name: string
+  profileFrameCode: string | null
+  f: string
+  c: string
+  p: string
+  t: string
+} {
   return {
     rank: e.rank,
     telegramId: e.user.telegramId,
     name: formatUserDisplayName(e.user),
+    profileFrameCode: e.user.profileFrameCode,
     f: formatValue(e.fantikiBalance),
     c: formatValue(e.cardsValue),
     p: formatValue(e.prizeWinnings),
@@ -39,21 +49,9 @@ function RatingTableRow({
     <tr className={current ? 'pf-rating-row pf-rating-row--current' : 'pf-rating-row'}>
       <td className="pf-rating__cell pf-rating__cell--rank">#{row.rank}</td>
       <td className="pf-rating__cell pf-rating__cell--name">
-        <Link to={`/players/${row.telegramId}`} className="pf-rating__name-link">{row.name}</Link>
-        <button
-          type="button"
-          className="pf-icon-action"
-          title="Поделиться профилем"
-          aria-label={`Поделиться профилем ${row.name}`}
-          onClick={() =>
-            shareToTelegram(
-              { kind: 'profile', telegramId: row.telegramId },
-              `Профиль ${row.name} в Polemica Fantasy: #${row.rank}, всего ${row.t}`,
-            )
-          }
-        >
-          ↗
-        </button>
+        <Link to={`/players/${row.telegramId}`} className="pf-rating__name-link">
+          <UserFrameName profileFrameCode={row.profileFrameCode}>{row.name}</UserFrameName>
+        </Link>
       </td>
       <td className="pf-rating__cell pf-rating__num" title="Фантики">
         <span className="pf-rating__sym" aria-hidden>
@@ -148,21 +146,9 @@ export function RatingPage() {
           <LeaderboardPinnedBlock>
             <div className="pf-rating-pinned__row">
               <span className="pf-rating__cell--rank">#{bottomRow.rank}</span>
-              <Link to={`/players/${bottomRow.telegramId}`} className="pf-rating__name-link pf-rating__name-truncate">{bottomRow.name}</Link>
-              <button
-                type="button"
-                className="pf-icon-action"
-                title="Поделиться профилем"
-                aria-label={`Поделиться профилем ${bottomRow.name}`}
-                onClick={() =>
-                  shareToTelegram(
-                    { kind: 'profile', telegramId: bottomRow.telegramId },
-                    `Профиль ${bottomRow.name} в Polemica Fantasy: #${bottomRow.rank}, всего ${bottomRow.t}`,
-                  )
-                }
-              >
-                ↗
-              </button>
+              <Link to={`/players/${bottomRow.telegramId}`} className="pf-rating__name-link pf-rating__name-truncate">
+                <UserFrameName profileFrameCode={bottomRow.profileFrameCode}>{bottomRow.name}</UserFrameName>
+              </Link>
               <span className="pf-rating__num">
                 <span className="pf-rating__sym" aria-hidden>
                   ₣

@@ -3,6 +3,97 @@ export type TournamentKind = 'STANDALONE' | 'POLEMICA_COMPETITION'
 export type SeriesStatus = 'UPCOMING' | 'ACTIVE' | 'SCORING' | 'FINISHED'
 export type Rarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY'
 export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
+export type AchievementState = 'LOCKED' | 'IN_PROGRESS' | 'COMPLETED_UNCLAIMED' | 'CLAIMED'
+
+export interface AchievementReward {
+  type: string
+  amount: number | null
+  code: string | null
+}
+
+export interface AchievementItem {
+  code: string
+  title: string
+  description: string | null
+  category: string
+  conditionType: string
+  state: AchievementState
+  progressValue: number
+  targetValue: number
+  completedAt: string | null
+  claimedAt: string | null
+  historyPolicy: string
+  rarity: Rarity
+  visibility: string
+  iconUrl: string | null
+  accentColor: string | null
+  rewards: AchievementReward[]
+}
+
+export interface AchievementCategory {
+  code: string
+  name: string
+  achievements: AchievementItem[]
+}
+
+export interface AchievementSummary {
+  completed: number
+  claimed: number
+  totalVisible: number
+  unclaimedRewards: number
+}
+
+export interface AchievementCatalog {
+  categories: AchievementCategory[]
+  summary: AchievementSummary
+}
+
+export interface AchievementClaimResult {
+  achievementCode: string
+  claimedAt: string
+  fantikiDelta: number
+  newFantikiBalance: number
+  cosmeticUnlocks: { type: string; code: string }[]
+}
+
+export interface ProfileFrame {
+  code: string
+  name: string
+  assetUrl: string | null
+}
+
+export interface AchievementBadge {
+  code: string
+  title: string
+  iconUrl: string | null
+  rarity: Rarity
+  accentColor: string | null
+}
+
+export interface ProfileCustomization {
+  profileFrameCode: string | null
+  unlockedFrames: ProfileFrame[]
+  featuredAchievementCodes: string[]
+  availableFeaturedAchievements: AchievementBadge[]
+}
+
+export interface UpdateProfileCustomizationRequest {
+  profileFrameCode: string | null
+  featuredAchievementCodes: string[]
+}
+
+export interface PlayerAchievementSummary {
+  completed: number
+  claimed: number
+  totalVisible: number
+}
+
+export interface PlayerNextAchievement {
+  code: string
+  title: string
+  progressValue: number
+  targetValue: number
+}
 
 export interface PerkCatalogItem {
   id: string
@@ -192,6 +283,7 @@ export interface UserPublic {
   username: string | null
   firstName: string | null
   displayName: string | null
+  profileFrameCode: string | null
 }
 
 /** GET /api/v1/rating — строка глобального рейтинга */
@@ -544,6 +636,10 @@ export interface PlayerProfile {
   memberSince: string
   rating: PlayerRatingSnapshot | null
   seriesWins: PlayerSeriesWins
+  achievementSummary: PlayerAchievementSummary
+  profileFrame: ProfileFrame | null
+  featuredAchievements: AchievementBadge[]
+  nextAchievement: PlayerNextAchievement | null
   seriesHistory: PlayerSeriesResult[]
   collectionSummary: PlayerCollectionSummary
   marketplaceStats: PlayerMarketplaceStats

@@ -111,6 +111,7 @@ data class UserPublicDto(
     val username: String?,
     val firstName: String?,
     val displayName: String?,
+    val profileFrameCode: String? = null,
 )
 
 data class LeaderboardEntryDto(

@@ -1,5 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useTrackProductEvent } from '../api/antiChurn'
 import { ApiError, apiGet } from '../api/client'
 import { fetchLeagueLeaderboard } from '../api/leagues'
 import type { LeaderboardEntry, SeriesLeagueBrief, UserProfile, UserTournamentDetail } from '../api/types'
@@ -25,6 +27,7 @@ export function TournamentComparePage() {
   const tid = Number(tournamentId)
   const targetTelegramId = Number(telegramId)
   const initData = useInitData()
+  const track = useTrackProductEvent()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
 
@@ -51,6 +54,16 @@ export function TournamentComparePage() {
     return [...byCode.values()]
   })()
   const activeLeagueCode = resolveActiveLeagueCode(availableLeagues, requestedLeagueCode)
+
+  useEffect(() => {
+    if (!Number.isFinite(tid) || !Number.isFinite(targetTelegramId)) return
+    track({
+      eventType: 'COMPARE_OPEN',
+      subjectType: 'TOURNAMENT_COMPARE',
+      subjectId: tid,
+      metadata: { leagueCode: activeLeagueCode, telegramId: targetTelegramId },
+    })
+  }, [activeLeagueCode, targetTelegramId, tid, track])
 
   const leaderboardQueries = useQueries({
     queries: series.map((s) => ({

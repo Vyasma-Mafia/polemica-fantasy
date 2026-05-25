@@ -28,6 +28,93 @@ export interface PerkAdminDto {
   canAppearOnRandomCards: boolean
 }
 
+export type AchievementVisibility = 'PUBLIC' | 'HIDDEN' | 'SECRET' | 'PRIVATE'
+
+export type AchievementRewardType =
+  | 'FANTIKI'
+  | 'PROFILE_FRAME'
+  | 'CARD_SKIN_UNLOCK'
+  | 'COSMETIC_UNLOCK'
+  | 'BADGE_STYLE'
+
+export interface AchievementAdminStatsDto {
+  completedUsers: number
+  claimedUsers: number
+  unclaimedUsers: number
+  totalProgress: number
+  averageProgress: number
+  nearCompletionUsers: number
+  lastCompletedAt: string | null
+}
+
+export interface AchievementAdminRewardDto {
+  type: AchievementRewardType | string
+  amount: number | null
+  code: string | null
+  metadata: string | null
+  displayOrder: number
+}
+
+export interface AchievementAdminDefinitionDto {
+  code: string
+  category: string
+  conditionType: string
+  historyPolicy: string
+  targetValue: number
+  chainGroup: string | null
+  chainLevel: number | null
+  title: string
+  description: string | null
+  iconUrl: string | null
+  accentColor: string | null
+  rarity: Rarity
+  visibility: AchievementVisibility | string
+  enabled: boolean
+  trackingStartedAt: string | null
+  displayOrder: number
+  createdAt: string
+  updatedAt: string
+  rewards: AchievementAdminRewardDto[]
+  stats: AchievementAdminStatsDto
+}
+
+export interface AchievementAdminListResponseDto {
+  achievements: AchievementAdminDefinitionDto[]
+}
+
+export interface UpdateAchievementAdminRewardRequest {
+  type: AchievementRewardType | string
+  amount: number | null
+  code: string | null
+  metadata: string | null
+  displayOrder: number
+}
+
+export interface UpdateAchievementAdminRequest {
+  title: string
+  description: string | null
+  iconUrl: string | null
+  accentColor: string | null
+  rarity: Rarity
+  visibility: AchievementVisibility
+  enabled: boolean
+  displayOrder: number
+  rewards: UpdateAchievementAdminRewardRequest[]
+}
+
+export interface AchievementDryRunRowDto {
+  code: string
+  enabled: boolean
+  instantCompleted: number
+  instantFantikiLiability: number
+}
+
+export interface AchievementDryRunResponseDto {
+  instantCompleted: number
+  instantFantikiLiability: number
+  rows: AchievementDryRunRowDto[]
+}
+
 export interface UserProfileDto {
   id: number
   telegramId: number

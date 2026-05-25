@@ -115,6 +115,7 @@ export function useMarkOnboardingStep(step: OnboardingStep) {
 
 export function useTrackProductEvent() {
   const initData = useInitData()
+  const qc = useQueryClient()
   return useCallback(
     (payload: ProductEventPayload) => {
       if (!initData) return
@@ -123,11 +124,24 @@ export function useTrackProductEvent() {
         source: 'TMA',
         ...payload,
         campaignId,
-      }).catch(() => undefined)
+      })
+        .then(() => {
+          if (ACHIEVEMENT_EVENT_TYPES.has(payload.eventType.trim().toUpperCase())) {
+            void qc.invalidateQueries({ queryKey: ['achievements'] })
+          }
+        })
+        .catch(() => undefined)
     },
-    [initData],
+    [initData, qc],
   )
 }
+
+const ACHIEVEMENT_EVENT_TYPES = new Set([
+  'SHARE_PROFILE',
+  'SHARE_TEAM',
+  'COMPARE_OPEN',
+  'PUBLIC_PROFILE_VIEW',
+])
 
 export function rememberCampaign(campaignId: number) {
   sessionStorage.setItem(CAMPAIGN_STORAGE_KEY, String(campaignId))

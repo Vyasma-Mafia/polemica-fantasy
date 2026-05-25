@@ -14,6 +14,7 @@ import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.service.achievement.ProfileFrameVisibilityService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,6 +29,7 @@ class UserSeriesService(
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val leagueService: LeagueService,
     private val imageStorageService: ImageStorageService,
+    private val profileFrameVisibilityService: ProfileFrameVisibilityService,
 ) {
 
     @Transactional(readOnly = true)
@@ -76,6 +78,9 @@ class UserSeriesService(
         }
         val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
         val teams = fantasyTeamRepository.findLeaderboardForSeriesLeague(seriesLeague.id!!)
+        val profileFrameCodes = profileFrameVisibilityService.selectedFrameCodes(
+            teams.mapNotNull { it.telegramUser?.id },
+        )
         return teams.mapIndexed { index, ft ->
             val u = ft.telegramUser!!
             LeaderboardEntryDto(
@@ -86,6 +91,7 @@ class UserSeriesService(
                     username = u.username,
                     firstName = u.firstName,
                     displayName = u.displayName,
+                    profileFrameCode = profileFrameCodes[u.id!!],
                 ),
                 fantasyPlayerIds = ft.cards.mapNotNull { c ->
                     c.userCard?.cardTemplate?.fantasyPlayer?.id

@@ -33,7 +33,7 @@
 4. **Честность серий.** Никаких прямых бонусов к очкам, лимитам команд, uses, силе карт или результатам leaderboard.
 5. **Автоматичность.** Пользователь не заявляет достижения вручную. Система считает прогресс по фактам из БД и доменным событиям.
 6. **Управляемость.** Условия выдачи системные, а тексты, иконки, видимость, награды и порядок редактируются через админку.
-7. **Backfill.** Старые действия пользователей должны засчитаться после релиза через пересчет прогресса.
+7. **Launch baseline.** Достижения V1 стартуют с момента релиза: старые действия не дают completed/unclaimed и не создают разовую выдачу фантиков.
 
 ## 3. Non-goals V1
 
@@ -93,7 +93,7 @@
 | Длинная цепочка вроде 30 бюджетных серий | 100-200₣ |
 | Очень редкое достижение | до 250₣, как исключение |
 
-Перед включением backfill админка должна показывать dry-run: сколько пользователей получит completed/unclaimed и какой максимальный объем фантиков может быть выдан при claim.
+Перед включением достижений админка должна показывать dry-run потенциальной launch liability. Для V1 целевой результат dry-run по seed-каталогу - **0₣ мгновенной выдачи**, потому что все достижения считаются только от момента запуска.
 
 ---
 
@@ -101,11 +101,12 @@
 
 V1 должен стартовать с конкретным каталогом, а не с абстрактными категориями. Ниже - рекомендуемый seed на **42 основных достижения** и **2 optional secret-достижения**. Его можно скорректировать по названиям/иконкам, но коды и условия лучше считать продуктовым контрактом первого релиза.
 
-Колонка `История` задает, как достижение относится к данным до релиза:
+Колонка `История` задает, как достижение относится к данным до релиза.
 
-- `CURRENT_STATE` - считается по текущему состоянию БД на момент backfill и дальше. Если пользователь уже владеет 100 активными картами при включении фичи, `cards_total_100` сразу станет `COMPLETED_UNCLAIMED`.
-- `RETROACTIVE_CUMULATIVE` - считается по надежным историческим фактам в БД. Если пользователь уже собрал 30 бюджетных команд до релиза достижений, `budget_team_30` сразу станет `COMPLETED_UNCLAIMED`.
-- `FROM_ACHIEVEMENTS_LAUNCH` - считается только после релиза, потому что старых надежных событий нет или они были не предназначены для достижений. Например, share/click social.
+**Решение V1:** все seed-достижения должны иметь `FROM_ACHIEVEMENTS_LAUNCH`, а не `RETROACTIVE_CUMULATIVE` или `CURRENT_STATE`. Раздел 16 показывает, что retroactive/current-state запуск создает слишком большую мгновенную выдачу фантиков, поэтому старые действия и текущее состояние коллекции не завершают достижения на старте.
+
+- `FROM_ACHIEVEMENTS_LAUNCH` - считается только после релиза достижений. Старые команды, победы, сделки, паки, апгрейды и текущая коллекция не дают progress/completed при запуске.
+- `RETROACTIVE_CUMULATIVE` и `CURRENT_STATE` остаются допустимыми техническими policy для будущих специальных кейсов, но **не используются в V1 seed-каталоге**.
 
 ### 5.1 Участие и дисциплина
 
@@ -113,25 +114,25 @@ V1 должен стартовать с конкретным каталогом,
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `team_submit_1` | Первый состав | Создать первую команду в любой лиге | `RETROACTIVE_CUMULATIVE` | 10₣ |
-| `team_submit_5` | Регулярный участник | Создать команды в 5 лигах серий | `RETROACTIVE_CUMULATIVE` | 25₣ |
-| `team_submit_15` | В расписании | Создать команды в 15 лигах серий | `RETROACTIVE_CUMULATIVE` | 50₣ |
-| `team_submit_30` | Стабильный менеджер | Создать команды в 30 лигах серий | `RETROACTIVE_CUMULATIVE` | 100₣ + badge |
-| `dual_league_1` | Двойная заявка | В одной серии создать команды в MAIN и BUDGET | `RETROACTIVE_CUMULATIVE` | 25₣ |
-| `dual_league_10` | Две стратегии | В 10 разных сериях создать команды в MAIN и BUDGET | `RETROACTIVE_CUMULATIVE` | 75₣ + badge |
+| `team_submit_1` | Первый состав | Создать первую команду в любой лиге | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `team_submit_5` | Регулярный участник | Создать команды в 5 лигах серий | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `team_submit_15` | В расписании | Создать команды в 15 лигах серий | `FROM_ACHIEVEMENTS_LAUNCH` | 50₣ |
+| `team_submit_30` | Стабильный менеджер | Создать команды в 30 лигах серий | `FROM_ACHIEVEMENTS_LAUNCH` | 100₣ + badge |
+| `dual_league_1` | Двойная заявка | В одной серии создать команды в MAIN и BUDGET | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `dual_league_10` | Две стратегии | В 10 разных сериях создать команды в MAIN и BUDGET | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
 
 ### 5.2 Бюджетная лига
 
-Это главный гринд-трек V1. Он **не начинается с нуля** при релизе достижений: существующие `fantasy_team` в `series_league.league.code = 'BUDGET'` засчитываются backfill'ом.
+Это главный гринд-трек V1. Он **начинается с нуля** при релизе достижений: существующие `fantasy_team` в `series_league.league.code = 'BUDGET'` используются только для аналитического dry-run из раздела 16, но не засчитываются пользователям как прогресс.
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `budget_team_1` | Первый бюджет | Создать первую команду в BUDGET | `RETROACTIVE_CUMULATIVE` | 10₣ |
-| `budget_team_5` | Бюджетный старт | Создать команду в BUDGET 5 раз | `RETROACTIVE_CUMULATIVE` | 25₣ |
-| `budget_team_15` | Экономный стратег | Создать команду в BUDGET 15 раз | `RETROACTIVE_CUMULATIVE` | 75₣ |
-| `budget_team_30` | Мастер бюджета | Создать команду в BUDGET 30 раз | `RETROACTIVE_CUMULATIVE` | 150₣ + profile frame |
-| `budget_win_1` | Бюджетная победа | Победить в BUDGET-лиге завершенной серии | `RETROACTIVE_CUMULATIVE` | 75₣ + badge |
-| `budget_top10_5` | Бюджетный топ | 5 раз попасть в топ-10 BUDGET | `RETROACTIVE_CUMULATIVE` | 50₣ |
+| `budget_team_1` | Первый бюджет | Создать первую команду в BUDGET | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `budget_team_5` | Бюджетный старт | Создать команду в BUDGET 5 раз | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `budget_team_15` | Экономный стратег | Создать команду в BUDGET 15 раз | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ |
+| `budget_team_30` | Мастер бюджета | Создать команду в BUDGET 30 раз | `FROM_ACHIEVEMENTS_LAUNCH` | 150₣ + profile frame |
+| `budget_win_1` | Бюджетная победа | Победить в BUDGET-лиге завершенной серии | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
+| `budget_top10_5` | Бюджетный топ | 5 раз попасть в топ-10 BUDGET | `FROM_ACHIEVEMENTS_LAUNCH` | 50₣ |
 
 ### 5.3 Результаты
 
@@ -139,57 +140,57 @@ V1 должен стартовать с конкретным каталогом,
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `series_win_1` | Первая победа | Победить в любой лиге завершенной серии | `RETROACTIVE_CUMULATIVE` | 75₣ + badge |
-| `series_win_3` | Серийный победитель | Победить в 3 лигах серий | `RETROACTIVE_CUMULATIVE` | 100₣ |
-| `series_win_10` | Династия | Победить в 10 лигах серий | `RETROACTIVE_CUMULATIVE` | 200₣ + profile frame |
-| `top3_5` | На пьедестале | 5 раз попасть в топ-3 | `RETROACTIVE_CUMULATIVE` | 75₣ |
-| `top10_10` | В верхней группе | 10 раз попасть в топ-10 или верхнюю половину, если участников меньше 10 | `RETROACTIVE_CUMULATIVE` | 75₣ |
-| `top_quarter_10` | Стабильный результат | 10 раз попасть в верхние 25% leaderboard | `RETROACTIVE_CUMULATIVE` | 100₣ + badge |
+| `series_win_1` | Первая победа | Победить в любой лиге завершенной серии | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
+| `series_win_3` | Серийный победитель | Победить в 3 лигах серий | `FROM_ACHIEVEMENTS_LAUNCH` | 100₣ |
+| `series_win_10` | Династия | Победить в 10 лигах серий | `FROM_ACHIEVEMENTS_LAUNCH` | 200₣ + profile frame |
+| `top3_5` | На пьедестале | 5 раз попасть в топ-3 | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ |
+| `top10_10` | В верхней группе | 10 раз попасть в топ-10 или верхнюю половину, если участников меньше 10 | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ |
+| `top_quarter_10` | Стабильный результат | 10 раз попасть в верхние 25% leaderboard | `FROM_ACHIEVEMENTS_LAUNCH` | 100₣ + badge |
 
 ### 5.4 Коллекция
 
-Коллекционные достижения V1 считаются по **активной текущей коллекции**. Soft-deleted карты не считаются. Если пользователь выполнил условие до релиза и до сих пор владеет нужными картами, достижение выполнится автоматически.
+Коллекционные достижения V1 считаются от launch baseline: карты, которыми пользователь владел до релиза, не завершают достижение автоматически. Soft-deleted карты не считаются; для условий владения после запуска учитываются только карты/состояния, появившиеся или изменившиеся после включения достижений.
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `cards_total_10` | Первая полка | Владеть 10 активными картами | `CURRENT_STATE` | 25₣ |
-| `cards_total_30` | Коллекционер | Владеть 30 активными картами | `CURRENT_STATE` | 75₣ |
-| `cards_total_100` | Большая коллекция | Владеть 100 активными картами | `CURRENT_STATE` | 150₣ + badge |
-| `first_epic` | Эпический дроп | Владеть активной EPIC-картой | `CURRENT_STATE` | 25₣ |
-| `first_legendary` | Легенда в коллекции | Владеть активной LEGENDARY-картой | `CURRENT_STATE` | 75₣ + badge |
-| `first_skin_card` | Особый выпуск | Владеть активной картой со скином | `CURRENT_STATE` | 50₣ |
-| `same_player_3_rarities` | Любимый игрок | Владеть активными картами одного `fantasy_player` в 3 редкостях | `CURRENT_STATE` | 100₣ + badge |
+| `cards_total_10` | Первая полка | Владеть 10 активными картами, полученными после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `cards_total_30` | Коллекционер | Владеть 30 активными картами, полученными после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ |
+| `cards_total_100` | Большая коллекция | Владеть 100 активными картами, полученными после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 150₣ + badge |
+| `first_epic` | Эпический дроп | Получить и владеть активной EPIC-картой после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `first_legendary` | Легенда в коллекции | Получить и владеть активной LEGENDARY-картой после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
+| `first_skin_card` | Особый выпуск | Получить или применить активную карту со скином после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 50₣ |
+| `same_player_3_rarities` | Любимый игрок | После запуска достижений собрать активные карты одного `fantasy_player` в 3 редкостях | `FROM_ACHIEVEMENTS_LAUNCH` | 100₣ + badge |
 
-После `completed_at` достижение не откатывается, даже если пользователь позже продал или переработал карты и текущий счетчик снизился. До `completed_at` прогресс может уменьшаться, потому что это current-state метрика.
+После `completed_at` достижение не откатывается, даже если пользователь позже продал или переработал карты и текущий счетчик снизился. До `completed_at` прогресс может уменьшаться, если пользователь теряет карту, которая была получена после запуска достижений и входила в launch-baseline счетчик.
 
 ### 5.5 Marketplace
 
-Считать только SOLD-листинги без записи в `marketplace_listing_sanction`. Если сделка позже признана нерыночной, V1 не отзывает уже claimed-награду, но backfill и новые пересчеты должны исключать такую сделку.
+Считать только SOLD-листинги без записи в `marketplace_listing_sanction` и только сделки после запуска достижений. Если сделка позже признана нерыночной, V1 не отзывает уже claimed-награду, но новые пересчеты должны исключать такую сделку.
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `market_buy_1` | Первая покупка | Купить первую карту на marketplace | `RETROACTIVE_CUMULATIVE` | 10₣ |
-| `market_buy_5` | Охотник за картами | Купить 5 карт на marketplace | `RETROACTIVE_CUMULATIVE` | 50₣ |
-| `market_sell_1` | Первая продажа | Продать первую карту на marketplace | `RETROACTIVE_CUMULATIVE` | 10₣ |
-| `market_sell_5` | Продавец | Продать 5 карт на marketplace | `RETROACTIVE_CUMULATIVE` | 50₣ |
-| `market_watch_1` | На наблюдении | Создать первый marketplace watch-фильтр | `CURRENT_STATE` | 10₣ |
-| `market_unique_counterparties_5` | Широкий рынок | Провести SOLD-сделки с 5 разными контрагентами | `RETROACTIVE_CUMULATIVE` | 75₣ + badge |
+| `market_buy_1` | Первая покупка | Купить первую карту на marketplace после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `market_buy_5` | Охотник за картами | Купить 5 карт на marketplace после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 50₣ |
+| `market_sell_1` | Первая продажа | Продать первую карту на marketplace после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `market_sell_5` | Продавец | Продать 5 карт на marketplace после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 50₣ |
+| `market_watch_1` | На наблюдении | Создать первый marketplace watch-фильтр после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `market_unique_counterparties_5` | Широкий рынок | Провести после запуска достижений SOLD-сделки с 5 разными контрагентами | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
 
 Запрещено давать достижения за жалобы, частое снятие/перевыставление листингов или сделки с одним и тем же контрагентом.
 
 ### 5.6 Паки и апгрейды
 
-Открытия паков считаются по уже существующей статистике открытий. Для редких дропов и crafted LEGENDARY backfill использует текущие `user_card` и исторические поля, где они надежны; будущие события считаются через event-driven обновление.
+Открытия паков, редкие дропы и crafted LEGENDARY считаются только по событиям после запуска достижений. Историческая статистика открытий и текущие `user_card` используются только для оценки launch liability из раздела 16, но не для completion на старте.
 
 | Code | Название | Условие | История | Награда |
 |------|----------|---------|---------|---------|
-| `pack_open_1` | Первый пак | Открыть 1 пак | `RETROACTIVE_CUMULATIVE` | 10₣ |
-| `pack_open_5` | Пять попыток | Открыть 5 паков | `RETROACTIVE_CUMULATIVE` | 25₣ |
-| `pack_open_15` | Охота за редкостью | Открыть 15 паков | `RETROACTIVE_CUMULATIVE` | 75₣ |
-| `pack_open_30` | Большое вскрытие | Открыть 30 паков | `RETROACTIVE_CUMULATIVE` | 150₣ + badge |
-| `pack_epic_drop_1` | Эпик из пака | Получить EPIC из пака и владеть этой картой или ее traceable экземпляром | `CURRENT_STATE` | 25₣ |
-| `legendary_upgrade_1` | Своими руками | Сделать первый legendary upgrade | `RETROACTIVE_CUMULATIVE` | 75₣ + badge |
-| `crafted_legendary_3` | Мастер апгрейда | Сделать 3 legendary upgrade | `RETROACTIVE_CUMULATIVE` | cosmetic unlock |
+| `pack_open_1` | Первый пак | Открыть 1 пак после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 10₣ |
+| `pack_open_5` | Пять попыток | Открыть 5 паков после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `pack_open_15` | Охота за редкостью | Открыть 15 паков после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ |
+| `pack_open_30` | Большое вскрытие | Открыть 30 паков после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 150₣ + badge |
+| `pack_epic_drop_1` | Эпик из пака | После запуска достижений получить EPIC из пака и владеть этой картой или ее traceable экземпляром | `FROM_ACHIEVEMENTS_LAUNCH` | 25₣ |
+| `legendary_upgrade_1` | Своими руками | Сделать первый legendary upgrade после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | 75₣ + badge |
+| `crafted_legendary_3` | Мастер апгрейда | Сделать 3 legendary upgrade после запуска достижений | `FROM_ACHIEVEMENTS_LAUNCH` | cosmetic unlock |
 
 ### 5.7 Социальность
 
@@ -204,7 +205,7 @@ V1 должен стартовать с конкретным каталогом,
 
 ### 5.8 Особые и секретные
 
-Секретные достижения скрыты до получения или показываются как "???". В V1 их лучше держать выключенными или seed'ить 1-2 cosmetic-only достижения после основного запуска, чтобы не усложнять первый backfill.
+Секретные достижения скрыты до получения или показываются как "???". В V1 их лучше держать выключенными или seed'ить 1-2 cosmetic-only достижения после основного запуска, чтобы не усложнять первый launch baseline.
 
 | Code | Название | Условие | История | Награда | Статус V1 |
 |------|----------|---------|---------|---------|-----------|
@@ -224,7 +225,7 @@ V1 должен стартовать с конкретным каталогом,
 | `COMPLETED_UNCLAIMED` | Условие выполнено, награда еще не забрана. |
 | `CLAIMED` | Награда выдана, достижение закрыто. |
 
-`COMPLETED_UNCLAIMED` нужен намеренно: пользователь видит кнопку "Забрать", а backfill не меняет баланс без явного действия пользователя.
+`COMPLETED_UNCLAIMED` нужен намеренно: пользователь видит кнопку "Забрать", а baseline/backfill не меняет баланс без явного действия пользователя.
 
 ### 6.2 Claim-based награды
 
@@ -243,15 +244,15 @@ Claim должен быть идемпотентным:
 
 | Policy | Семантика | Пример |
 |--------|-----------|--------|
-| `CURRENT_STATE` | Прогресс равен текущему состоянию. Backfill может сразу завершить достижение, если состояние уже удовлетворяет условию. До `completed_at` прогресс может уменьшаться; после completion достижение не откатывается. | `cards_total_100`: если на релизе у пользователя 100 активных карт, достижение сразу completed/unclaimed. |
-| `RETROACTIVE_CUMULATIVE` | Прогресс равен количеству исторических фактов в БД за все время. Backfill засчитывает действия, сделанные до релиза достижений. | `budget_team_30`: если пользователь уже собрал 30 BUDGET-команд, достижение сразу completed/unclaimed. |
-| `FROM_ACHIEVEMENTS_LAUNCH` | Прогресс начинается с момента включения достижения. Старые действия не засчитываются, потому что не было надежного события или оно не было продуктово определено. | `share_profile_1`: старые share-клики не засчитываются. |
+| `CURRENT_STATE` | Future-only policy: прогресс равен текущему состоянию. Если когда-нибудь включается, может сразу завершить достижение при удовлетворенном состоянии. | Не используется в V1 seed. |
+| `RETROACTIVE_CUMULATIVE` | Future-only policy: прогресс равен количеству исторических фактов в БД за все время. Если когда-нибудь включается, старые действия входят в прогресс. | Не используется в V1 seed из-за launch liability. |
+| `FROM_ACHIEVEMENTS_LAUNCH` | Прогресс начинается с момента включения достижения. Старые действия и текущее состояние на дату релиза не засчитываются. | `budget_team_30`: пользователь с 30 старыми BUDGET-командами стартует с `IN_PROGRESS 0/30`; прогресс начнется со следующей команды после включения достижений. |
 
-Базовое правило V1: если данные в БД надежно отражают прошлое действие, достижение retroactive. Исключения должны быть явно названы в seed-каталоге.
+Базовое правило V1: все seed-достижения используют `FROM_ACHIEVEMENTS_LAUNCH`. `RETROACTIVE_CUMULATIVE` и `CURRENT_STATE` можно добавить только отдельным осознанным решением после оценки экономики.
 
-### 6.4 Backfill
+### 6.4 Launch baseline и backfill
 
-Backfill обязателен для релиза.
+Dry-run/backfill обязателен для релиза, но в V1 он не должен выдавать старые достижения пользователям.
 
 Режимы:
 
@@ -261,14 +262,14 @@ Backfill обязателен для релиза.
 - apply по одному пользователю;
 - пересчет конкретного `condition_type`.
 
-Backfill выставляет progress и `completed_at`, но не `claimed_at`. Награды остаются unclaimed.
+Для V1 seed с `FROM_ACHIEVEMENTS_LAUNCH` apply-режим фиксирует launch baseline и/или оставляет progress пустым до новых событий. Он не выставляет `completed_at` по действиям до релиза и не создает `COMPLETED_UNCLAIMED` на старте.
 
 Конкретные примеры:
 
-- `cards_total_100`: `CURRENT_STATE`. Пользователь с 100 активными картами на дату релиза сразу получает `COMPLETED_UNCLAIMED`.
-- `budget_team_30`: `RETROACTIVE_CUMULATIVE`. Пользователь с 30 уже созданными BUDGET-командами сразу получает `COMPLETED_UNCLAIMED`; пользователь с 12 командами получает `IN_PROGRESS 12/30`.
-- `share_profile_1`: `FROM_ACHIEVEMENTS_LAUNCH`. Старые шаринги не считаются; прогресс начнется с первого события после включения достижения.
-- `market_sell_5`: `RETROACTIVE_CUMULATIVE`, но только SOLD-листинги без санкции. Санкционированные сделки исключаются из пересчета.
+- `cards_total_100`: пользователь с 100 активными картами на дату релиза стартует с `IN_PROGRESS 0/100`; засчитываются только подходящие карты, полученные после запуска достижений.
+- `budget_team_30`: пользователь с 30 уже созданными BUDGET-командами стартует с `IN_PROGRESS 0/30`; следующая BUDGET-команда после релиза даст первый прогресс.
+- `share_profile_1`: старые шаринги не считаются; прогресс начнется с первого события после включения достижения.
+- `market_sell_5`: старые SOLD-листинги не считаются; после запуска учитываются только сделки без санкции.
 
 Для больших пересчетов:
 
@@ -420,7 +421,7 @@ Service-level правила:
 | `AchievementCatalogService` | Чтение definitions, rewards, DTO для TMA/admin. |
 | `AchievementProgressService` | Обновление progress, completed state, idempotent upsert. |
 | `AchievementClaimService` | Claim награды, `fantiki_transaction`, cosmetic unlocks. |
-| `AchievementBackfillService` | Пересчет из БД, dry-run/apply. |
+| `AchievementBackfillService` | Dry-run launch liability, фиксация launch baseline, repair-пересчет по событиям после запуска. |
 | `ProfileCustomizationService` | Выбранная рамка и featured-бейджи. |
 | `AchievementAdminService` | Admin CRUD для текстов, наград, enabled/visibility/order. |
 
@@ -445,7 +446,7 @@ interface AchievementEventHandler {
 }
 ```
 
-Backfill вызывает `currentProgress` и применяет `history_policy`: для `RETROACTIVE_CUMULATIVE` хранит накопленный исторический счетчик, для `CURRENT_STATE` хранит текущий счетчик до completion, для `FROM_ACHIEVEMENTS_LAUNCH` не пытается восстановить старые события.
+Backfill вызывает `currentProgress` и применяет `history_policy`. Для V1 seed все определения `FROM_ACHIEVEMENTS_LAUNCH`: сервис не пытается восстановить старые события, а dry-run старых фактов используется только как экономическая оценка. `RETROACTIVE_CUMULATIVE` и `CURRENT_STATE` остаются технически возможными, но не должны попадать в V1 seed без отдельного решения.
 
 ### 8.3 Источники событий
 
@@ -499,7 +500,7 @@ Backfill вызывает `currentProgress` и применяет `history_polic
           "state": "IN_PROGRESS",
           "progressValue": 17,
           "targetValue": 30,
-          "historyPolicy": "RETROACTIVE_CUMULATIVE",
+          "historyPolicy": "FROM_ACHIEVEMENTS_LAUNCH",
           "rarity": "EPIC",
           "visibility": "PUBLIC",
           "rewards": [
@@ -598,8 +599,8 @@ Backfill вызывает `currentProgress` и применяет `history_polic
 |--------|------|------------|
 | `GET` | `/api/v1/admin/achievements` | Definitions + rewards + aggregate stats. |
 | `PUT` | `/api/v1/admin/achievements/{code}` | Тексты, иконка, цвет, видимость, enabled, order, rewards. |
-| `POST` | `/api/v1/admin/achievements/backfill/dry-run` | Оценить изменения и потенциальную сумму rewards. |
-| `POST` | `/api/v1/admin/achievements/backfill` | Запустить пересчет. |
+| `POST` | `/api/v1/admin/achievements/backfill/dry-run` | Оценить изменения, launch liability и потенциальную сумму rewards. |
+| `POST` | `/api/v1/admin/achievements/backfill` | Зафиксировать baseline или запустить repair-пересчет. |
 | `GET` | `/api/v1/admin/achievements/backfill/{jobId}` | Статус job. |
 | `POST` | `/api/v1/admin/users/{telegramId}/achievements/recalculate` | Repair для одного пользователя. |
 
@@ -690,10 +691,10 @@ Admin update не должен менять `code` и `condition_type` без м
 - total claimed ₣;
 - last completed at.
 
-Backfill UI:
+Backfill / launch baseline UI:
 
 - dry-run перед запуском;
-- estimate: affected users, new completed, potential ₣ liability;
+- estimate: affected users, new completed, potential ₣ liability; для V1 seed ожидается `new completed = 0` и `potential ₣ liability = 0`;
 - запуск job;
 - статус и ошибки;
 - repair для одного пользователя.
@@ -704,7 +705,7 @@ Backfill UI:
 
 В V1 не отправляем Telegram-сообщение на каждое достижение. Причины:
 
-- достижения могут открываться пачкой после backfill;
+- запуск через `FROM_ACHIEVEMENTS_LAUNCH` не должен открывать достижения пачкой в день релиза;
 - частые гринд-достижения будут шуметь;
 - уже есть TMA surface для claim.
 
@@ -727,7 +728,7 @@ Backfill UI:
 4. **Для высоких marketplace tiers использовать distinct counterparties.**
 5. **Update команды не увеличивает счетчик.** Считается уникальная команда по `series_league`.
 6. **Социальные достижения одноразовые и малонаградные.** Click share не равен реальному внешнему share.
-7. **Backfill dry-run обязателен перед включением claim.**
+7. **Launch liability dry-run обязателен перед включением claim.** Для V1 seed ожидаемый instant payout - 0₣.
 8. **Disabled не удаляет историю.** Если достижение отключено, уже полученные бейджи остаются у пользователя.
 
 ---
@@ -742,7 +743,7 @@ Backfill UI:
 - Condition evaluators для участия, BUDGET, результатов, коллекции, паков.
 - `GET /achievements`.
 - `POST /achievements/{code}/claim`.
-- Backfill CLI/admin endpoint с dry-run.
+- Backfill/baseline CLI/admin endpoint с dry-run launch liability.
 - Минимальный TMA список достижений и claim.
 
 ### Этап 2: Витрина профиля
@@ -757,7 +758,7 @@ Backfill UI:
 - Achievements page.
 - Редактирование metadata/rewards.
 - Analytics.
-- Backfill job UI.
+- Baseline/backfill job UI.
 
 ### V2
 
@@ -782,7 +783,7 @@ Backend:
   - marketplace buy/sell -> eligible progress;
   - legendary upgrade -> progress;
   - claim idempotency;
-  - backfill does not duplicate claim.
+- launch baseline/backfill does not duplicate claim.
 
 Frontend:
 
@@ -802,13 +803,15 @@ Admin:
 
 ---
 
-## 16. Production backfill estimate
+## 16. Production launch-liability estimate
 
 Снимок ниже посчитан по production DB на **2026-05-25** read-only запросами через `polemica-prod-db-readonly`. Это не статичная продуктовая истина: перед релизом достижений dry-run нужно повторить.
 
-Важный вывод: текущий V1 seed с полными retroactive fantiki-наградами создает слишком большую потенциальную разовую выдачу. Если все пользователи заберут уже выполненные награды, верхняя оценка по текущему production snapshot: **343 695₣**.
+Важный вывод: вариант V1 seed с retroactive/current-state fantiki-наградами создает слишком большую потенциальную разовую выдачу. Если все пользователи заберут уже выполненные награды, верхняя оценка по текущему production snapshot: **343 695₣**.
 
-Разбивка потенциальной мгновенной выдачи:
+**Решение после оценки:** V1 seed запускается только с `FROM_ACHIEVEMENTS_LAUNCH` для всех достижений. Это означает, что старые действия не создают `COMPLETED_UNCLAIMED` на старте, а ожидаемая мгновенная выдача фантиков по seed-каталогу равна **0₣**.
+
+Разбивка потенциальной мгновенной выдачи в отклоненном retroactive/current-state варианте:
 
 | Блок | Potential ₣ liability |
 |------|-----------------------|
@@ -820,10 +823,12 @@ Admin:
 | Social/from-launch | 0₣ |
 | **Итого** | **343 695₣** |
 
-### 16.1 Instant completion by achievement
+### 16.1 Rejected instant completion by achievement
 
-| Code | История | Instant users | Potential ₣ |
-|------|---------|---------------|-------------|
+Таблица ниже сохраняется как аргумент против retroactive/current-state запуска. Это **не** policy для V1 seed после принятого решения.
+
+| Code | Отклоненная история | Instant users | Potential ₣ |
+|------|--------------------|---------------|-------------|
 | `team_submit_1` | `RETROACTIVE_CUMULATIVE` | 438 | 4 380 |
 | `team_submit_5` | `RETROACTIVE_CUMULATIVE` | 313 | 7 825 |
 | `team_submit_15` | `RETROACTIVE_CUMULATIVE` | 240 | 12 000 |
@@ -869,15 +874,15 @@ Admin:
 | `secret_first_frame` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
 | `secret_full_showcase` | `FROM_ACHIEVEMENTS_LAUNCH` | 0 | 0 |
 
-### 16.2 Launch payout recommendation
+### 16.2 Launch payout decision
 
-Do not ship the current seed with full retroactive fantiki claim enabled. Recommended policy for V1 launch:
+Do not ship the seed with retroactive/current-state fantiki claim enabled. Final policy for V1 launch:
 
-1. Retroactive completion should unlock achievement status, badges and profile frames immediately.
-2. Fantiki for retroactive completions should be either disabled, capped, or moved to future post-launch completions.
-3. If retroactive fantiki remain enabled, add a hard per-user launch cap and show the total potential liability in admin dry-run before enabling claim.
-4. High-volume `CURRENT_STATE` achievements (`cards_total_*`, `first_epic`, `pack_epic_drop_1`) are the first candidates to become cosmetic-only for retroactive completion.
-5. Keep `FROM_ACHIEVEMENTS_LAUNCH` social achievements unchanged: they already have zero launch liability.
+1. Every V1 seed achievement uses `FROM_ACHIEVEMENTS_LAUNCH`.
+2. Retroactive completion does not unlock achievement status, badges, profile frames or fantiki at launch.
+3. Current-state collection/card achievements use launch baseline semantics, so existing cards do not complete achievements immediately.
+4. Admin dry-run before enabling claim must show `0₣` instant payout for the V1 seed.
+5. Future retroactive/current-state achievements require separate product approval and an explicit economy cap.
 
 ## 17. Открытые вопросы
 
@@ -885,4 +890,4 @@ Do not ship the current seed with full retroactive fantiki claim enabled. Recomm
 2. Нужен ли отдельный каталог `profile_frame` или достаточно `user_cosmetic_unlock` с metadata в `achievement_reward`.
 3. Делать ли card skin unlock применяемым к конкретной карте в V1 или отложить до V2.
 4. Показывать ли `COMPLETED_UNCLAIMED` достижения в публичном профиле до claim. Рекомендация: не показывать в featured до claim, но считать completed в личной статистике.
-5. Какую launch payout policy выбрать: no retroactive fantiki, per-user cap, category cap или отдельные награды только за будущие completions.
+5. Перед релизом повторить production dry-run и подтвердить, что V1 seed с `FROM_ACHIEVEMENTS_LAUNCH` дает 0₣ instant payout.

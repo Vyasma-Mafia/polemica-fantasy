@@ -3,9 +3,12 @@ package io.github.mralex1810.fantasy.service
 import com.fasterxml.jackson.databind.JsonNode
 import io.github.mralex1810.fantasy.dto.user.request.ProductEventRequest
 import io.github.mralex1810.fantasy.entity.ProductEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.ProductEventRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -14,6 +17,7 @@ import java.time.Instant
 class ProductEventService(
     private val productEventRepository: ProductEventRepository,
     private val telegramUserRepository: TelegramUserRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -46,9 +50,20 @@ class ProductEventService(
         if (normalizedType.isBlank()) {
             return
         }
+        val normalizedSubjectType = subjectType?.trim()?.takeIf { it.isNotEmpty() }?.take(64)
         val user = telegramUserRepository.findById(userId).orElse(null)
         if (user == null) {
             log.debug("Skipping product event {} for missing userId={}", normalizedType, userId)
+            return
+        }
+        if (normalizedType in DEDUPED_ACHIEVEMENT_EVENT_TYPES &&
+            productEventRepository.existsByTelegramUser_IdAndEventTypeAndSubjectTypeAndSubjectId(
+                userId,
+                normalizedType.take(64),
+                normalizedSubjectType,
+                subjectId,
+            )
+        ) {
             return
         }
         productEventRepository.save(
@@ -57,12 +72,32 @@ class ProductEventService(
                 eventType = normalizedType.take(64),
                 campaignId = campaignId,
                 releaseNoteId = releaseNoteId,
-                subjectType = subjectType?.trim()?.takeIf { it.isNotEmpty() }?.take(64),
+                subjectType = normalizedSubjectType,
                 subjectId = subjectId,
                 source = source.trim().ifBlank { "SERVER" }.take(64),
                 metadata = metadata,
                 createdAt = Instant.now(),
             ),
+        )
+        if (normalizedType in ACHIEVEMENT_EVENT_TYPES) {
+            applicationEventPublisher.publishEvent(
+                AchievementProgressEvent(AchievementProgressEventType.SOCIAL_ACTION, setOf(userId)),
+            )
+        }
+    }
+
+    companion object {
+        private val ACHIEVEMENT_EVENT_TYPES = setOf(
+            "SHARE_PROFILE",
+            "SHARE_TEAM",
+            "COMPARE_OPEN",
+            "PUBLIC_PROFILE_VIEW",
+        )
+        private val DEDUPED_ACHIEVEMENT_EVENT_TYPES = setOf(
+            "SHARE_PROFILE",
+            "SHARE_TEAM",
+            "COMPARE_OPEN",
+            "PUBLIC_PROFILE_VIEW",
         )
     }
 }

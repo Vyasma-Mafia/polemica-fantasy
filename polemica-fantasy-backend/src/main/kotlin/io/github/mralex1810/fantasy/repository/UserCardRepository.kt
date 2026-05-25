@@ -4,8 +4,10 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.UserCard
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import jakarta.persistence.LockModeType
 
 interface UserCardRepository : JpaRepository<UserCard, Long> {
 
@@ -94,6 +96,20 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         """,
     )
     fun findByIdAndTelegramUser_IdWithTemplatePerks(
+        @Param("id") id: Long,
+        @Param("telegramUserId") telegramUserId: Long,
+    ): UserCard?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT uc FROM UserCard uc
+        WHERE uc.id = :id
+          AND uc.telegramUser.id = :telegramUserId
+          AND uc.deletedAt IS NULL
+        """,
+    )
+    fun findByIdAndTelegramUser_IdForUpdate(
         @Param("id") id: Long,
         @Param("telegramUserId") telegramUserId: Long,
     ): UserCard?

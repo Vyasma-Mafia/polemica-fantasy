@@ -25,9 +25,9 @@ data class GlobalRatingEntry(
     val cardsCount: Int,
     val prizeWinnings: Long,
 ) {
-    fun toDto(): RatingEntryDto = RatingEntryDto(
+    fun toDto(profileFrameCode: String? = null): RatingEntryDto = RatingEntryDto(
         rank = rank,
-        user = UserPublicDto(telegramId, username, firstName, displayName),
+        user = UserPublicDto(telegramId, username, firstName, displayName, profileFrameCode),
         fantikiBalance = fantikiBalance,
         cardsValue = cardsValue,
         totalValue = totalValue,

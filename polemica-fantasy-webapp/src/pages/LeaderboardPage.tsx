@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useMarkOnboardingStep } from '../api/antiChurn'
+import { useMarkOnboardingStep, useTrackProductEvent } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import { fetchLeagueLeaderboard, fetchSeriesLeagues } from '../api/leagues'
 import type { SeriesLeagueBrief, UserProfile, UserSeriesDetail } from '../api/types'
@@ -8,6 +8,7 @@ import { LeagueTabs } from '../components/LeagueTabs'
 import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { PageHeader } from '../components/PageHeader'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
+import { UserFrameName } from '../components/UserFrameName'
 import { useInitData } from '../context/useInitData'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
 import { splitLeaderboardByTelegramId } from '../lib/leaderboardSelf'
@@ -18,6 +19,7 @@ export function LeaderboardPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const id = Number(seriesId)
   const initData = useInitData()
+  const track = useTrackProductEvent()
   useMarkOnboardingStep('VIEW_RESULTS')
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedLeagueCode = defaultLeagueCode(searchParams.get('league'))
@@ -85,7 +87,9 @@ export function LeaderboardPage() {
             className="pf-lb-row pf-lb-row--link"
           >
             <span className="pf-lb-rank">#{pinned.rank}</span>
-            <span className="pf-lb-name">{formatUserDisplayName(pinned.user)}</span>
+            <UserFrameName profileFrameCode={pinned.user.profileFrameCode} className="pf-lb-name">
+              {formatUserDisplayName(pinned.user)}
+            </UserFrameName>
             <span className="pf-lb-score">
               {pinned.totalScore != null ? pinned.totalScore.toFixed(2) : '—'}
               <span className="pf-lb-score-label">очков</span>
@@ -95,7 +99,13 @@ export function LeaderboardPage() {
             <button
               type="button"
               className="pf-btn pf-btn--small pf-btn--outline"
-              onClick={() =>
+              onClick={() => {
+                track({
+                  eventType: 'SHARE_TEAM',
+                  subjectType: 'SERIES_PLACE',
+                  subjectId: id,
+                  metadata: { leagueCode: activeLeagueCode, telegramId: pinned.user.telegramId },
+                })
                 shareToTelegram(
                   {
                     kind: 'place',
@@ -105,7 +115,7 @@ export function LeaderboardPage() {
                   },
                   `Моё место в ${s?.name ?? `серии #${id}`}, ${leagueName}: #${pinned.rank}, ${pinned.totalScore != null ? `${pinned.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
                 )
-              }
+              }}
             >
               Поделиться местом
             </button>
@@ -121,7 +131,9 @@ export function LeaderboardPage() {
               className="pf-lb-row pf-lb-row--link"
             >
               <span className="pf-lb-rank">#{r.rank}</span>
-              <span className="pf-lb-name">{formatUserDisplayName(r.user)}</span>
+              <UserFrameName profileFrameCode={r.user.profileFrameCode} className="pf-lb-name">
+                {formatUserDisplayName(r.user)}
+              </UserFrameName>
               <span className="pf-lb-score">
                 {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
                 <span className="pf-lb-score-label">очков</span>

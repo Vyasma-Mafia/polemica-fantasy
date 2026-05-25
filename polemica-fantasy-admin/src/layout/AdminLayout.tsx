@@ -14,6 +14,10 @@ const allMenuItems = [
     key: '/perks',
     label: <Link to="/perks">Perks</Link>,
   },
+  {
+    key: '/achievements',
+    label: <Link to="/achievements">Achievements</Link>,
+  },
   { key: '/card-packs', label: <Link to="/card-packs">Card packs</Link> },
   { key: '/users', label: <Link to="/users">Users</Link> },
   { key: '/broadcast', label: <Link to="/broadcast">Broadcast</Link> },

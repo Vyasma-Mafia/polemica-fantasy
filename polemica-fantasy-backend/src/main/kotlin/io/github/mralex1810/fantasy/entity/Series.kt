@@ -57,6 +57,9 @@ class Series(
     @Column(name = "finalized", nullable = false)
     var finalized: Boolean = false,
 
+    @Column(name = "finalized_at")
+    var finalizedAt: Instant? = null,
+
     @OneToMany(mappedBy = "series")
     var seriesPlayers: MutableList<SeriesPlayer> = mutableListOf(),
 

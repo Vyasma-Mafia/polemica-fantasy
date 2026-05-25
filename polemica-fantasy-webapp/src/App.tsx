@@ -6,6 +6,7 @@ import { FantikiBalance } from './components/FantikiBalance'
 import { TopBarDisplayName } from './components/TopBarDisplayName'
 import { InitDataProvider } from './context/InitDataContext.tsx'
 import { CardsPage } from './pages/CardsPage'
+import { AchievementsPage } from './pages/AchievementsPage'
 import { HelpPage } from './pages/HelpPage'
 import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
 import { FantasyRulesPage } from './pages/FantasyRulesPage'
@@ -21,6 +22,7 @@ import { MyListingsPage } from './pages/MyListingsPage'
 import { MarketplaceWatchesPage } from './pages/MarketplaceWatchesPage'
 import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
 import { PlayerProfilePage } from './pages/PlayerProfilePage'
+import { ProfileCustomizationPage } from './pages/ProfileCustomizationPage'
 import { RatingPage } from './pages/RatingPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
@@ -112,6 +114,7 @@ function Shell() {
             Магазин
           </NavLink>
           <NavLink to="/rating">Рейтинг</NavLink>
+          <NavLink to="/achievements">Достижения</NavLink>
           <NavLink to="/help">Справка</NavLink>
         </nav>
       </header>
@@ -131,8 +134,10 @@ function Shell() {
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/rating" element={<RatingPage />} />
           <Route path="/players/:telegramId" element={<PlayerProfilePage />} />
+          <Route path="/profile-customization" element={<ProfileCustomizationPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/economy" element={<Navigate to="/help" replace />} />
           <Route path="/store" element={<StorePage />} />

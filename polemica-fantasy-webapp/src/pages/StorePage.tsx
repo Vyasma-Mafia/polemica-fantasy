@@ -48,6 +48,7 @@ export function StorePage() {
       setBuyError(null)
       void queryClient.invalidateQueries({ queryKey: ['me'] })
       void queryClient.invalidateQueries({ queryKey: ['cards'] })
+      void queryClient.invalidateQueries({ queryKey: ['achievements'] })
       void queryClient.invalidateQueries({ queryKey: ['store-packs'] })
       void queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
       void queryClient.invalidateQueries({ queryKey: ['marketplace-feed'] })

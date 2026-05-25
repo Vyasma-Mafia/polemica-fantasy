@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useTrackProductEvent } from '../api/antiChurn'
 import { ApiError, apiGet } from '../api/client'
 import { fetchLeagueLeaderboard } from '../api/leagues'
 import type {
@@ -106,8 +108,19 @@ export function SeriesComparePage() {
   const sid = Number(seriesId)
   const targetTelegramId = Number(telegramId)
   const initData = useInitData()
+  const track = useTrackProductEvent()
   const [searchParams] = useSearchParams()
   const leagueCode = defaultLeagueCode(searchParams.get('league'))
+
+  useEffect(() => {
+    if (!Number.isFinite(sid) || !Number.isFinite(targetTelegramId)) return
+    track({
+      eventType: 'COMPARE_OPEN',
+      subjectType: 'SERIES_COMPARE',
+      subjectId: sid,
+      metadata: { leagueCode, telegramId: targetTelegramId },
+    })
+  }, [leagueCode, sid, targetTelegramId, track])
 
   const seriesQ = useQuery({
     queryKey: ['series', sid, initData],

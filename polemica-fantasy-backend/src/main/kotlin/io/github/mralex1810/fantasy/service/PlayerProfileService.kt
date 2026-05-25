@@ -18,6 +18,7 @@ import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingSanctionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import io.github.mralex1810.fantasy.service.achievement.ProfileCustomizationService
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -33,6 +34,7 @@ class PlayerProfileService(
     private val userCardRepository: UserCardRepository,
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val marketplaceListingSanctionRepository: MarketplaceListingSanctionRepository,
+    private val profileCustomizationService: ProfileCustomizationService,
 ) {
     companion object {
         private const val MAX_SERIES_HISTORY = 20
@@ -47,6 +49,7 @@ class PlayerProfileService(
 
         val rating = buildRatingSnapshot(userId, telegramId)
         val seriesWins = buildSeriesWins(userId)
+        val achievementShowcase = profileCustomizationService.buildPublicShowcase(userId)
         val seriesHistory = buildSeriesHistory(userId)
         val collectionSummary = buildCollectionSummary(userId)
         val marketplaceStats = buildMarketplaceStats(userId)
@@ -62,6 +65,10 @@ class PlayerProfileService(
             memberSince = user.createdAt,
             rating = rating,
             seriesWins = seriesWins,
+            achievementSummary = achievementShowcase.achievementSummary,
+            profileFrame = achievementShowcase.profileFrame,
+            featuredAchievements = achievementShowcase.featuredAchievements,
+            nextAchievement = achievementShowcase.nextAchievement,
             seriesHistory = seriesHistory,
             collectionSummary = collectionSummary,
             marketplaceStats = marketplaceStats,

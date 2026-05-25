@@ -8,6 +8,7 @@ import { LeagueTabs } from '../components/LeagueTabs'
 import { LeaderboardPinnedBlock } from '../components/LeaderboardPinnedBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { UserFrameName } from '../components/UserFrameName'
 import { useInitData } from '../context/useInitData'
 import { aggregateTournamentLeaderboards } from '../lib/aggregateLeaderboard'
 import { splitAggregatedByTelegramId, splitLeaderboardByTelegramId } from '../lib/leaderboardSelf'
@@ -174,7 +175,9 @@ export function TournamentLeaderboardPage() {
             <LeaderboardPinnedBlock>
               <div className="pf-lb-row">
                 <span className="pf-lb-rank">#{generalSplit.pinned.rank}</span>
-                <span className="pf-lb-name">{generalSplit.pinned.displayName}</span>
+                <UserFrameName profileFrameCode={generalSplit.pinned.profileFrameCode} className="pf-lb-name">
+                  {generalSplit.pinned.displayName}
+                </UserFrameName>
                 <span className="pf-lb-score">
                   {generalSplit.pinned.totalScore.toFixed(2)}
                   <span className="pf-lb-score-label">очков</span>
@@ -192,7 +195,9 @@ export function TournamentLeaderboardPage() {
             {generalSplit.rest.map((r) => (
               <li key={r.telegramId} className="pf-lb-row">
                 <span className="pf-lb-rank">#{r.rank}</span>
-                <span className="pf-lb-name">{r.displayName}</span>
+                <UserFrameName profileFrameCode={r.profileFrameCode} className="pf-lb-name">
+                  {r.displayName}
+                </UserFrameName>
                 <span className="pf-lb-score">
                   {r.totalScore.toFixed(2)}
                   <span className="pf-lb-score-label">очков</span>
@@ -218,7 +223,9 @@ export function TournamentLeaderboardPage() {
                 className="pf-lb-row pf-lb-row--link"
               >
                 <span className="pf-lb-rank">#{seriesSplit.pinned.rank}</span>
-                <span className="pf-lb-name">{formatUserDisplayName(seriesSplit.pinned.user)}</span>
+                <UserFrameName profileFrameCode={seriesSplit.pinned.user.profileFrameCode} className="pf-lb-name">
+                  {formatUserDisplayName(seriesSplit.pinned.user)}
+                </UserFrameName>
                 <span className="pf-lb-score">
                   {seriesSplit.pinned.totalScore != null ? seriesSplit.pinned.totalScore.toFixed(2) : '—'}
                   <span className="pf-lb-score-label">очков</span>
@@ -234,7 +241,9 @@ export function TournamentLeaderboardPage() {
                   className="pf-lb-row pf-lb-row--link"
                 >
                   <span className="pf-lb-rank">#{r.rank}</span>
-                  <span className="pf-lb-name">{formatUserDisplayName(r.user)}</span>
+                  <UserFrameName profileFrameCode={r.user.profileFrameCode} className="pf-lb-name">
+                    {formatUserDisplayName(r.user)}
+                  </UserFrameName>
                   <span className="pf-lb-score">
                     {r.totalScore != null ? r.totalScore.toFixed(2) : '—'}
                     <span className="pf-lb-score-label">очков</span>

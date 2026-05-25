@@ -21,6 +21,8 @@ import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.event.MarketplaceListingCreatedEvent
 import io.github.mralex1810.fantasy.event.MarketplaceSaleNotificationEvent
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
@@ -265,6 +267,9 @@ class MarketplaceService(
                 sellerReceived = sellerReceived,
                 commission = commission,
             ),
+        )
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.MARKETPLACE_CHANGED, setOf(buyerId, sellerId)),
         )
 
         val tid = uc.cardTemplate!!.id!!

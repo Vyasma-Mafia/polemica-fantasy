@@ -5,9 +5,12 @@ import io.github.mralex1810.fantasy.dto.user.response.RenewResultDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.TelegramUser
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,6 +24,7 @@ class CardLifecycleService(
     private val economyConfigService: EconomyConfigService,
     private val userService: UserService,
     private val marketplaceListingRepository: MarketplaceListingRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -45,6 +49,9 @@ class CardLifecycleService(
         userCardRepository.save(uc)
         userService.addBalance(internalId, earned, FantikiTransactionReason.CARD_RECYCLE)
         val balance = userService.getBalance(internalId)
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.COLLECTION_CHANGED, setOf(internalId)),
+        )
         return RecycleResultDto(fantikiEarned = earned, newBalance = balance)
     }
 

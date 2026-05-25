@@ -7,11 +7,14 @@ import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceWatchesResponse
 import io.github.mralex1810.fantasy.dto.user.response.TournamentBriefDto
 import io.github.mralex1810.fantasy.entity.MarketplaceWatchFilter
+import io.github.mralex1810.fantasy.event.AchievementProgressEvent
+import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import io.github.mralex1810.fantasy.repository.PerkRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceWatchFilterRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.TournamentRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -25,6 +28,7 @@ class MarketplaceWatchService(
     private val fantasyPlayerRepository: FantasyPlayerRepository,
     private val tournamentRepository: TournamentRepository,
     private val perkRepository: PerkRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     companion object {
         const val MAX_WATCHES_PER_USER = 10
@@ -107,6 +111,9 @@ class MarketplaceWatchService(
         } catch (_: DataIntegrityViolationException) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Watch filter already exists")
         }
+        applicationEventPublisher.publishEvent(
+            AchievementProgressEvent(AchievementProgressEventType.MARKETPLACE_WATCH_CREATED, setOf(internalUserId)),
+        )
         return saved.toDto()
     }
 

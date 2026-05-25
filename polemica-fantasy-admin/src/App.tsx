@@ -13,6 +13,7 @@ import { ProductCommsPage } from './pages/ProductCommsPage'
 import { UserToolsPage } from './pages/UserToolsPage'
 import { UsersOverviewPage } from './pages/UsersOverviewPage'
 import { MarketplaceModerationPage } from './pages/MarketplaceModerationPage'
+import { AchievementsPage } from './pages/AchievementsPage'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="series/:id" element={<SeriesDetailPage />} />
         <Route path="card-templates" element={<CardTemplatesPage />} />
         <Route path="perks" element={<PerksPage />} />
+        <Route path="achievements" element={<AchievementsPage />} />
         <Route path="card-packs" element={<CardPacksPage />} />
         <Route path="user-tools" element={<UserToolsPage />} />
         <Route path="broadcast" element={<BroadcastPage />} />
