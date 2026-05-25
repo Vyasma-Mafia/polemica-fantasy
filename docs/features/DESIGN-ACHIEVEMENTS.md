@@ -2,7 +2,7 @@
 
 > **Статус:** Draft - продуктовая рамка согласована
 > **Файл:** [`docs/features/DESIGN-ACHIEVEMENTS.md`](./DESIGN-ACHIEVEMENTS.md)
-> **Связанные документы:** [`DESIGN.md`](../architecture/DESIGN.md), [`DESIGN-CARD-VALUE-AND-LEAGUES.md`](./DESIGN-CARD-VALUE-AND-LEAGUES.md), [`DESIGN-NOTIFICATIONS.md`](./DESIGN-NOTIFICATIONS.md), [`DESIGN-MARKETPLACE.md`](./DESIGN-MARKETPLACE.md)
+> **Связанные документы:** [`DESIGN.md`](../architecture/DESIGN.md), [`DESIGN-CARD-VALUE-AND-LEAGUES.md`](./DESIGN-CARD-VALUE-AND-LEAGUES.md), [`DESIGN-NOTIFICATIONS.md`](./DESIGN-NOTIFICATIONS.md), [`DESIGN-MARKETPLACE.md`](./DESIGN-MARKETPLACE.md), [`DESIGN-ACHIEVEMENTS-REWARD-REWORK.md`](./DESIGN-ACHIEVEMENTS-REWARD-REWORK.md)
 
 ---
 
@@ -61,15 +61,16 @@
 
 Полный список достижений находится ниже отдельным разделом. В своем профиле пользователь может выбрать рамку и featured-бейджи.
 
-### 4.2 Только экономика и косметика
+### 4.2 Экономика, косметика и карточные награды
 
 Разрешенные награды:
 
 - фантики;
 - профильные рамки;
 - бейджи и cosmetic-стили бейджей;
-- cosmetic skin unlock для карт;
-- другие визуальные unlock'и профиля.
+- профильная косметика: title, accent/background, декоративные элементы витрины;
+- другие визуальные unlock'и профиля;
+- игровые карты как контролируемые achievement rewards.
 
 Запрещенные награды:
 
@@ -80,9 +81,11 @@
 - обход `value_cap`, `max_team_size`, `max_legendary_count`;
 - скидки/привилегии, которые прямо усиливают команду в серии.
 
+Карточная награда считается допустимой, если она выдает обычный `user_card` в рамках существующей карточной экономики. Она может быть ценной, продаваться и использоваться в командах, но не должна обходить правила серий: `value_cap`, `max_team_size`, `max_legendary_count`, uses/renewal и обычные ограничения редкости продолжают применяться.
+
 ### 4.3 Фантики как небольшой бонус
 
-Фантики не должны становиться главным источником валюты. Основная ценность достижений - статус, профиль и косметика.
+Фантики не должны становиться главным источником валюты. Основная ценность достижений - статус, профиль, косметика и редкие карточные награды на сложных порогах.
 
 Рекомендуемые вилки:
 
@@ -94,6 +97,43 @@
 | Очень редкое достижение | до 250₣, как исключение |
 
 Перед включением достижений админка должна показывать dry-run потенциальной launch liability. Для V1 целевой результат dry-run по seed-каталогу - **0₣ мгновенной выдачи**, потому что все достижения считаются только от момента запуска.
+
+### 4.4 Карточные награды и `card_template`
+
+Future-награды достижений могут выдавать игровые карты, если достижение достаточно сложное или тематически ограниченное. Поддерживаемые направления:
+
+- случайная карта заданной редкости;
+- несколько карт, включая наборы разных редкостей;
+- выбор одной карты из предложенного roll;
+- выбор карты из каталога игроков, включая сценарий "любой `fantasy_player` нужной редкости";
+- achievement-edition карта со специальным `card_skin_id`.
+
+Доменный инвариант: **любой игровой путь, который создает `user_card`, должен иметь возможность создать новый `card_template`, если подходящего template еще нет**. Это относится не только к пакам, но и к future achievement rewards, выбору карты из каталога, специальным событиям и другим источникам карт. Выдача карты не должна зависеть от того, успел ли админ заранее создать `card_template` для пары `fantasy_player + rarity + perks policy`.
+
+`card_template` не является источником доступности карты. Он материализует комбинацию `fantasy_player + rarity + perks`; доступность определяется правилами конкретного источника: активный пак, reward metadata, каталог игроков или специальное событие. Если achievement reward создала template, будущий pack opening или другая механика могут переиспользовать тот же template.
+
+Правила выбора игроков:
+
+- `RANDOM_CARD` выбирает eligible `fantasy_player` из правил активных паков, затем делает template find-or-create.
+- `CARD_CHOICE_ROLL` генерирует N eligible вариантов из правил активных паков, после выбора делает template find-or-create.
+- `CARD_CHOICE_CATALOG` показывает весь каталог `fantasy_player`; пользователь выбирает игрока, backend делает template find-or-create для заданной редкости.
+
+Achievement-edition не требует отдельного `card_template`. Специальный стиль применяется через `user_card.card_skin_id` и provenance/audit snapshot награды. Такие карты можно продавать на marketplace, если обычные правила карты и marketplace это разрешают.
+
+Отдельного `CARD_SKIN_UNLOCK` как пользовательской награды быть не должно. Игроки не управляют скинами карт отдельно; скин появляется только как часть сгенерированной achievement-edition карты.
+
+При claim или финальном выборе нужно сохранить audit snapshot: achievement code, reward type, rarity, выбранный или сгенерированный `fantasy_player_id`, `card_template_id`, `user_card_id`, skin/provenance и timestamp.
+
+### 4.5 Длинные цепочки достижений
+
+V1 seed оставляет верхние пороги короткими, но каталог должен расширяться за счет новых уровней в существующих `chain_group`, не за счет изменения уже полученных достижений. Например:
+
+- `team_submit`: 1 / 5 / 15 / 30 / 50 / 100 / 150;
+- `budget_team`: 1 / 5 / 15 / 30 / 50 / 100 / 150;
+- `pack_open`: 1 / 5 / 15 / 30 / 50 / 100 / 150;
+- marketplace-треки: 1 / 5 / 15 / 30 / 50+ там, где это не стимулирует абьюз.
+
+Новые верхние уровни должны использовать тот же `condition_type`, больший `target_value` и следующий `chain_level`. Для длинных уровней предпочтительнее карточные и косметические награды, а не рост фантиков: так достижение остается желанным, но не становится главным источником валюты.
 
 ---
 
@@ -331,7 +371,7 @@ CREATE TABLE achievement_definition (
 
 ### 7.2 `achievement_reward`
 
-Награды лучше хранить отдельно, чтобы одно достижение могло дать фантики и косметику.
+Награды лучше хранить отдельно, чтобы одно достижение могло дать фантики, косметику и future карточные rewards.
 
 ```sql
 CREATE TABLE achievement_reward (
@@ -349,9 +389,35 @@ CREATE TABLE achievement_reward (
 
 - `FANTIKI`;
 - `PROFILE_FRAME`;
-- `CARD_SKIN_UNLOCK`;
 - `BADGE_STYLE`;
 - `COSMETIC_UNLOCK`.
+
+Полный список future reward types:
+
+- `FANTIKI` - фиксированная сумма фантиков;
+- `PROFILE_FRAME` - unlock рамки профиля;
+- `BADGE_STYLE` - стиль/вариант achievement badge;
+- `PROFILE_COSMETIC` - title, background/accent, эффект витрины или другой профильный unlock;
+- `RANDOM_CARD`;
+- `CARD_CHOICE_ROLL`;
+- `CARD_CHOICE_CATALOG`;
+- `FIXED_CARD`.
+
+`RANDOM_CARD` покрывает как одну карту, так и набор карт. Для набора разных редкостей используется `items`, а не отдельный reward type:
+
+```json
+{
+  "items": [
+    { "rarity": "COMMON", "quantity": 2 },
+    { "rarity": "RARE", "quantity": 1 }
+  ],
+  "pool": "ACTIVE_PACKS"
+}
+```
+
+`CARD_CHOICE_ROLL` предлагает пользователю один или несколько вариантов из eligible игроков активных паков. `CARD_CHOICE_CATALOG` позволяет выбрать любого `fantasy_player` из каталога для заданной редкости. `FIXED_CARD` выдает конкретного игрока и редкость; это редкий инструмент для special/secret/promotional achievements. Во всех карточных режимах `card_template` ищется или создается после выбора/roll, а не используется как источник доступности.
+
+Для карточных rewards `metadata` должен фиксировать как минимум `rarity` или `items`, `quantity`, `pool` / `choiceMode`, optional `skinCode`, optional `choiceCount` и правила find-or-create `card_template`. При claim или финальном выборе `reward_snapshot` должен сохранять фактически выданные `card_template_id`, `user_card_id`, выбранный `fantasy_player_id`, редкость, skin и provenance.
 
 ### 7.3 `user_achievement`
 
@@ -384,7 +450,7 @@ CREATE TABLE user_cosmetic_unlock (
 );
 ```
 
-Для `CARD_SKIN_UNLOCK` это право на cosmetic skin. Применение скина к конкретной карте можно сделать отдельным flow, потому что текущая модель `card_skin` привязана к экземпляру `user_card`.
+`user_cosmetic_unlock` используется для профильных рамок, badge styles и профильной косметики. Скины карт не выдаются как отдельное пользовательское право; они появляются только на конкретной сгенерированной achievement-edition карте через `user_card.card_skin_id`.
 
 ### 7.5 Витрина профиля
 
@@ -888,6 +954,5 @@ Do not ship the seed with retroactive/current-state fantiki claim enabled. Final
 
 1. Финальные названия, иконки, цвета и точные cosmetic rewards для seed-каталога V1.
 2. Нужен ли отдельный каталог `profile_frame` или достаточно `user_cosmetic_unlock` с metadata в `achievement_reward`.
-3. Делать ли card skin unlock применяемым к конкретной карте в V1 или отложить до V2.
-4. Показывать ли `COMPLETED_UNCLAIMED` достижения в публичном профиле до claim. Рекомендация: не показывать в featured до claim, но считать completed в личной статистике.
-5. Перед релизом повторить production dry-run и подтвердить, что V1 seed с `FROM_ACHIEVEMENTS_LAUNCH` дает 0₣ instant payout.
+3. Показывать ли `COMPLETED_UNCLAIMED` достижения в публичном профиле до claim. Рекомендация: не показывать в featured до claim, но считать completed в личной статистике.
+4. Перед релизом повторить production dry-run и подтвердить, что V1 seed с `FROM_ACHIEVEMENTS_LAUNCH` дает 0₣ instant payout.
