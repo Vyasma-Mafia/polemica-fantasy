@@ -4,4 +4,5 @@ enum class CardAcquisitionType {
     PACK_OPENING,
     ADMIN_GRANT,
     MARKETPLACE_PURCHASE,
+    ACHIEVEMENT_REWARD,
 }

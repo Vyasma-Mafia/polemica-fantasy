@@ -22,7 +22,7 @@ class AchievementCatalogService(
     @Transactional(readOnly = true)
     fun catalogFor(user: TelegramUser): AchievementCatalogDto {
         val userId = user.id!!
-        val definitions = achievementDefinitionRepository.findAllEnabledWithRewards()
+        val definitions = achievementDefinitionRepository.findAllEnabledPublicWithRewards()
         val progressByDefinitionId = userAchievementRepository.findAllByTelegramUser_Id(userId)
             .associateBy { it.achievement!!.id!! }
         val items = definitions.map { definition ->
@@ -62,7 +62,7 @@ class AchievementCatalogService(
         }
         return AchievementItemDto(
             code = definition.code,
-            title = definition.title,
+            title = displayTitle(definition, internalTelegramUserId),
             description = definition.description,
             category = definition.category,
             conditionType = definition.conditionType,
@@ -77,9 +77,20 @@ class AchievementCatalogService(
             iconUrl = definition.iconUrl,
             accentColor = definition.accentColor,
             rewards = definition.rewards.sortedWith(compareBy({ it.displayOrder }, { it.id ?: 0L })).map {
-                AchievementRewardDto(type = it.rewardType, amount = it.amount, code = it.rewardCode)
+                AchievementRewardDto(
+                    id = it.id,
+                    type = it.rewardType,
+                    amount = it.amount,
+                    code = it.rewardCode,
+                    metadata = it.metadata,
+                )
             },
         )
+    }
+
+    fun displayTitle(definition: AchievementDefinition, internalTelegramUserId: Long): String {
+        val nickname = achievementProgressCalculator.samePlayerRarityCollectorNickname(internalTelegramUserId, definition)
+        return if (nickname == null) definition.title else "${definition.title}: $nickname"
     }
 
     private fun categoryName(category: String): String =

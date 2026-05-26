@@ -23,6 +23,20 @@ export function useClaimAchievement(initData: string | undefined) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['achievements'] })
       void queryClient.invalidateQueries({ queryKey: ['me'] })
+      void queryClient.invalidateQueries({ queryKey: ['cards'] })
+    },
+  })
+}
+
+export function useSelectAchievementCardChoice(initData: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ code, rewardId, optionIds }: { code: string; rewardId: number; optionIds: string[] }) =>
+      apiSend<AchievementClaimResult>('POST', `/api/v1/achievements/${code}/choices/${rewardId}/select`, initData, { optionIds }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['achievements'] })
+      void queryClient.invalidateQueries({ queryKey: ['me'] })
+      void queryClient.invalidateQueries({ queryKey: ['cards'] })
     },
   })
 }

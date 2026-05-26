@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { profileFrameClassSuffix } from '../lib/profileFrameClass'
 
 type Props = {
   profileFrameCode?: string | null
@@ -7,7 +8,7 @@ type Props = {
 }
 
 export function UserFrameName({ profileFrameCode, className, children }: Props) {
-  const frameCode = profileFrameCode?.trim()
+  const frameCode = profileFrameClassSuffix(profileFrameCode)
   const frameClass = frameCode ? ` pf-user-frame-name--${frameCode}` : ''
   const classSuffix = className ? ` ${className}` : ''
   return (

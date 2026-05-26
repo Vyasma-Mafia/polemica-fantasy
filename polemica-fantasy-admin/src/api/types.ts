@@ -33,9 +33,10 @@ export type AchievementVisibility = 'PUBLIC' | 'HIDDEN' | 'SECRET' | 'PRIVATE'
 export type AchievementRewardType =
   | 'FANTIKI'
   | 'PROFILE_FRAME'
-  | 'CARD_SKIN_UNLOCK'
   | 'COSMETIC_UNLOCK'
   | 'BADGE_STYLE'
+  | 'RANDOM_CARD'
+  | 'CARD_CHOICE_ROLL'
 
 export interface AchievementAdminStatsDto {
   completedUsers: number

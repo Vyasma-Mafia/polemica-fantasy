@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
 import { leagueShortName } from '../lib/leagues'
+import { profileFrameClassSuffix } from '../lib/profileFrameClass'
 import { rarityClass } from '../lib/rarity'
 import { shareToTelegram } from '../lib/shareLinks'
 import { formatDateShort } from '../lib/tournamentDates'
@@ -253,6 +254,7 @@ export function PlayerProfilePage() {
   const name = formatUserDisplayName(profile.user)
   const username = profile.user.username ? `@${profile.user.username}` : null
   const isOwnProfile = meQ.data?.telegramId === profile.user.telegramId
+  const profileFrameClass = profileFrameClassSuffix(profile.profileFrame?.code)
 
   return (
     <div className="pf-page">
@@ -263,7 +265,7 @@ export function PlayerProfilePage() {
         <p className="pf-profile-header__since">
           Участник с {formatDateShort(new Date(profile.memberSince))}
         </p>
-        <div className={`pf-profile-frame ${profile.profileFrame ? `pf-profile-frame--${profile.profileFrame.code}` : ''}`}>
+        <div className={`pf-profile-frame ${profileFrameClass ? `pf-profile-frame--${profileFrameClass}` : ''}`}>
           <div className="pf-profile-showcase">
             <div className="pf-profile-showcase__summary">
               <strong>{profile.achievementSummary.claimed}</strong>

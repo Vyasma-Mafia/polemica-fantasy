@@ -38,7 +38,8 @@ import type {
 
 const RARITY_OPTIONS = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY'].map((value) => ({ value, label: value }))
 const VISIBILITY_OPTIONS = ['PUBLIC', 'HIDDEN', 'SECRET', 'PRIVATE'].map((value) => ({ value, label: value }))
-const REWARD_TYPE_OPTIONS = ['FANTIKI', 'PROFILE_FRAME', 'CARD_SKIN_UNLOCK', 'COSMETIC_UNLOCK', 'BADGE_STYLE'].map((value) => ({ value, label: value }))
+const REWARD_TYPE_OPTIONS = ['FANTIKI', 'PROFILE_FRAME', 'COSMETIC_UNLOCK', 'BADGE_STYLE', 'RANDOM_CARD', 'CARD_CHOICE_ROLL'].map((value) => ({ value, label: value }))
+const CARD_REWARD_TYPES = new Set(['RANDOM_CARD', 'CARD_CHOICE_ROLL'])
 
 interface AchievementFormValues {
   title: string
@@ -65,10 +66,11 @@ function nullableText(value: unknown): string | null {
 }
 
 function normalizeReward(row: AchievementFormValues['rewards'][number]) {
+  const type = row.type
   return {
-    type: row.type,
-    amount: row.type === 'FANTIKI' ? (row.amount ?? null) : null,
-    code: row.type === 'FANTIKI' ? null : nullableText(row.code),
+    type,
+    amount: type === 'FANTIKI' ? (row.amount ?? null) : null,
+    code: type === 'FANTIKI' ? null : nullableText(row.code),
     metadata: nullableText(row.metadata),
     displayOrder: row.displayOrder ?? 0,
   }
@@ -77,7 +79,11 @@ function normalizeReward(row: AchievementFormValues['rewards'][number]) {
 function rewardSummary(rewards: AchievementAdminRewardDto[]) {
   if (!rewards.length) return 'none'
   return rewards
-    .map((reward) => reward.type === 'FANTIKI' ? `${reward.amount ?? 0}₣` : `${reward.type}:${reward.code ?? '—'}`)
+    .map((reward) => {
+      if (reward.type === 'FANTIKI') return `${reward.amount ?? 0}₣`
+      if (CARD_REWARD_TYPES.has(reward.type)) return `${reward.type}:${reward.metadata ?? '—'}`
+      return `${reward.type}:${reward.code ?? '—'}`
+    })
     .join(', ')
 }
 
@@ -365,19 +371,31 @@ export function AchievementsPage() {
                         <Form.Item noStyle shouldUpdate>
                           {({ getFieldValue }) => {
                             const type = getFieldValue(['rewards', field.name, 'type'])
+                            const requiresCode = type !== 'FANTIKI' && !CARD_REWARD_TYPES.has(type)
                             return (
                               <Form.Item
                                 name={[field.name, 'code']}
                                 label="Reward code"
-                                rules={type !== 'FANTIKI' ? [{ required: true }, { max: 96 }] : [{ max: 96 }]}
+                                rules={requiresCode ? [{ required: true }, { max: 96 }] : [{ max: 96 }]}
                               >
                                 <Input disabled={type === 'FANTIKI'} />
                               </Form.Item>
                             )
                           }}
                         </Form.Item>
-                        <Form.Item name={[field.name, 'metadata']} label="Metadata JSON">
-                          <Input.TextArea rows={2} placeholder='{"key":"value"}' />
+                        <Form.Item noStyle shouldUpdate>
+                          {({ getFieldValue }) => {
+                            const type = getFieldValue(['rewards', field.name, 'type'])
+                            return (
+                              <Form.Item
+                                name={[field.name, 'metadata']}
+                                label="Metadata JSON"
+                                rules={CARD_REWARD_TYPES.has(type) ? [{ required: true }] : undefined}
+                              >
+                                <Input.TextArea rows={2} placeholder='{"rarity":"RARE","count":2,"options":5,"source":"ACTIVE_PACKS"}' />
+                              </Form.Item>
+                            )
+                          }}
                         </Form.Item>
                       </Card>
                     ))}

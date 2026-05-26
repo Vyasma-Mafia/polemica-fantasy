@@ -14,6 +14,7 @@ import io.github.mralex1810.fantasy.entity.AchievementReward
 import io.github.mralex1810.fantasy.repository.AchievementAdminStatsProjection
 import io.github.mralex1810.fantasy.repository.AchievementDefinitionRepository
 import io.github.mralex1810.fantasy.repository.AchievementRewardRepository
+import io.github.mralex1810.fantasy.repository.CardSkinRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserAchievementRepository
 import jakarta.persistence.EntityManager
@@ -29,6 +30,7 @@ class AchievementAdminService(
     private val achievementRewardRepository: AchievementRewardRepository,
     private val telegramUserRepository: TelegramUserRepository,
     private val userAchievementRepository: UserAchievementRepository,
+    private val cardSkinRepository: CardSkinRepository,
     private val achievementProgressCalculator: AchievementProgressCalculator,
     private val objectMapper: ObjectMapper,
     private val entityManager: EntityManager,
@@ -152,6 +154,24 @@ class AchievementAdminService(
                 val rewardCode = normalizedText(request.code, "reward.code", required = true, max = 96)!!
                 NormalizedReward(type = type, amount = null, code = rewardCode, metadata = metadata, displayOrder = displayOrder)
             }
+            in cardRewardTypes -> {
+                if (request.amount != null) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.amount must be null for $type")
+                }
+                if (!request.code.isNullOrBlank()) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.code must be blank for $type")
+                }
+                val requiredMetadata = metadata
+                    ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata is required for $type")
+                validateCardRewardMetadata(type, requiredMetadata)
+                NormalizedReward(
+                    type = type,
+                    amount = null,
+                    code = null,
+                    metadata = requiredMetadata,
+                    displayOrder = displayOrder,
+                )
+            }
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "unsupported reward type: $type")
         }
     }
@@ -173,6 +193,52 @@ class AchievementAdminService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "accentColor must be #RRGGBB")
         }
         return trimmed
+    }
+
+    private fun validateCardRewardMetadata(type: String, metadata: String) {
+        val node = try {
+            objectMapper.readTree(metadata)
+        } catch (e: Exception) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata must be a JSON object", e)
+        }
+        if (!node.isObject) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata must be a JSON object")
+        }
+        val rarity = node.get("rarity")?.takeIf { it.isTextual }?.asText()?.uppercase()
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.rarity is required")
+        if (rarity !in allowedRarities) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.rarity is invalid")
+        }
+        if (rarity == "LEGENDARY") {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "LEGENDARY card rewards require a non-pack source and are not supported yet",
+            )
+        }
+        val count = node.get("count")?.takeIf { it.isInt }?.asInt()
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.count is required")
+        if (count <= 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.count must be positive")
+        }
+        val options = node.get("options")?.takeIf { it.isInt }?.asInt()
+        if (type == "CARD_CHOICE_ROLL") {
+            if (options == null) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.options is required")
+            }
+            if (options < count) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.options must be >= count")
+            }
+        } else if (node.has("options")) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.options is only supported for CARD_CHOICE_ROLL")
+        }
+        val skinCode = node.get("skinCode")?.takeIf { it.isTextual }?.asText()?.trim()?.takeIf { it.isNotEmpty() }
+        if (skinCode != null && cardSkinRepository.findByCode(skinCode) == null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.skinCode is unknown")
+        }
+        val source = node.get("source")?.takeIf { it.isTextual }?.asText() ?: "ACTIVE_PACKS"
+        if (source != "ACTIVE_PACKS") {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.metadata.source is unsupported")
+        }
     }
 
     private fun normalizedEnum(value: String?, field: String, allowed: Set<String>): String {
@@ -275,7 +341,8 @@ class AchievementAdminService(
     companion object {
         private val allowedRarities = setOf("COMMON", "RARE", "EPIC", "LEGENDARY")
         private val allowedVisibilities = setOf("PUBLIC", "HIDDEN", "SECRET", "PRIVATE")
-        private val cosmeticRewardTypes = setOf("PROFILE_FRAME", "CARD_SKIN_UNLOCK", "COSMETIC_UNLOCK", "BADGE_STYLE")
+        private val cosmeticRewardTypes = setOf("PROFILE_FRAME", "COSMETIC_UNLOCK", "BADGE_STYLE")
+        private val cardRewardTypes = setOf("RANDOM_CARD", "CARD_CHOICE_ROLL")
         private val accentColorRegex = Regex("^#[0-9A-Fa-f]{6}$")
     }
 }

@@ -87,28 +87,10 @@ class AchievementProgressCalculator(
                 ts,
                 ts,
             ).coerceAtMost(1L)
-            "SAME_PLAYER_3_RARITIES" -> queryLong(
-                """
-                SELECT COUNT(*)
-                FROM (
-                    SELECT ct.fantasy_player_id
-                    FROM user_card uc
-                    JOIN card_template ct ON ct.id = uc.card_template_id
-                    LEFT JOIN user_card_ownership_history h ON h.user_card_id = uc.id AND h.telegram_user_id = uc.telegram_user_id
-                    WHERE uc.telegram_user_id = ?
-                      AND uc.deleted_at IS NULL
-                      AND (
-                        h.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
-                        OR uc.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
-                      )
-                    GROUP BY ct.fantasy_player_id
-                    HAVING COUNT(DISTINCT ct.rarity) >= 3
-                ) x
-                """,
-                internalTelegramUserId,
-                ts,
-                ts,
-            ).coerceAtMost(1L)
+            "SAME_PLAYER_3_RARITIES" -> samePlayerRarityCollectorNickname(internalTelegramUserId, ts, 3)
+                .completedFlag()
+            "SAME_PLAYER_4_RARITIES" -> samePlayerRarityCollectorNickname(internalTelegramUserId, ts, 4)
+                .completedFlag()
             "PACKS_OPENED" -> queryLong(
                 "SELECT COUNT(*) FROM user_card_pack_open_event WHERE telegram_user_id = ? AND opened_at >= ?",
                 internalTelegramUserId,
@@ -257,6 +239,47 @@ class AchievementProgressCalculator(
             trackingStartedAt,
         )
 
+    fun samePlayerRarityCollectorNickname(internalTelegramUserId: Long, definition: AchievementDefinition): String? {
+        val startedAt = definition.trackingStartedAt ?: return null
+        if (!definition.enabled) return null
+        val requiredRarities = when (definition.conditionType) {
+            "SAME_PLAYER_3_RARITIES" -> 3
+            "SAME_PLAYER_4_RARITIES" -> 4
+            else -> return null
+        }
+        return samePlayerRarityCollectorNickname(internalTelegramUserId, Timestamp.from(startedAt), requiredRarities)
+    }
+
+    private fun samePlayerRarityCollectorNickname(
+        internalTelegramUserId: Long,
+        trackingStartedAt: Timestamp,
+        requiredRarities: Int,
+    ): String? =
+        jdbcTemplate.queryForList(
+            """
+            SELECT fp.nickname
+            FROM user_card uc
+            JOIN card_template ct ON ct.id = uc.card_template_id
+            JOIN fantasy_player fp ON fp.id = ct.fantasy_player_id
+            LEFT JOIN user_card_ownership_history h ON h.user_card_id = uc.id AND h.telegram_user_id = uc.telegram_user_id
+            WHERE uc.telegram_user_id = ?
+              AND uc.deleted_at IS NULL
+              AND (
+                h.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
+                OR uc.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
+              )
+            GROUP BY fp.id, fp.nickname
+            HAVING COUNT(DISTINCT ct.rarity) >= ?
+            ORDER BY COUNT(DISTINCT ct.rarity) DESC, fp.nickname ASC, fp.id ASC
+            LIMIT 1
+            """,
+            String::class.java,
+            internalTelegramUserId,
+            trackingStartedAt,
+            trackingStartedAt,
+            requiredRarities,
+        ).firstOrNull()
+
     private fun rankedCount(internalTelegramUserId: Long, trackingStartedAt: Timestamp, predicate: String): Long =
         queryLong(
             """
@@ -289,4 +312,6 @@ class AchievementProgressCalculator(
 
     private fun queryLong(sql: String, vararg args: Any): Long =
         jdbcTemplate.queryForObject(sql, Long::class.java, *args) ?: 0L
+
+    private fun String?.completedFlag(): Long = if (this == null) 0L else 1L
 }

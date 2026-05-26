@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy
 
 import com.jayway.jsonpath.JsonPath
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.hasItem
 import org.hamcrest.Matchers.hasSize
 import org.hamcrest.Matchers.not
@@ -52,6 +53,18 @@ class AchievementStage2ProfileShowcaseIntegrationTest {
             WHERE code IN ('series_win_1', 'team_submit_1', 'team_submit_5')
             """.trimIndent(),
         )
+        configureAchievementRewards(
+            "series_win_1",
+            "('BADGE_STYLE', NULL, 'series_winner', NULL, 10)",
+        )
+        configureAchievementRewards(
+            "team_submit_1",
+            "('FANTIKI', 25, NULL, NULL, 10)",
+        )
+        configureAchievementRewards(
+            "team_submit_5",
+            "('FANTIKI', 50, NULL, NULL, 10)",
+        )
     }
 
     @Test
@@ -66,6 +79,35 @@ class AchievementStage2ProfileShowcaseIntegrationTest {
             .andExpect(jsonPath("$.unlockedFrames[0].code").value("budget_master"))
             .andExpect(jsonPath("$.availableFeaturedAchievements[0].code").value("series_win_1"))
             .andExpect(jsonPath("$.featuredAchievementCodes").isArray)
+    }
+
+    @Test
+    fun `GET profile customization localizes all seeded profile frames`() {
+        val telegramId = 918_050_001L
+        val tma = tmaAuth(telegramId, "FrameLabels")
+        val expectedNames = mapOf(
+            "budget_master" to "Мастер бюджета",
+            "budget_master_elite" to "Элита бюджета",
+            "budget_winner" to "Победитель бюджета",
+            "collector" to "Коллекционер",
+            "dynasty" to "Династия",
+            "dynasty_elite" to "Элитная династия",
+            "legendary_crafter" to "Легендарный крафтер",
+            "pack_hunter" to "Охотник за паками",
+            "stable_manager_elite" to "Элитный менеджер",
+            "steady_result" to "Стабильный результат",
+        )
+        mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
+            .andExpect(status().isOk)
+        expectedNames.keys.forEach { insertProfileFrameUnlock(telegramId, it, "frame-labels") }
+
+        val response = mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+
+        val frames = JsonPath.parse(response).read<List<Map<String, String>>>("$.unlockedFrames")
+        val namesByCode = frames.associate { it["code"]!! to it["name"]!! }
+        assertThat(namesByCode).containsAllEntriesOf(expectedNames)
     }
 
     @Test
@@ -420,6 +462,29 @@ class AchievementStage2ProfileShowcaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"userCardIds":[${userCardIds.joinToString(",")}]}"""),
         ).andExpect(status().isOk)
+    }
+
+    private fun configureAchievementRewards(code: String, rewardsSql: String) {
+        jdbcTemplate.update(
+            """
+            DELETE FROM achievement_reward
+            WHERE achievement_id = (SELECT id FROM achievement_definition WHERE code = ?)
+            """.trimIndent(),
+            code,
+        )
+        jdbcTemplate.update(
+            """
+            INSERT INTO achievement_reward (achievement_id, reward_type, amount, reward_code, metadata, display_order)
+            SELECT d.id, r.reward_type, r.amount::bigint, r.reward_code, r.metadata::jsonb, r.display_order::integer
+            FROM achievement_definition d
+            CROSS JOIN (
+                VALUES
+                $rewardsSql
+            ) AS r(reward_type, amount, reward_code, metadata, display_order)
+            WHERE d.code = ?
+            """.trimIndent(),
+            code,
+        )
     }
 
     private fun insertProfileFrameUnlock(telegramId: Long, code: String, sourceCode: String) {

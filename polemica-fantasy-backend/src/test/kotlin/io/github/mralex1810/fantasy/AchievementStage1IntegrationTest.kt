@@ -1,10 +1,12 @@
 package io.github.mralex1810.fantasy
 
 import com.jayway.jsonpath.JsonPath
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.hasItem
 import org.hamcrest.Matchers.hasSize
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
@@ -48,24 +50,123 @@ class AchievementStage1IntegrationTest {
     @Test
     @Order(1)
     fun `seed definitions have launch policy and stage one visibility`() {
-        assertSqlLong("SELECT COUNT(*) FROM achievement_definition", 42)
+        assertSqlLong("SELECT COUNT(*) FROM achievement_definition", EXPECTED_ACHIEVEMENT_COUNT)
         assertSqlLong(
             "SELECT COUNT(*) FROM achievement_definition WHERE history_policy = 'FROM_ACHIEVEMENTS_LAUNCH'",
-            42,
+            EXPECTED_ACHIEVEMENT_COUNT,
         )
-        assertSqlLong("SELECT COUNT(*) FROM achievement_definition WHERE enabled = TRUE", 42)
+        assertSqlLong("SELECT COUNT(*) FROM achievement_definition WHERE enabled = TRUE", EXPECTED_ACHIEVEMENT_COUNT)
         assertSqlLong(
             "SELECT COUNT(*) FROM achievement_definition WHERE enabled = TRUE AND tracking_started_at IS NOT NULL",
-            42,
+            EXPECTED_ACHIEVEMENT_COUNT,
         )
         assertSqlLong(
             "SELECT COUNT(*) FROM achievement_definition WHERE enabled = FALSE AND tracking_started_at IS NULL",
             0,
         )
+        assertSqlLong("SELECT COUNT(*) FROM achievement_definition WHERE code IN ('team_submit_50', 'budget_win_10', 'series_win_50', 'market_watch_5', 'view_public_profile_25')", 5)
     }
 
     @Test
     @Order(2)
+    fun `seed reward rework uses valid card reward metadata`() {
+        assertSqlLong("SELECT COUNT(*) FROM achievement_reward WHERE reward_type = 'CARD_SKIN_UNLOCK'", 0)
+        assertSqlLong("SELECT COUNT(*) FROM achievement_reward WHERE reward_type = 'CARD_CHOICE_CATALOG'", 0)
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM card_skin
+            WHERE code IN (
+                'budget_edition',
+                'common_challenge_edition',
+                'winner_edition',
+                'crafter_edition',
+                'pack_hunter_edition'
+            )
+            """.trimIndent(),
+            5,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_reward
+            WHERE reward_type IN ('RANDOM_CARD', 'CARD_CHOICE_ROLL')
+              AND (
+                metadata IS NULL
+                OR metadata->>'source' <> 'ACTIVE_PACKS'
+                OR metadata->>'rarity' NOT IN ('COMMON', 'RARE', 'EPIC')
+                OR COALESCE((metadata->>'count')::int, 0) <= 0
+                OR (
+                  reward_type = 'CARD_CHOICE_ROLL'
+                  AND COALESCE((metadata->>'options')::int, 0) < COALESCE((metadata->>'count')::int, 0)
+                )
+              )
+            """.trimIndent(),
+            0,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_reward ar
+            JOIN achievement_definition d ON d.id = ar.achievement_id
+            WHERE d.code = 'team_submit_5'
+              AND ar.reward_type = 'CARD_CHOICE_ROLL'
+              AND ar.metadata @> '{"rarity":"COMMON","count":1,"options":3,"source":"ACTIVE_PACKS"}'::jsonb
+            """.trimIndent(),
+            1,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_reward ar
+            JOIN achievement_definition d ON d.id = ar.achievement_id
+            WHERE d.code = 'series_win_50'
+              AND ar.reward_type = 'CARD_CHOICE_ROLL'
+              AND ar.metadata @> '{"rarity":"EPIC","count":2,"options":5,"source":"ACTIVE_PACKS"}'::jsonb
+            """.trimIndent(),
+            1,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_reward ar
+            JOIN achievement_definition d ON d.id = ar.achievement_id
+            WHERE ar.reward_type = 'CARD_CHOICE_ROLL'
+              AND (
+                (d.code = 'budget_team_30' AND ar.metadata @> '{"skinCode":"budget_edition"}'::jsonb)
+                OR (d.code = 'top_quarter_10' AND ar.metadata @> '{"skinCode":"common_challenge_edition"}'::jsonb)
+                OR (d.code = 'series_win_10' AND ar.metadata @> '{"skinCode":"winner_edition"}'::jsonb)
+                OR (d.code = 'legendary_upgrade_10' AND ar.metadata @> '{"skinCode":"crafter_edition"}'::jsonb)
+                OR (d.code = 'pack_open_150' AND ar.metadata @> '{"skinCode":"pack_hunter_edition"}'::jsonb)
+              )
+            """.trimIndent(),
+            5,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_definition
+            WHERE code = 'same_player_3_rarities'
+              AND condition_type = 'SAME_PLAYER_4_RARITIES'
+              AND description = 'Собрать активные карты одного игрока во всех 4 редкостях'
+            """.trimIndent(),
+            1,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM achievement_reward ar
+            JOIN achievement_definition d ON d.id = ar.achievement_id
+            WHERE d.code = 'same_player_3_rarities'
+              AND ar.reward_type = 'CARD_CHOICE_ROLL'
+              AND ar.metadata @> '{"rarity":"RARE","count":2,"options":5,"source":"ACTIVE_PACKS"}'::jsonb
+            """.trimIndent(),
+            1,
+        )
+    }
+
+    @Test
+    @Order(3)
     fun `GET achievements requires TMA auth and returns enabled catalog only`() {
         mockMvc.perform(get("/api/v1/achievements"))
             .andExpect(status().isUnauthorized)
@@ -73,14 +174,16 @@ class AchievementStage1IntegrationTest {
         val tma = tmaAuth(910_000_001L, "CatalogUser")
         mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.summary.totalVisible").value(42))
+            .andExpect(jsonPath("$.summary.totalVisible").value(EXPECTED_ACHIEVEMENT_COUNT.toInt()))
             .andExpect(jsonPath("$.summary.completed").value(0))
             .andExpect(jsonPath("$.summary.claimed").value(0))
             .andExpect(jsonPath("$.categories[*].code", containsInAnyOrder("PARTICIPATION", "BUDGET", "RESULTS", "COLLECTION", "PACKS", "MARKETPLACE", "SOCIAL")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("team_submit_1")))
+            .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("series_win_50")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("pack_open_1")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("market_buy_1")))
             .andExpect(jsonPath("$.categories[*].achievements[*].rewards[*].type", hasItem("FANTIKI")))
+            .andExpect(jsonPath("$.categories[*].achievements[*].rewards[*].type", hasItem("CARD_CHOICE_ROLL")))
     }
 
     @Test
@@ -98,7 +201,63 @@ class AchievementStage1IntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.instantCompleted").value(0))
             .andExpect(jsonPath("$.instantFantikiLiability").value(0))
-            .andExpect(jsonPath("$.rows", hasSize<Any>(42)))
+            .andExpect(jsonPath("$.rows", hasSize<Any>(EXPECTED_ACHIEVEMENT_COUNT.toInt())))
+    }
+
+    @Test
+    @Order(4)
+    fun `hidden enabled achievement is excluded from user catalog and cannot be claimed`() {
+        val tma = tmaAuth(910_000_004L, "HiddenCatalog")
+        configureAchievementRewards(
+            code = "market_buy_1",
+            rewardsSql = "('FANTIKI', 123, NULL, NULL::jsonb, 10)",
+        )
+        jdbcTemplate.update(
+            "UPDATE achievement_definition SET enabled = TRUE, visibility = 'HIDDEN' WHERE code = 'market_buy_1'",
+        )
+
+        mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.categories[*].achievements[*].code", not(hasItem("market_buy_1"))))
+
+        val internalUserId = internalUserId(910_000_004L)
+        jdbcTemplate.update(
+            """
+            INSERT INTO user_achievement (telegram_user_id, achievement_id, progress_value, completed_at, updated_at)
+            SELECT ?, id, target_value, now(), now()
+            FROM achievement_definition
+            WHERE code = 'market_buy_1'
+            ON CONFLICT (telegram_user_id, achievement_id) DO UPDATE
+            SET progress_value = EXCLUDED.progress_value,
+                completed_at = EXCLUDED.completed_at,
+                updated_at = EXCLUDED.updated_at
+            """.trimIndent(),
+            internalUserId,
+        )
+
+        mockMvc.perform(post("/api/v1/achievements/market_buy_1/claim").header("Authorization", tma))
+            .andExpect(status().isNotFound)
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM user_achievement ua
+            JOIN achievement_definition d ON d.id = ua.achievement_id
+            WHERE ua.telegram_user_id = $internalUserId
+              AND d.code = 'market_buy_1'
+              AND ua.claimed_at IS NOT NULL
+            """.trimIndent(),
+            0,
+        )
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM fantiki_transaction
+            WHERE telegram_user_id = $internalUserId
+              AND reason = 'ACHIEVEMENT_REWARD'
+              AND amount = 123
+            """.trimIndent(),
+            0,
+        )
     }
 
     @Test
@@ -234,6 +393,60 @@ class AchievementStage1IntegrationTest {
     }
 
     @Test
+    @Order(32)
+    fun `same player rarities requires all four rarities and uses player nickname in titles`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentId = createTournament(auth, "Favorite player")
+        val fantasyPlayerId = createTournamentPlayer(auth, tournamentId, 920_032_001L, "НикФаворит")
+        val templateIds = listOf("COMMON", "RARE", "EPIC", "LEGENDARY").map { rarity ->
+            createCardTemplate(auth, fantasyPlayerId, rarity)
+        }
+        val telegramId = 910_000_032L
+        val tma = tmaAuth(telegramId, "FavoriteCollector")
+
+        giveCards(auth, telegramId, templateIds.take(3))
+        assertAchievement(tma, "same_player_3_rarities", 0, "LOCKED")
+
+        giveCards(auth, telegramId, listOf(templateIds[3]))
+
+        val achievementsJson = mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val achievement = singleAchievement(achievementsJson, "same_player_3_rarities")
+        assertThat((achievement["progressValue"] as Number).toInt()).isEqualTo(1)
+        assertThat(achievement["state"]).isEqualTo("COMPLETED_UNCLAIMED")
+        assertThat(achievement["title"]).isEqualTo("Любимый игрок: НикФаворит")
+
+        val internalId = internalUserId(telegramId)
+        jdbcTemplate.update(
+            """
+            INSERT INTO user_achievement (telegram_user_id, achievement_id, progress_value, completed_at, claimed_at, updated_at)
+            SELECT ?, id, 1, now(), now(), now()
+            FROM achievement_definition
+            WHERE code = 'same_player_3_rarities'
+            """.trimIndent(),
+            internalId,
+        )
+        jdbcTemplate.update(
+            """
+            INSERT INTO user_profile_featured_achievement (telegram_user_id, achievement_id, display_order)
+            SELECT ?, id, 0
+            FROM achievement_definition
+            WHERE code = 'same_player_3_rarities'
+            """.trimIndent(),
+            internalId,
+        )
+
+        mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.availableFeaturedAchievements[0].title").value("Любимый игрок: НикФаворит"))
+
+        mockMvc.perform(get("/api/v1/players/$telegramId/profile").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.featuredAchievements[0].title").value("Любимый игрок: НикФаворит"))
+    }
+
+    @Test
     @Order(40)
     fun `claim rejects incomplete achievement and rewards completed achievement once`() {
         val auth = basicAuth("admin", "test-admin-secret")
@@ -281,6 +494,15 @@ class AchievementStage1IntegrationTest {
         createFantasyTeam(loserTma, fixture.seriesId, "MAIN", listOf(loserCardIds[0]))
         val winnerInternalId = internalUserId(fixture.telegramPlatformId)
         jdbcTemplate.update("UPDATE fantasy_team SET total_score = CASE WHEN telegram_user_id = ? THEN 100 ELSE 10 END", winnerInternalId)
+        jdbcTemplate.update(
+            """
+            DELETE FROM achievement_reward ar
+            USING achievement_definition d
+            WHERE ar.achievement_id = d.id
+              AND d.code = 'series_win_1'
+              AND ar.reward_type = 'CARD_CHOICE_ROLL'
+            """.trimIndent(),
+        )
 
         mockMvc.perform(post("/api/v1/admin/series/${fixture.seriesId}/finalize").header("Authorization", auth))
             .andExpect(status().isOk)
@@ -366,6 +588,135 @@ class AchievementStage1IntegrationTest {
         }
     }
 
+    @Test
+    @Order(60)
+    fun `card choice claim creates pending choice and select finalizes without duplicate cards`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        createAutoPack(auth, suffix = "choice-lifecycle-pool", rarity = "COMMON", playerCount = 3)
+        configureAchievementRewards(
+            code = "team_submit_5",
+            rewardsSql = """
+                ('FANTIKI', 7, NULL, NULL::jsonb, 10),
+                ('PROFILE_FRAME', NULL, 'choice_frame', NULL::jsonb, 20),
+                ('CARD_CHOICE_ROLL', NULL, NULL, '{"rarity":"COMMON","count":1,"options":3,"source":"ACTIVE_PACKS","skinCode":"budget_edition"}'::jsonb, 30)
+            """.trimIndent(),
+        )
+        jdbcTemplate.update("UPDATE achievement_definition SET target_value = 1 WHERE code = 'team_submit_5'")
+        val fixture = createTeamFixture(auth, suffix = "choice-lifecycle")
+        val tma = tmaAuth(fixture.telegramPlatformId, "ChoiceLifecycle")
+        createFantasyTeam(tma, fixture.seriesId, "MAIN", fixture.userCardIds.take(1))
+
+        val firstClaim = mockMvc.perform(post("/api/v1/achievements/team_submit_5/claim").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.claimedAt").doesNotExist())
+            .andExpect(jsonPath("$.fantikiDelta").value(0))
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(1)))
+            .andExpect(jsonPath("$.pendingChoices[0].options", hasSize<Any>(3)))
+            .andExpect(jsonPath("$.pendingChoices[0].options[0].skinCode").value("budget_edition"))
+            .andReturn().response.contentAsString
+        val firstJson = JsonPath.parse(firstClaim)
+        val rewardId = firstJson.read<Number>("$.pendingChoices[0].rewardId").toLong()
+        val firstOptionIds = firstJson.read<List<String>>("$.pendingChoices[0].options[*].optionId")
+        assertSqlLong("SELECT COUNT(*) FROM user_achievement_card_choice WHERE reward_id = $rewardId", 1)
+
+        val repeatClaim = mockMvc.perform(post("/api/v1/achievements/team_submit_5/claim").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.claimedAt").doesNotExist())
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(1)))
+            .andReturn().response.contentAsString
+        val repeatOptionIds = JsonPath.parse(repeatClaim).read<List<String>>("$.pendingChoices[0].options[*].optionId")
+        assertThat(repeatOptionIds).containsExactlyElementsOf(firstOptionIds)
+        assertSqlLong("SELECT COUNT(*) FROM user_achievement_card_choice WHERE reward_id = $rewardId", 1)
+
+        val beforeCards = achievementRewardCardCount(fixture.telegramPlatformId)
+        val selectedOptionId = firstOptionIds.first()
+        val selectResponse = mockMvc.perform(
+            post("/api/v1/achievements/team_submit_5/choices/$rewardId/select")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"optionIds":["$selectedOptionId"]}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.claimedAt").isString)
+            .andExpect(jsonPath("$.fantikiDelta").value(7))
+            .andExpect(jsonPath("$.grantedCards", hasSize<Any>(1)))
+            .andExpect(jsonPath("$.grantedCards[0].skinCode").value("budget_edition"))
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(0)))
+            .andReturn().response.contentAsString
+        val grantedCardId = JsonPath.parse(selectResponse).read<Number>("$.grantedCards[0].userCardId").toLong()
+        assertThat(achievementRewardCardCount(fixture.telegramPlatformId)).isEqualTo(beforeCards + 1)
+        assertSqlLong(
+            """
+            SELECT COUNT(*)
+            FROM user_card uc
+            JOIN card_skin cs ON cs.id = uc.card_skin_id
+            WHERE uc.id = $grantedCardId
+              AND cs.code = 'budget_edition'
+            """.trimIndent(),
+            1,
+        )
+
+        mockMvc.perform(
+            post("/api/v1/achievements/team_submit_5/choices/$rewardId/select")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"optionIds":["$selectedOptionId"]}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantikiDelta").value(0))
+            .andExpect(jsonPath("$.grantedCards", hasSize<Any>(0)))
+        mockMvc.perform(post("/api/v1/achievements/team_submit_5/claim").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.fantikiDelta").value(0))
+            .andExpect(jsonPath("$.grantedCards", hasSize<Any>(0)))
+        assertThat(achievementRewardCardCount(fixture.telegramPlatformId)).isEqualTo(beforeCards + 1)
+
+        val snapshot = rewardSnapshot(fixture.telegramPlatformId, "team_submit_5")
+        val fantiki = snapshot.single { it["type"] == "FANTIKI" }
+        val cosmetic = snapshot.single { it["type"] == "PROFILE_FRAME" }
+        val choice = snapshot.single { it["type"] == "CARD_CHOICE_ROLL" }
+        assertThat(cardIds(fantiki)).isEmpty()
+        assertThat(cardIds(cosmetic)).isEmpty()
+        assertThat(cardIds(choice)).containsExactly(grantedCardId)
+    }
+
+    @Test
+    @Order(61)
+    fun `random card snapshot maps cards to their reward only`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        createAutoPack(auth, suffix = "random-snapshot-pool", rarity = "COMMON", playerCount = 4)
+        configureAchievementRewards(
+            code = "team_submit_15",
+            rewardsSql = """
+                ('FANTIKI', 5, NULL, NULL::jsonb, 10),
+                ('RANDOM_CARD', NULL, NULL, '{"rarity":"COMMON","count":1,"source":"ACTIVE_PACKS"}'::jsonb, 20),
+                ('PROFILE_FRAME', NULL, 'random_frame', NULL::jsonb, 30),
+                ('RANDOM_CARD', NULL, NULL, '{"rarity":"COMMON","count":1,"source":"ACTIVE_PACKS"}'::jsonb, 40)
+            """.trimIndent(),
+        )
+        jdbcTemplate.update("UPDATE achievement_definition SET target_value = 1 WHERE code = 'team_submit_15'")
+        val fixture = createTeamFixture(auth, suffix = "random-snapshot")
+        val tma = tmaAuth(fixture.telegramPlatformId, "RandomSnapshot")
+        createFantasyTeam(tma, fixture.seriesId, "MAIN", fixture.userCardIds.take(1))
+
+        val response = mockMvc.perform(post("/api/v1/achievements/team_submit_15/claim").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.grantedCards", hasSize<Any>(2)))
+            .andReturn().response.contentAsString
+        val responseCardIds = JsonPath.parse(response).read<List<Number>>("$.grantedCards[*].userCardId").map { it.toLong() }
+        val snapshot = rewardSnapshot(fixture.telegramPlatformId, "team_submit_15")
+        val randomEntries = snapshot.filter { it["type"] == "RANDOM_CARD" }
+        assertThat(randomEntries).hasSize(2)
+        val firstRandomIds = cardIds(randomEntries[0])
+        val secondRandomIds = cardIds(randomEntries[1])
+        assertThat(firstRandomIds).hasSize(1)
+        assertThat(secondRandomIds).hasSize(1)
+        assertThat(firstRandomIds).doesNotContainAnyElementsOf(secondRandomIds)
+        assertThat((firstRandomIds + secondRandomIds).toSet()).isEqualTo(responseCardIds.toSet())
+        assertThat(cardIds(snapshot.single { it["type"] == "FANTIKI" })).isEmpty()
+        assertThat(cardIds(snapshot.single { it["type"] == "PROFILE_FRAME" })).isEmpty()
+    }
+
     private fun dryRunInstantCompleted(response: String, code: String): Long {
         val rows = JsonPath.parse(response).read<List<Map<String, Any?>>>("$.rows")
         return (rows.single { it["code"] == code }["instantCompleted"] as Number).toLong()
@@ -375,13 +726,17 @@ class AchievementStage1IntegrationTest {
         val json = mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
             .andExpect(status().isOk)
             .andReturn().response.contentAsString
-        val items = JsonPath.parse(json).read<List<Map<String, Any?>>>("$..achievements[?(@.code == '$code')]")
-        check(items.size == 1) { "Expected one achievement $code in $json" }
-        val item = items.first()
+        val item = singleAchievement(json, code)
         check((item["progressValue"] as Number).toInt() == progressValue) {
             "Expected $code progress $progressValue, got ${item["progressValue"]}"
         }
         check(item["state"] == state) { "Expected $code state $state, got ${item["state"]}" }
+    }
+
+    private fun singleAchievement(json: String, code: String): Map<String, Any?> {
+        val items = JsonPath.parse(json).read<List<Map<String, Any?>>>("$..achievements[?(@.code == '$code')]")
+        check(items.size == 1) { "Expected one achievement $code in $json" }
+        return items.first()
     }
 
     private fun createTeamFixture(auth: String, suffix: String): TeamFixture {
@@ -478,9 +833,16 @@ class AchievementStage1IntegrationTest {
         ).andExpect(status().isOk)
     }
 
-    private fun createAutoPack(auth: String, suffix: String, rarity: String): Long {
+    private fun createAutoPack(auth: String, suffix: String, rarity: String, playerCount: Int = 1): Long {
         val tournamentId = createTournament(auth, "Pack T $suffix")
-        createTournamentPlayer(auth, tournamentId, 920_000_000L + suffix.hashCode().toLong().mod(100_000L), "PackP$suffix")
+        repeat(playerCount) { index ->
+            createTournamentPlayer(
+                auth,
+                tournamentId,
+                920_000_000L + suffix.hashCode().toLong().mod(100_000L) * 10 + index,
+                "PackP$suffix$index",
+            )
+        }
         val json = mockMvc.perform(
             post("/api/v1/admin/card-packs")
                 .header("Authorization", auth)
@@ -495,6 +857,64 @@ class AchievementStage1IntegrationTest {
         ).andExpect(status().isOk).andReturn().response.contentAsString
         return JsonPath.parse(json).read<Number>("$.id").toLong()
     }
+
+    private fun configureAchievementRewards(code: String, rewardsSql: String) {
+        jdbcTemplate.update(
+            """
+            DELETE FROM achievement_reward
+            WHERE achievement_id = (SELECT id FROM achievement_definition WHERE code = ?)
+            """.trimIndent(),
+            code,
+        )
+        jdbcTemplate.update(
+            """
+            INSERT INTO achievement_reward (achievement_id, reward_type, amount, reward_code, metadata, display_order)
+            SELECT d.id, r.reward_type, r.amount, r.reward_code, r.metadata, r.display_order
+            FROM achievement_definition d
+            CROSS JOIN (
+                VALUES
+                $rewardsSql
+            ) AS r(reward_type, amount, reward_code, metadata, display_order)
+            WHERE d.code = ?
+            """.trimIndent(),
+            code,
+        )
+    }
+
+    private fun achievementRewardCardCount(telegramId: Long): Long =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM user_card_ownership_history h
+            JOIN telegram_user u ON u.id = h.telegram_user_id
+            WHERE u.telegram_id = ?
+              AND h.acquisition_type = 'ACHIEVEMENT_REWARD'
+            """.trimIndent(),
+            Long::class.java,
+            telegramId,
+        )!!
+
+    private fun rewardSnapshot(telegramId: Long, code: String): List<Map<String, Any?>> {
+        val json = jdbcTemplate.queryForObject(
+            """
+            SELECT ua.reward_snapshot
+            FROM user_achievement ua
+            JOIN telegram_user u ON u.id = ua.telegram_user_id
+            JOIN achievement_definition d ON d.id = ua.achievement_id
+            WHERE u.telegram_id = ?
+              AND d.code = ?
+            """.trimIndent(),
+            String::class.java,
+            telegramId,
+            code,
+        )!!
+        return JsonPath.parse(json).read("$")
+    }
+
+    private fun cardIds(snapshotEntry: Map<String, Any?>): List<Long> =
+        (snapshotEntry["grantedCardIds"] as? List<*>)
+            .orEmpty()
+            .map { (it as Number).toLong() }
 
     private fun internalUserId(telegramId: Long): Long =
         jdbcTemplate.queryForObject("SELECT id FROM telegram_user WHERE telegram_id = ?", Long::class.java, telegramId)!!
@@ -549,5 +969,7 @@ class AchievementStage1IntegrationTest {
             val token = Base64.getEncoder().encodeToString("$user:$password".toByteArray(Charsets.UTF_8))
             return "Basic $token"
         }
+
+        private const val EXPECTED_ACHIEVEMENT_COUNT = 81L
     }
 }

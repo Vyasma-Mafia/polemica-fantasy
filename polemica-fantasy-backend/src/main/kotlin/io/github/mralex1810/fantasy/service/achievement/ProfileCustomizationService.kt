@@ -51,7 +51,7 @@ class ProfileCustomizationService(
             profileFrameCode = selectedFrame,
             unlockedFrames = unlockedFrames(userId),
             featuredAchievementCodes = featuredCodes,
-            availableFeaturedAchievements = claimedByCode.values.map { toBadge(it.achievement!!) },
+            availableFeaturedAchievements = claimedByCode.values.map { toBadge(it.achievement!!, userId) },
         )
     }
 
@@ -114,7 +114,7 @@ class ProfileCustomizationService(
                 val definition = featured.achievement ?: return@mapNotNull null
                 val userAchievement = progressByDefinitionId[definition.id!!] ?: return@mapNotNull null
                 if (userAchievement.claimedAt == null || definition.visibility != "PUBLIC") return@mapNotNull null
-                toBadge(definition)
+                toBadge(definition, internalTelegramUserId)
             }
         val disabledFeaturedClaimed = featuredAchievements.count { it.code !in enabledPublicCodes }
 
@@ -147,10 +147,10 @@ class ProfileCustomizationService(
             .sortedBy { it.cosmeticCode }
             .map { unlock -> ProfileFrameDto(code = unlock.cosmeticCode, name = frameName(unlock.cosmeticCode), assetUrl = null) }
 
-    private fun toBadge(definition: AchievementDefinition): AchievementBadgeDto =
+    private fun toBadge(definition: AchievementDefinition, internalTelegramUserId: Long): AchievementBadgeDto =
         AchievementBadgeDto(
             code = definition.code,
-            title = definition.title,
+            title = achievementCatalogService.displayTitle(definition, internalTelegramUserId),
             iconUrl = definition.iconUrl,
             rarity = definition.rarity,
             accentColor = definition.accentColor,
@@ -177,14 +177,22 @@ class ProfileCustomizationService(
                 )
             }
 
-    private fun frameName(code: String): String = when (code) {
-        "budget_master" -> "Мастер бюджета"
-        "dynasty" -> "Династия"
-        else -> code.replace('_', ' ')
-    }
+    private fun frameName(code: String): String = frameNames[code] ?: code.replace('_', ' ')
 
     companion object {
         private const val MAX_FEATURED_ACHIEVEMENTS = 5
         private const val PROFILE_FRAME_TYPE = "PROFILE_FRAME"
+        private val frameNames = mapOf(
+            "budget_master" to "Мастер бюджета",
+            "budget_master_elite" to "Элита бюджета",
+            "budget_winner" to "Победитель бюджета",
+            "collector" to "Коллекционер",
+            "dynasty" to "Династия",
+            "dynasty_elite" to "Элитная династия",
+            "legendary_crafter" to "Легендарный крафтер",
+            "pack_hunter" to "Охотник за паками",
+            "stable_manager_elite" to "Элитный менеджер",
+            "steady_result" to "Стабильный результат",
+        )
     }
 }

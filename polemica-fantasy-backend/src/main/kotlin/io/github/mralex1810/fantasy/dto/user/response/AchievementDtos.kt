@@ -33,9 +33,11 @@ data class AchievementItemDto(
 )
 
 data class AchievementRewardDto(
+    val id: Long?,
     val type: String,
     val amount: Long?,
     val code: String?,
+    val metadata: String?,
 )
 
 data class AchievementSummaryDto(
@@ -47,13 +49,40 @@ data class AchievementSummaryDto(
 
 data class AchievementClaimResultDto(
     val achievementCode: String,
-    val claimedAt: Instant,
+    val claimedAt: Instant?,
     val fantikiDelta: Long,
     val newFantikiBalance: Long,
     val cosmeticUnlocks: List<AchievementCosmeticUnlockDto>,
+    val grantedCards: List<AchievementGrantedCardDto> = emptyList(),
+    val pendingChoices: List<AchievementPendingCardChoiceDto> = emptyList(),
 )
 
 data class AchievementCosmeticUnlockDto(
     val type: String,
     val code: String,
+)
+
+data class AchievementGrantedCardDto(
+    val userCardId: Long,
+    val fantasyPlayerId: Long,
+    val playerName: String,
+    val playerPhotoUrl: String?,
+    val rarity: String,
+    val skinCode: String?,
+)
+
+data class AchievementPendingCardChoiceDto(
+    val rewardId: Long,
+    val requiredCount: Int,
+    val options: List<AchievementCardChoiceOptionDto>,
+)
+
+data class AchievementCardChoiceOptionDto(
+    val optionId: String,
+    val fantasyPlayerId: Long,
+    val playerName: String,
+    val playerPhotoUrl: String?,
+    val rarity: String,
+    val skinCode: String?,
+    val perks: List<CardPerkBriefDto>,
 )

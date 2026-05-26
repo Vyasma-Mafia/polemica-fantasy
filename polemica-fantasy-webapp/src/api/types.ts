@@ -6,9 +6,11 @@ export type OccurrenceType = 'ONCE_PER_GAME' | 'MULTIPLE_PER_GAME'
 export type AchievementState = 'LOCKED' | 'IN_PROGRESS' | 'COMPLETED_UNCLAIMED' | 'CLAIMED'
 
 export interface AchievementReward {
+  id: number | null
   type: string
   amount: number | null
   code: string | null
+  metadata: string | null
 }
 
 export interface AchievementItem {
@@ -50,10 +52,37 @@ export interface AchievementCatalog {
 
 export interface AchievementClaimResult {
   achievementCode: string
-  claimedAt: string
+  claimedAt: string | null
   fantikiDelta: number
   newFantikiBalance: number
   cosmeticUnlocks: { type: string; code: string }[]
+  grantedCards: AchievementGrantedCard[]
+  pendingChoices: AchievementPendingCardChoice[]
+}
+
+export interface AchievementGrantedCard {
+  userCardId: number
+  fantasyPlayerId: number
+  playerName: string
+  playerPhotoUrl: string | null
+  rarity: Rarity
+  skinCode: string | null
+}
+
+export interface AchievementPendingCardChoice {
+  rewardId: number
+  requiredCount: number
+  options: AchievementCardChoiceOption[]
+}
+
+export interface AchievementCardChoiceOption {
+  optionId: string
+  fantasyPlayerId: number
+  playerName: string
+  playerPhotoUrl: string | null
+  rarity: Rarity
+  skinCode: string | null
+  perks: UserCardItem['perks']
 }
 
 export interface ProfileFrame {
@@ -564,7 +593,7 @@ export interface MarketplaceAnalyticsDetail {
   avgSalePrice: number | null
 }
 
-export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE'
+export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE' | 'ACHIEVEMENT_REWARD'
 
 export interface CardOwnershipHistoryEntry {
   ownerDisplayName: string

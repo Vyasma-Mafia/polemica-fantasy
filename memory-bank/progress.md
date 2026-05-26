@@ -3,6 +3,9 @@
 ## Что реализовано
 
 ### Design: система пользовательских достижений (май 2026)
+- [x] Достижение `same_player_3_rarities` переведено на all-4-rarities условие через Flyway **V52** (`SAME_PLAYER_4_RARITIES`), reward metadata обновлена на RARE 2 из 5, а title/бейдж динамически показывают `Любимый игрок: {ник игрока}` в каталоге и profile showcase/customization
+- [x] V1 styled achievement card choice: TMA `/achievements` показывает pending `CARD_CHOICE_ROLL` options как компактные pack-summary cards с rarity/skin visuals, selected marker и exact-count submit; Flyway **V51** добавил 5 achievement card skins and attached `metadata.skinCode` to supported rewards (`top_quarter_10` temporarily previews `common_challenge_edition` until common-only condition exists). Targeted seed/lifecycle tests and TMA build passed.
+- [x] Backend foundation для achievement card rewards: DTO расширены `metadata` и card result structures, admin validation поддерживает `RANDOM_CARD` / `CARD_CHOICE_ROLL`, `CARD_SKIN_UNLOCK` исключен из backend cosmetic reward types, Flyway **V49** добавляет pending choice table и ownership acquisition type `ACHIEVEMENT_REWARD`, card reward options генерируются из eligible players активных auto-generated паков без `LEGENDARY` from packs
 - [x] Все ранее dormant/future достижения включены и подключены к реальному прогрессу: marketplace buy/sell/watch/unique counterparties, social share/profile/compare/view public profile, legendary upgrade 1/3
 - [x] Backend future achievements: Flyway **V48** добавил `user_legendary_upgrade_event` и включает 12 definitions для существующих DB; V46 seed для fresh DB теперь включает все 42 definitions; evaluators учитывают только post-launch факты, SOLD без sanctions, product events и timestamped legendary upgrade facts
 - [x] TMA future achievements: share profile/team/place, compare views и открытие публичного профиля отправляют product events, после которых инвалидируется achievements cache

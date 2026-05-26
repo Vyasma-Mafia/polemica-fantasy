@@ -53,7 +53,7 @@ class AchievementStage3AdminIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.instantCompleted").value(0))
             .andExpect(jsonPath("$.instantFantikiLiability").value(0))
-            .andExpect(jsonPath("$.rows", hasSize<Any>(42)))
+            .andExpect(jsonPath("$.rows", hasSize<Any>(EXPECTED_ACHIEVEMENT_COUNT.toInt())))
     }
 
     @Test
@@ -64,7 +64,7 @@ class AchievementStage3AdminIntegrationTest {
 
         val response = mockMvc.perform(get("/api/v1/admin/achievements").header("Authorization", basicAuth("admin", "test-admin-secret")))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.achievements", hasSize<Any>(42)))
+            .andExpect(jsonPath("$.achievements", hasSize<Any>(EXPECTED_ACHIEVEMENT_COUNT.toInt())))
             .andExpect(jsonPath("$.achievements[*].code", hasItem("team_submit_1")))
             .andExpect(jsonPath("$.achievements[*].code", hasItem("market_buy_1")))
             .andReturn().response.contentAsString
@@ -190,6 +190,28 @@ class AchievementStage3AdminIntegrationTest {
             .andExpect(status().isBadRequest)
         patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"FANTIKI","amount":10,"code":null,"metadata":"[]","displayOrder":10}]""")
             .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"CARD_SKIN_UNLOCK","amount":null,"code":"legacy_skin","metadata":null,"displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":null,"code":null,"metadata":null,"displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":1,"code":null,"metadata":"{\"rarity\":\"RARE\",\"count\":1,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":null,"code":"reward_code","metadata":"{\"rarity\":\"RARE\",\"count\":1,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":null,"code":null,"metadata":"{\"rarity\":\"LEGENDARY\",\"count\":1,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"CARD_CHOICE_ROLL","amount":null,"code":null,"metadata":"{\"rarity\":\"RARE\",\"count\":2,\"options\":1,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":null,"code":null,"metadata":"{\"rarity\":\"RARE\",\"count\":1,\"options\":3,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"CARD_CHOICE_ROLL","amount":null,"code":null,"metadata":"{\"rarity\":\"RARE\",\"count\":1,\"options\":3,\"skinCode\":\"unknown_skin\",\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isBadRequest)
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"RANDOM_CARD","amount":null,"code":null,"metadata":"{\"rarity\":\"RARE\",\"count\":1,\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.rewards[0].type").value("RANDOM_CARD"))
+        patchAchievementWithRewards(auth, "team_submit_15", """[{"type":"CARD_CHOICE_ROLL","amount":null,"code":null,"metadata":"{\"rarity\":\"EPIC\",\"count\":2,\"options\":5,\"skinCode\":\"tournament_gold\",\"source\":\"ACTIVE_PACKS\"}","displayOrder":10}]""")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.rewards[0].type").value("CARD_CHOICE_ROLL"))
     }
 
     @Test
@@ -461,5 +483,7 @@ class AchievementStage3AdminIntegrationTest {
             val token = Base64.getEncoder().encodeToString("$user:$password".toByteArray(Charsets.UTF_8))
             return "Basic $token"
         }
+
+        private const val EXPECTED_ACHIEVEMENT_COUNT = 81L
     }
 }

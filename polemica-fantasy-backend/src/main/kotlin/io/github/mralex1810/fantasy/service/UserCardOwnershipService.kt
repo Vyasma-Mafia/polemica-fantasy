@@ -39,6 +39,7 @@ class UserCardOwnershipService(
             CardAcquisitionType.PACK_OPENING -> "из пака"
             CardAcquisitionType.ADMIN_GRANT -> "выдача админом"
             CardAcquisitionType.MARKETPLACE_PURCHASE -> "куплена на маркетплейсе"
+            CardAcquisitionType.ACHIEVEMENT_REWARD -> "награда за достижение"
         }
 
     @Transactional
