@@ -38,7 +38,7 @@ export function SeriesFormModal({
         gamePhase: 0,
         status: 'UPCOMING',
         startsAt: dayjs(),
-        teamDeadline: dayjs().add(7, 'day'),
+        teamDeadline: dayjs().hour(19).minute(10).second(0).millisecond(0),
       }}
       onFinish={(v) => {
         const base = {
