@@ -4,6 +4,10 @@
 
 - **[architecture/DESIGN.md](architecture/DESIGN.md)** — основной System Design Document (глоссарий, сущности, API, скоринг, S3, деплой, история фаз реализации).
 
+## Codex workflow
+
+- **[codex/MULTI_AGENT_WORKFLOW.md](codex/MULTI_AGENT_WORKFLOW.md)** — как использовать product/design/technical/QA подагентов перед разработкой крупных фич.
+
 ## Фичи (отдельные спеки)
 
 - **[features/DESIGN-LEGENDARY-CARDS.md](features/DESIGN-LEGENDARY-CARDS.md)** — дизайн апгрейда EPIC → LEGENDARY.

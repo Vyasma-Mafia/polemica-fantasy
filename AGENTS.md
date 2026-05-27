@@ -33,6 +33,7 @@ Two API groups on the same backend:
 - Keep backend/user/admin API contracts synchronized: Kotlin DTOs, frontend `src/api/types.ts`, API clients, and UI call sites should move together.
 - After meaningful feature, architecture, dependency, or deployment changes, append a short dated note to `memory-bank/activeContext.md` and update `memory-bank/progress.md` when status changed.
 - Prefer the focused verification commands below. Use `./scripts/codex-check.sh quick` before handing off broad cross-module changes when dependencies are installed locally.
+- For large or ambiguous product features, use the spec-first multi-agent workflow in `docs/codex/MULTI_AGENT_WORKFLOW.md` and the project skill `.codex/skills/polemica-feature-discovery` before implementation.
 - For interactive local UI testing, use the project skill at `.codex/skills/polemica-local-testing` when available. It covers `local-up`, browser checks, and fresh TMA `VITE_DEV_INIT_DATA` generation.
 
 ## Tech Stack

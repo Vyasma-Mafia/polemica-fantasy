@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polemica Feature Discovery"
+  short_description: "Product/design discovery before implementation"
+  default_prompt: "Use $polemica-feature-discovery to shape this feature with product and design agents before coding."

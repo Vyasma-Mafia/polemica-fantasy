@@ -123,6 +123,8 @@
 - [x] **Проверки:** `./gradlew test --tests "...store buy from skinned pack assigns skin..." --tests "...marketplace preserves skin code..."`; `npm run build` в `polemica-fantasy-admin` и `polemica-fantasy-webapp` — успешно
 
 ### DX: Codex workflow и быстрые проверки (май 2026)
+- [x] Добавлен multi-agent workflow для крупных фич: `docs/codex/MULTI_AGENT_WORKFLOW.md` описывает spec-first процесс с product/design/technical/QA ролями, шаблоны промптов, ownership worker'ов, integration rules и verification defaults
+- [x] Добавлен проектный skill `.codex/skills/polemica-feature-discovery`, который включает product/design discovery перед разработкой и указывает использовать workflow-документ
 - [x] `AGENTS.md` дополнен разделом `Codex Workflow`: что читать перед задачами, как держать DTO/API контракты синхронными, когда обновлять `memory-bank/`, какие проверки предпочитать
 - [x] Актуализированы агентские версии и ориентиры: `polemica-library:1.8.8`, Flyway `V1` … `V42+`, key backend tests без устаревшего `CardPackServiceProbabilityTest`
 - [x] Добавлен `scripts/codex-check.sh` с целями `quick`, `backend`, `backend-test`, `webapp`, `admin`, `frontend`, `lint`
@@ -476,6 +478,8 @@
 
 ### Инфраструктура
 - [x] **VPS:** `fantasy.maftourbot.ru` — TMA; `admin.fantasy.maftourbot.ru` — админ SPA; Docker Compose prod (`docker-compose.prod.yml`), nginx + Let’s Encrypt; см. [`deploy/nginx-fantasy.maftourbot.ru.conf`](../deploy/nginx-fantasy.maftourbot.ru.conf), [`deploy/nginx-admin.fantasy.maftourbot.ru.conf`](../deploy/nginx-admin.fantasy.maftourbot.ru.conf)
+- [x] **Prod Compose health:** `fantasy-db` и `fantasy-backend` используют `restart: unless-stopped`; backend healthcheck проверяет actuator `http://localhost:8081/actuator/health`; runtime image содержит `curl` для проверки.
+- [x] **Prod DB backups:** `scripts/prod-db-backup.sh` creates custom-format PostgreSQL dumps from the `fantasy-db` container into `$HOME/polemica-fantasy-backups/postgres` and removes dumps older than `DB_BACKUP_RETENTION_DAYS` (default 14).
 - [x] **VPS — репозиторий:** `~/polemica-fantasy` на `mafia@51.250.18.236` — **git** (ветка `master`, remote по SSH), не «голая» копия без `.git`; обновление кода прежде всего **`git pull`**, не только rsync
 - [x] Gradle 9.0.0 + Kotlin 2.3.0 + JDK 21 — скелет проекта
 - [x] Дизайн-документ [`docs/architecture/DESIGN.md`](../docs/architecture/DESIGN.md) — SDD (глобальные игроки, карточки, API, V3+, легендарки)

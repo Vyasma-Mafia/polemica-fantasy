@@ -8,6 +8,7 @@
 services:
   fantasy-db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: fantasy
       POSTGRES_USER: ${DB_USER:-fantasy}
@@ -24,6 +25,7 @@ services:
 
   fantasy-backend:
     build: ./polemica-fantasy-backend
+    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -51,6 +53,12 @@ services:
     depends_on:
       fantasy-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health >/dev/null"]
+      interval: 15s
+      retries: 10
+      timeout: 5s
+      start_period: 60s
     logging:
       driver: "json-file"
       options:
