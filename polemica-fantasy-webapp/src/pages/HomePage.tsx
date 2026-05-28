@@ -17,6 +17,11 @@ export function HomePage() {
     queryFn: () => apiGet<UserTournament[]>('/api/v1/tournaments', initData),
     enabled: !!initData,
   })
+  const archiveQ = useQuery({
+    queryKey: ['tournaments', 'archive', initData],
+    queryFn: () => apiGet<UserTournament[]>('/api/v1/tournaments/archive', initData),
+    enabled: !!initData,
+  })
   const openSeriesQ = useQuery({
     queryKey: ['tournaments', 'series-open-for-team', initData],
     queryFn: () => apiGet<SeriesOpenForTeam[]>('/api/v1/tournaments/series-open-for-team', initData),
@@ -40,14 +45,18 @@ export function HomePage() {
 
   /** v5: `isLoading` is only pending+fetching; avoid rendering with no data during the brief pending+idle gap. */
   const tournamentsBooting = q.isPending && q.data === undefined && !q.isError
+  const archiveBooting = archiveQ.isPending && archiveQ.data === undefined && !archiveQ.isError
   const openBooting = openSeriesQ.isPending && openSeriesQ.data === undefined && !openSeriesQ.isError
   const openSeriesLeaguesBooting =
     openSeriesIds.length > 0 &&
     openSeriesLeaguesQ.some((item) => (item.isPending || item.isLoading) && item.data === undefined)
-  if (tournamentsBooting || openBooting || openSeriesLeaguesBooting) return <p className="pf-loading">Загрузка…</p>
+  if (tournamentsBooting || archiveBooting || openBooting || openSeriesLeaguesBooting) {
+    return <p className="pf-loading">Загрузка…</p>
+  }
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
 
   const list = q.data ?? []
+  const archive = archiveQ.data ?? []
   const openSeries = openSeriesQ.data ?? []
   const leaguesBySeriesId = new Map<number, SeriesLeagueInfo[]>()
   for (let i = 0; i < openSeries.length; i++) {
@@ -158,6 +167,35 @@ export function HomePage() {
           ))}
         </ul>
       )}
+
+      <section className="pf-tournament-archive" aria-labelledby="home-archive-heading">
+        <div className="pf-tournament-archive__head">
+          <h2 id="home-archive-heading" className="pf-section-title">
+            Архив турниров
+          </h2>
+          <p className="pf-muted">Прошедшие турниры с сериями, лидербордами и историей составов.</p>
+        </div>
+        {archiveQ.isError ? (
+          <p className="pf-err">{(archiveQ.error as Error).message}</p>
+        ) : archive.length === 0 ? (
+          <p className="pf-muted">Архив пока пуст.</p>
+        ) : (
+          <ul className="pf-tournament-grid pf-tournament-grid--archive">
+            {archive.map((t) => (
+              <li key={t.id}>
+                <Link to={`/tournaments/${t.id}`} className="pf-tournament-card pf-tournament-card--archive">
+                  <div className="pf-tournament-card__head">
+                    <span className="pf-tournament-card__title">{t.name}</span>
+                    <TournamentStatusBadge status={t.status} />
+                  </div>
+                  {t.description && <p className="pf-tournament-card__desc">{t.description}</p>}
+                  <span className="pf-tournament-card__cta">Смотреть архив →</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

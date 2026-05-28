@@ -958,6 +958,37 @@ a.top__user:hover {
   font-weight: 600;
 }
 
+.pf-tournament-archive {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-tournament-archive__head {
+  margin-bottom: 12px;
+}
+
+.pf-tournament-archive__head .pf-muted {
+  margin: 6px 0 0;
+}
+
+.pf-tournament-grid--archive {
+  gap: 10px;
+}
+
+.pf-tournament-card--archive {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(30, 41, 59, 0.72));
+  border-color: rgba(148, 163, 184, 0.26);
+}
+
+.pf-tournament-card--archive .pf-tournament-card__title {
+  color: var(--pf-text);
+}
+
+.pf-tournament-card--archive .pf-tournament-card__cta {
+  color: #cbd5e1;
+}
+
 .pf-card--notice {
   padding: 16px;
   border-radius: var(--pf-radius);

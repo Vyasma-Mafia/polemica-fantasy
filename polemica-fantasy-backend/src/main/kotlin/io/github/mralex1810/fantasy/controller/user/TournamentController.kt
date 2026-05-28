@@ -21,6 +21,9 @@ class TournamentController(
     @GetMapping
     fun list(): List<UserTournamentDto> = userTournamentService.listActiveTournaments()
 
+    @GetMapping("/archive")
+    fun archive(): List<UserTournamentDto> = userTournamentService.listArchivedTournaments()
+
     @GetMapping("/series-open-for-team")
     fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> = userTournamentService.listSeriesOpenForTeam()
 

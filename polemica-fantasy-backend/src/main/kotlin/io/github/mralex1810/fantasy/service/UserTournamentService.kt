@@ -37,6 +37,10 @@ class UserTournamentService(
         tournamentRepository.findAllByStatusOrderByIdAsc(TournamentStatus.ACTIVE).map { it.toUserDto() }
 
     @Transactional(readOnly = true)
+    fun listArchivedTournaments(): List<UserTournamentDto> =
+        tournamentRepository.findAllByStatusOrderByIdDesc(TournamentStatus.FINISHED).map { it.toUserDto() }
+
+    @Transactional(readOnly = true)
     fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> {
         val now = Instant.now()
         return seriesRepository
