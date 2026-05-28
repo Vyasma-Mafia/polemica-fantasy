@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### DX: Vite chunk-size warnings (май 2026)
+- [x] TMA `vite.config.ts`: добавлены Vite 8 / Rolldown `codeSplitting.groups` для React, TanStack Query, Telegram SDK и прочего vendor-кода; крупнейшие JS chunks теперь ниже стандартного Vite warning limit 500 kB
+- [x] Admin `vite.config.ts`: добавлены отдельные группы для React, TanStack Query, Ant Design/icons, AntD/rc modules и прочего vendor-кода; прежний единый ~1.45 MB JS chunk разбит на меньшие chunks
+- [x] Проверки: `npm run build` для `polemica-fantasy-webapp` и `polemica-fantasy-admin` — успешно, warning `Some chunks are larger than 500 kB` больше не появляется
+
 ### Design: система пользовательских достижений (май 2026)
 - [x] Достижение `same_player_3_rarities` переведено на all-4-rarities условие через Flyway **V52** (`SAME_PLAYER_4_RARITIES`), reward metadata обновлена на RARE 2 из 5, а title/бейдж динамически показывают `Любимый игрок: {ник игрока}` в каталоге и profile showcase/customization
 - [x] V1 styled achievement card choice: TMA `/achievements` показывает pending `CARD_CHOICE_ROLL` options как компактные pack-summary cards с rarity/skin visuals, selected marker и exact-count submit; Flyway **V51** добавил 5 achievement card skins and attached `metadata.skinCode` to supported rewards (`top_quarter_10` temporarily previews `common_challenge_edition` until common-only condition exists). Targeted seed/lifecycle tests and TMA build passed.
