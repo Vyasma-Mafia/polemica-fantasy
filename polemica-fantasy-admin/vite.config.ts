@@ -20,7 +20,12 @@ export default defineConfig({
             },
             {
               name: 'antd-vendor',
-              test: /node_modules[\\/](antd|@ant-design|rc-[^\\/]+)[\\/]/,
+              test: /node_modules[\\/]antd[\\/]/,
+              priority: 2,
+            },
+            {
+              name: 'rc-vendor',
+              test: /node_modules[\\/](@rc-component|rc-[^\\/]+)[\\/]/,
               priority: 2,
               maxSize: 450 * 1024,
             },

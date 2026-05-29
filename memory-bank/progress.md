@@ -2,10 +2,16 @@
 
 ## Что реализовано
 
+### Admin: production blank screen fix (май 2026)
+- [x] Диагностирован production blank screen на `https://admin.fantasy.maftourbot.ru/`: браузерный console error `Cannot read properties of undefined (reading 'Modal')` в `antd-vendor-DSgSAWTQ.js`
+- [x] Причина: небезопасное `maxSize`-дробление Ant Design в Vite 8 / Rolldown создало circular dependency между `antd-vendor-*` chunks
+- [x] Исправление: admin `vite.config.ts` держит `antd` в одном `antd-vendor` chunk, а `@rc-component` / `rc-*` зависимости вынесены отдельно
+- [x] Проверки: `npm run build` (`polemica-fantasy-admin`) успешно; local `vite preview` рендерит `/login` без нового runtime error
+
 ### DX: Vite chunk-size warnings (май 2026)
 - [x] TMA `vite.config.ts`: добавлены Vite 8 / Rolldown `codeSplitting.groups` для React, TanStack Query, Telegram SDK и прочего vendor-кода; крупнейшие JS chunks теперь ниже стандартного Vite warning limit 500 kB
-- [x] Admin `vite.config.ts`: добавлены отдельные группы для React, TanStack Query, Ant Design/icons, AntD/rc modules и прочего vendor-кода; прежний единый ~1.45 MB JS chunk разбит на меньшие chunks
-- [x] Проверки: `npm run build` для `polemica-fantasy-webapp` и `polemica-fantasy-admin` — успешно, warning `Some chunks are larger than 500 kB` больше не появляется
+- [x] Admin `vite.config.ts`: добавлены отдельные группы для React, TanStack Query, Ant Design/icons и vendor-кода; Ant Design оставлен единым chunk после production runtime regression с circular dependency
+- [x] Проверки: `npm run build` для `polemica-fantasy-webapp` и `polemica-fantasy-admin` — успешно; для admin warning про >500 kB chunk допустим до более безопасного lazy-route splitting
 
 ### Design: система пользовательских достижений (май 2026)
 - [x] Достижение `same_player_3_rarities` переведено на all-4-rarities условие через Flyway **V52** (`SAME_PLAYER_4_RARITIES`), reward metadata обновлена на RARE 2 из 5, а title/бейдж динамически показывают `Любимый игрок: {ник игрока}` в каталоге и profile showcase/customization
