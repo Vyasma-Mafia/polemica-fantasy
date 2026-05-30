@@ -69,6 +69,8 @@ data class SeriesDto(
     val scoredGamesCount: Long,
     /** `tournament_player.id` for players assigned to this series */
     val tournamentPlayerIds: List<Long>,
+    /** Optional replacement Polemica user id by `tournament_player.id`. */
+    val replacementPolemicaUserIds: Map<Long, Long> = emptyMap(),
 )
 
 data class SeriesPlayerMarketplaceUnlistResultDto(

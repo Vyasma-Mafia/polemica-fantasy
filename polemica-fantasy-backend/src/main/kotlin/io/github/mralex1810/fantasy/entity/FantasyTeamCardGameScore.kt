@@ -49,6 +49,15 @@ class FantasyTeamCardGameScore(
     @Column(name = "total_score")
     var totalScore: Double? = null,
 
+    @Column(name = "scored_polemica_user_id")
+    var scoredPolemicaUserId: Long? = null,
+
+    @Column(name = "scored_player_name")
+    var scoredPlayerName: String? = null,
+
+    @Column(name = "scored_via_replacement", nullable = false)
+    var scoredViaReplacement: Boolean = false,
+
     @OneToMany(mappedBy = "gameScore", cascade = [CascadeType.ALL], orphanRemoval = true)
     @BatchSize(size = 32)
     var perks: MutableList<FantasyTeamCardGamePerk> = mutableListOf(),

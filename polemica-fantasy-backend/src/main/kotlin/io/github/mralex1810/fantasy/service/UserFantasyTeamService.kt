@@ -199,6 +199,9 @@ class UserFantasyTeamService(
             perkBonus = perkBonus,
             rarityModifier = rarityModifier,
             totalScore = totalScore,
+            scoredPolemicaUserId = scoredPolemicaUserId,
+            scoredPlayerName = scoredPlayerName,
+            scoredViaReplacement = scoredViaReplacement,
             perks = perk,
         )
     }

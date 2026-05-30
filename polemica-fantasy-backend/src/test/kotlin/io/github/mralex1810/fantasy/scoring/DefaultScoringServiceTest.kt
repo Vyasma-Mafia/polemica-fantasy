@@ -1,0 +1,221 @@
+package io.github.mralex1810.fantasy.scoring
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.github.mafia.vyasma.polemica.library.client.GamePointsService
+import com.github.mafia.vyasma.polemica.library.model.PlayerPoints
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGameResult
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaPlayer
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaUser
+import com.github.mafia.vyasma.polemica.library.model.game.Position
+import com.github.mafia.vyasma.polemica.library.model.game.Role
+import io.github.mralex1810.fantasy.entity.CardTemplate
+import io.github.mralex1810.fantasy.entity.FantasyPlayer
+import io.github.mralex1810.fantasy.entity.FantasyTeam
+import io.github.mralex1810.fantasy.entity.FantasyTeamCard
+import io.github.mralex1810.fantasy.entity.Rarity
+import io.github.mralex1810.fantasy.entity.Series
+import io.github.mralex1810.fantasy.entity.SeriesGame
+import io.github.mralex1810.fantasy.entity.SeriesPlayer
+import io.github.mralex1810.fantasy.entity.TournamentPlayer
+import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.SeriesGameRepository
+import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
+import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.scoring.perk.PerkDetectorRegistry
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mock
+import org.mockito.Mockito.`when`
+import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.SimpleTransactionStatus
+import java.time.LocalDateTime
+
+@ExtendWith(MockitoExtension::class)
+class DefaultScoringServiceTest {
+
+    @Mock
+    private lateinit var seriesRepository: SeriesRepository
+
+    @Mock
+    private lateinit var seriesGameRepository: SeriesGameRepository
+
+    @Mock
+    private lateinit var fantasyTeamRepository: FantasyTeamRepository
+
+    @Mock
+    private lateinit var seriesPlayerRepository: SeriesPlayerRepository
+
+    @Mock
+    private lateinit var perkRegistry: PerkDetectorRegistry
+
+    @Mock
+    private lateinit var gamePointsService: GamePointsService
+
+    @Test
+    fun `replacement player scores when main player is absent`() {
+        val team = scoringFixture()
+        val game = seriesGameWithPlayers(player(22L, "replacement", Position.TWO))
+        stubScoringInputs(team, game, replacementPolemicaUserId = 22L)
+
+        service().calculateScores(1L)
+
+        assertEquals(7.0, team.totalScore)
+        val score = team.cards.single().gameScores.single()
+        assertEquals(22L, score.scoredPolemicaUserId)
+        assertEquals("replacement", score.scoredPlayerName)
+        assertEquals(true, score.scoredViaReplacement)
+        assertEquals(7.0, score.basePoints)
+    }
+
+    @Test
+    fun `main player scores when both main and replacement are present`() {
+        val team = scoringFixture()
+        val game = seriesGameWithPlayers(
+            player(11L, "main", Position.ONE),
+            player(22L, "replacement", Position.TWO),
+        )
+        stubScoringInputs(team, game, replacementPolemicaUserId = 22L)
+
+        service().calculateScores(1L)
+
+        assertEquals(3.0, team.totalScore)
+        val score = team.cards.single().gameScores.single()
+        assertEquals(11L, score.scoredPolemicaUserId)
+        assertEquals("main", score.scoredPlayerName)
+        assertEquals(false, score.scoredViaReplacement)
+        assertEquals(3.0, score.basePoints)
+    }
+
+    @Test
+    fun `card game score is not created when main and replacement are absent`() {
+        val team = scoringFixture()
+        val game = seriesGameWithPlayers(player(33L, "other", Position.THREE))
+        stubScoringInputs(team, game, replacementPolemicaUserId = 22L)
+
+        service().calculateScores(1L)
+
+        assertEquals(0.0, team.totalScore)
+        assertEquals(emptyList<Any>(), team.cards.single().gameScores)
+    }
+
+    private fun service() = DefaultScoringService(
+        seriesRepository = seriesRepository,
+        seriesGameRepository = seriesGameRepository,
+        fantasyTeamRepository = fantasyTeamRepository,
+        seriesPlayerRepository = seriesPlayerRepository,
+        perkRegistry = perkRegistry,
+        objectMapper = objectMapper,
+        gamePointsService = gamePointsService,
+        platformTransactionManager = NoopTransactionManager(),
+    )
+
+    private fun stubScoringInputs(
+        team: FantasyTeam,
+        game: SeriesGame,
+        replacementPolemicaUserId: Long,
+    ) {
+        `when`(seriesRepository.existsById(1L)).thenReturn(true)
+        `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(game))
+        `when`(gamePointsService.fetchPlayerStats(100L)).thenReturn(
+            listOf(
+                PlayerPoints(position = 1, points = 3.0),
+                PlayerPoints(position = 2, points = 7.0),
+                PlayerPoints(position = 3, points = 5.0),
+            ),
+        )
+        `when`(fantasyTeamRepository.findAllWithCardsForScoring(1L)).thenReturn(listOf(team))
+        `when`(seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(1L)).thenReturn(
+            listOf(
+                SeriesPlayer(
+                    series = Series().apply { id = 1L },
+                    tournamentPlayer = TournamentPlayer(
+                        fantasyPlayer = FantasyPlayer(polemicaUserId = 11L, nickname = "main"),
+                    ),
+                    replacementPolemicaUserId = replacementPolemicaUserId,
+                ),
+            ),
+        )
+    }
+
+    private fun scoringFixture(): FantasyTeam {
+        val template = CardTemplate(
+            fantasyPlayer = FantasyPlayer(polemicaUserId = 11L, nickname = "main"),
+            rarity = Rarity.COMMON,
+        )
+        val userCard = UserCard(cardTemplate = template).apply { id = 101L }
+        val team = FantasyTeam().apply { id = 201L }
+        val card = FantasyTeamCard(fantasyTeam = team, userCard = userCard, slot = 1).apply { id = 301L }
+        team.cards.add(card)
+        return team
+    }
+
+    private fun seriesGameWithPlayers(vararg players: PolemicaPlayer): SeriesGame =
+        SeriesGame(
+            series = Series().apply { id = 1L },
+            polemicaGameId = 100L,
+            gameName = "Game",
+            gameDataCache = objectMapper.valueToTree(polemicaGame(players.toList())),
+        ).apply { id = 401L }
+
+    private fun polemicaGame(players: List<PolemicaPlayer>) = PolemicaGame(
+        id = 100L,
+        name = "Game",
+        master = 1L,
+        referee = null,
+        scoringVersion = null,
+        scoringType = 0,
+        version = 0,
+        zeroVoting = null,
+        tags = emptyList(),
+        players = players,
+        checks = emptyList(),
+        shots = emptyList(),
+        stage = null,
+        votes = emptyList(),
+        comKiller = null,
+        bonuses = emptyList(),
+        started = LocalDateTime.parse("2026-01-01T12:00:00"),
+        stop = null,
+        isLive = false,
+        result = PolemicaGameResult.RED_WIN,
+        num = null,
+        table = null,
+        phase = null,
+        factor = null,
+    )
+
+    private fun player(polemicaUserId: Long, username: String, position: Position) = PolemicaPlayer(
+        position = position,
+        username = username,
+        role = Role.PEACE,
+        techs = emptyList(),
+        fouls = emptyList(),
+        guess = null,
+        player = PolemicaUser(polemicaUserId, username),
+        disqual = null,
+        award = null,
+    )
+
+    private class NoopTransactionManager : PlatformTransactionManager {
+        override fun getTransaction(definition: TransactionDefinition?): TransactionStatus =
+            SimpleTransactionStatus()
+
+        override fun commit(status: TransactionStatus) = Unit
+
+        override fun rollback(status: TransactionStatus) = Unit
+    }
+
+    private companion object {
+        private val objectMapper = ObjectMapper()
+            .registerModule(KotlinModule.Builder().build())
+            .registerModule(JavaTimeModule())
+    }
+}

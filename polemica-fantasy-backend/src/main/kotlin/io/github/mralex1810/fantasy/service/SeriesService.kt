@@ -16,6 +16,7 @@ import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
+import io.github.mralex1810.fantasy.entity.TournamentPlayer
 import io.github.mralex1810.fantasy.event.SeriesBatchStartedEvent
 import io.github.mralex1810.fantasy.event.SeriesRosterReplacementNotificationEvent
 import io.github.mralex1810.fantasy.event.SeriesRosterReplacementRecipient
@@ -84,7 +85,7 @@ class SeriesService(
         if (s.status == SeriesStatus.FINISHED && !s.finalized) {
             seriesFinalizationService.finalizeSeries(s.id!!)
         }
-        return seriesRepository.findById(s.id!!).get().toDto(emptyList(), 0L, 0L)
+        return seriesRepository.findById(s.id!!).get().toDto(emptyList(), emptyMap(), 0L, 0L)
     }
 
     @Transactional
@@ -153,7 +154,8 @@ class SeriesService(
         }
         val result = seriesRepository.findById(id).get()
         val counts = gameCountsForSeriesIds(listOf(id))[id] ?: (0L to 0L)
-        return result.toDto(tournamentPlayerIdsForSeries(id), counts.first, counts.second)
+        val assignment = playerAssignmentForSeries(id)
+        return result.toDto(assignment.tournamentPlayerIds, assignment.replacementPolemicaUserIds, counts.first, counts.second)
     }
 
     @Transactional
@@ -244,21 +246,39 @@ class SeriesService(
         }
         val tournamentId = series.tournament!!.id!!
         val ids = request.tournamentPlayerIds.distinct()
-        ids.forEach { tpId ->
-            val tp = tournamentPlayerRepository.findByIdAndTournament_Id(tpId, tournamentId)
+        val selectedIds = ids.toSet()
+        val tournamentPlayersById = ids.associateWith { tpId ->
+            tournamentPlayerRepository.findByIdAndTournament_Id(tpId, tournamentId)
                 ?: throw ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Tournament player $tpId is not part of tournament $tournamentId",
                 )
         }
+        val unknownReplacementKeys = request.replacementPolemicaUserIds.keys - selectedIds
+        if (unknownReplacementKeys.isNotEmpty()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Replacement specified for unselected tournament player ${unknownReplacementKeys.sorted().first()}",
+            )
+        }
+        val replacementByTournamentPlayerId = validateSeriesPlayerReplacements(
+            tournamentPlayersById = tournamentPlayersById,
+            rawReplacementByTournamentPlayerId = request.replacementPolemicaUserIds,
+        )
         val previousTpIds = seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId)
             .map { it.tournamentPlayer!!.id!! }
             .toSet()
         seriesPlayerRepository.deleteAllBySeries_Id(seriesId)
         seriesPlayerRepository.flush()
         ids.forEach { tpId ->
-            val tp = tournamentPlayerRepository.findById(tpId).get()
-            seriesPlayerRepository.save(SeriesPlayer(series = series, tournamentPlayer = tp))
+            val tp = tournamentPlayersById.getValue(tpId)
+            seriesPlayerRepository.save(
+                SeriesPlayer(
+                    series = series,
+                    tournamentPlayer = tp,
+                    replacementPolemicaUserId = replacementByTournamentPlayerId[tpId],
+                ),
+            )
         }
         val newTpIds = ids.toSet()
         val removedTpIds = previousTpIds - newTpIds
@@ -285,8 +305,56 @@ class SeriesService(
             applicationEventPublisher.publishEvent(SeriesRosterReplacementNotificationEvent(recipients))
         }
         val counts = gameCountsForSeriesIds(listOf(seriesId))[seriesId] ?: (0L to 0L)
+        val assignment = playerAssignmentForSeries(seriesId)
         return seriesRepository.findById(seriesId).get()
-            .toDto(tournamentPlayerIdsForSeries(seriesId), counts.first, counts.second)
+            .toDto(assignment.tournamentPlayerIds, assignment.replacementPolemicaUserIds, counts.first, counts.second)
+    }
+
+    private fun validateSeriesPlayerReplacements(
+        tournamentPlayersById: Map<Long, TournamentPlayer>,
+        rawReplacementByTournamentPlayerId: Map<Long, Long?>,
+    ): Map<Long, Long> {
+        val mainPolemicaUserIds = tournamentPlayersById.values
+            .map { it.fantasyPlayer!!.polemicaUserId }
+            .toSet()
+        val replacements = rawReplacementByTournamentPlayerId
+            .mapNotNull { (tournamentPlayerId, replacementPolemicaUserId) ->
+                replacementPolemicaUserId?.let { tournamentPlayerId to it }
+            }
+            .toMap()
+
+        replacements.forEach { (tournamentPlayerId, replacementPolemicaUserId) ->
+            if (replacementPolemicaUserId <= 0) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Replacement Polemica user id must be positive")
+            }
+            val mainPolemicaUserId = tournamentPlayersById.getValue(tournamentPlayerId).fantasyPlayer!!.polemicaUserId
+            if (replacementPolemicaUserId == mainPolemicaUserId) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Replacement Polemica user id cannot equal the main player id",
+                )
+            }
+            if (replacementPolemicaUserId in mainPolemicaUserIds) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Replacement Polemica user id cannot match another selected main player id",
+                )
+            }
+        }
+
+        val duplicateReplacement = replacements.values
+            .groupingBy { it }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+            .firstOrNull()
+        if (duplicateReplacement != null) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Replacement Polemica user id $duplicateReplacement is used more than once",
+            )
+        }
+        return replacements
     }
 
     @Transactional
@@ -360,8 +428,15 @@ class SeriesService(
         val countMap = gameCountsForSeriesIds(sidList)
         return seriesList.map { s ->
             val tpIds = bySeriesId[s.id]?.map { it.tournamentPlayer!!.id!! }?.sorted() ?: emptyList()
+            val replacementByTpId = bySeriesId[s.id]
+                ?.mapNotNull { sp ->
+                    val tpId = sp.tournamentPlayer!!.id!!
+                    sp.replacementPolemicaUserId?.let { tpId to it }
+                }
+                ?.toMap()
+                ?: emptyMap()
             val counts = countMap[s.id!!] ?: (0L to 0L)
-            s.toDto(tpIds, counts.first, counts.second)
+            s.toDto(tpIds, replacementByTpId, counts.first, counts.second)
         }
     }
 
@@ -371,7 +446,8 @@ class SeriesService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
         }
         val counts = gameCountsForSeriesIds(listOf(id))[id] ?: (0L to 0L)
-        return s.toDto(tournamentPlayerIdsForSeries(id), counts.first, counts.second)
+        val assignment = playerAssignmentForSeries(id)
+        return s.toDto(assignment.tournamentPlayerIds, assignment.replacementPolemicaUserIds, counts.first, counts.second)
     }
 
     fun syncGames(seriesId: Long) {
@@ -404,8 +480,16 @@ class SeriesService(
         )
     }
 
-    private fun tournamentPlayerIdsForSeries(seriesId: Long): List<Long> =
-        seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId).map { it.tournamentPlayer!!.id!! }
+    private fun playerAssignmentForSeries(seriesId: Long): SeriesPlayerAssignment {
+        val rows = seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId)
+        return SeriesPlayerAssignment(
+            tournamentPlayerIds = rows.map { it.tournamentPlayer!!.id!! },
+            replacementPolemicaUserIds = rows.mapNotNull { sp ->
+                val tpId = sp.tournamentPlayer!!.id!!
+                sp.replacementPolemicaUserId?.let { tpId to it }
+            }.toMap(),
+        )
+    }
 
     private fun gameCountsForSeriesIds(seriesIds: List<Long>): Map<Long, Pair<Long, Long>> {
         if (seriesIds.isEmpty()) return emptyMap()
@@ -453,6 +537,7 @@ class SeriesService(
 
     private fun Series.toDto(
         tournamentPlayerIds: List<Long>,
+        replacementPolemicaUserIds: Map<Long, Long>,
         syncedGamesCount: Long,
         scoredGamesCount: Long,
     ) = SeriesDto(
@@ -471,6 +556,12 @@ class SeriesService(
         syncedGamesCount = syncedGamesCount,
         scoredGamesCount = scoredGamesCount,
         tournamentPlayerIds = tournamentPlayerIds,
+        replacementPolemicaUserIds = replacementPolemicaUserIds,
+    )
+
+    private data class SeriesPlayerAssignment(
+        val tournamentPlayerIds: List<Long>,
+        val replacementPolemicaUserIds: Map<Long, Long>,
     )
 
     private data class ValidatedSeriesFields(

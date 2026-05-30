@@ -1063,6 +1063,120 @@ class AdminApiIntegrationTest {
             .andExpect(status().isBadRequest)
     }
 
+    @Test
+    @Order(24)
+    fun `series player replacements are saved returned and validated`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Replacement Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tJson)!!.groupValues[1].toLong()
+
+        val p1Json = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":111001,"nickname":"Main One"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val p1Id = Regex("\"id\"\\s*:\\s*(\\d+)").find(p1Json)!!.groupValues[1].toLong()
+
+        val p2Json = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":111002,"nickname":"Main Two"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val p2Id = Regex("\"id\"\\s*:\\s*(\\d+)").find(p2Json)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Replacement Round","namePrefix":"RR","status":"UPCOMING",
+                    "startsAt":"2026-11-01T12:00:00Z","teamDeadline":"2026-11-10T12:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"tournamentPlayerIds":[$p1Id,$p2Id],"replacementPolemicaUserIds":{"$p1Id":999001}}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.tournamentPlayerIds.length()").value(2))
+            .andExpect(jsonPath("$.replacementPolemicaUserIds['$p1Id']").value(999001))
+
+        mockMvc.perform(
+            get("/api/v1/admin/series/$seriesId").header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.replacementPolemicaUserIds['$p1Id']").value(999001))
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$p1Id],"replacementPolemicaUserIds":{"$p2Id":999002}}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$p1Id],"replacementPolemicaUserIds":{"$p1Id":0}}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$p1Id],"replacementPolemicaUserIds":{"$p1Id":111001}}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"tournamentPlayerIds":[$p1Id,$p2Id],"replacementPolemicaUserIds":{"$p1Id":111002}}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"tournamentPlayerIds":[$p1Id,$p2Id],"replacementPolemicaUserIds":{"$p1Id":999003,"$p2Id":999003}}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
     companion object {
         @JvmField
         @Container

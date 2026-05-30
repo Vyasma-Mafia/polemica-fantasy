@@ -26,6 +26,7 @@ export interface UpdateSeriesRequest {
 
 export interface AssignSeriesPlayersRequest {
   tournamentPlayerIds: number[]
+  replacementPolemicaUserIds?: Record<number, number | null>
 }
 
 export interface BatchStartSeriesRequest {

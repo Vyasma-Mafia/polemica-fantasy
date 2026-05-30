@@ -211,6 +211,9 @@ export interface CardGameBreakdown {
   perkBonus: number | null
   rarityModifier: number | null
   totalScore: number | null
+  scoredPolemicaUserId: number | null
+  scoredPlayerName: string | null
+  scoredViaReplacement: boolean
   perks: PerkInGame[]
 }
 

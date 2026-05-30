@@ -272,6 +272,8 @@ export interface SeriesDto {
   scoredGamesCount: number
   /** tournament_player.id assigned to this series */
   tournamentPlayerIds: number[]
+  /** Optional replacement Polemica user id by tournament_player.id. */
+  replacementPolemicaUserIds: Record<number, number>
 }
 
 export interface SeriesPlayerMarketplaceUnlistResultDto {

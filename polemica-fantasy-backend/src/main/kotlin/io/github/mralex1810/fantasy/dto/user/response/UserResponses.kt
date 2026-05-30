@@ -294,6 +294,9 @@ data class CardGameBreakdownDto(
     val perkBonus: Double?,
     val rarityModifier: Double?,
     val totalScore: Double?,
+    val scoredPolemicaUserId: Long?,
+    val scoredPlayerName: String?,
+    val scoredViaReplacement: Boolean,
     val perks: List<PerkInGameDto>,
 )
 

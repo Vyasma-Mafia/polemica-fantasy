@@ -45,6 +45,9 @@ export function SeriesDetailPage() {
     teamDeadline: ReturnType<typeof dayjs>
   }>()
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([])
+  const [replacementPolemicaUserIds, setReplacementPolemicaUserIds] = useState<
+    Record<number, number | null>
+  >({})
   const [unlistTournamentPlayerId, setUnlistTournamentPlayerId] = useState<number | null>(null)
 
   const q = useQuery({
@@ -79,6 +82,7 @@ export function SeriesDetailPage() {
       teamDeadline: dayjs(s.teamDeadline),
     })
     queueMicrotask(() => setSelectedPlayerIds(s.tournamentPlayerIds ?? []))
+    queueMicrotask(() => setReplacementPolemicaUserIds(s.replacementPolemicaUserIds ?? {}))
   }, [q.data, form])
 
   const updateMut = useMutation({
@@ -91,8 +95,18 @@ export function SeriesDetailPage() {
   })
 
   const assignMut = useMutation({
-    mutationFn: (ids: number[]) =>
-      assignSeriesPlayers(seriesId, { tournamentPlayerIds: ids }),
+    mutationFn: (ids: number[]) => {
+      const selected = new Set(ids)
+      const replacements = Object.fromEntries(
+        Object.entries(replacementPolemicaUserIds)
+          .map(([tpId, replacement]) => [Number(tpId), replacement] as const)
+          .filter(([tpId, replacement]) => selected.has(tpId) && replacement != null),
+      )
+      return assignSeriesPlayers(seriesId, {
+        tournamentPlayerIds: ids,
+        replacementPolemicaUserIds: replacements,
+      })
+    },
     onSuccess: () => {
       message.success('Players assigned')
       void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
@@ -301,8 +315,49 @@ export function SeriesDetailPage() {
               .includes(input.trim().toLowerCase())
           }
           value={selectedPlayerIds}
-          onChange={setSelectedPlayerIds}
+          onChange={(ids) => {
+            setSelectedPlayerIds(ids)
+            const selected = new Set(ids)
+            setReplacementPolemicaUserIds((prev) =>
+              Object.fromEntries(
+                Object.entries(prev)
+                  .map(([tpId, replacement]) => [Number(tpId), replacement] as const)
+                  .filter(([tpId]) => selected.has(tpId)),
+              ),
+            )
+          }}
         />
+        {selectedPlayerIds.length > 0 && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Typography.Text strong>Scoring replacements</Typography.Text>
+            <Typography.Text type="secondary">
+              Optional raw Polemica user id. Recalculate scores after changing replacements.
+            </Typography.Text>
+            {selectedPlayerIds.map((tpId) => {
+              const player = players.find((p) => p.id === tpId)
+              return (
+                <Space key={tpId} align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Typography.Text>
+                    {player?.nickname ?? `Tournament player ${tpId}`}
+                  </Typography.Text>
+                  <InputNumber
+                    min={1}
+                    precision={0}
+                    placeholder="Replacement Polemica ID"
+                    value={replacementPolemicaUserIds[tpId] ?? null}
+                    onChange={(value) =>
+                      setReplacementPolemicaUserIds((prev) => ({
+                        ...prev,
+                        [tpId]: value == null ? null : Number(value),
+                      }))
+                    }
+                    style={{ width: 220 }}
+                  />
+                </Space>
+              )
+            })}
+          </Space>
+        )}
         <Button
           type="primary"
           loading={assignMut.isPending}

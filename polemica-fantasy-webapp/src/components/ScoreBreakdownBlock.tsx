@@ -11,6 +11,12 @@ export function ScoreBreakdownBlock({ b }: { b: CardGameBreakdown }) {
         <span>База</span>
         <strong>{base != null ? base.toFixed(2) : '—'}</strong>
       </div>
+      {b.scoredViaReplacement && (
+        <div className="pf-score-breakdown__row">
+          <span>Замена</span>
+          <strong>{b.scoredPlayerName || b.scoredPolemicaUserId || '—'}</strong>
+        </div>
+      )}
       <div className="pf-score-breakdown__row">
         <span>Перки</span>
         <strong>{perk != null ? perk.toFixed(2) : '—'}</strong>

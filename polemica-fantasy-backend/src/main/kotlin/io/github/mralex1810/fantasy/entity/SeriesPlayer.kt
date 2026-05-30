@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.entity
 
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
@@ -29,4 +30,7 @@ class SeriesPlayer(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tournament_player_id", nullable = false)
     var tournamentPlayer: TournamentPlayer? = null,
+
+    @Column(name = "replacement_polemica_user_id")
+    var replacementPolemicaUserId: Long? = null,
 )

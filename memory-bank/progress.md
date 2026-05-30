@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Backend+admin+TMA: замены игроков в скоринге серии (май 2026)
+- [x] `series_player` получил optional `replacement_polemica_user_id`; `fantasy_team_card_game_score` сохраняет фактический `scored_polemica_user_id`, имя и флаг `scored_via_replacement`.
+- [x] Admin API/UI позволяют задавать raw Polemica id замены для выбранного игрока серии; валидация запрещает неположительные id, unselected keys, совпадение с основными игроками и дубли замен.
+- [x] Скоринг выбирает основного игрока приоритетно, иначе замену; перки и редкость остаются от исходной карты. TMA показывает replacement marker в детализации очков.
+- [x] Проверки: backend compile, `DefaultScoringServiceTest`, admin build, TMA build прошли; targeted `AdminApiIntegrationTest` не был локально выполнен из-за недоступного Docker/Testcontainers.
+
 ### Admin: production blank screen fix (май 2026)
 - [x] Диагностирован production blank screen на `https://admin.fantasy.maftourbot.ru/`: браузерный console error `Cannot read properties of undefined (reading 'Modal')` в `antd-vendor-DSgSAWTQ.js`
 - [x] Причина: небезопасное `maxSize`-дробление Ant Design в Vite 8 / Rolldown создало circular dependency между `antd-vendor-*` chunks

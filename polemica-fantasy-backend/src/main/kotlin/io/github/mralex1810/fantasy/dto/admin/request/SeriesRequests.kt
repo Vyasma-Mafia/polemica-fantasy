@@ -73,6 +73,7 @@ class UpdateSeriesRequest {
 data class AssignSeriesPlayersRequest(
     @field:NotNull
     val tournamentPlayerIds: List<Long>,
+    val replacementPolemicaUserIds: Map<Long, Long?> = emptyMap(),
 )
 
 data class BatchStartSeriesRequest(
