@@ -22,7 +22,6 @@ import {
   finalizeSeries,
   getSeries,
   syncGames,
-  unlistSeriesPlayerFromMarketplace,
   updateSeries,
 } from '../api/series'
 import type { UpdateSeriesRequest } from '../api/seriesRequests'
@@ -48,7 +47,6 @@ export function SeriesDetailPage() {
   const [replacementPolemicaUserIds, setReplacementPolemicaUserIds] = useState<
     Record<number, number | null>
   >({})
-  const [unlistTournamentPlayerId, setUnlistTournamentPlayerId] = useState<number | null>(null)
 
   const q = useQuery({
     queryKey: ['admin', 'series', seriesId],
@@ -153,27 +151,16 @@ export function SeriesDetailPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
-  const unlistPlayerMut = useMutation({
-    mutationFn: (tournamentPlayerId: number) =>
-      unlistSeriesPlayerFromMarketplace(seriesId, tournamentPlayerId),
-    onSuccess: (res) => {
-      if (res.cancelledListings > 0) {
-        message.success(
-          `Removed ${res.cancelledListings} active listing(s) for ${res.playerNickname}`,
-        )
-      } else {
-        message.info(`No active listings for ${res.playerNickname}`)
-      }
-    },
-    onError: (e: Error) => message.error(e.message),
-  })
-
   if (!Number.isFinite(seriesId)) {
     return <Typography.Text type="danger">Invalid series id</Typography.Text>
   }
 
   const s = q.data
   const players = tq.data?.players ?? []
+  const hasReplacementControl = (tpId: number) =>
+    Object.prototype.hasOwnProperty.call(replacementPolemicaUserIds, tpId)
+  const replacementRowIds = selectedPlayerIds.filter(hasReplacementControl)
+  const addableReplacementIds = selectedPlayerIds.filter((tpId) => !hasReplacementControl(tpId))
 
   return (
     <div>
@@ -327,13 +314,30 @@ export function SeriesDetailPage() {
             )
           }}
         />
-        {selectedPlayerIds.length > 0 && (
+        {addableReplacementIds.length > 0 && (
+          <Space wrap>
+            {addableReplacementIds.map((tpId) => {
+              const player = players.find((p) => p.id === tpId)
+              return (
+                <Button
+                  key={tpId}
+                  size="small"
+                  onClick={() =>
+                    setReplacementPolemicaUserIds((prev) => ({
+                      ...prev,
+                      [tpId]: null,
+                    }))
+                  }
+                >
+                  Add replacement: {player?.nickname ?? `#${tpId}`}
+                </Button>
+              )
+            })}
+          </Space>
+        )}
+        {replacementRowIds.length > 0 && (
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Typography.Text strong>Scoring replacements</Typography.Text>
-            <Typography.Text type="secondary">
-              Optional raw Polemica user id. Recalculate scores after changing replacements.
-            </Typography.Text>
-            {selectedPlayerIds.map((tpId) => {
+            {replacementRowIds.map((tpId) => {
               const player = players.find((p) => p.id === tpId)
               return (
                 <Space key={tpId} align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -353,6 +357,18 @@ export function SeriesDetailPage() {
                     }
                     style={{ width: 220 }}
                   />
+                  <Button
+                    size="small"
+                    onClick={() =>
+                      setReplacementPolemicaUserIds((prev) => {
+                        const next = { ...prev }
+                        delete next[tpId]
+                        return next
+                      })
+                    }
+                  >
+                    Remove
+                  </Button>
                 </Space>
               )
             })}
@@ -364,48 +380,6 @@ export function SeriesDetailPage() {
           onClick={() => assignMut.mutate(selectedPlayerIds)}
         >
           Assign players
-        </Button>
-        <Typography.Text strong>Marketplace</Typography.Text>
-        <Typography.Text type="secondary">
-          Remove all active marketplace listings for a specific player.
-        </Typography.Text>
-        <Select
-          allowClear
-          showSearch
-          placeholder="Select player to remove from marketplace"
-          style={{ width: '100%' }}
-          options={players.map((p) => ({
-            value: p.id,
-            label: `${p.nickname} (id ${p.id})`,
-          }))}
-          filterOption={(input, option) =>
-            String(option?.label ?? '')
-              .toLowerCase()
-              .includes(input.trim().toLowerCase())
-          }
-          value={unlistTournamentPlayerId}
-          onChange={(value) => setUnlistTournamentPlayerId(value ?? null)}
-        />
-        <Button
-          danger
-          disabled={unlistTournamentPlayerId == null}
-          loading={unlistPlayerMut.isPending}
-          onClick={() => {
-            if (unlistTournamentPlayerId == null) {
-              return
-            }
-            const selectedPlayer = players.find((p) => p.id === unlistTournamentPlayerId)
-            const playerLabel = selectedPlayer?.nickname ?? `id ${unlistTournamentPlayerId}`
-            Modal.confirm({
-              title: `Remove ${playerLabel} from marketplace?`,
-              content: 'This will cancel all active listings for this player.',
-              okText: 'Remove',
-              okButtonProps: { danger: true },
-              onOk: () => unlistPlayerMut.mutate(unlistTournamentPlayerId),
-            })
-          }}
-        >
-          Remove player listings
         </Button>
       </Space>
 
