@@ -157,6 +157,17 @@ export function SeriesDetailPage() {
 
   const s = q.data
   const players = tq.data?.players ?? []
+  const updateSelectedPlayerIds = (ids: number[]) => {
+    setSelectedPlayerIds(ids)
+    const selected = new Set(ids)
+    setReplacementPolemicaUserIds((prev) =>
+      Object.fromEntries(
+        Object.entries(prev)
+          .map(([tpId, replacement]) => [Number(tpId), replacement] as const)
+          .filter(([tpId]) => selected.has(tpId)),
+      ),
+    )
+  }
   const hasReplacementControl = (tpId: number) =>
     Object.prototype.hasOwnProperty.call(replacementPolemicaUserIds, tpId)
   const replacementRowIds = selectedPlayerIds.filter(hasReplacementControl)
@@ -302,18 +313,16 @@ export function SeriesDetailPage() {
               .includes(input.trim().toLowerCase())
           }
           value={selectedPlayerIds}
-          onChange={(ids) => {
-            setSelectedPlayerIds(ids)
-            const selected = new Set(ids)
-            setReplacementPolemicaUserIds((prev) =>
-              Object.fromEntries(
-                Object.entries(prev)
-                  .map(([tpId, replacement]) => [Number(tpId), replacement] as const)
-                  .filter(([tpId]) => selected.has(tpId)),
-              ),
-            )
-          }}
+          onChange={updateSelectedPlayerIds}
         />
+        <Space wrap>
+          <Button
+            disabled={players.length === 0 || tq.isLoading}
+            onClick={() => updateSelectedPlayerIds(players.map((p) => p.id))}
+          >
+            Add all tournament players
+          </Button>
+        </Space>
         {addableReplacementIds.length > 0 && (
           <Space wrap>
             {addableReplacementIds.map((tpId) => {
