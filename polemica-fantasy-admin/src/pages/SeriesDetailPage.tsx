@@ -47,6 +47,7 @@ export function SeriesDetailPage() {
   const [replacementPolemicaUserIds, setReplacementPolemicaUserIds] = useState<
     Record<number, number | null>
   >({})
+  const [replacementModalOpen, setReplacementModalOpen] = useState(false)
 
   const q = useQuery({
     queryKey: ['admin', 'series', seriesId],
@@ -322,67 +323,13 @@ export function SeriesDetailPage() {
           >
             Add all tournament players
           </Button>
+          <Button
+            disabled={selectedPlayerIds.length === 0}
+            onClick={() => setReplacementModalOpen(true)}
+          >
+            Replacements{replacementRowIds.length > 0 ? ` (${replacementRowIds.length})` : ''}
+          </Button>
         </Space>
-        {addableReplacementIds.length > 0 && (
-          <Space wrap>
-            {addableReplacementIds.map((tpId) => {
-              const player = players.find((p) => p.id === tpId)
-              return (
-                <Button
-                  key={tpId}
-                  size="small"
-                  onClick={() =>
-                    setReplacementPolemicaUserIds((prev) => ({
-                      ...prev,
-                      [tpId]: null,
-                    }))
-                  }
-                >
-                  Add replacement: {player?.nickname ?? `#${tpId}`}
-                </Button>
-              )
-            })}
-          </Space>
-        )}
-        {replacementRowIds.length > 0 && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {replacementRowIds.map((tpId) => {
-              const player = players.find((p) => p.id === tpId)
-              return (
-                <Space key={tpId} align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <Typography.Text>
-                    {player?.nickname ?? `Tournament player ${tpId}`}
-                  </Typography.Text>
-                  <InputNumber
-                    min={1}
-                    precision={0}
-                    placeholder="Replacement Polemica ID"
-                    value={replacementPolemicaUserIds[tpId] ?? null}
-                    onChange={(value) =>
-                      setReplacementPolemicaUserIds((prev) => ({
-                        ...prev,
-                        [tpId]: value == null ? null : Number(value),
-                      }))
-                    }
-                    style={{ width: 220 }}
-                  />
-                  <Button
-                    size="small"
-                    onClick={() =>
-                      setReplacementPolemicaUserIds((prev) => {
-                        const next = { ...prev }
-                        delete next[tpId]
-                        return next
-                      })
-                    }
-                  >
-                    Remove
-                  </Button>
-                </Space>
-              )
-            })}
-          </Space>
-        )}
         <Button
           type="primary"
           loading={assignMut.isPending}
@@ -391,6 +338,88 @@ export function SeriesDetailPage() {
           Assign players
         </Button>
       </Space>
+
+      <Modal
+        title="Scoring replacements"
+        open={replacementModalOpen}
+        footer={null}
+        onCancel={() => setReplacementModalOpen(false)}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Select
+            allowClear
+            showSearch
+            placeholder="Add replacement for player"
+            style={{ width: '100%' }}
+            disabled={addableReplacementIds.length === 0}
+            value={null}
+            options={addableReplacementIds.map((tpId) => {
+              const player = players.find((p) => p.id === tpId)
+              return {
+                value: tpId,
+                label: `${player?.nickname ?? `#${tpId}`} (id ${tpId}, polemica ${player?.polemicaUserId ?? '—'})`,
+              }
+            })}
+            filterOption={(input, option) =>
+              String(option?.label ?? '')
+                .toLowerCase()
+                .includes(input.trim().toLowerCase())
+            }
+            onChange={(tpId) => {
+              if (tpId == null) return
+              setReplacementPolemicaUserIds((prev) => ({
+                ...prev,
+                [tpId]: null,
+              }))
+            }}
+          />
+          {replacementRowIds.length === 0 && (
+            <Typography.Text type="secondary">No replacements configured.</Typography.Text>
+          )}
+          {replacementRowIds.map((tpId) => {
+            const player = players.find((p) => p.id === tpId)
+            return (
+              <Space
+                key={tpId}
+                align="center"
+                style={{ width: '100%', justifyContent: 'space-between' }}
+              >
+                <Typography.Text style={{ flex: 1 }}>
+                  {player?.nickname ?? `Tournament player ${tpId}`}
+                </Typography.Text>
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  placeholder="Polemica ID"
+                  value={replacementPolemicaUserIds[tpId] ?? null}
+                  onChange={(value) =>
+                    setReplacementPolemicaUserIds((prev) => ({
+                      ...prev,
+                      [tpId]: value == null ? null : Number(value),
+                    }))
+                  }
+                  style={{ width: 160 }}
+                />
+                <Button
+                  size="small"
+                  onClick={() =>
+                    setReplacementPolemicaUserIds((prev) => {
+                      const next = { ...prev }
+                      delete next[tpId]
+                      return next
+                    })
+                  }
+                >
+                  Remove
+                </Button>
+              </Space>
+            )
+          })}
+          <Typography.Text type="secondary">
+            Save with Assign players, then recalculate scores.
+          </Typography.Text>
+        </Space>
+      </Modal>
 
       <Typography.Title level={4} style={{ marginTop: 24 }}>
         Actions
