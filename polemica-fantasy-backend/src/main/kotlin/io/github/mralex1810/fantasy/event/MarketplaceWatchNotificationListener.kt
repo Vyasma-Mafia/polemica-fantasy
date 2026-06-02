@@ -30,6 +30,7 @@ class MarketplaceWatchNotificationListener(
             cardTemplateId = event.cardTemplateId,
             rarity = event.rarity.name,
             price = event.price,
+            timesRenewed = event.timesRenewed,
             tournamentIds = tournamentIds,
         )
         if (matchingUserIds.isEmpty()) {

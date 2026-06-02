@@ -73,6 +73,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
+        AND (:minTimesRenewed IS NULL OR uc.timesRenewed >= :minTimesRenewed)
+        AND (:maxTimesRenewed IS NULL OR uc.timesRenewed <= :maxTimesRenewed)
         AND (:perkIdsEmpty = TRUE OR EXISTS (
             SELECT 1 FROM CardTemplatePerk cta
             WHERE cta.cardTemplate.id = ct.id AND cta.perk.id IN :perkIds
@@ -97,6 +99,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         AND (:rarity IS NULL OR ct.rarity = :rarity)
         AND (:minPrice IS NULL OR ml.price >= :minPrice)
         AND (:maxPrice IS NULL OR ml.price <= :maxPrice)
+        AND (:minTimesRenewed IS NULL OR uc.timesRenewed >= :minTimesRenewed)
+        AND (:maxTimesRenewed IS NULL OR uc.timesRenewed <= :maxTimesRenewed)
         AND (:perkIdsEmpty = TRUE OR EXISTS (
             SELECT 1 FROM CardTemplatePerk cta
             WHERE cta.cardTemplate.id = ct.id AND cta.perk.id IN :perkIds
@@ -111,6 +115,8 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("rarity") rarity: Rarity?,
         @Param("minPrice") minPrice: Long?,
         @Param("maxPrice") maxPrice: Long?,
+        @Param("minTimesRenewed") minTimesRenewed: Int?,
+        @Param("maxTimesRenewed") maxTimesRenewed: Int?,
         @Param("perkIdsEmpty") perkIdsEmpty: Boolean,
         @Param("perkIds") perkIds: Collection<String>,
         pageable: Pageable,

@@ -8,6 +8,7 @@ import {
   useMarketplaceWatches,
   useTournamentSubscriptions,
 } from '../api/notifications'
+import { fetchEconomyInfo } from '../api/userEconomy'
 import type { FantasyPlayerBrief, Rarity } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
@@ -34,12 +35,19 @@ export function MarketplaceWatchesPage() {
     enabled: !!initData,
   })
 
+  const economyQ = useQuery({
+    queryKey: ['economy-info', initData],
+    queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [playerSearch, setPlayerSearch] = useState('')
   const [playerId, setPlayerId] = useState('')
   const [tournamentId, setTournamentId] = useState('')
   const [rarity, setRarity] = useState<Rarity | ''>('')
   const [selectedPerkIds, setSelectedPerkIds] = useState<string[]>([])
+  const [contractFilter, setContractFilter] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -68,6 +76,7 @@ export function MarketplaceWatchesPage() {
     setTournamentId('')
     setRarity('')
     setSelectedPerkIds([])
+    setContractFilter('')
     setMaxPrice('')
     setFormError(null)
   }
@@ -83,9 +92,14 @@ export function MarketplaceWatchesPage() {
   }
 
   function submitForm() {
-    const hasCriteria = playerId !== '' || tournamentId !== '' || rarity !== '' || selectedPerkIds.length > 0
+    const hasCriteria =
+      playerId !== '' ||
+      tournamentId !== '' ||
+      rarity !== '' ||
+      selectedPerkIds.length > 0 ||
+      contractFilter !== ''
     if (!hasCriteria) {
-      setFormError('Выберите хотя бы один фильтр: игрок, турнир, редкость или перк.')
+      setFormError('Выберите хотя бы один фильтр: игрок, турнир, редкость, контракт или перк.')
       return
     }
 
@@ -102,6 +116,8 @@ export function MarketplaceWatchesPage() {
         tournamentId: tournamentId === '' ? null : Number(tournamentId),
         rarity: rarity || null,
         maxPrice: parsedMaxPrice == null ? null : Math.floor(parsedMaxPrice),
+        minTimesRenewed: contractFilter === '' ? null : Number(contractFilter),
+        maxTimesRenewed: contractFilter === '' ? null : Number(contractFilter),
         perkIds: selectedPerkIds,
       },
       {
@@ -127,6 +143,12 @@ export function MarketplaceWatchesPage() {
           const tournament = watch.tournament?.name ?? 'Любой турнир'
           const watchRarity = watch.rarity ?? 'Любая редкость'
           const price = watch.maxPrice != null ? `до ${watch.maxPrice} ₣` : 'любая цена'
+          const contract =
+            watch.minTimesRenewed != null && watch.maxTimesRenewed != null && watch.minTimesRenewed === watch.maxTimesRenewed
+              ? `↻ ${watch.minTimesRenewed}`
+              : watch.minTimesRenewed != null || watch.maxTimesRenewed != null
+                ? `↻ ${watch.minTimesRenewed ?? 0}–${watch.maxTimesRenewed ?? '∞'}`
+                : 'любой контракт'
           const perks =
             watch.perks.length > 0
               ? watch.perks.map((perk) => perk.name).join(', ')
@@ -136,7 +158,7 @@ export function MarketplaceWatchesPage() {
               <div className="pf-notify-watch__text">
                 {player} · {watchRarity} · {price}
                 <div className="pf-notify-watch__meta">
-                  {tournament} · {perks}
+                  {tournament} · {contract} · {perks}
                 </div>
               </div>
               <button
@@ -239,6 +261,23 @@ export function MarketplaceWatchesPage() {
               {(perksQ.data ?? []).map((perk) => (
                 <option key={perk.id} value={perk.id}>
                   {perk.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="pf-field">
+            <span className="pf-field__label">Контракт</span>
+            <select
+              className="pf-input"
+              value={contractFilter}
+              onChange={(e) => setContractFilter(e.target.value)}
+              disabled={economyQ.isLoading}
+            >
+              <option value="">Любой</option>
+              {Array.from({ length: Math.max(0, economyQ.data?.maxRenewals ?? 0) }, (_, i) => (
+                <option key={i} value={String(i)}>
+                  ↻ {i}/{economyQ.data?.maxRenewals ?? 0}
                 </option>
               ))}
             </select>

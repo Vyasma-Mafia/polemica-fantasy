@@ -61,6 +61,10 @@ class AdminNotificationController(
         @Valid @RequestBody body: SendProductCampaignRequest,
     ): ProductCampaignDto = productCampaignService.send(body)
 
+    @PostMapping("/campaigns/{id}/send")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    fun sendExistingCampaign(@PathVariable id: Long): ProductCampaignDto = productCampaignService.sendExisting(id)
+
     @GetMapping("/release-notes")
     fun listReleaseNotes(): List<ReleaseNoteAdminDto> = releaseNoteService.listAdmin()
 

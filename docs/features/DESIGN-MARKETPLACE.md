@@ -52,49 +52,72 @@
 | Шаг | Действие |
 |-----|----------|
 | 1 | Списание полной цены с покупателя |
-| 2 | Начисление продавцу: цена − 10% комиссия |
-| 3 | Карта переходит покупателю со **свежим контрактом** |
+| 2 | Начисление продавцу: цена − 15% комиссия |
+| 3 | Игрок переподписывает свой контракт, карта переходит покупателю с полным запасом uses |
 | 4 | Запись в историю владельцев |
 | 5 | Telegram-уведомление продавцу |
 
-### 2.3 Свежий контракт при покупке
+### 2.3 Переподписание контракта при покупке
 
-При смене владельца через маркетплейс карта **обновляется**:
+При смене владельца через маркетплейс игрок **не подписывает новый контракт с нуля**,
+а переподписывает свой. Карта переходит новому владельцу с восстановленным запасом
+uses, а `times_renewed` увеличивается:
 
 | Поле UserCard | До покупки | После покупки |
 |---------------|------------|---------------|
 | `telegram_user_id` | Продавец | Покупатель |
 | `card_template_id` | Без изменений | Без изменений |
 | `uses_remaining` | Любое (> 0) | Начальное для редкости (`card.uses.*`) |
-| `times_renewed` | Любое | **0** |
+| `times_renewed` | N | **N + 1** |
 | `crafted_by_*` | Без изменений | Без изменений |
 | `acquired_at` | Без изменений | Без изменений |
 
-Покупатель всегда получает карту как будто из пака — полный контракт,
-все продления доступны.
+Покупатель получает полный запас uses, но покупка через маркетплейс считается
+переподписанием контракта и расходует общий лимит `renewal.max_times`.
+Лор V1: после двух переподписаний и расхода энергии на играх игрок устает от
+мафии и уходит на покой. При достижении лимита карту нельзя ни продлить вручную,
+ни продать/купить через маркетплейс; её можно доиграть оставшимися uses или
+переработать.
+
+Релизное правило для перехода на новую механику: у всех карт в активных
+листингах (`marketplace_listing.status = ACTIVE`) `times_renewed` сбрасывается
+в 0, чтобы текущий рынок стартовал с чистого контрактного счётчика.
+
+### 2.4 Product communication
+
+Релиз новой контрактной механики сопровождается Product communication:
+
+- `/whats-new` получает опубликованную release note с CTA на `/marketplace`
+- в админском разделе **Product communication → Campaigns** сидится draft-кампания
+  `Marketplace: переподписание контрактов` с кнопкой `Открыть маркетплейс`
+- draft-кампания не отправляется миграцией автоматически; админ запускает её вручную
+  из Product communication после релиза
 
 ### 2.4 Снятие с продажи
 
 Продавец может отменить листинг в любой момент. Карта возвращается
-в обычное состояние (разблокируется). Uses и renewals **не меняются** —
-сброс контракта происходит только при реальной продаже.
+в обычное состояние (разблокируется). Uses и renewals **не меняются**.
 
 ### 2.5 Минимальная цена
 
 Минимальная цена листинга задаётся отдельными ключами **`marketplace.min_price.*`**
-в `economy_config` (по редкости). Значения по умолчанию совпадают со стоимостью
-продления (`renewal.cost.*`), но администратор может менять их независимо.
+в `economy_config` (по редкости). Значения настраиваются независимо от стоимости
+продления (`renewal.cost.*`).
 
 | Редкость | Минимальная цена (дефолт) | economy_config key |
 |----------|---------------------------|--------------------|
-| COMMON | 30 | `marketplace.min_price.COMMON` |
-| RARE | 60 | `marketplace.min_price.RARE` |
+| COMMON | 20 | `marketplace.min_price.COMMON` |
+| RARE | 40 | `marketplace.min_price.RARE` |
 | EPIC | 120 | `marketplace.min_price.EPIC` |
 | LEGENDARY | 250 | `marketplace.min_price.LEGENDARY` |
 
+Эффективная минимальная цена конкретного экземпляра снижается на
+`marketplace.contract_reissue_discount_percent` процентов от базового минимума
+за каждое предыдущее перезаключение (`times_renewed`) и не опускается ниже 1₣.
+
 **Обоснование:** нижний порог цены сделки ограничивает перелив фантиков через
-символические сделки; при необходимости его можно согласовать с балансом
-продления отдельно от `renewal.cost.*`.
+символические сделки, а дисконт делает старые перепроданные карты менее
+дорогими без бесконечного обновления контракта.
 
 ---
 
@@ -124,6 +147,7 @@
 | `uses_remaining > 0` | 400: «Cannot sell an expired card» |
 | Карта НЕ в команде незавершённой серии | 400: «Cannot sell a card in an active team» |
 | Карта НЕ выставлена на маркетплейсе | 400: «Card is already listed» |
+| `times_renewed < renewal.max_times` | 400: «Maximum contract reissues reached for this card» |
 | Цена ≥ минимальной для редкости | 400: «Price below minimum for this rarity» |
 
 ### 3.4 Ограничения покупки
@@ -133,6 +157,7 @@
 | Листинг в статусе ACTIVE | 404: «Listing not found» |
 | Покупатель ≠ продавец | 400: «Cannot buy your own card» |
 | Покупатель никогда не владел этой картой | 400: «Cannot buy a card you previously owned» |
+| `times_renewed < renewal.max_times` | 400: «Maximum contract reissues reached for this card» |
 | Достаточно фантиков у покупателя | 400: «Insufficient balance» |
 
 ---
@@ -172,11 +197,12 @@
 
 | Ключ | Значение | Описание |
 |------|----------|----------|
-| `marketplace.commission_percent` | `10` | Комиссия с продажи (%) |
-| `marketplace.min_price.COMMON` | `30` | Минимальная цена листинга COMMON |
-| `marketplace.min_price.RARE` | `60` | Минимальная цена листинга RARE |
+| `marketplace.commission_percent` | `15` | Комиссия с продажи (%) |
+| `marketplace.min_price.COMMON` | `20` | Минимальная цена листинга COMMON |
+| `marketplace.min_price.RARE` | `40` | Минимальная цена листинга RARE |
 | `marketplace.min_price.EPIC` | `120` | Минимальная цена листинга EPIC |
 | `marketplace.min_price.LEGENDARY` | `250` | Минимальная цена листинга LEGENDARY |
+| `marketplace.contract_reissue_discount_percent` | `15` | Снижение минимальной цены за каждое перезаключение (%) |
 
 Потолок цены — ключи `marketplace.max_price.*` (см. миграции и админку экономики).
 
@@ -306,7 +332,7 @@ CREATE INDEX idx_ownership_history_card_user
 
 ```sql
 INSERT INTO economy_config (key, value, description) VALUES
-    ('marketplace.commission_percent', '10', 'Комиссия маркетплейса (%)');
+    ('marketplace.commission_percent', '15', 'Комиссия маркетплейса (%)');
 ```
 
 ### 7.3 Бэкфилл истории владельцев
@@ -525,7 +551,7 @@ class MarketplaceService(
         // 6. Списать фантики у покупателя (MARKETPLACE_PURCHASE)
         // 7. Начислить продавцу price - commission (MARKETPLACE_SALE)
         // 8. Передать карту: user_card.telegram_user_id = buyer
-        // 9. Сбросить контракт: uses_remaining = initial, times_renewed = 0
+        // 9. Перезаключить контракт: uses_remaining = initial, times_renewed += 1
         // 10. Добавить запись в ownership history (MARKETPLACE_PURCHASE)
         // 11. Обновить листинг: status = SOLD, sold_at, buyer_id
         // 12. Async: отправить уведомление продавцу
@@ -585,9 +611,11 @@ enum class FantikiTransactionReason {
 
 ```kotlin
 fun getMarketplaceCommissionPercent(): Int   // marketplace.commission_percent
+fun getEffectiveMinListingPrice(rarity: Rarity, timesRenewed: Int): Long
 ```
 
-Минимальная цена читается из существующего `getRenewalCost(rarity)`.
+Минимальная цена листинга читается из `marketplace.min_price.{rarity}` и
+дисконтируется по `timesRenewed`.
 
 ---
 
@@ -709,9 +737,9 @@ M7–M11 могут выполняться параллельно после M5.
 | Вопрос | Решение |
 |--------|---------|
 | Тип маркетплейса | Продажа за фантики (не обмен, не аукцион) |
-| Ценообразование | Продавец задаёт цену, минимум = renewal cost |
-| Контракт при покупке | Полный сброс: uses → начальное, times_renewed → 0 |
-| Комиссия | 10% с продавца |
+| Ценообразование | Продавец задаёт цену, минимум = `marketplace.min_price.*` с дисконтом за `times_renewed` |
+| Контракт при покупке | uses → начальное, `times_renewed += 1`; общий лимит `renewal.max_times` |
+| Комиссия | 15% с продавца |
 | Кто платит комиссию | Продавец (покупатель видит конечную цену) |
 | Карта с uses = 0 | Нельзя выставить (только recycle/renew) |
 | Карта в команде | Нельзя выставить |

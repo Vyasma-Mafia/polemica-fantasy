@@ -88,7 +88,7 @@ class UserFantasyTeamService(
         return buildTeamSeriesDetails(team, seriesId)
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     fun getPublicTeamForSeries(
         seriesId: Long,
         ownerTelegramId: Long,
@@ -97,7 +97,6 @@ class UserFantasyTeamService(
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
-        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(owner.id!!, seriesId, leagueCode)
@@ -130,6 +129,7 @@ class UserFantasyTeamService(
             owner = ownerDto,
             seriesId = s.id!!,
             tournamentId = s.tournament!!.id!!,
+            seriesName = s.name,
             leagueCode = team.seriesLeague!!.league!!.code,
             totalScore = team.totalScore,
             submittedAt = team.submittedAt,
@@ -137,7 +137,7 @@ class UserFantasyTeamService(
         )
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     fun getPublicTeamDetailsForSeries(
         seriesId: Long,
         ownerTelegramId: Long,
@@ -146,7 +146,6 @@ class UserFantasyTeamService(
         if (!seriesRepository.existsById(seriesId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         }
-        fantasyTeamRosterPruningService.pruneInvalidCardsForSeries(seriesId)
         val owner = telegramUserRepository.findByTelegramId(ownerTelegramId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         val team = fantasyTeamRepository.findByUserAndSeriesAndLeagueCodeWithCards(owner.id!!, seriesId, leagueCode)

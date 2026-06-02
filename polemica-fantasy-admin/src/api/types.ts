@@ -156,7 +156,7 @@ export interface ProductCampaignDto {
   audience: ProductAudience | string
   buttonText: string | null
   buttonUrl: string | null
-  status: 'QUEUED' | 'SENT' | 'FAILED' | string
+  status: 'DRAFT' | 'QUEUED' | 'SENT' | 'FAILED' | string
   rawRecipientCount: number
   eligibleRecipientCount: number
   sentCount: number
@@ -171,6 +171,8 @@ export interface ReleaseNoteAdminDto {
   id: number
   title: string
   body: string
+  buttonText: string | null
+  buttonUrl: string | null
   audience: ProductAudience | string
   minAppVersion: string | null
   active: boolean

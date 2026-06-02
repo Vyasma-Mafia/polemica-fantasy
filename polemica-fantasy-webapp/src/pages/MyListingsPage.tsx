@@ -9,6 +9,7 @@ import {
 } from '../api/marketplace'
 import { fetchEconomyInfo } from '../api/userEconomy'
 import { CardPerkChips } from '../components/CardPerkChips'
+import { ContractReissueBadge } from '../components/ContractReissueBadge'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -88,6 +89,7 @@ export function MyListingsPage() {
               className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${skinMod ? ` pf-collection-card${skinMod}` : ''}`}
             >
               <div className="pf-collection-card__frame">
+                <ContractReissueBadge timesRenewed={c.timesRenewed} maxRenewals={c.maxRenewals} />
                 <div className="pf-collection-card__open pf-marketplace-card__open">
                   {img ? (
                     <img src={img} alt="" className="pf-collection-card__img" />
@@ -129,7 +131,7 @@ export function MyListingsPage() {
                     <>
                       <label className="pf-field" style={{ marginBottom: 6 }}>
                         <span className="pf-field__label" style={{ fontSize: '0.75rem' }}>
-                          Цена (мин. {economyQ.data.marketplaceMinPrices[c.rarity]}₣, макс.{' '}
+                          Цена (мин. {c.minListingPrice}₣, макс.{' '}
                           {economyQ.data.marketplaceMaxPrices[c.rarity]}₣)
                         </span>
                         <input
@@ -161,7 +163,7 @@ export function MyListingsPage() {
                           disabled={updatePriceM.isPending || !economyQ.data}
                           onClick={() => {
                             if (!economyQ.data) return
-                            const min = economyQ.data.marketplaceMinPrices[c.rarity]
+                            const min = c.minListingPrice
                             const max = economyQ.data.marketplaceMaxPrices[c.rarity]
                             const price = Number(editPriceDraft)
                             if (!Number.isFinite(price) || price < min) {

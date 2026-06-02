@@ -22,6 +22,7 @@ class UserCardCollectionService(
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val imageStorageService: ImageStorageService,
     private val cardValueService: CardValueService,
+    private val economyConfigService: EconomyConfigService,
 ) {
 
     @Transactional(readOnly = true)
@@ -77,6 +78,10 @@ class UserCardCollectionService(
                 leaguesInSeries = if (seriesId == null) null else (leaguesByCardId[it.id] ?: emptyList()),
                 canJoinMoreLeagues = if (seriesId == null) null else it.usesRemaining > (leaguesByCardId[it.id]?.size ?: 0),
                 activeMarketplaceListing = activeListingByCardId[it.id],
+                minListingPrice = economyConfigService.getEffectiveMinListingPrice(
+                    it.cardTemplate!!.rarity,
+                    it.timesRenewed,
+                ),
             )
         }
     }

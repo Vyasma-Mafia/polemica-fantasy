@@ -19,7 +19,9 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.verify
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.whenever
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
@@ -41,6 +43,9 @@ class MarketplaceWatchServiceTest {
 
     @Mock
     private lateinit var perkRepository: PerkRepository
+
+    @Mock
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @InjectMocks
     private lateinit var marketplaceWatchService: MarketplaceWatchService
@@ -78,6 +83,8 @@ class MarketplaceWatchServiceTest {
             tournament = tournament,
             rarity = Rarity.EPIC,
             maxPrice = 777L,
+            minTimesRenewed = 1,
+            maxTimesRenewed = 1,
             createdAt = createdAt,
         )
         whenever(marketplaceWatchFilterRepository.countByTelegramUser_Id(1L)).thenReturn(0)
@@ -93,15 +100,55 @@ class MarketplaceWatchServiceTest {
                 tournamentId = 20L,
                 rarity = Rarity.EPIC,
                 maxPrice = 777L,
+                minTimesRenewed = 1,
+                maxTimesRenewed = 1,
             ),
         )
 
+        val savedCaptor = argumentCaptor<MarketplaceWatchFilter>()
+        verify(marketplaceWatchFilterRepository).save(savedCaptor.capture())
+        assertEquals(1, savedCaptor.firstValue.minTimesRenewed)
+        assertEquals(1, savedCaptor.firstValue.maxTimesRenewed)
         assertEquals(99L, dto.id)
         assertEquals("Игрок", dto.fantasyPlayer?.nickname)
         assertEquals("Турнир", dto.tournament?.name)
         assertEquals("EPIC", dto.rarity)
         assertEquals(777L, dto.maxPrice)
+        assertEquals(1, dto.minTimesRenewed)
+        assertEquals(1, dto.maxTimesRenewed)
         assertEquals(createdAt, dto.createdAt)
+    }
+
+    @Test
+    fun `createWatch accepts contract reissue as criterion`() {
+        val user = TelegramUser(telegramId = 1002L).apply { id = 1L }
+        val createdAt = Instant.parse("2026-05-31T10:15:30Z")
+        val saved = MarketplaceWatchFilter(
+            id = 100L,
+            telegramUser = user,
+            minTimesRenewed = 0,
+            maxTimesRenewed = 0,
+            createdAt = createdAt,
+        )
+        whenever(marketplaceWatchFilterRepository.countByTelegramUser_Id(1L)).thenReturn(0)
+        whenever(telegramUserRepository.findById(1L)).thenReturn(Optional.of(user))
+        whenever(marketplaceWatchFilterRepository.save(org.mockito.kotlin.any())).thenReturn(saved)
+
+        val dto = marketplaceWatchService.createWatch(
+            internalUserId = 1L,
+            request = CreateMarketplaceWatchRequest(
+                fantasyPlayerId = null,
+                tournamentId = null,
+                rarity = null,
+                maxPrice = null,
+                minTimesRenewed = 0,
+                maxTimesRenewed = 0,
+            ),
+        )
+
+        assertEquals(100L, dto.id)
+        assertEquals(0, dto.minTimesRenewed)
+        assertEquals(0, dto.maxTimesRenewed)
     }
 
     @Test

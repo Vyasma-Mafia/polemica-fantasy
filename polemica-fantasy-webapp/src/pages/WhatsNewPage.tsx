@@ -47,6 +47,41 @@ export function WhatsNewPage() {
                 <time>{formatDateShortWithTime(new Date(note.publishedAt))}</time>
               </div>
               <p>{note.body}</p>
+              {note.buttonText && note.buttonUrl ? (
+                note.buttonUrl.startsWith('/') ? (
+                  <Link
+                    className="pf-btn pf-btn--primary pf-release-card__cta"
+                    to={note.buttonUrl}
+                    onClick={() =>
+                      track({
+                        eventType: 'FEATURE_USED',
+                        releaseNoteId: note.id,
+                        subjectType: 'RELEASE_NOTE_CTA',
+                        subjectId: note.id,
+                      })
+                    }
+                  >
+                    {note.buttonText}
+                  </Link>
+                ) : (
+                  <a
+                    className="pf-btn pf-btn--primary pf-release-card__cta"
+                    href={note.buttonUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() =>
+                      track({
+                        eventType: 'FEATURE_USED',
+                        releaseNoteId: note.id,
+                        subjectType: 'RELEASE_NOTE_CTA',
+                        subjectId: note.id,
+                      })
+                    }
+                  >
+                    {note.buttonText}
+                  </a>
+                )
+              ) : null}
             </article>
           ))}
         </div>

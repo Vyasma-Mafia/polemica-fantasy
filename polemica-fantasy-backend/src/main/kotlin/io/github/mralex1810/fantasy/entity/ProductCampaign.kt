@@ -11,6 +11,7 @@ import jakarta.persistence.Table
 import java.time.Instant
 
 enum class ProductCampaignStatus {
+    DRAFT,
     QUEUED,
     SENT,
     FAILED,

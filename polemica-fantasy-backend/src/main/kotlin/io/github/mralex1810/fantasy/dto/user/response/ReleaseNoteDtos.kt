@@ -6,6 +6,8 @@ data class ReleaseNoteDto(
     val id: Long,
     val title: String,
     val body: String,
+    val buttonText: String?,
+    val buttonUrl: String?,
     val audience: String,
     val minAppVersion: String?,
     val publishedAt: Instant,

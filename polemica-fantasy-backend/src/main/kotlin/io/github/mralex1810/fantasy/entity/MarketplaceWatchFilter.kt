@@ -41,6 +41,12 @@ class MarketplaceWatchFilter(
     @Column(name = "max_price")
     var maxPrice: Long? = null,
 
+    @Column(name = "min_times_renewed")
+    var minTimesRenewed: Int? = null,
+
+    @Column(name = "max_times_renewed")
+    var maxTimesRenewed: Int? = null,
+
     @Column(name = "perk_ids_key", nullable = false, length = 1024)
     var perkIdsKey: String = "",
 

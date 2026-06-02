@@ -54,6 +54,8 @@ export interface MarketplaceWatchDto {
   tournament: TournamentBriefDto | null
   rarity: Rarity | null
   maxPrice: number | null
+  minTimesRenewed: number | null
+  maxTimesRenewed: number | null
   perks: { id: string; name: string }[]
   createdAt: string
 }
@@ -68,5 +70,7 @@ export interface CreateMarketplaceWatchRequest {
   tournamentId: number | null
   rarity: Rarity | null
   maxPrice: number | null
+  minTimesRenewed?: number | null
+  maxTimesRenewed?: number | null
   perkIds: string[]
 }

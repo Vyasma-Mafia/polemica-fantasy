@@ -36,6 +36,12 @@ class ReleaseNote(
     @Column(nullable = false, columnDefinition = "TEXT")
     var body: String = "",
 
+    @Column(name = "button_text", length = 64)
+    var buttonText: String? = null,
+
+    @Column(name = "button_url", length = 2048)
+    var buttonUrl: String? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 64)
     var audience: ProductAudience = ProductAudience.ALL,

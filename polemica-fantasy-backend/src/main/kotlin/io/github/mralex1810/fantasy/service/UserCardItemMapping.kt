@@ -17,6 +17,7 @@ fun UserCard.toUserCardItemDto(
     leaguesInSeries: List<String>? = null,
     canJoinMoreLeagues: Boolean? = null,
     activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
+    minListingPrice: Long? = null,
 ): UserCardItemDto {
     val ct = templateOverride ?: cardTemplate!!
     val fp = ct.fantasyPlayer!!
@@ -42,6 +43,7 @@ fun UserCard.toUserCardItemDto(
             },
         usesRemaining = usesRemaining,
         timesRenewed = timesRenewed,
+        minListingPrice = minListingPrice,
         sourceCardPackId = sourceCardPack?.id,
         craftedByTelegramUserId = craftedBy?.telegramId,
         value = cardValueService.calculateValue(ct),

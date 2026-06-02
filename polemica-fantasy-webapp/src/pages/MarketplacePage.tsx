@@ -9,6 +9,7 @@ import {
   fetchMarketplaceFeed,
   fetchMarketplaceListings,
 } from '../api/marketplace'
+import { fetchEconomyInfo } from '../api/userEconomy'
 import type {
   FantasyPlayerBrief,
   MarketplaceListingEntry,
@@ -17,6 +18,7 @@ import type {
   UserTournamentDetail,
 } from '../api/types'
 import { CardPerkChips } from '../components/CardPerkChips'
+import { ContractReissueBadge } from '../components/ContractReissueBadge'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -45,6 +47,7 @@ export function MarketplacePage() {
   const [seriesId, setSeriesId] = useState('')
   const [playerFilterId, setPlayerFilterId] = useState<number | ''>('')
   const [selectedPerkIds, setSelectedPerkIds] = useState<string[]>([])
+  const [contractFilter, setContractFilter] = useState<number | ''>('')
 
   const [buyConfirm, setBuyConfirm] = useState<MarketplaceListingEntry | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -75,6 +78,12 @@ export function MarketplacePage() {
     enabled: !!initData,
   })
 
+  const economyQ = useQuery({
+    queryKey: ['economy-info', initData],
+    queryFn: () => fetchEconomyInfo(initData!),
+    enabled: !!initData,
+  })
+
   const minP = minPrice.trim() === '' ? undefined : Number(minPrice)
   const maxP = maxPrice.trim() === '' ? undefined : Number(maxPrice)
   const minOk = minP === undefined || Number.isFinite(minP)
@@ -92,15 +101,21 @@ export function MarketplacePage() {
       minPrice: minOk ? minP : undefined,
       maxPrice: maxOk ? maxP : undefined,
       perkIds: selectedPerkIds,
+      minTimesRenewed: contractFilter === '' ? undefined : contractFilter,
+      maxTimesRenewed: contractFilter === '' ? undefined : contractFilter,
       sortBy,
       page,
       size: 20,
     }
-  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, selectedPerkIds, sortBy, page])
+  }, [playerFilterId, tournamentId, seriesId, rarity, minOk, maxOk, minP, maxP, selectedPerkIds, contractFilter, sortBy, page])
 
   const watchPayload = useMemo(() => {
     const hasCriteria =
-      playerFilterId !== '' || tournamentId !== '' || rarity !== '' || selectedPerkIds.length > 0
+      playerFilterId !== '' ||
+      tournamentId !== '' ||
+      rarity !== '' ||
+      selectedPerkIds.length > 0 ||
+      contractFilter !== ''
     if (!hasCriteria) return null
     const parsedMaxPrice = maxPrice.trim() === '' ? null : Number(maxPrice)
     return {
@@ -111,9 +126,11 @@ export function MarketplacePage() {
         parsedMaxPrice != null && Number.isFinite(parsedMaxPrice) && parsedMaxPrice > 0
           ? Math.floor(parsedMaxPrice)
           : null,
+      minTimesRenewed: contractFilter === '' ? null : contractFilter,
+      maxTimesRenewed: contractFilter === '' ? null : contractFilter,
       perkIds: selectedPerkIds,
     }
-  }, [playerFilterId, tournamentId, rarity, maxPrice, selectedPerkIds])
+  }, [playerFilterId, tournamentId, rarity, maxPrice, selectedPerkIds, contractFilter])
 
   const watchPayloadKey = useMemo(() => JSON.stringify(watchPayload), [watchPayload])
 
@@ -356,6 +373,26 @@ export function MarketplacePage() {
           </select>
         </label>
         <label className="pf-field">
+          <span className="pf-field__label">Контракт</span>
+          <select
+            className="pf-input"
+            value={contractFilter === '' ? '' : String(contractFilter)}
+            onChange={(e) => {
+              const v = e.target.value
+              setContractFilter(v === '' ? '' : Number(v))
+              setPage(0)
+            }}
+            disabled={economyQ.isLoading}
+          >
+            <option value="">Любой</option>
+            {Array.from({ length: Math.max(0, economyQ.data?.maxRenewals ?? 0) }, (_, i) => (
+              <option key={i} value={String(i)}>
+                ↻ {i}/{economyQ.data?.maxRenewals ?? 0}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="pf-field">
           <span className="pf-field__label">Цена от</span>
           <input
             className="pf-input"
@@ -435,6 +472,7 @@ export function MarketplacePage() {
               className={`pf-collection-card pf-collection-card--${rarityClass(c.rarity)}${skinMod ? ` pf-collection-card${skinMod}` : ''}`}
             >
               <div className="pf-collection-card__frame">
+                <ContractReissueBadge timesRenewed={c.timesRenewed} maxRenewals={c.maxRenewals} />
                 <div className="pf-collection-card__open pf-marketplace-card__open">
                   {img ? (
                     <img src={img} alt="" className="pf-collection-card__img" />

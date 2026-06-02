@@ -12,6 +12,7 @@ import {
   previewCampaign,
   publishReleaseNote,
   sendCampaign,
+  sendExistingCampaign,
 } from '../api/notifications'
 import type {
   ProductCampaignAnalyticsDto,
@@ -39,6 +40,8 @@ interface CampaignFormValues {
 interface ReleaseNoteFormValues {
   title: string
   body: string
+  buttonText?: string
+  buttonUrl?: string
   audience: string
   minAppVersion?: string
   active: boolean
@@ -74,6 +77,15 @@ function CampaignsTab() {
     onSuccess: () => {
       message.success('Campaign queued')
       form.resetFields()
+      void qc.invalidateQueries({ queryKey: ['product-campaigns'] })
+      void qc.invalidateQueries({ queryKey: ['product-campaign-analytics'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+  const sendExistingM = useMutation({
+    mutationFn: (id: number) => sendExistingCampaign(id),
+    onSuccess: () => {
+      message.success('Campaign queued')
       void qc.invalidateQueries({ queryKey: ['product-campaigns'] })
       void qc.invalidateQueries({ queryKey: ['product-campaign-analytics'] })
     },
@@ -153,6 +165,26 @@ function CampaignsTab() {
           { title: 'Blocked', dataIndex: 'skippedBlockedCount' },
           { title: 'Pref off', dataIndex: 'skippedPreferenceCount' },
           { title: 'Failed', dataIndex: 'failedCount' },
+          {
+            title: 'Action',
+            render: (_, row) =>
+              row.status === 'DRAFT' ? (
+                <Button
+                  size="small"
+                  loading={sendExistingM.isPending}
+                  onClick={() =>
+                    Modal.confirm({
+                      title: 'Send draft campaign?',
+                      content: row.title,
+                      okText: 'Send',
+                      onOk: () => sendExistingM.mutateAsync(row.id),
+                    })
+                  }
+                >
+                  Send draft
+                </Button>
+              ) : null,
+          },
         ]}
         pagination={{ pageSize: 10 }}
       />
@@ -169,6 +201,8 @@ function ReleaseNotesTab() {
     mutationFn: (values: ReleaseNoteFormValues) =>
       createReleaseNote({
         ...values,
+        buttonText: values.buttonText?.trim() || null,
+        buttonUrl: values.buttonUrl?.trim() || null,
         minAppVersion: values.minAppVersion?.trim() || null,
       }),
     onSuccess: () => {
@@ -207,6 +241,14 @@ function ReleaseNotesTab() {
           <Form.Item name="body" label="Body" rules={[{ required: true }]}>
             <Input.TextArea rows={4} />
           </Form.Item>
+          <Space align="start" wrap>
+            <Form.Item name="buttonText" label="Button text" rules={[{ max: 64 }]}>
+              <Input placeholder="Open feature" style={{ width: 220 }} />
+            </Form.Item>
+            <Form.Item name="buttonUrl" label="Button URL or app path" rules={[{ max: 2048 }]}>
+              <Input placeholder="/marketplace" style={{ width: 320 }} />
+            </Form.Item>
+          </Space>
           <Form.Item name="active" label="Published" valuePropName="checked">
             <Switch />
           </Form.Item>
@@ -236,7 +278,18 @@ function ReleaseNotesTab() {
             ),
           },
         ]}
-        expandable={{ expandedRowRender: (row) => <Typography.Paragraph style={{ whiteSpace: 'pre-wrap' }}>{row.body}</Typography.Paragraph> }}
+        expandable={{
+          expandedRowRender: (row) => (
+            <Space direction="vertical" align="start">
+              <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{row.body}</Typography.Paragraph>
+              {row.buttonText && row.buttonUrl ? (
+                <Typography.Text type="secondary">
+                  {row.buttonText}: {row.buttonUrl}
+                </Typography.Text>
+              ) : null}
+            </Space>
+          ),
+        }}
         pagination={{ pageSize: 10 }}
       />
     </Space>

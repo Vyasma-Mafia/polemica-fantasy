@@ -9,7 +9,6 @@ import type {
   FantasyTeamSeriesDetails,
   PublicFantasyTeam,
   UserCardItem,
-  UserSeriesDetail,
 } from '../api/types'
 import { CardPerkChips } from '../components/CardPerkChips'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
@@ -51,12 +50,6 @@ export function LeaderboardPlayerTeamPage() {
   const [detailCardId, setDetailCardId] = useState<number | null>(null)
   const [expandedCell, setExpandedCell] = useState<{ gameIndex: number; colIndex: number } | null>(null)
 
-  const seriesMeta = useQuery({
-    queryKey: ['series', sid, initData],
-    queryFn: () => apiGet<UserSeriesDetail>(`/api/v1/series/${sid}`, initData),
-    enabled: !!initData && Number.isFinite(sid),
-  })
-
   const teamQ = useQuery({
     queryKey: ['public-fantasy-team', sid, telegramId, leagueCode, initData],
     queryFn: () =>
@@ -80,7 +73,7 @@ export function LeaderboardPlayerTeamPage() {
   const leaderboardQ = useQuery({
     queryKey: ['leaderboard', sid, leagueCode, initData],
     queryFn: () => fetchLeagueLeaderboard(sid, leagueCode, initData),
-    enabled: !!initData && Number.isFinite(sid),
+    enabled: !!initData && Number.isFinite(sid) && !!teamQ.data,
   })
 
   const cardByUserCardId = useMemo(() => {
@@ -109,19 +102,14 @@ export function LeaderboardPlayerTeamPage() {
   }, [cardByUserCardId, requestedCardId])
 
   if (!initData) return <MissingInitDataNotice />
-  if (seriesMeta.isLoading || teamQ.isLoading) return <p className="pf-loading">Загрузка…</p>
-  if (seriesMeta.isError) return <p className="pf-err">{(seriesMeta.error as Error).message}</p>
+  if (teamQ.isLoading) return <p className="pf-loading">Загрузка…</p>
   if (teamQ.isError) {
     const msg = (teamQ.error as Error).message
     return (
       <div className="pf-page">
         <PageHeader
           title="Команда"
-          subtitle={
-            seriesMeta.data?.name
-              ? `${seriesMeta.data.name} · ${leagueShortName(leagueCode)}`
-              : leagueShortName(leagueCode)
-          }
+          subtitle={`Серия #${sid} · ${leagueShortName(leagueCode)}`}
           backTo={`/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`}
         />
         <p className="pf-err">{msg}</p>
@@ -134,7 +122,7 @@ export function LeaderboardPlayerTeamPage() {
 
   const team = teamQ.data!
   const ownerLabel = formatUserDisplayName(team.owner)
-  const s = seriesMeta.data
+  const seriesLabel = team.seriesName ?? `Серия #${team.seriesId}`
   const backLb = `/series/${sid}/leaderboard?league=${encodeURIComponent(leagueCode)}`
   const rank = leaderboardQ.data?.find((row) => row.user.telegramId === team.owner.telegramId)?.rank ?? null
 
@@ -151,7 +139,7 @@ export function LeaderboardPlayerTeamPage() {
     <div className="pf-page">
       <PageHeader
         title={ownerLabel}
-        subtitle={`${s?.name ?? `Серия #${sid}`} · ${leagueShortName(team.leagueCode ?? leagueCode)}`}
+        subtitle={`${seriesLabel} · ${leagueShortName(team.leagueCode ?? leagueCode)}`}
         backTo={backLb}
       />
       <div className="pf-share-row">
@@ -167,7 +155,7 @@ export function LeaderboardPlayerTeamPage() {
             })
             shareToTelegram(
               { kind: 'team', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
-              `Команда ${ownerLabel} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)}: ${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
+              `Команда ${ownerLabel} в ${seriesLabel}, ${leagueShortName(leagueCode)}: ${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'}`,
             )
           }}
         >
@@ -186,7 +174,7 @@ export function LeaderboardPlayerTeamPage() {
               })
               shareToTelegram(
                 { kind: 'place', seriesId: sid, telegramId: team.owner.telegramId, leagueCode },
-                `${ownerLabel}: #${rank} в ${s?.name ?? `серии #${sid}`}, ${leagueShortName(leagueCode)} (${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'})`,
+                `${ownerLabel}: #${rank} в ${seriesLabel}, ${leagueShortName(leagueCode)} (${team.totalScore != null ? `${team.totalScore.toFixed(2)} очков` : 'очки считаются'})`,
               )
             }}
           >
@@ -356,7 +344,7 @@ export function LeaderboardPlayerTeamPage() {
                       leagueCode,
                       userCardId: detailCard.id,
                     },
-                    `${detailCard.playerNickname} в команде ${ownerLabel}: ${s?.name ?? `серия #${sid}`}, ${leagueShortName(leagueCode)}`,
+                    `${detailCard.playerNickname} в команде ${ownerLabel}: ${seriesLabel}, ${leagueShortName(leagueCode)}`,
                   )
                 }
               >

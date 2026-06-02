@@ -50,6 +50,12 @@ data class CreateReleaseNoteRequest(
     @field:NotBlank
     val body: String,
 
+    @field:Size(max = 64)
+    val buttonText: String? = null,
+
+    @field:Size(max = 2048)
+    val buttonUrl: String? = null,
+
     val audience: String = "ALL",
     val minAppVersion: String? = null,
     val active: Boolean = true,
@@ -60,6 +66,10 @@ data class UpdateReleaseNoteRequest(
     val title: String? = null,
 
     val body: String? = null,
+    @field:Size(max = 64)
+    val buttonText: String? = null,
+    @field:Size(max = 2048)
+    val buttonUrl: String? = null,
     val audience: String? = null,
     val minAppVersion: String? = null,
     val active: Boolean? = null,

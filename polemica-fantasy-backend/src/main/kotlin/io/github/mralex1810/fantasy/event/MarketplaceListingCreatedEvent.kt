@@ -10,5 +10,6 @@ data class MarketplaceListingCreatedEvent(
     val cardTemplateId: Long,
     val rarity: Rarity,
     val price: Long,
+    val timesRenewed: Int,
     val playerName: String,
 )

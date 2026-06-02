@@ -2,6 +2,19 @@
 
 ## Что реализовано
 
+### Backend+TMA: ускорение публичных deep link команды (июнь 2026)
+- [x] Публичные endpoints просмотра чужой команды больше не вызывают `FantasyTeamRosterPruningService` при каждом read-запросе; pruning остаётся в admin roster assignment flow.
+- [x] `PublicFantasyTeamDto` расширен `seriesName`, TMA `LeaderboardPlayerTeamPage` больше не блокирует первый рендер полным `/api/v1/series/{id}` и откладывает leaderboard/details до загрузки команды.
+- [x] Проверки: backend `./gradlew compileKotlin compileTestKotlin`, TMA `npm run build` — успешно.
+
+### Backend+TMA: marketplace-перезаключения контракта через `timesRenewed` (май 2026)
+- [x] Flyway **V54** добавляет `marketplace.contract_reissue_discount_percent`, сбрасывает `times_renewed = 0` для карт в ACTIVE-листингах и расширяет marketplace watch-фильтры полями `min_times_renewed` / `max_times_renewed`.
+- [x] Marketplace create/update/buy использует effective min price с 15% дисконтом за каждое `timesRenewed`, запрещает продажу/покупку при `timesRenewed >= renewal.max_times`, а покупка восстанавливает uses и увеличивает `timesRenewed` на 1.
+- [x] User marketplace DTO и `/me/cards` отдают контрактные поля для UI; TMA показывает маркер `↻ N/max`, добавляет фильтр по контракту в marketplace/watch и использует `minListingPrice` конкретной карты при продаже и смене цены.
+- [x] Flyway **V55** публикует `/whats-new` лорный анонс с CTA на `/marketplace` и сидит draft-кампанию для Product communication; release notes получили CTA-поля, admin может отправлять draft-кампании вручную.
+- [x] Flyway **V56** настраивает экономику релиза: комиссия marketplace `15%`, минимумы листинга COMMON `20₣`, RARE `40₣`, EPIC `120₣`, LEGENDARY без изменений `250₣`; TMA `/help` объясняет переподписание и уход игрока на покой.
+- [x] Проверки: backend `compileKotlin compileTestKotlin`, unit `MarketplaceWatchServiceTest`, TMA/admin `npm run build`, `./scripts/codex-check.sh quick` — успешно.
+
 ### Backend+admin+TMA: замены игроков в скоринге серии (май 2026)
 - [x] `series_player` получил optional `replacement_polemica_user_id`; `fantasy_team_card_game_score` сохраняет фактический `scored_polemica_user_id`, имя и флаг `scored_via_replacement`.
 - [x] Admin API/UI позволяют задавать raw Polemica id замены для выбранного игрока серии; валидация запрещает неположительные id, unselected keys, совпадение с основными игроками и дубли замен.

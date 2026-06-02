@@ -22,6 +22,9 @@ data class MarketplaceListingCardDto(
     val perks: List<MarketplaceCardPerkDto>,
     val value: Long?,
     val skinCode: String?,
+    val timesRenewed: Int,
+    val maxRenewals: Int,
+    val minListingPrice: Long,
 )
 
 data class MarketplaceListingEntryDto(

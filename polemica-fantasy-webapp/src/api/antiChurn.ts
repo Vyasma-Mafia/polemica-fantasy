@@ -34,6 +34,8 @@ export interface ReleaseNote {
   id: number
   title: string
   body: string
+  buttonText: string | null
+  buttonUrl: string | null
   audience: string
   minAppVersion: string | null
   publishedAt: string

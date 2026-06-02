@@ -353,6 +353,7 @@ export interface PublicFantasyTeam {
   owner: UserPublic
   seriesId: number
   tournamentId: number
+  seriesName?: string
   leagueCode: string
   totalScore: number | null
   submittedAt: string
@@ -372,6 +373,8 @@ export interface UserCardItem {
   perks: { perkId: string; perkName: string; bonusPoints: number }[]
   usesRemaining: number
   timesRenewed: number
+  /** Effective marketplace minimum for this concrete card. */
+  minListingPrice?: number | null
   /** Present when the card came from opening a pack */
   sourceCardPackId?: number | null
   /** Telegram user id of the crafter; set after legendary upgrade from a pack card */
@@ -477,6 +480,9 @@ export interface MarketplaceListingCard {
   perks: MarketplaceCardPerk[]
   value: number | null
   skinCode?: string | null
+  timesRenewed: number
+  maxRenewals: number
+  minListingPrice: number
 }
 
 export interface MarketplaceSellerBrief {

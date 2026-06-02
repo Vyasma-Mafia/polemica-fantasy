@@ -76,6 +76,16 @@ class EconomyConfigService(
 
     fun getMaxListingPrice(rarity: Rarity): Long = getLong("marketplace.max_price.$rarity")
 
+    fun getMarketplaceContractReissueDiscountPercent(): Int =
+        getInt("marketplace.contract_reissue_discount_percent")
+
+    fun getEffectiveMinListingPrice(rarity: Rarity, timesRenewed: Int): Long {
+        val base = getMinListingPrice(rarity)
+        val discountPercent = getMarketplaceContractReissueDiscountPercent()
+        val effectivePercent = (100 - discountPercent * timesRenewed.coerceAtLeast(0)).coerceAtLeast(0)
+        return maxOf(1L, base * effectivePercent / 100)
+    }
+
     fun getMinPackOpensBeforeMarketplacePurchase(): Int = getInt("marketplace.min_pack_opens_before_purchase")
 
     fun getCardBaseValue(rarity: Rarity): Long = getLong("card.value.$rarity")

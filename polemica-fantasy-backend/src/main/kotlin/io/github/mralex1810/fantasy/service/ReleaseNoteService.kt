@@ -77,6 +77,8 @@ class ReleaseNoteService(
             ReleaseNote(
                 title = request.title.trim(),
                 body = request.body.trim(),
+                buttonText = request.buttonText?.trim()?.takeIf { it.isNotEmpty() },
+                buttonUrl = request.buttonUrl?.trim()?.takeIf { it.isNotEmpty() },
                 audience = audience,
                 minAppVersion = request.minAppVersion?.trim()?.takeIf { it.isNotEmpty() },
                 active = request.active,
@@ -94,6 +96,12 @@ class ReleaseNoteService(
         }
         request.title?.let { note.title = it.trim() }
         request.body?.let { note.body = it.trim() }
+        if (request.buttonText != null) {
+            note.buttonText = request.buttonText.trim().takeIf { it.isNotEmpty() }
+        }
+        if (request.buttonUrl != null) {
+            note.buttonUrl = request.buttonUrl.trim().takeIf { it.isNotEmpty() }
+        }
         request.audience?.let { note.audience = userSegmentService.parseAudience(it) }
         if (request.minAppVersion != null) {
             note.minAppVersion = request.minAppVersion.trim().takeIf { it.isNotEmpty() }
@@ -115,6 +123,8 @@ class ReleaseNoteService(
         id = id!!,
         title = title,
         body = body,
+        buttonText = buttonText,
+        buttonUrl = buttonUrl,
         audience = audience.name,
         minAppVersion = minAppVersion,
         publishedAt = publishedAt,
@@ -125,6 +135,8 @@ class ReleaseNoteService(
         id = id!!,
         title = title,
         body = body,
+        buttonText = buttonText,
+        buttonUrl = buttonUrl,
         audience = audience.name,
         minAppVersion = minAppVersion,
         active = active,

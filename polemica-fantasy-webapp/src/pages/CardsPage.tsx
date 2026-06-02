@@ -257,6 +257,7 @@ export function CardsPage() {
   function canOfferCardOnMarketplace(c: UserCardItem): boolean {
     if (c.usesRemaining <= 0) return false
     if (c.activeMarketplaceListing) return false
+    if (economyQ.data && c.timesRenewed >= economyQ.data.maxRenewals) return false
     if (cardBlockedForMarketplaceByTeam(c.id)) return false
     return true
   }
@@ -758,13 +759,24 @@ export function CardsPage() {
                   className="pf-btn pf-btn--small pf-btn--primary"
                   onClick={() => {
                     setSellModalCard(detailCard)
-                    const min = economyQ.data?.marketplaceMinPrices[detailCard.rarity] ?? 0
+                    const min =
+                      detailCard.minListingPrice ??
+                      economyQ.data?.marketplaceMinPrices[detailCard.rarity] ??
+                      0
                     setSellPrice(String(min))
                   }}
                 >
                   Продать
                 </button>
               )}
+              {!detailCard.activeMarketplaceListing &&
+                detailCard.usesRemaining > 0 &&
+                economyQ.data &&
+                detailCard.timesRenewed >= economyQ.data.maxRenewals && (
+                  <button type="button" className="pf-btn pf-btn--small" disabled title="Игрок уходит на покой">
+                    Уходит на покой
+                  </button>
+                )}
               {detailCard.activeMarketplaceListing && (
                 <button
                   type="button"
@@ -793,7 +805,7 @@ export function CardsPage() {
                     renewMut.isPending || detailCard.timesRenewed >= economyQ.data.maxRenewals
                   }
                   title={
-                    detailCard.timesRenewed >= economyQ.data.maxRenewals ? 'Лимит продлений' : undefined
+                    detailCard.timesRenewed >= economyQ.data.maxRenewals ? 'Игрок уходит на покой' : undefined
                   }
                   onClick={() => runRenew(detailCard)}
                 >
@@ -936,7 +948,7 @@ export function CardsPage() {
               <>
                 <label className="pf-field">
                   <span className="pf-field__label">
-                    Новая цена (мин. {economyQ.data.marketplaceMinPrices[manageListingCard.rarity]}₣, макс.{' '}
+                    Новая цена (мин. {manageListingCard.minListingPrice ?? economyQ.data.marketplaceMinPrices[manageListingCard.rarity]}₣, макс.{' '}
                     {economyQ.data.marketplaceMaxPrices[manageListingCard.rarity]}₣)
                   </span>
                   <input
@@ -991,7 +1003,9 @@ export function CardsPage() {
                 disabled={updateListingMut.isPending || cancelListingMut.isPending || !economyQ.data}
                 onClick={() => {
                   if (!economyQ.data) return
-                  const min = economyQ.data.marketplaceMinPrices[manageListingCard.rarity]
+                  const min =
+                    manageListingCard.minListingPrice ??
+                    economyQ.data.marketplaceMinPrices[manageListingCard.rarity]
                   const max = economyQ.data.marketplaceMaxPrices[manageListingCard.rarity]
                   const price = Number(manageListingPrice)
                   if (!Number.isFinite(price) || price < min) {
@@ -1082,7 +1096,7 @@ export function CardsPage() {
             )}
             <label className="pf-field">
               <span className="pf-field__label">
-                Цена (мин. {economyQ.data.marketplaceMinPrices[sellModalCard.rarity]}₣, макс.{' '}
+                Цена (мин. {sellModalCard.minListingPrice ?? economyQ.data.marketplaceMinPrices[sellModalCard.rarity]}₣, макс.{' '}
                 {economyQ.data.marketplaceMaxPrices[sellModalCard.rarity]}₣)
               </span>
               <input
@@ -1118,7 +1132,9 @@ export function CardsPage() {
                 className="pf-btn pf-btn--small pf-btn--primary"
                 disabled={sellMut.isPending}
                 onClick={() => {
-                  const min = economyQ.data!.marketplaceMinPrices[sellModalCard.rarity]
+                  const min =
+                    sellModalCard.minListingPrice ??
+                    economyQ.data!.marketplaceMinPrices[sellModalCard.rarity]
                   const max = economyQ.data!.marketplaceMaxPrices[sellModalCard.rarity]
                   const price = Number(sellPrice)
                   if (!Number.isFinite(price) || price < min) {

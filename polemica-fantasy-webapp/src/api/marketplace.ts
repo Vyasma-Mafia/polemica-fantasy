@@ -21,6 +21,8 @@ export interface ListingsQueryParams {
   minPrice?: number
   maxPrice?: number
   perkIds?: string[]
+  minTimesRenewed?: number
+  maxTimesRenewed?: number
   sortBy?: MarketplaceSortBy
   page?: number
   size?: number
@@ -34,6 +36,8 @@ function listingsSearchParams(p: ListingsQueryParams): string {
   if (p.rarity) sp.set('rarity', p.rarity)
   if (p.minPrice != null) sp.set('minPrice', String(p.minPrice))
   if (p.maxPrice != null) sp.set('maxPrice', String(p.maxPrice))
+  if (p.minTimesRenewed != null) sp.set('minTimesRenewed', String(p.minTimesRenewed))
+  if (p.maxTimesRenewed != null) sp.set('maxTimesRenewed', String(p.maxTimesRenewed))
   for (const perkId of p.perkIds ?? []) {
     sp.append('perkIds', perkId)
   }

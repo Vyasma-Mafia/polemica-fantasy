@@ -34,6 +34,8 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
               AND (mwf.fantasy_player_id IS NULL OR mwf.fantasy_player_id = :fantasyPlayerId)
               AND (mwf.rarity IS NULL OR mwf.rarity = :rarity)
               AND (mwf.max_price IS NULL OR mwf.max_price >= :price)
+              AND (mwf.min_times_renewed IS NULL OR mwf.min_times_renewed <= :timesRenewed)
+              AND (mwf.max_times_renewed IS NULL OR mwf.max_times_renewed >= :timesRenewed)
               AND (mwf.tournament_id IS NULL OR mwf.tournament_id IN (:tournamentIds))
               AND (
                   mwf.perk_ids_key = ''
@@ -59,6 +61,7 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
         @Param("cardTemplateId") cardTemplateId: Long,
         @Param("rarity") rarity: String,
         @Param("price") price: Long,
+        @Param("timesRenewed") timesRenewed: Int,
         @Param("tournamentIds") tournamentIds: List<Long>,
     ): List<Long>
 }

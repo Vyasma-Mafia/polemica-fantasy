@@ -53,6 +53,12 @@ export function sendCampaign(input: {
   })
 }
 
+export function sendExistingCampaign(id: number) {
+  return apiJson<ProductCampaignDto>(`/v1/admin/notifications/campaigns/${id}/send`, {
+    method: 'POST',
+  })
+}
+
 export function listReleaseNotes() {
   return apiJson<ReleaseNoteAdminDto[]>('/v1/admin/notifications/release-notes')
 }
@@ -60,6 +66,8 @@ export function listReleaseNotes() {
 export function createReleaseNote(input: {
   title: string
   body: string
+  buttonText?: string | null
+  buttonUrl?: string | null
   audience: string
   minAppVersion?: string | null
   active: boolean
@@ -73,6 +81,8 @@ export function createReleaseNote(input: {
 export function updateReleaseNote(id: number, input: Partial<{
   title: string
   body: string
+  buttonText: string | null
+  buttonUrl: string | null
   audience: string
   minAppVersion: string | null
   active: boolean

@@ -357,7 +357,10 @@ export function HelpPage() {
               </section>
               <section className="pf-economy__section">
                 <h3 className="pf-economy__h">Продление контракта</h3>
-                <p className="pf-muted">Максимум продлений на карту: {economyQ.data!.maxRenewals}</p>
+                <p className="pf-muted">
+                  Игрок переподписывает свой контракт не больше {economyQ.data!.maxRenewals} раз. После лимита и расхода
+                  энергии он устает от мафии и уходит на покой.
+                </p>
                 <table className="pf-economy__table">
                   <thead>
                     <tr>
@@ -382,6 +385,11 @@ export function HelpPage() {
                   <strong>{economyQ.data!.marketplaceCommissionPercent}%</strong> от цены сделки.
                 </p>
                 <p className="pf-muted">
+                  При покупке игрок переподписывает свой контракт: карта получает полный запас энергии, а счетчик ↻
+                  увеличивается. После лимита переподписаний и расхода энергии игрок устает от мафии и уходит на покой:
+                  такую карту больше нельзя продлить или снова продать.
+                </p>
+                <p className="pf-muted">
                   Покупать карты на маркетплейсе можно только после того, как в магазине открыто не менее{' '}
                   <strong>{economyQ.data!.minPackOpensBeforeMarketplacePurchase}</strong> паков (считаются успешные
                   открытия паков).
@@ -393,7 +401,9 @@ export function HelpPage() {
                 </p>
                 <p className="pf-muted">
                   Диапазон цены листинга по редкости задаётся экономикой сервера (минимум и максимум в таблице ниже; не
-                  зависят от стоимости продления контракта).
+                  зависят от стоимости продления контракта). При повторных переподписаниях минимальная цена конкретной
+                  карты может быть ниже базового минимума. В этом обновлении комиссия маркетплейса стала 15%, а
+                  минимумы для младших карт снижены: COMMON 20₣, RARE 40₣, EPIC 120₣.
                 </p>
                 <table className="pf-economy__table">
                   <thead>

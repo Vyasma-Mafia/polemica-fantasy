@@ -145,6 +145,8 @@ data class UserCardItemDto(
     val perks: List<CardPerkBriefDto>,
     val usesRemaining: Int,
     val timesRenewed: Int,
+    /** Effective marketplace minimum for this concrete card, including contract reissue discount. */
+    val minListingPrice: Long? = null,
     val sourceCardPackId: Long?,
     /** Telegram user id of the crafter (platform id); null for admin-issued cards. */
     val craftedByTelegramUserId: Long?,
@@ -203,6 +205,7 @@ data class PublicFantasyTeamDto(
     val owner: UserPublicDto,
     val seriesId: Long,
     val tournamentId: Long,
+    val seriesName: String,
     val leagueCode: String,
     val totalScore: Double?,
     val submittedAt: Instant,

@@ -10,8 +10,12 @@ import io.github.mralex1810.fantasy.entity.ProductCampaign
 import io.github.mralex1810.fantasy.entity.ProductCampaignStatus
 import io.github.mralex1810.fantasy.repository.ProductCampaignRepository
 import io.github.mralex1810.fantasy.telegram.ProductCampaignAsyncSender
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 
 @Service
@@ -66,8 +70,30 @@ class ProductCampaignService(
                 createdAt = Instant.now(),
             ),
         )
-        productCampaignAsyncSender.send(campaign.id!!)
+        sendAfterCommit(campaign.id!!)
         return campaign.toDto()
+    }
+
+    @Transactional
+    fun sendExisting(campaignId: Long): ProductCampaignDto {
+        val campaign = productCampaignRepository.findById(campaignId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign $campaignId not found")
+        }
+        if (campaign.status != ProductCampaignStatus.DRAFT) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Only draft campaigns can be sent")
+        }
+        val counts = userSegmentService.counts(campaign.audience)
+        campaign.status = ProductCampaignStatus.QUEUED
+        campaign.rawRecipientCount = counts.rawCount
+        campaign.eligibleRecipientCount = counts.eligibleCount
+        campaign.sentCount = 0
+        campaign.skippedBlockedCount = 0
+        campaign.skippedPreferenceCount = 0
+        campaign.failedCount = 0
+        campaign.sentAt = null
+        val saved = productCampaignRepository.save(campaign)
+        sendAfterCommit(saved.id!!)
+        return saved.toDto()
     }
 
     @Transactional
@@ -99,4 +125,18 @@ class ProductCampaignService(
         createdAt = createdAt,
         sentAt = sentAt,
     )
+
+    private fun sendAfterCommit(campaignId: Long) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            productCampaignAsyncSender.send(campaignId)
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+                override fun afterCommit() {
+                    productCampaignAsyncSender.send(campaignId)
+                }
+            },
+        )
+    }
 }

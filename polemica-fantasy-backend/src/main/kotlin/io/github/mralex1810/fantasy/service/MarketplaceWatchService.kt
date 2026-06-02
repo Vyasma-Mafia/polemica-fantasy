@@ -60,6 +60,8 @@ class MarketplaceWatchService(
             request.fantasyPlayerId == null &&
             request.tournamentId == null &&
             request.rarity == null &&
+            request.minTimesRenewed == null &&
+            request.maxTimesRenewed == null &&
             normalizedPerkIds.isEmpty()
         ) {
             throw ResponseStatusException(
@@ -69,6 +71,19 @@ class MarketplaceWatchService(
         }
         if (request.maxPrice != null && request.maxPrice <= 0) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "maxPrice must be positive")
+        }
+        if (request.minTimesRenewed != null && request.minTimesRenewed < 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "minTimesRenewed must be non-negative")
+        }
+        if (request.maxTimesRenewed != null && request.maxTimesRenewed < 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "maxTimesRenewed must be non-negative")
+        }
+        if (
+            request.minTimesRenewed != null &&
+            request.maxTimesRenewed != null &&
+            request.minTimesRenewed > request.maxTimesRenewed
+        ) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "minTimesRenewed must be <= maxTimesRenewed")
         }
 
         val user = telegramUserRepository.findById(internalUserId).orElseThrow {
@@ -104,6 +119,8 @@ class MarketplaceWatchService(
                     tournament = tournament,
                     rarity = request.rarity,
                     maxPrice = request.maxPrice,
+                    minTimesRenewed = request.minTimesRenewed,
+                    maxTimesRenewed = request.maxTimesRenewed,
                     perkIdsKey = normalizedPerkIds.joinToString(","),
                     perks = perks.toMutableSet(),
                 ),
@@ -144,6 +161,8 @@ class MarketplaceWatchService(
             },
             rarity = rarity?.name,
             maxPrice = maxPrice,
+            minTimesRenewed = minTimesRenewed,
+            maxTimesRenewed = maxTimesRenewed,
             perks = perks.sortedBy { it.id }.map { perk ->
                 MarketplaceWatchPerkDto(
                     id = perk.id,

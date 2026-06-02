@@ -13,6 +13,8 @@ data class MarketplaceWatchDto(
     val tournament: TournamentBriefDto?,
     val rarity: String?,
     val maxPrice: Long?,
+    val minTimesRenewed: Int?,
+    val maxTimesRenewed: Int?,
     val perks: List<MarketplaceWatchPerkDto>,
     val createdAt: Instant,
 )

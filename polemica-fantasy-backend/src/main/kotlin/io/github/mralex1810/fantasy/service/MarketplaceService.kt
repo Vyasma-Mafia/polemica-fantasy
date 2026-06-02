@@ -78,8 +78,11 @@ class MarketplaceService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card is already listed")
         }
         val rarity = uc.cardTemplate!!.rarity
-        val minPrice = economyConfigService.getMinListingPrice(rarity)
+        val minPrice = economyConfigService.getEffectiveMinListingPrice(rarity, uc.timesRenewed)
         val maxPrice = economyConfigService.getMaxListingPrice(rarity)
+        if (uc.timesRenewed >= economyConfigService.getMaxRenewals()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum contract reissues reached for this card")
+        }
         if (minPrice > maxPrice) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -112,6 +115,7 @@ class MarketplaceService(
                 cardTemplateId = uc.cardTemplate!!.id!!,
                 rarity = uc.cardTemplate!!.rarity,
                 price = listing.price,
+                timesRenewed = uc.timesRenewed,
                 playerName = fantasyPlayer.nickname,
             ),
         )
@@ -153,8 +157,11 @@ class MarketplaceService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot sell an expired card")
         }
         val rarity = uc.cardTemplate!!.rarity
-        val minPrice = economyConfigService.getMinListingPrice(rarity)
+        val minPrice = economyConfigService.getEffectiveMinListingPrice(rarity, uc.timesRenewed)
         val maxPrice = economyConfigService.getMaxListingPrice(rarity)
+        if (uc.timesRenewed >= economyConfigService.getMaxRenewals()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum contract reissues reached for this card")
+        }
         if (minPrice > maxPrice) {
             throw ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -214,6 +221,9 @@ class MarketplaceService(
         if (userCardOwnershipHistoryRepository.existsByUserCard_IdAndTelegramUser_Id(uc.id!!, buyerId)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot buy a card you previously owned")
         }
+        if (uc.timesRenewed >= economyConfigService.getMaxRenewals()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum contract reissues reached for this card")
+        }
         val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
         val buyerRow = telegramUserRepository.findById(buyerId).orElseThrow {
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
@@ -243,7 +253,7 @@ class MarketplaceService(
         val rarity = uc.cardTemplate!!.rarity
         uc.telegramUser = buyer
         uc.usesRemaining = economyConfigService.getUsesForRarity(rarity)
-        uc.timesRenewed = 0
+        uc.timesRenewed += 1
         userCardRepository.save(uc)
 
         userCardOwnershipService.recordAcquisition(uc, buyer, CardAcquisitionType.MARKETPLACE_PURCHASE)
@@ -275,7 +285,12 @@ class MarketplaceService(
         val tid = uc.cardTemplate!!.id!!
         val tpl = cardTemplateRepository.findAllByIdWithPerksLoaded(listOf(tid)).firstOrNull()
             ?: uc.cardTemplate!!
-        val cardDto = uc.toUserCardItemDto(tpl, imageStorageService, cardValueService)
+        val cardDto = uc.toUserCardItemDto(
+            tpl,
+            imageStorageService,
+            cardValueService,
+            minListingPrice = economyConfigService.getEffectiveMinListingPrice(tpl.rarity, uc.timesRenewed),
+        )
         val entry = toListingEntryDto(
             listing,
             uc,
@@ -308,6 +323,8 @@ class MarketplaceService(
         minPrice: Long?,
         maxPrice: Long?,
         perkIds: Collection<String>?,
+        minTimesRenewed: Int?,
+        maxTimesRenewed: Int?,
         sortBy: String?,
         page: Int,
         size: Int,
@@ -316,6 +333,7 @@ class MarketplaceService(
         val pageable = PageRequest.of(page, size.coerceAtLeast(1).coerceAtMost(100), sort)
         val minPackOpens = economyConfigService.getMinPackOpensBeforeMarketplacePurchase()
         val normalizedPerkIds = normalizePerkIdsForFilter(perkIds)
+        validateTimesRenewedFilter(minTimesRenewed, maxTimesRenewed)
         val viewerPackOpens =
             telegramUserRepository.findById(viewer.id!!).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
@@ -328,6 +346,8 @@ class MarketplaceService(
             rarity,
             minPrice,
             maxPrice,
+            minTimesRenewed,
+            maxTimesRenewed,
             normalizedPerkIds.isEmpty(),
             normalizedPerkIds.ifEmpty { listOf("__none__") },
             pageable,
@@ -583,7 +603,22 @@ class MarketplaceService(
             perks = perks,
             value = if (includeValue) cardValueService.calculateValue(template) else null,
             skinCode = skinCodeOverride ?: uc.cardSkin?.code,
+            timesRenewed = uc.timesRenewed,
+            maxRenewals = economyConfigService.getMaxRenewals(),
+            minListingPrice = economyConfigService.getEffectiveMinListingPrice(template.rarity, uc.timesRenewed),
         )
+    }
+
+    private fun validateTimesRenewedFilter(minTimesRenewed: Int?, maxTimesRenewed: Int?) {
+        if (minTimesRenewed != null && minTimesRenewed < 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "minTimesRenewed must be non-negative")
+        }
+        if (maxTimesRenewed != null && maxTimesRenewed < 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "maxTimesRenewed must be non-negative")
+        }
+        if (minTimesRenewed != null && maxTimesRenewed != null && minTimesRenewed > maxTimesRenewed) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "minTimesRenewed must be <= maxTimesRenewed")
+        }
     }
 
     private fun checkMarketplaceBan(user: TelegramUser) {
