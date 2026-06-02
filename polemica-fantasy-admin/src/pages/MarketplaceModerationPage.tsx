@@ -338,6 +338,7 @@ export function MarketplaceModerationPage() {
   const selectedTransactionCommission = selectedTransaction
     ? Math.floor((selectedTransaction.price * commissionPercent) / 100)
     : 0
+  const sellerFineForRewardPreview = Math.max(0, Math.trunc(watchedSellerFine))
   const totalRewardPreview = Math.max(0, Math.trunc(watchedComplainantReward)) * complainantsCountForSelected
 
   const openSanctionModal = (tx: ComplainedTransactionDto) => {
@@ -350,7 +351,7 @@ export function MarketplaceModerationPage() {
       reason: DEFAULT_SANCTION_REASON,
       sellerFine: sellerReceived,
       buyerFine: 0,
-      complainantReward: Math.floor(commission / complaintsCount),
+      complainantReward: Math.floor(sellerReceived / complaintsCount),
       banSellerEnabled: false,
       banSellerDays: 3,
       banBuyerEnabled: false,
@@ -1376,15 +1377,16 @@ export function MarketplaceModerationPage() {
             </Form>
 
             {complainantsCountForSelected > 0 &&
-              totalRewardPreview > selectedTransactionCommission && (
+              totalRewardPreview > sellerFineForRewardPreview && (
                 <Alert
                   type="warning"
                   showIcon
-                  message="Суммарная награда жалобщикам превышает комиссию сделки"
+                  message="Суммарная награда жалобщикам превышает штраф продавцу"
                 />
               )}
             <Typography.Text type="secondary">
-              Комиссия сделки ({commissionPercent}%): {selectedTransactionCommission.toLocaleString('ru-RU')} ₣
+              Комиссия сделки ({commissionPercent}%): {selectedTransactionCommission.toLocaleString('ru-RU')} ₣ ·
+              Доступно из штрафа продавцу: {sellerFineForRewardPreview.toLocaleString('ru-RU')} ₣
             </Typography.Text>
           </Space>
         )}

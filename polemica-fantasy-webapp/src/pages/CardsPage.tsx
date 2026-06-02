@@ -13,8 +13,10 @@ import {
 } from '../api/marketplace'
 import { fetchEconomyInfo, recycleUserCard, renewUserCard } from '../api/userEconomy'
 import type {
+  EconomyInfo,
   FantasyTeamDto,
   FantasyTeamSeriesDetails,
+  MarketplaceAnalyticsDetail,
   MarketplaceAnalyticsSummaryItem,
   Rarity,
   SeriesStatus,
@@ -72,6 +74,24 @@ function formatMarketplaceSummary(item: MarketplaceAnalyticsSummaryItem): string
   return `На рынке: ${item.activeCount} шт. от ${item.minActivePrice}₣`
 }
 
+function marketplacePriceBounds(card: UserCardItem, economy: EconomyInfo): { min: number; max: number } {
+  return {
+    min: card.minListingPrice ?? economy.marketplaceMinPrices[card.rarity],
+    max: economy.marketplaceMaxPrices[card.rarity],
+  }
+}
+
+function suggestedMarketplaceSellPrice(
+  card: UserCardItem,
+  economy: EconomyInfo,
+  analytics: MarketplaceAnalyticsDetail | undefined,
+): number {
+  const { min, max } = marketplacePriceBounds(card, economy)
+  const avg = analytics?.avgSalePrice
+  const suggested = avg != null && Number.isFinite(avg) ? avg : min
+  return Math.min(Math.max(suggested, min), max)
+}
+
 export function CardsPage() {
   const initData = useInitData()
   useMarkOnboardingStep('VIEW_COLLECTION')
@@ -109,6 +129,7 @@ export function CardsPage() {
   const [legendaryWizardInitialCardId, setLegendaryWizardInitialCardId] = useState<number | null>(null)
   const [sellModalCard, setSellModalCard] = useState<UserCardItem | null>(null)
   const [sellPrice, setSellPrice] = useState('')
+  const [sellPriceTouched, setSellPriceTouched] = useState(false)
   const sellAnalyticsQ = useQuery({
     queryKey: [
       'marketplace-analytics-detail',
@@ -193,6 +214,12 @@ export function CardsPage() {
     queryFn: () => fetchEconomyInfo(initData!),
     enabled: !!initData,
   })
+
+  useEffect(() => {
+    if (!sellModalCard || !economyQ.data || sellPriceTouched) return
+    setSellPrice(String(suggestedMarketplaceSellPrice(sellModalCard, economyQ.data, sellAnalyticsQ.data)))
+  }, [sellModalCard, economyQ.data, sellAnalyticsQ.data, sellPriceTouched])
+
   const meQ = useQuery({
     queryKey: ['me', initData],
     queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
@@ -759,11 +786,12 @@ export function CardsPage() {
                   className="pf-btn pf-btn--small pf-btn--primary"
                   onClick={() => {
                     setSellModalCard(detailCard)
-                    const min =
-                      detailCard.minListingPrice ??
-                      economyQ.data?.marketplaceMinPrices[detailCard.rarity] ??
-                      0
-                    setSellPrice(String(min))
+                    setSellPriceTouched(false)
+                    setSellPrice(
+                      economyQ.data
+                        ? String(suggestedMarketplaceSellPrice(detailCard, economyQ.data, undefined))
+                        : '',
+                    )
                   }}
                 >
                   Продать
@@ -1103,7 +1131,10 @@ export function CardsPage() {
                 className="pf-input"
                 inputMode="numeric"
                 value={sellPrice}
-                onChange={(e) => setSellPrice(e.target.value)}
+                onChange={(e) => {
+                  setSellPriceTouched(true)
+                  setSellPrice(e.target.value)
+                }}
               />
             </label>
             {(() => {
