@@ -1,5 +1,5 @@
 import { App, Button, Form, InputNumber, Select, Space, Typography } from 'antd'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { giveCards, listCardTemplates, openPack } from '../api/cards'
 import { listCardPacks } from '../api/packs'
@@ -21,6 +21,13 @@ export function UserToolsPage() {
     queryKey: ['admin', 'card-packs', 'all'],
     queryFn: () => listCardPacks(),
   })
+  const sortedPacks = useMemo(
+    () =>
+      [...(packsQ.data ?? [])].sort(
+        (a, b) => Number(b.active) - Number(a.active),
+      ),
+    [packsQ.data],
+  )
 
   const giveMut = useMutation({
     mutationFn: ({
@@ -156,7 +163,7 @@ export function UserToolsPage() {
             allowClear
             placeholder="Pack"
             loading={packsQ.isLoading}
-            options={packsQ.data?.map((p) => ({
+            options={sortedPacks.map((p) => ({
               value: p.id,
               label: `#${p.id} ${p.name} (tournament ${p.tournamentId})`,
             }))}

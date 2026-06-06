@@ -105,6 +105,13 @@ export function CardPacksPage() {
   })
 
   const editing = pq.data?.find((p) => p.id === editId)
+  const sortedPacks = useMemo(
+    () =>
+      [...(pq.data ?? [])].sort(
+        (a, b) => Number(b.active) - Number(a.active),
+      ),
+    [pq.data],
+  )
 
   const rarityOptions = useMemo(
     () => RARITY_TIERS.map((r) => ({ value: r, label: r })),
@@ -150,7 +157,7 @@ export function CardPacksPage() {
       <Table
         rowKey="id"
         loading={pq.isLoading}
-        dataSource={pq.data}
+        dataSource={sortedPacks}
         scroll={{ x: true }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },

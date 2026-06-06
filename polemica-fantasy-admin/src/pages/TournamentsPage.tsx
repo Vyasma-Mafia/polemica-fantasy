@@ -1,5 +1,5 @@
 import { App, Button, Modal, Space, Table, Tag, Typography } from 'antd'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActiveSeriesBriefDto } from '../api/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,6 +11,12 @@ import {
 } from '../api/tournaments'
 import type { TournamentKind, TournamentStatus } from '../api/types'
 import { TournamentFormModal } from './TournamentFormModal'
+
+const TOURNAMENT_STATUS_PRIORITY: Record<TournamentStatus, number> = {
+  ACTIVE: 0,
+  DRAFT: 1,
+  FINISHED: 2,
+}
 
 export function TournamentsPage() {
   const qc = useQueryClient()
@@ -75,6 +81,15 @@ export function TournamentsPage() {
     .flatMap((t) => t.activeSeries ?? [])
     .filter((s) => s.status === 'UPCOMING')
     .map((s) => s.id)
+  const sortedTournaments = useMemo(
+    () =>
+      [...(data ?? [])].sort(
+        (a, b) =>
+          TOURNAMENT_STATUS_PRIORITY[a.status] -
+          TOURNAMENT_STATUS_PRIORITY[b.status],
+      ),
+    [data],
+  )
 
   return (
     <div>
@@ -104,7 +119,7 @@ export function TournamentsPage() {
       <Table
         rowKey="id"
         loading={isLoading}
-        dataSource={data}
+        dataSource={sortedTournaments}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 80 },
           {
