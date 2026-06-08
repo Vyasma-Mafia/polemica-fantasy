@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -44,6 +45,9 @@ class UserApiIntegrationTest {
 
     @Autowired
     private lateinit var telegramUserRepository: TelegramUserRepository
+
+    @Autowired
+    private lateinit var jdbcTemplate: JdbcTemplate
 
     @Test
     fun `GET me without Authorization returns 401`() {
@@ -2179,6 +2183,61 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `card reserved in another non-finalized series cannot be submitted again`() {
+        val fixture = createReservedUsesFixture("single", 889_997_801L, 990101L)
+        jdbcTemplate.update("UPDATE user_card SET uses_remaining = 1 WHERE id = ?", fixture.userCardId)
+
+        mockMvc.perform(
+            post("/api/v1/series/${fixture.firstSeriesId}/leagues/MAIN/fantasy-team")
+                .header("Authorization", fixture.tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${fixture.userCardId}]}"""),
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            get("/api/v1/me/cards?tournamentId=${fixture.tournamentId}&seriesId=${fixture.secondSeriesId}")
+                .header("Authorization", fixture.tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$", hasSize<Any>(1)))
+            .andExpect(jsonPath("$[0].id").value(fixture.userCardId.toInt()))
+            .andExpect(jsonPath("$[0].canJoinMoreLeagues").value(false))
+
+        mockMvc.perform(
+            post("/api/v1/series/${fixture.secondSeriesId}/leagues/MAIN/fantasy-team")
+                .header("Authorization", fixture.tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${fixture.userCardId}]}"""),
+        ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `card with two uses can join two leagues in one series but not a third active league`() {
+        val fixture = createReservedUsesFixture("dual", 889_997_802L, 990102L)
+
+        mockMvc.perform(
+            post("/api/v1/series/${fixture.firstSeriesId}/leagues/MAIN/fantasy-team")
+                .header("Authorization", fixture.tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${fixture.userCardId}]}"""),
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/series/${fixture.firstSeriesId}/leagues/BUDGET/fantasy-team")
+                .header("Authorization", fixture.tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${fixture.userCardId}]}"""),
+        ).andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/series/${fixture.secondSeriesId}/leagues/MAIN/fantasy-team")
+                .header("Authorization", fixture.tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"userCardIds":[${fixture.userCardId}]}"""),
+        ).andExpect(status().isBadRequest)
+    }
+
+    @Test
     fun `GET marketplace listings hides seller and card value but my-listings keeps them`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tournamentJson = mockMvc.perform(
@@ -2777,6 +2836,102 @@ class UserApiIntegrationTest {
         check(actual == expected) {
             "Expected $expected marketplace watch pending rows for user $internalUserId, got $actual"
         }
+    }
+
+    private data class ReservedUsesFixture(
+        val tournamentId: Long,
+        val firstSeriesId: Long,
+        val secondSeriesId: Long,
+        val userCardId: Long,
+        val tma: String,
+    )
+
+    private fun createReservedUsesFixture(
+        suffix: String,
+        telegramUserId: Long,
+        polemicaUserId: Long,
+    ): ReservedUsesFixture {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Reserved uses $suffix T","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val playerJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":$polemicaUserId,"nickname":"Reserved$suffix"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentPlayerId = Regex("\"id\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+        val fantasyPlayerId = Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(playerJson)!!.groupValues[1].toLong()
+
+        val templateJson = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val templateId = Regex("\"id\"\\s*:\\s*(\\d+)").find(templateJson)!!.groupValues[1].toLong()
+
+        fun createSeries(label: String): Long {
+            val seriesJson = mockMvc.perform(
+                post("/api/v1/admin/tournaments/$tournamentId/series")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {"name":"Reserved uses $suffix $label","namePrefix":"RU$suffix$label","status":"UPCOMING",
+                        "startsAt":"2030-08-01T12:00:00Z",
+                        "teamDeadline":"2030-08-15T12:00:00Z"}
+                        """.trimIndent(),
+                    ),
+            )
+                .andExpect(status().isOk)
+                .andReturn().response.contentAsString
+            val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+            mockMvc.perform(
+                post("/api/v1/admin/series/$seriesId/players")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"tournamentPlayerIds":[$tournamentPlayerId]}"""),
+            ).andExpect(status().isOk)
+            return seriesId
+        }
+
+        val firstSeriesId = createSeries("S1")
+        val secondSeriesId = createSeries("S2")
+
+        val giveJson = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramUserId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[$templateId]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val userCardId = JsonPath.parse(giveJson).read<List<Number>>("$[*].id").single().toLong()
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramUserId,"first_name":"Reserved$suffix"}""",
+        )
+        return ReservedUsesFixture(
+            tournamentId = tournamentId,
+            firstSeriesId = firstSeriesId,
+            secondSeriesId = secondSeriesId,
+            userCardId = userCardId,
+            tma = "tma $initData",
+        )
     }
 
     private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {

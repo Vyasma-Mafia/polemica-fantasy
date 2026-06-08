@@ -291,7 +291,7 @@ class UserFantasyTeamService(
         if (distinct.size != userCardIds.size) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate user cards in team are not allowed")
         }
-        val cards = userCardRepository.findAllByIdInAndTelegramUser_Id(userCardIds.toSet(), user.id!!)
+        val cards = userCardRepository.findAllByIdInAndTelegramUser_IdForUpdate(userCardIds.toSet(), user.id!!)
         if (cards.size != userCardIds.size) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or foreign user cards")
         }
@@ -334,15 +334,15 @@ class UserFantasyTeamService(
             if (uc.usesRemaining <= 0) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card $ucId has no remaining uses")
             }
-            val existingLeagueCount = fantasyTeamCardRepository.countLeaguesInSeriesForCard(
+            val reservedLeagueCount = fantasyTeamCardRepository.countReservedLeaguesForCard(
                 userCardId = ucId,
-                seriesId = seriesId,
                 excludeSeriesLeagueId = seriesLeague.id!!,
             )
-            if (existingLeagueCount + 1 > uc.usesRemaining) {
+            if (reservedLeagueCount + 1 > uc.usesRemaining) {
                 throw ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Card $ucId has only ${uc.usesRemaining} uses and cannot be placed in another league",
+                    "Card $ucId has only ${uc.usesRemaining} uses and is already reserved in " +
+                        "$reservedLeagueCount active league(s)",
                 )
             }
             val fantasyPlayerId = uc.cardTemplate!!.fantasyPlayer!!.id!!

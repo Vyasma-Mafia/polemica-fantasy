@@ -28,6 +28,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.server.ResponseStatusException
@@ -99,6 +100,7 @@ class SeriesFinalizationServiceTest {
         ft2.cards.add(ftc2)
 
         `when`(fantasyTeamRepository.findAllWithCardsForScoring(7L)).thenReturn(listOf(ft1, ft2))
+        `when`(userCardRepository.findAllByIdInForUpdate(setOf(101L, 102L))).thenReturn(listOf(uc1, uc2))
         `when`(seriesLeagueRepository.findById(21L)).thenReturn(Optional.of(seriesLeague))
         `when`(fantasyTeamRepository.findLeaderboardForSeriesLeague(21L)).thenReturn(listOf(ft1, ft2))
         `when`(leagueService.getEffectiveRewardScale(seriesLeague)).thenReturn(50)
@@ -117,9 +119,9 @@ class SeriesFinalizationServiceTest {
         assertEquals(SeriesStatus.FINISHED, s.status)
         verify(userService).addBalance(10L, 17L, FantikiTransactionReason.SERIES_REWARD)
         verify(userService).addBalance(11L, 12L, FantikiTransactionReason.SERIES_REWARD)
-        val captor = ArgumentCaptor.forClass(SeriesFinalizedNotificationEvent::class.java)
-        verify(applicationEventPublisher).publishEvent(captor.capture())
-        val event = captor.value
+        val captor = ArgumentCaptor.forClass(Any::class.java)
+        verify(applicationEventPublisher, times(2)).publishEvent(captor.capture())
+        val event = captor.allValues.filterIsInstance<SeriesFinalizedNotificationEvent>().single()
         assertEquals(7L, event.seriesId)
         assertEquals(2, event.recipients.size)
         assertEquals(1, event.recipients[0].leagueResults.first().place)
@@ -128,6 +130,35 @@ class SeriesFinalizationServiceTest {
         assertEquals(12L, event.recipients[1].totalReward)
         assertEquals(134L, event.recipients[0].balanceAfter)
         assertEquals(124L, event.recipients[1].balanceAfter)
+    }
+
+    @Test
+    fun `finalize throws conflict when card has fewer uses than league slots`() {
+        val t = Tournament().apply { id = 1L }
+        val s = Series(tournament = t, finalized = false).apply { id = 8L }
+        `when`(seriesRepository.findById(8L)).thenReturn(Optional.of(s))
+
+        val user = TelegramUser(telegramId = 1L).apply { id = 10L }
+        val uc = UserCard(telegramUser = user, cardTemplate = template(), usesRemaining = 1).apply { id = 101L }
+        val mainLeague = League(code = "MAIN", name = "Main", leagueType = LeagueType.SYSTEM).apply { id = 1L }
+        val budgetLeague = League(code = "BUDGET", name = "Budget", leagueType = LeagueType.SYSTEM).apply { id = 2L }
+        val mainSeriesLeague = SeriesLeague(series = s, league = mainLeague, enabled = true).apply { id = 21L }
+        val budgetSeriesLeague = SeriesLeague(series = s, league = budgetLeague, enabled = true).apply { id = 22L }
+        val mainTeam = FantasyTeam(telegramUser = user, series = s, seriesLeague = mainSeriesLeague).apply { id = 1L }
+        val budgetTeam = FantasyTeam(telegramUser = user, series = s, seriesLeague = budgetSeriesLeague).apply { id = 2L }
+        mainTeam.cards.add(FantasyTeamCard(fantasyTeam = mainTeam, userCard = uc, slot = 1).apply { id = 1L })
+        budgetTeam.cards.add(FantasyTeamCard(fantasyTeam = budgetTeam, userCard = uc, slot = 1).apply { id = 2L })
+
+        `when`(fantasyTeamRepository.findAllWithCardsForScoring(8L)).thenReturn(listOf(mainTeam, budgetTeam))
+        `when`(userCardRepository.findAllByIdInForUpdate(setOf(101L))).thenReturn(listOf(uc))
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service.finalizeSeries(8L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        assertEquals(1, uc.usesRemaining)
+        assertEquals(false, s.finalized)
     }
 
     @Test

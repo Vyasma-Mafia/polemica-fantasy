@@ -3,6 +3,7 @@ import {
   Avatar,
   Button,
   Card,
+  Checkbox,
   List,
   Modal,
   Space,
@@ -19,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addTournamentPlayer,
   getTournament,
+  openTournamentReport,
   patchTournamentPlayer,
   removeTournamentPlayer,
   uploadPlayerPhoto,
@@ -39,6 +41,8 @@ export function TournamentDetailPage() {
 
   const [addPlayerOpen, setAddPlayerOpen] = useState(false)
   const [seriesOpen, setSeriesOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [selectedReportSeriesIds, setSelectedReportSeriesIds] = useState<number[]>([])
 
   const tq = useQuery({
     queryKey: ['admin', 'tournament', tournamentId],
@@ -122,6 +126,12 @@ export function TournamentDetailPage() {
     onError: (e: Error) => message.error(e.message),
   })
 
+  const openReportMut = useMutation({
+    mutationFn: (seriesIds: number[]) =>
+      openTournamentReport(tournamentId, seriesIds),
+    onError: (e: Error) => message.error(e.message),
+  })
+
   if (!Number.isFinite(tournamentId)) {
     return <Typography.Text type="danger">Invalid tournament id</Typography.Text>
   }
@@ -152,14 +162,24 @@ export function TournamentDetailPage() {
       )}
 
       <Typography.Title level={4}>Series</Typography.Title>
-      <Button
-        type="primary"
-        style={{ marginBottom: 8 }}
-        disabled={!t}
-        onClick={() => setSeriesOpen(true)}
-      >
-        New series
-      </Button>
+      <Space style={{ marginBottom: 8 }}>
+        <Button
+          type="primary"
+          disabled={!t}
+          onClick={() => setSeriesOpen(true)}
+        >
+          New series
+        </Button>
+        <Button
+          disabled={!t || (sq.data?.length ?? 0) === 0}
+          onClick={() => {
+            setSelectedReportSeriesIds((sq.data ?? []).map((series) => series.id))
+            setReportOpen(true)
+          }}
+        >
+          HTML report
+        </Button>
+      </Space>
       <Table
         rowKey="id"
         loading={sq.isLoading}
@@ -392,6 +412,66 @@ export function TournamentDetailPage() {
             createSeriesMut.mutate({ tournamentId, body })
           }
         />
+      </Modal>
+
+      <Modal
+        title="HTML report"
+        open={reportOpen}
+        onCancel={() => setReportOpen(false)}
+        footer={[
+          <Button key="clear" onClick={() => setSelectedReportSeriesIds([])}>
+            Clear
+          </Button>,
+          <Button
+            key="all"
+            onClick={() =>
+              setSelectedReportSeriesIds((sq.data ?? []).map((series) => series.id))
+            }
+          >
+            Select all
+          </Button>,
+          <Button
+            key="open"
+            type="primary"
+            loading={openReportMut.isPending}
+            disabled={selectedReportSeriesIds.length === 0}
+            onClick={() => openReportMut.mutate(selectedReportSeriesIds)}
+          >
+            Open report
+          </Button>,
+        ]}
+        width={680}
+      >
+        <Typography.Paragraph type="secondary">
+          Choose series to include in the standalone HTML report.
+        </Typography.Paragraph>
+        <Checkbox.Group
+          value={selectedReportSeriesIds}
+          onChange={(values) =>
+            setSelectedReportSeriesIds(values.map((value) => Number(value)))
+          }
+          style={{ width: '100%' }}
+        >
+          <List
+            dataSource={sq.data ?? []}
+            loading={sq.isLoading}
+            bordered
+            renderItem={(series) => (
+              <List.Item>
+                <Checkbox value={series.id} style={{ width: '100%' }}>
+                  <Space wrap>
+                    <Typography.Text strong>{series.name}</Typography.Text>
+                    <Tag>{series.status}</Tag>
+                    <Typography.Text type="secondary">
+                      synced {series.syncedGamesCount} · scored{' '}
+                      {series.scoredGamesCount}
+                    </Typography.Text>
+                  </Space>
+                </Checkbox>
+              </List.Item>
+            )}
+          />
+        </Checkbox.Group>
       </Modal>
     </div>
   )

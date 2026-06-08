@@ -81,6 +81,31 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("telegramUserId") telegramUserId: Long,
     ): List<UserCard>
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT uc FROM UserCard uc
+        WHERE uc.telegramUser.id = :telegramUserId
+          AND uc.id IN :ids
+          AND uc.deletedAt IS NULL
+        ORDER BY uc.id ASC
+        """,
+    )
+    fun findAllByIdInAndTelegramUser_IdForUpdate(
+        @Param("ids") ids: Collection<Long>,
+        @Param("telegramUserId") telegramUserId: Long,
+    ): List<UserCard>
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT uc FROM UserCard uc
+        WHERE uc.id IN :ids
+        ORDER BY uc.id ASC
+        """,
+    )
+    fun findAllByIdInForUpdate(@Param("ids") ids: Collection<Long>): List<UserCard>
+
     @Query(
         """
         SELECT DISTINCT uc FROM UserCard uc

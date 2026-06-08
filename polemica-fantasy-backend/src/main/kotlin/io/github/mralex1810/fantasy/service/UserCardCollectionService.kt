@@ -71,12 +71,23 @@ class UserCardCollectionService(
                         )
                     }
             }
+        val reservedLeagueCountsByCardId: Map<Long, Int> =
+            if (seriesId == null || userCardIds.isEmpty()) {
+                emptyMap()
+            } else {
+                fantasyTeamCardRepository.countReservedLeaguesByUserCardIds(userCardIds)
+                    .associate { row ->
+                        (row[0] as Number).toLong() to (row[1] as Number).toInt()
+                    }
+            }
         return rows.map {
             it.toUserCardItemDto(
                 imageStorage = imageStorageService,
                 cardValueService = cardValueService,
                 leaguesInSeries = if (seriesId == null) null else (leaguesByCardId[it.id] ?: emptyList()),
-                canJoinMoreLeagues = if (seriesId == null) null else it.usesRemaining > (leaguesByCardId[it.id]?.size ?: 0),
+                canJoinMoreLeagues = if (seriesId == null) null else {
+                    it.usesRemaining > (reservedLeagueCountsByCardId[it.id] ?: 0)
+                },
                 activeMarketplaceListing = activeListingByCardId[it.id],
                 minListingPrice = economyConfigService.getEffectiveMinListingPrice(
                     it.cardTemplate!!.rarity,

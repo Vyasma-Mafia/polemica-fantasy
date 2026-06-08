@@ -18,11 +18,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import com.jayway.jsonpath.JsonPath
@@ -61,6 +63,9 @@ class AdminApiIntegrationTest {
 
     @Autowired
     private lateinit var marketplaceComplaintRepository: MarketplaceComplaintRepository
+
+    @Autowired
+    private lateinit var jdbcTemplate: JdbcTemplate
 
     @Test
     @Order(1)
@@ -1175,6 +1180,189 @@ class AdminApiIntegrationTest {
                 ),
         )
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(25)
+    fun `tournament html report filters series deduplicates top cards and renders template perks`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Report Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val includedSeriesId = createReportSeries(auth, tournamentId, "Report Included", "RI", "2026-12-01T12:00:00Z")
+        val excludedSeriesId = createReportSeries(auth, tournamentId, "Report Excluded", "RE", "2026-12-02T12:00:00Z")
+        insertSeriesGame(includedSeriesId, 881001)
+        insertSeriesGame(excludedSeriesId, 881002)
+
+        val repeatPlayerId = createReportPlayer(auth, tournamentId, 881101, "Repeat Star")
+        val secondPlayerId = createReportPlayer(auth, tournamentId, 881102, "Second Star")
+        val repeatLegendaryTemplateId = createReportTemplate(auth, repeatPlayerId, "LEGENDARY")
+        val repeatEpicTemplateId = createReportTemplate(auth, repeatPlayerId, "EPIC")
+        val secondTemplateId = createReportTemplate(auth, secondPlayerId, "RARE")
+        addTemplatePerk(auth, repeatLegendaryTemplateId, "sniper")
+        addTemplatePerk(auth, repeatLegendaryTemplateId, "voteForBlack")
+
+        val userOneCards = giveReportCards(auth, 881201, listOf(repeatLegendaryTemplateId, secondTemplateId))
+        val userTwoCards = giveReportCards(auth, 881202, listOf(repeatEpicTemplateId))
+        val mainLeagueId = mainSeriesLeagueId(includedSeriesId)
+        val teamOneId = insertFantasyTeam(881201, includedSeriesId, mainLeagueId, 31.0)
+        insertFantasyTeamCard(teamOneId, userOneCards[0], 1, 19.5)
+        insertFantasyTeamCard(teamOneId, userOneCards[1], 2, 11.5)
+        val teamTwoId = insertFantasyTeam(881202, includedSeriesId, mainLeagueId, 22.0)
+        insertFantasyTeamCard(teamTwoId, userTwoCards[0], 1, 18.0)
+
+        val html = mockMvc.perform(
+            get("/api/v1/admin/tournaments/$tournamentId/report.html")
+                .param("seriesIds", includedSeriesId.toString())
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+            .andReturn().response.contentAsString
+
+        assertTrue(html.contains("Report Cup"))
+        assertTrue(html.contains("Report Included"))
+        assertTrue(!html.contains("Report Excluded"))
+        assertTrue(html.contains("Снайпер"))
+        assertTrue(html.contains("Изгнать этого черныша!"))
+        assertEquals(1, Regex("card-row__title\">Repeat Star").findAll(html).count())
+        assertTrue(html.contains("Second Star"))
+
+        mockMvc.perform(
+            get("/api/v1/admin/tournaments/$tournamentId/report.html")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            get("/api/v1/admin/tournaments/$tournamentId/report.html")
+                .param("seriesIds", excludedSeriesId.plus(999_999).toString())
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    private fun createReportSeries(auth: String, tournamentId: Long, name: String, prefix: String, startsAt: String): Long {
+        val json = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"$name","namePrefix":"$prefix","status":"ACTIVE",
+                    "startsAt":"$startsAt","teamDeadline":"$startsAt"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        return Regex("\"id\"\\s*:\\s*(\\d+)").find(json)!!.groupValues[1].toLong()
+    }
+
+    private fun createReportPlayer(auth: String, tournamentId: Long, polemicaUserId: Long, nickname: String): Long {
+        val json = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":$polemicaUserId,"nickname":"$nickname"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        return Regex("\"fantasyPlayerId\"\\s*:\\s*(\\d+)").find(json)!!.groupValues[1].toLong()
+    }
+
+    private fun createReportTemplate(auth: String, fantasyPlayerId: Long, rarity: String): Long {
+        val json = mockMvc.perform(
+            post("/api/v1/admin/card-templates")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"$rarity"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        return Regex("\"id\"\\s*:\\s*(\\d+)").find(json)!!.groupValues[1].toLong()
+    }
+
+    private fun addTemplatePerk(auth: String, templateId: Long, perkId: String) {
+        mockMvc.perform(
+            post("/api/v1/admin/card-templates/$templateId/perks")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"perkId":"$perkId"}"""),
+        )
+            .andExpect(status().isOk)
+    }
+
+    private fun giveReportCards(auth: String, telegramId: Long, templateIds: List<Long>): List<Long> {
+        val json = mockMvc.perform(
+            post("/api/v1/admin/users/$telegramId/give-cards")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"cardTemplateIds":[${templateIds.joinToString(",")}]}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val ids = JsonPath.read<List<Number>>(json, "$[*].id")
+        return ids.map { it.toLong() }
+    }
+
+    private fun insertSeriesGame(seriesId: Long, polemicaGameId: Long) {
+        jdbcTemplate.update(
+            """
+            INSERT INTO series_game (series_id, polemica_game_id, game_name, scored, played_at)
+            VALUES (?, ?, ?, true, now())
+            """.trimIndent(),
+            seriesId,
+            polemicaGameId,
+            "Game $polemicaGameId",
+        )
+    }
+
+    private fun mainSeriesLeagueId(seriesId: Long): Long =
+        jdbcTemplate.queryForObject(
+            """
+            SELECT sl.id
+            FROM series_league sl
+            JOIN league l ON l.id = sl.league_id
+            WHERE sl.series_id = ?
+              AND l.code = 'MAIN'
+            """.trimIndent(),
+            Long::class.java,
+            seriesId,
+        )!!
+
+    private fun insertFantasyTeam(telegramId: Long, seriesId: Long, seriesLeagueId: Long, score: Double): Long =
+        jdbcTemplate.queryForObject(
+            """
+            INSERT INTO fantasy_team (telegram_user_id, series_id, series_league_id, total_score, submitted_at)
+            VALUES ((SELECT id FROM telegram_user WHERE telegram_id = ?), ?, ?, ?, now())
+            RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+            telegramId,
+            seriesId,
+            seriesLeagueId,
+            score,
+        )!!
+
+    private fun insertFantasyTeamCard(teamId: Long, userCardId: Long, slot: Int, score: Double) {
+        jdbcTemplate.update(
+            """
+            INSERT INTO fantasy_team_card (fantasy_team_id, user_card_id, slot, score)
+            VALUES (?, ?, ?, ?)
+            """.trimIndent(),
+            teamId,
+            userCardId,
+            slot,
+            score,
+        )
     }
 
     companion object {

@@ -2,6 +2,20 @@
 
 ## Что реализовано
 
+### Backend+admin: HTML-репорт турнира (июнь 2026)
+- [x] `GET /api/v1/admin/tournaments/{id}/report.html?seriesIds=...` возвращает standalone `text/html` по выбранным сериям, требует непустой список `seriesIds` и отклоняет серии не из турнира.
+- [x] `TournamentReportService` собирает данные из текущей БД read-only: метаданные турнира, серии, лидерборды лиг, лучший состав, топ составов, уникальный топ карточек по `fantasy_player`, полные перки шаблона, популярность и эффективность игроков.
+- [x] Витринные счетчики игр показывают `total/total`, а лидерборды и статистика строятся только по рассчитанным `total_score` / `fantasy_team_card.score`.
+- [x] Admin `TournamentDetailPage` получил кнопку `HTML report`, модалку выбора серий с `Select all` / `Clear` / `Open report`; HTML загружается через Basic Auth `apiFetch` и открывается как Blob в новой вкладке.
+- [x] Проверки: backend `./gradlew compileKotlin compileTestKotlin` успешно; admin `npm run build` успешно. Targeted `AdminApiIntegrationTest` не выполнился локально из-за недоступного Docker/Testcontainers на initialization.
+
+### Backend+TMA: глобальный резерв uses карт (июнь 2026)
+- [x] `UserFantasyTeamService.attachCards` теперь проверяет reserved uses карты по всем незавершённым сериям (`series.finalized = false`), а не только внутри текущей серии; выбранные `user_card` читаются под `PESSIMISTIC_WRITE`.
+- [x] `SeriesFinalizationService` лочит карты перед списанием и возвращает `409 CONFLICT` при overcommit вместо silent `maxOf(0, ...)`.
+- [x] `GET /api/v1/me/cards?seriesId=...` считает `canJoinMoreLeagues` по глобальному резерву, сохраняя `leaguesInSeries` как список лиг текущей серии.
+- [x] TMA `TeamPage` инвалидирует cards-cache после submit/update команды, чтобы новое состояние доступности подтягивалось сразу.
+- [x] Добавлены regression-тесты на межсерийный резерв и overcommit финализации; TMA `npm run build` прошёл. Backend Gradle compile не был запущен из-за read-only sandbox: sandboxed Gradle упал на lock-файле `~/.gradle`, escalated compile был отклонён reviewer.
+
 ### Backend+TMA: ускорение публичных deep link команды (июнь 2026)
 - [x] Публичные endpoints просмотра чужой команды больше не вызывают `FantasyTeamRosterPruningService` при каждом read-запросе; pruning остаётся в admin roster assignment flow.
 - [x] `PublicFantasyTeamDto` расширен `seriesName`, TMA `LeaderboardPlayerTeamPage` больше не блокирует первый рендер полным `/api/v1/series/{id}` и откладывает leaderboard/details до загрузки команды.

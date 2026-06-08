@@ -181,6 +181,7 @@ export function TeamPage() {
       setSelected([...data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId))
       setTeamSelectionHydrated(true)
       qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, activeLeagueCode, initData], data)
+      void qc.invalidateQueries({ queryKey: ['cards', 'team', sid] })
     },
     onError: () => {
       void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })

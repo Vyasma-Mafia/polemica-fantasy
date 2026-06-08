@@ -43,6 +43,39 @@ class SeriesFinalizationService(
         val tournamentName = series.tournament!!.name
         val seriesName = series.name
         val teamsWithCards = fantasyTeamRepository.findAllWithCardsForScoring(seriesId)
+        val cardLeagueSetById = LinkedHashMap<Long, MutableSet<Long>>()
+        val cardById = LinkedHashMap<Long, io.github.mralex1810.fantasy.entity.UserCard>()
+        for (team in teamsWithCards) {
+            val leagueId = team.seriesLeague?.id ?: continue
+            for (slot in team.cards) {
+                val userCard = slot.userCard ?: continue
+                val userCardId = userCard.id ?: continue
+                cardById[userCardId] = userCard
+                cardLeagueSetById.computeIfAbsent(userCardId) { LinkedHashSet() }.add(leagueId)
+            }
+        }
+        val lockedCardsById =
+            if (cardLeagueSetById.isEmpty()) {
+                emptyMap()
+            } else {
+                userCardRepository.findAllByIdInForUpdate(cardLeagueSetById.keys)
+                    .associateBy { it.id!! }
+            }
+        val overcommitted = cardLeagueSetById.mapNotNull { (userCardId, leagues) ->
+            val userCard = lockedCardsById[userCardId] ?: cardById[userCardId] ?: return@mapNotNull null
+            val decrementBy = leagues.size
+            if (userCard.usesRemaining < decrementBy) {
+                "$userCardId needs $decrementBy uses but has ${userCard.usesRemaining}"
+            } else {
+                null
+            }
+        }
+        if (overcommitted.isNotEmpty()) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Cannot finalize series: cards overcommitted: ${overcommitted.joinToString("; ")}",
+            )
+        }
         val leagueIds = teamsWithCards.mapNotNull { it.seriesLeague?.id }.distinct()
         val leagueResultsByTelegramId = LinkedHashMap<Long, MutableList<LeagueResult>>()
         val totalRewardByTelegramId = LinkedHashMap<Long, Long>()
@@ -85,26 +118,15 @@ class SeriesFinalizationService(
             }
         }
 
-        val cardLeagueSetById = LinkedHashMap<Long, MutableSet<Long>>()
-        val cardById = LinkedHashMap<Long, io.github.mralex1810.fantasy.entity.UserCard>()
-        for (team in teamsWithCards) {
-            val leagueId = team.seriesLeague?.id ?: continue
-            for (slot in team.cards) {
-                val userCard = slot.userCard ?: continue
-                val userCardId = userCard.id ?: continue
-                cardById[userCardId] = userCard
-                cardLeagueSetById.computeIfAbsent(userCardId) { LinkedHashSet() }.add(leagueId)
-            }
-        }
         var cardsDecremented = 0
         for ((userCardId, leagues) in cardLeagueSetById) {
-            val userCard = cardById[userCardId] ?: continue
+            val userCard = lockedCardsById[userCardId] ?: cardById[userCardId] ?: continue
             val decrementBy = leagues.size
-            userCard.usesRemaining = maxOf(0, userCard.usesRemaining - decrementBy)
+            userCard.usesRemaining -= decrementBy
             cardsDecremented += decrementBy
         }
-        if (cardById.isNotEmpty()) {
-            userCardRepository.saveAll(cardById.values)
+        if (lockedCardsById.isNotEmpty()) {
+            userCardRepository.saveAll(lockedCardsById.values)
         }
         series.status = SeriesStatus.FINISHED
         series.finalized = true

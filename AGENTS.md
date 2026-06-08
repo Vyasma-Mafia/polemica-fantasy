@@ -30,6 +30,7 @@ Two API groups on the same backend:
 
 - Start non-trivial tasks by reading this file plus the relevant `memory-bank/` files. For broad/product work, read `activeContext.md`, `progress.md`, `systemPatterns.md`, `techContext.md`, and the domain language files `glossary.md` / `operationalInsights.md`; for small fixes, read the narrowly relevant files first.
 - Check `git status --short` before editing. Preserve user changes and keep edits scoped to the requested feature or fix.
+- Workspace permissions are intentionally strict so actions go through approval/review; it is acceptable to request workspace permission escalation when needed for normal project work.
 - Keep backend/user/admin API contracts synchronized: Kotlin DTOs, frontend `src/api/types.ts`, API clients, and UI call sites should move together.
 - After meaningful feature, architecture, dependency, or deployment changes, append a short dated note to `memory-bank/activeContext.md` and update `memory-bank/progress.md` when status changed.
 - Prefer the focused verification commands below. Use `./scripts/codex-check.sh quick` before handing off broad cross-module changes when dependencies are installed locally.

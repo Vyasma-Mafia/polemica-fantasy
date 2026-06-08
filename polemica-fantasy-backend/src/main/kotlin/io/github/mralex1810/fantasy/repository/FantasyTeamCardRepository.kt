@@ -26,6 +26,37 @@ interface FantasyTeamCardRepository : JpaRepository<FantasyTeamCard, Long> {
 
     @Query(
         """
+        SELECT COUNT(DISTINCT ft.seriesLeague.id)
+        FROM FantasyTeamCard ftc
+        JOIN ftc.fantasyTeam ft
+        JOIN ft.series s
+        WHERE ftc.userCard.id = :userCardId
+          AND s.finalized = false
+          AND ft.seriesLeague.id <> :excludeSeriesLeagueId
+        """,
+    )
+    fun countReservedLeaguesForCard(
+        @Param("userCardId") userCardId: Long,
+        @Param("excludeSeriesLeagueId") excludeSeriesLeagueId: Long,
+    ): Int
+
+    @Query(
+        """
+        SELECT ftc.userCard.id, COUNT(DISTINCT ft.seriesLeague.id)
+        FROM FantasyTeamCard ftc
+        JOIN ftc.fantasyTeam ft
+        JOIN ft.series s
+        WHERE ftc.userCard.id IN :userCardIds
+          AND s.finalized = false
+        GROUP BY ftc.userCard.id
+        """,
+    )
+    fun countReservedLeaguesByUserCardIds(
+        @Param("userCardIds") userCardIds: Collection<Long>,
+    ): List<Array<Any>>
+
+    @Query(
+        """
         SELECT ftc.userCard.id, l.code
         FROM FantasyTeamCard ftc
         JOIN ftc.fantasyTeam ft

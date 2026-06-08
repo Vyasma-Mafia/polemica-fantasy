@@ -9,7 +9,7 @@ import type {
   TournamentDto,
   TournamentPlayerDto,
 } from './types'
-import { apiJson, apiVoid } from './client'
+import { apiFetch, apiJson, apiVoid } from './client'
 
 export type {
   AddTournamentPlayerRequest,
@@ -24,6 +24,36 @@ export function listTournaments() {
 
 export function getTournament(id: number) {
   return apiJson<TournamentDetailDto>(`/v1/admin/tournaments/${id}`)
+}
+
+export async function openTournamentReport(
+  tournamentId: number,
+  seriesIds: number[],
+) {
+  const reportWindow = window.open('', '_blank')
+  if (!reportWindow) {
+    throw new Error('Browser blocked report popup')
+  }
+  reportWindow.opener = null
+
+  const params = new URLSearchParams()
+  seriesIds.forEach((seriesId) => params.append('seriesIds', String(seriesId)))
+  try {
+    const res = await apiFetch(
+      `/v1/admin/tournaments/${tournamentId}/report.html?${params.toString()}`,
+    )
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || `HTTP ${res.status}`)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    reportWindow.location.href = url
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (error) {
+    reportWindow.close()
+    throw error
+  }
 }
 
 export function createTournament(body: CreateTournamentRequest) {
