@@ -7,6 +7,7 @@ import type { PerkCatalogItem, LegendaryUpgradeResponse, UserCardItem } from '..
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityScoreModifierLabel } from '../lib/rarity'
 import { CardPerkChips } from './CardPerkChips'
+import { PlayerImage } from './PlayerImage'
 
 type Step = 'card' | 'perk' | 'confirm' | 'result'
 
@@ -199,11 +200,12 @@ export function LegendaryUpgradeWizard({
                       }}
                     >
                       <div className="pf-legendary-wizard__pick-frame">
-                        {src ? (
-                          <img src={src} alt="" className="pf-legendary-wizard__pick-img" />
-                        ) : (
-                          <div className="pf-legendary-wizard__pick-ph">{c.rarity}</div>
-                        )}
+                        <PlayerImage
+                          src={src}
+                          seedId={c.fantasyPlayerId}
+                          variant="card"
+                          className="pf-legendary-wizard__pick-img"
+                        />
                         <div className="pf-legendary-wizard__pick-cap">
                           <span className="pf-legendary-wizard__pick-name">{c.playerNickname}</span>
                           <CardPerkChips perks={c.perks} max={4} />
@@ -268,11 +270,11 @@ export function LegendaryUpgradeWizard({
                 <p className="pf-muted pf-legendary-wizard__compare-label">Было</p>
                 <div className="pf-legendary-wizard__mini pf-collection-card--epic">
                   <div className="pf-legendary-wizard__mini-frame">
-                    {cardDisplayImageUrl(selectedCard) ? (
-                      <img src={cardDisplayImageUrl(selectedCard)!} alt="" />
-                    ) : (
-                      <div className="pf-legendary-wizard__pick-ph">EPIC</div>
-                    )}
+                    <PlayerImage
+                      src={cardDisplayImageUrl(selectedCard)}
+                      seedId={selectedCard.fantasyPlayerId}
+                      variant="card"
+                    />
                   </div>
                   <p className="pf-legendary-wizard__mini-cap">{selectedCard.playerNickname}</p>
                   <p className="pf-muted">EPIC {rarityScoreModifierLabel('EPIC')}</p>
@@ -289,11 +291,11 @@ export function LegendaryUpgradeWizard({
                 <p className="pf-muted pf-legendary-wizard__compare-label">Станет</p>
                 <div className="pf-legendary-wizard__mini pf-collection-card--legendary">
                   <div className="pf-legendary-wizard__mini-frame">
-                    {cardDisplayImageUrl(selectedCard) ? (
-                      <img src={cardDisplayImageUrl(selectedCard)!} alt="" />
-                    ) : (
-                      <div className="pf-legendary-wizard__pick-ph">LEGENDARY</div>
-                    )}
+                    <PlayerImage
+                      src={cardDisplayImageUrl(selectedCard)}
+                      seedId={selectedCard.fantasyPlayerId}
+                      variant="card"
+                    />
                   </div>
                   <p className="pf-legendary-wizard__mini-cap">{selectedCard.playerNickname}</p>
                   <p className="pf-muted">LEGENDARY {rarityScoreModifierLabel('LEGENDARY')}</p>
@@ -334,11 +336,11 @@ export function LegendaryUpgradeWizard({
               <article className="pf-legendary-wizard__easter-egg-card pf-collection-card pf-collection-card--legendary pf-collection-card--legendary-crafted">
                 <p className="pf-muted pf-legendary-wizard__easter-egg-label">Ваша легендарная карта</p>
                 <div className="pf-legendary-wizard__easter-egg-frame">
-                  {cardDisplayImageUrl(resultCard) ? (
-                    <img src={cardDisplayImageUrl(resultCard)!} alt="" />
-                  ) : (
-                    <div className="pf-legendary-wizard__pick-ph">LEGENDARY</div>
-                  )}
+                  <PlayerImage
+                    src={cardDisplayImageUrl(resultCard)}
+                    seedId={resultCard.fantasyPlayerId}
+                    variant="card"
+                  />
                 </div>
                 <p className="pf-legendary-wizard__easter-egg-name">{resultCard.playerNickname}</p>
               </article>

@@ -15,6 +15,7 @@ import type {
 } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { defaultLeagueCode, leagueShortName } from '../lib/leagues'
@@ -89,7 +90,11 @@ function TeamSummary({
               const img = cardDisplayImageUrl(slot.card)
               return (
                 <li key={slot.slot} className="pf-compare-card-row">
-                  {img ? <img src={img} alt="" /> : <span className="pf-compare-card-row__ph" />}
+                  <PlayerImage
+                    src={img}
+                    seedId={slot.card.fantasyPlayerId}
+                    variant="avatar"
+                  />
                   <span>{slot.card.playerNickname}</span>
                   <strong>{scoreText(slot.score)}</strong>
                 </li>

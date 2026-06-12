@@ -11,6 +11,7 @@ import { BudgetProgressBar } from '../components/BudgetProgressBar'
 import { LeagueTabs } from '../components/LeagueTabs'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { teamCardRootClass, miniCardClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -306,7 +307,7 @@ export function TeamPage() {
                   title={deadlinePassed ? undefined : 'Снять из состава'}
                   onClick={() => toggle(c.id)}
                 >
-                  {pickedSrc ? <img src={pickedSrc} alt="" /> : <div className="pf-mini-card__ph" />}
+                  <PlayerImage src={pickedSrc} seedId={c.fantasyPlayerId} variant="mini" />
                   <span>{c.playerNickname}</span>
                 </button>
               ) : (
@@ -466,11 +467,12 @@ export function TeamPage() {
                 title={gridTitle}
               >
                 <div className="pf-team-card__media">
-                  {imgSrc ? (
-                    <img src={imgSrc} alt="" className="pf-team-card__img" />
-                  ) : (
-                    <div className="pf-team-card__ph">{c.rarity}</div>
-                  )}
+                  <PlayerImage
+                    src={imgSrc}
+                    seedId={c.fantasyPlayerId}
+                    variant="card"
+                    className="pf-team-card__img"
+                  />
                   <span className="pf-team-uses">⚡{c.usesRemaining}/{maxU}</span>
                   {dead && <span className="pf-team-dead-label">Истекла</span>}
                   {otherLeaguesInSeries.length > 0 && (

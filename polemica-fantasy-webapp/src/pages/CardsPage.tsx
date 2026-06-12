@@ -33,6 +33,7 @@ import { PlayerGroupedView } from '../components/PlayerGroupedView'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -650,11 +651,12 @@ export function CardsPage() {
                       }
                     }}
                   >
-                    {imgSrc ? (
-                      <img src={imgSrc} alt="" className="pf-collection-card__img" />
-                    ) : (
-                      <div className="pf-collection-card__ph">{c.rarity}</div>
-                    )}
+                    <PlayerImage
+                      src={imgSrc}
+                      seedId={c.fantasyPlayerId}
+                      variant="card"
+                      className="pf-collection-card__img"
+                    />
                     <span className="pf-uses-badge" title="Осталось использований">
                       ⚡{c.usesRemaining}/{maxU}
                     </span>
@@ -704,9 +706,14 @@ export function CardsPage() {
             <button type="button" className="pf-modal__close" onClick={closeModal}>
               ×
             </button>
-            {detailImgSrc && (
+            {detailCard && (
               <div className={modalImgFrameClass(detailCard)}>
-                <img src={detailImgSrc} alt="" className="pf-modal__img" />
+                <PlayerImage
+                  src={detailImgSrc}
+                  seedId={detailCard.fantasyPlayerId}
+                  variant="card"
+                  className="pf-modal__img"
+                />
               </div>
             )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>

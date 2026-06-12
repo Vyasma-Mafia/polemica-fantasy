@@ -21,6 +21,7 @@ const SERIES_REWARD_KEY_ORDER: string[] = [
   'series.reward.top10',
   'series.reward.top25',
   'series.reward.top50',
+  'series.reward.top100',
   'series.reward.participation',
 ]
 

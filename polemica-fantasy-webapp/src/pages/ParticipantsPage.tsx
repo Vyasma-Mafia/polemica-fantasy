@@ -4,6 +4,7 @@ import { apiGet } from '../api/client'
 import type { SeriesPlayerEntry } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 
 export function ParticipantsPage() {
@@ -30,13 +31,12 @@ export function ParticipantsPage() {
       <ul className="pf-participants">
         {rows.map((p) => (
           <li key={p.tournamentPlayerId} className="pf-participants__row">
-            {p.photoUrl ? (
-              <img src={p.photoUrl} alt="" className="pf-participants__avatar" />
-            ) : (
-              <div className="pf-participants__avatar pf-participants__avatar--ph" aria-hidden>
-                ?
-              </div>
-            )}
+            <PlayerImage
+              src={p.photoUrl}
+              seedId={p.fantasyPlayerId}
+              variant="avatar"
+              className="pf-participants__avatar"
+            />
             <span className="pf-participants__name">{p.nickname}</span>
           </li>
         ))}

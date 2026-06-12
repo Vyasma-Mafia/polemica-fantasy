@@ -6,6 +6,7 @@ import { compareRarityDesc, rarityScoreModifierLabel } from '../lib/rarity'
 import { CardPerkChips } from './CardPerkChips'
 import { CardValueBadge } from './CardValueBadge'
 import { MarketplaceListedBadge } from './MarketplaceListedBadge'
+import { PlayerImage } from './PlayerImage'
 
 function maxUsesForCard(c: UserCardItem, usesPerRarity: Record<Rarity, number> | undefined): number {
   if (!usesPerRarity) return Math.max(c.usesRemaining, 1)
@@ -57,13 +58,12 @@ export function PlayerCard(props: PlayerCardProps) {
     return (
       <li className="pf-player-cell pf-player-cell--empty">
         <div className="pf-player-cell__empty-card">
-          {props.photoUrl ? (
-            <img src={props.photoUrl} alt="" className="pf-player-cell__empty-img" />
-          ) : (
-            <div className="pf-player-cell__empty-ph" aria-hidden>
-              <span className="pf-player-cell__empty-ico" />
-            </div>
-          )}
+          <PlayerImage
+            src={props.photoUrl}
+            seedId={props.fantasyPlayerId}
+            variant="card"
+            className="pf-player-cell__empty-img"
+          />
         </div>
         <div className="pf-player-cell__cap">
           <span className="pf-player-cell__name">{props.nickname}</span>
@@ -115,11 +115,12 @@ export function PlayerCard(props: PlayerCardProps) {
                       }
                     }}
                   >
-                    {s ? (
-                      <img src={s} alt="" className="pf-collection-card__img" />
-                    ) : (
-                      <div className="pf-collection-card__ph">{c.rarity}</div>
-                    )}
+                    <PlayerImage
+                      src={s}
+                      seedId={c.fantasyPlayerId}
+                      variant="card"
+                      className="pf-collection-card__img"
+                    />
                     <span className="pf-uses-badge" title="Осталось использований">
                       ⚡{c.usesRemaining}/{maxFor}
                     </span>
@@ -166,11 +167,12 @@ export function PlayerCard(props: PlayerCardProps) {
         {layers >= 1 && <div className="pf-player-cell__stack-layer pf-player-cell__stack-layer--1" aria-hidden />}
         <div className="pf-collection-card__frame">
           <div className="pf-collection-card__open">
-            {imgSrc ? (
-              <img src={imgSrc} alt="" className="pf-collection-card__img" />
-            ) : (
-              <div className="pf-collection-card__ph">{best.rarity}</div>
-            )}
+            <PlayerImage
+              src={imgSrc}
+              seedId={best.fantasyPlayerId}
+              variant="card"
+              className="pf-collection-card__img"
+            />
             <span className="pf-player-card-count" title="Карт в коллекции">
               ×{n}
             </span>

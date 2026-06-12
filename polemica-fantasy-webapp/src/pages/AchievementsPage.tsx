@@ -5,6 +5,7 @@ import type { AchievementItem, AchievementPendingCardChoice, AchievementReward }
 import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { skinClass } from '../lib/cardFrameClasses'
 import { rarityClass } from '../lib/rarity'
@@ -181,11 +182,12 @@ function AchievementRow({
                     >
                       <span className="pf-achievement-choice-card__check" aria-hidden="true">✓</span>
                       <span className="pf-pack-open__summary-card-frame">
-                        {option.playerPhotoUrl ? (
-                          <img src={option.playerPhotoUrl} alt="" className="pf-pack-open__summary-card-img" />
-                        ) : (
-                          <span className="pf-pack-open__summary-card-ph">{option.rarity}</span>
-                        )}
+                        <PlayerImage
+                          src={option.playerPhotoUrl}
+                          seedId={option.fantasyPlayerId}
+                          variant="card"
+                          className="pf-pack-open__summary-card-img"
+                        />
                         <span className="pf-pack-open__summary-card-cap">
                           <span className="pf-pack-open__summary-card-name">{option.playerName}</span>
                           <span className="pf-pack-open__summary-card-rarity">{option.rarity}</span>

@@ -10,6 +10,7 @@ import type { UserProfile } from '../api/types'
 import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -105,11 +106,13 @@ export function TransactionDetailPage() {
         >
           <div className="pf-collection-card__frame pf-transaction-detail__card-frame">
             <div className="pf-collection-card__open">
-              {cardImageUrl ? (
-                <img src={cardImageUrl} alt={transaction.card.playerName} className="pf-collection-card__img" />
-              ) : (
-                <div className="pf-collection-card__ph">{transaction.card.rarity}</div>
-              )}
+              <PlayerImage
+                src={cardImageUrl}
+                seedId={transaction.card.fantasyPlayerId}
+                alt={transaction.card.playerName}
+                variant="card"
+                className="pf-collection-card__img"
+              />
               <div className="pf-collection-card__cap pf-transaction-detail__card-cap">
                 <span className="pf-collection-card__name pf-transaction-detail__card-name">{transaction.card.playerName}</span>
                 <span className="pf-collection-card__rarity pf-transaction-detail__card-rarity">

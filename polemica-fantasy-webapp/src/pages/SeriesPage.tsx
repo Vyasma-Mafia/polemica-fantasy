@@ -7,6 +7,7 @@ import type { SeriesLeagueBrief, UserSeriesDetail } from '../api/types'
 import { LeagueTabs } from '../components/LeagueTabs'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
@@ -155,13 +156,12 @@ export function SeriesPage() {
         <ul className="pf-participants">
           {s.players.map((p) => (
             <li key={p.tournamentPlayerId} className="pf-participants__row">
-              {p.photoUrl ? (
-                <img src={p.photoUrl} alt="" className="pf-participants__avatar" />
-              ) : (
-                <div className="pf-participants__avatar pf-participants__avatar--ph" aria-hidden>
-                  ?
-                </div>
-              )}
+              <PlayerImage
+                src={p.photoUrl}
+                seedId={p.fantasyPlayerId}
+                variant="avatar"
+                className="pf-participants__avatar"
+              />
               <span className="pf-participants__name">{p.nickname}</span>
             </li>
           ))}

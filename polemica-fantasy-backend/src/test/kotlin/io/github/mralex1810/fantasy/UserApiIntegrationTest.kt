@@ -707,9 +707,13 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.recycleValues.EPIC").value(60))
             .andExpect(jsonPath("$.renewalCosts.RARE").value(60))
             .andExpect(jsonPath("$.maxRenewals").value(2))
-            .andExpect(jsonPath("$.seriesRewards.length()").value(7))
-            .andExpect(jsonPath("$.seriesRewards[0].fantiki").value(100))
+            .andExpect(jsonPath("$.seriesRewards.length()").value(8))
+            .andExpect(jsonPath("$.seriesRewards[0].fantiki").value(250))
             .andExpect(jsonPath("$.seriesRewards[0].label").value("Награда за 1 место"))
+            .andExpect(jsonPath("$.seriesRewards[6].fantiki").value(40))
+            .andExpect(jsonPath("$.seriesRewards[6].label").value("Награда за 51–100 место"))
+            .andExpect(jsonPath("$.seriesRewards[7].fantiki").value(30))
+            .andExpect(jsonPath("$.seriesRewards[7].label").value("Награда за участие (101+ место)"))
             .andExpect(jsonPath("$.marketplaceCommissionPercent").value(10))
             .andExpect(jsonPath("$.marketplaceMinPrices.COMMON").value(30))
             .andExpect(jsonPath("$.marketplaceMinPrices.LEGENDARY").value(250))
@@ -721,6 +725,7 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.cardValues.baseValues.RARE").value(40))
             .andExpect(jsonPath("$.cardValues.baseValues.EPIC").value(80))
             .andExpect(jsonPath("$.cardValues.baseValues.LEGENDARY").value(370))
+            .andExpect(jsonPath("$.leagues.BUDGET.rewardScale").value(75))
     }
 
     @Test

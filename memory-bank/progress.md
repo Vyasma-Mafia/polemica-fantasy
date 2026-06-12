@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### Backend+admin: MAIN top-100 + BUDGET 75% (июнь 2026)
+- [x] Добавлен новый tier `series.reward.top100` для 51–100 места; `series.reward.participation` теперь описывает 101+ место.
+- [x] Flyway **V57** фиксирует MAIN-сетку через economy config: `250 / 200 / 150 / 100 / 75 / 50 / 40 / 30`, а BUDGET переводит на `league.reward_scale.BUDGET = 75`.
+- [x] `EconomyConfigService.getSeriesReward` и порядок `economy-info.seriesRewards` синхронизированы с новым tier; admin Economy сортирует `top100` в правильном месте.
+- [x] Проверки: focused `EconomyConfigServiceTest`, backend `compileKotlin compileTestKotlin`, admin `npm run build`, TMA `npm run build` — успешно.
+
 ### Backend+admin: HTML-репорт турнира (июнь 2026)
 - [x] `GET /api/v1/admin/tournaments/{id}/report.html?seriesIds=...` возвращает standalone `text/html` по выбранным сериям, требует непустой список `seriesIds` и отклоняет серии не из турнира.
 - [x] `TournamentReportService` собирает данные из текущей БД read-only: метаданные турнира, серии, лидерборды лиг, лучший состав, топ составов, уникальный топ карточек по `fantasy_player`, полные перки шаблона, популярность и эффективность игроков.

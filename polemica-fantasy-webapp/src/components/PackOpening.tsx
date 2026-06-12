@@ -4,6 +4,7 @@ import type { PackOpeningCard, PackOpeningUserCard, UserCardItem } from '../api/
 import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { CardPerkChips } from './CardPerkChips'
+import { PlayerImage } from './PlayerImage'
 import { rarityClass, rarityScoreModifierLabel } from '../lib/rarity'
 
 const PACK_PHASE_MS = 1200
@@ -130,7 +131,14 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
                   className={`pf-pack-open__summary-card pf-pack-open__summary-card--${rc} ${companionClass}${skinMod ? ` pf-pack-open__summary-card${skinMod}` : ''}`}
                 >
                   <div className="pf-pack-open__summary-card-frame">
-                    {img ? (
+                    {isUserPackOpeningCard(c) ? (
+                      <PlayerImage
+                        src={img}
+                        seedId={c.card.fantasyPlayerId}
+                        variant="card"
+                        className="pf-pack-open__summary-card-img"
+                      />
+                    ) : img ? (
                       <img src={img} alt="" className="pf-pack-open__summary-card-img" />
                     ) : (
                       <div className="pf-pack-open__summary-card-ph">{c.rarity}</div>
@@ -175,7 +183,14 @@ function PackOpeningCardReveal({ card }: { card: PackOpeningCard }) {
 
   const inner = (
     <div className="pf-pack-open__card-inner">
-      {img ? (
+      {isUserPackOpeningCard(card) ? (
+        <PlayerImage
+          src={img}
+          seedId={card.card.fantasyPlayerId}
+          variant="card"
+          className="pf-pack-open__card-img"
+        />
+      ) : img ? (
         <img src={img} alt="" className="pf-pack-open__card-img" />
       ) : (
         <div className="pf-pack-open__card-ph">{card.rarity}</div>

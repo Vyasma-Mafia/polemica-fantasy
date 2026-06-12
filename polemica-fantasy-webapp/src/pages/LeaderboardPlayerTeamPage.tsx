@@ -15,6 +15,7 @@ import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlo
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { modalImgFrameClass, skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -283,11 +284,12 @@ export function LeaderboardPlayerTeamPage() {
                     onClick={() => setDetailCardId(card.id)}
                     role="listitem"
                   >
-                    {imgSrc ? (
-                      <img src={imgSrc} alt="" className="pf-fantasy-card__img" />
-                    ) : (
-                      <div className="pf-fantasy-card__ph">{card.rarity}</div>
-                    )}
+                    <PlayerImage
+                      src={imgSrc}
+                      seedId={card.fantasyPlayerId}
+                      variant="card"
+                      className="pf-fantasy-card__img"
+                    />
                     <div className="pf-fantasy-card__cap">
                       <span className="pf-fantasy-card__name">{card.playerNickname}</span>
                       <span className="pf-fantasy-card__pts">
@@ -316,9 +318,14 @@ export function LeaderboardPlayerTeamPage() {
             <button type="button" className="pf-modal__close" onClick={() => setDetailCardId(null)}>
               ×
             </button>
-            {detailImgSrc && (
+            {detailCard && (
               <div className={modalImgFrameClass(detailCard)}>
-                <img src={detailImgSrc} alt="" className="pf-modal__img" />
+                <PlayerImage
+                  src={detailImgSrc}
+                  seedId={detailCard.fantasyPlayerId}
+                  variant="card"
+                  className="pf-modal__img"
+                />
               </div>
             )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>

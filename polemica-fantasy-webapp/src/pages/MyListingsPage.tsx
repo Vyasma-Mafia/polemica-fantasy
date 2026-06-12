@@ -12,6 +12,7 @@ import { CardPerkChips } from '../components/CardPerkChips'
 import { ContractReissueBadge } from '../components/ContractReissueBadge'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
+import { PlayerImage } from '../components/PlayerImage'
 import { useInitData } from '../context/useInitData'
 import { skinClass } from '../lib/cardFrameClasses'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -91,11 +92,12 @@ export function MyListingsPage() {
               <div className="pf-collection-card__frame">
                 <ContractReissueBadge timesRenewed={c.timesRenewed} maxRenewals={c.maxRenewals} />
                 <div className="pf-collection-card__open pf-marketplace-card__open">
-                  {img ? (
-                    <img src={img} alt="" className="pf-collection-card__img" />
-                  ) : (
-                    <div className="pf-collection-card__ph">{c.rarity}</div>
-                  )}
+                  <PlayerImage
+                    src={img}
+                    seedId={c.fantasyPlayerId}
+                    variant="card"
+                    className="pf-collection-card__img"
+                  />
                   <div className="pf-collection-card__cap">
                     <span className="pf-collection-card__name">{c.playerName}</span>
                     <span className="pf-collection-card__rarity">
