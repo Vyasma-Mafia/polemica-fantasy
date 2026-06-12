@@ -2291,6 +2291,11 @@ button.pf-mini-card:disabled {
   opacity: 0.72;
 }
 
+.pf-contract-badge--collection {
+  top: 36px;
+  right: 8px;
+}
+
 .pf-contract-badge--limit {
   border-color: rgba(248, 113, 113, 0.75);
   color: #fecaca;

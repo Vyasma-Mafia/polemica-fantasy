@@ -29,6 +29,7 @@ import { CardPerkChips } from '../components/CardPerkChips'
 import { MarketplaceListedBadge } from '../components/MarketplaceListedBadge'
 import { CardValueBadge } from '../components/CardValueBadge'
 import { CardOwnershipHistoryBlock } from '../components/CardOwnershipHistoryBlock'
+import { ContractReissueBadge } from '../components/ContractReissueBadge'
 import { PlayerGroupedView } from '../components/PlayerGroupedView'
 import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../components/LegendaryUpgradeWizard'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
@@ -660,6 +661,13 @@ export function CardsPage() {
                     <span className="pf-uses-badge" title="Осталось использований">
                       ⚡{c.usesRemaining}/{maxU}
                     </span>
+                    {c.timesRenewed > 0 && (
+                      <ContractReissueBadge
+                        timesRenewed={c.timesRenewed}
+                        maxRenewals={economyQ.data?.maxRenewals ?? c.timesRenewed}
+                        layout="collection"
+                      />
+                    )}
                     {expired && <span className="pf-expired-badge">Истекла</span>}
                     {c.activeMarketplaceListing && (
                       <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
