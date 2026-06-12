@@ -1725,6 +1725,8 @@ button.pf-mini-card:disabled {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  width: 100%;
+  min-width: 0;
   padding: 0;
   border: 2px solid var(--pf-border);
   border-radius: var(--pf-radius-sm);
@@ -1820,6 +1822,7 @@ button.pf-mini-card:disabled {
   width: 100%;
   aspect-ratio: 3/4;
   object-fit: cover;
+  display: block;
 }
 
 .pf-team-card__ph {
