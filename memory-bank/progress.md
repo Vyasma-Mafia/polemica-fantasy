@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### TMA: fallback для игроков без фото (июнь 2026)
+- [x] Добавлен общий компонент `PlayerImage`: показывает реальное изображение, а при `null` или `onError` переключается на CSS-силуэт со стабильным цветовым тоном по `fantasyPlayerId`.
+- [x] Fallback применён в TMA на участниках турнира/серии, коллекции и grouped player view, сборке команды, pack opening, achievement choice cards, marketplace/listings/feed/transaction detail, истории, лидерборде, сравнении и модалках.
+- [x] Backend/API/БД-контракты не менялись; существующее правило выбора карточного изображения `playerPhotoUrl ?? imageUrl` сохранено.
+- [x] Проверки: `npm run build` (`polemica-fantasy-webapp`) успешно; локально поднят стек через `./scripts/local-up.sh --generate-init-data`, добавлены тестовые `NoPhoto Alpha/Bravo/Charlie/Delta` без `photo_url`, browser-проверка подтвердила 4 fallback-аватара на `/tournaments/1/participants` и 4 fallback-карточки на `/cards?view=players`.
+
 ### Backend+admin: MAIN top-100 + BUDGET 75% (июнь 2026)
 - [x] Добавлен новый tier `series.reward.top100` для 51–100 места; `series.reward.participation` теперь описывает 101+ место.
 - [x] Flyway **V57** фиксирует MAIN-сетку через economy config: `250 / 200 / 150 / 100 / 75 / 50 / 40 / 30`, а BUDGET переводит на `league.reward_scale.BUDGET = 75`.
