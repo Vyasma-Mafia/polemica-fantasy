@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### DX: skill для создания серий по анонсам (июнь 2026)
+- [x] Добавлен проектный skill `.codex/skills/polemica-create-series-from-announcement` для production workflow по анонсам `Лиги Претендентов` и `Закрытой лиги`.
+- [x] В skill зафиксирован безопасный порядок: read-only найти активный `STANDALONE` tournament и ростер, создать серию через admin API в `UPCOMING`, назначить `series_player`, затем проверить результат read-only запросами.
+- [x] Добавлен helper `scripts/prod-admin-series.py`: dry-run по умолчанию, `--execute` для реального вызова admin API через VPS, credentials читаются только из remote `.env`, порт API `18080`.
+- [x] Проверки: helper `--help`, dry-run `create-series`, dry-run `assign-players`, Python syntax parse, ручная проверка frontmatter. `quick_validate.py` не запущен до конца из-за отсутствующего модуля `yaml` в локальном Python окружении.
+
 ### TMA: fallback для игроков без фото (июнь 2026)
 - [x] Добавлен общий компонент `PlayerImage`: показывает реальное изображение, а при `null` или `onError` переключается на CSS-силуэт со стабильным цветовым тоном по `fantasyPlayerId`.
 - [x] Fallback применён в TMA на участниках турнира/серии, коллекции и grouped player view, сборке команды, pack opening, achievement choice cards, marketplace/listings/feed/transaction detail, истории, лидерборде, сравнении и модалках.

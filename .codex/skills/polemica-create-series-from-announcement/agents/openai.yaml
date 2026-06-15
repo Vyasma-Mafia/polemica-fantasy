@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polemica Series Announcements"
+  short_description: "Create series from league announcements"
+  default_prompt: "Use $polemica-create-series-from-announcement to create a Polemica Fantasy series from this league announcement."
