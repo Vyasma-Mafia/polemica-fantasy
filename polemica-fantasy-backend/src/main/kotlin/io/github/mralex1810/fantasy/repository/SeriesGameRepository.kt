@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param
 interface SeriesGameRepository : JpaRepository<SeriesGame, Long> {
     fun findAllBySeries_Id(seriesId: Long): List<SeriesGame>
 
+    fun findByIdAndSeries_Id(id: Long, seriesId: Long): SeriesGame?
+
     fun findBySeries_IdAndPolemicaGameId(seriesId: Long, polemicaGameId: Long): SeriesGame?
 
     @Query("SELECT g.series.id, COUNT(g) FROM SeriesGame g WHERE g.series.id IN :ids GROUP BY g.series.id")

@@ -1,9 +1,11 @@
 package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
+import io.github.mralex1810.fantasy.dto.admin.request.AddSeriesGameRequest
 import io.github.mralex1810.fantasy.dto.admin.request.BatchStartSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.response.AdminSeriesGameDto
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
@@ -11,6 +13,7 @@ import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDt
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
 import io.github.mralex1810.fantasy.service.SeriesService
 import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -70,6 +73,24 @@ class SeriesAdminController(
     @PostMapping("/series/{id}/calculate-scores")
     fun calculateScores(@PathVariable id: Long) {
         seriesService.calculateScores(id)
+    }
+
+    @GetMapping("/series/{id}/games")
+    fun listSeriesGames(@PathVariable id: Long): List<AdminSeriesGameDto> =
+        seriesService.listSeriesGames(id)
+
+    @PostMapping("/series/{id}/games")
+    fun addSeriesGame(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: AddSeriesGameRequest,
+    ): AdminSeriesGameDto = seriesService.addSeriesGame(id, body)
+
+    @DeleteMapping("/series/{id}/games/{gameId}")
+    fun deleteSeriesGame(
+        @PathVariable id: Long,
+        @PathVariable gameId: Long,
+    ) {
+        seriesService.deleteSeriesGame(id, gameId)
     }
 
     @PostMapping("/series/{id}/finalize")

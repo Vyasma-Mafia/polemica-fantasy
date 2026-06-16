@@ -73,6 +73,19 @@ data class SeriesDto(
     val replacementPolemicaUserIds: Map<Long, Long> = emptyMap(),
 )
 
+data class AdminSeriesGameDto(
+    val id: Long,
+    val polemicaGameId: Long,
+    val displayName: String,
+    val gameName: String,
+    val gameNum: Int?,
+    val table: Int?,
+    val phase: Int?,
+    val playedAt: Instant?,
+    val finished: Boolean,
+    val scored: Boolean,
+)
+
 data class SeriesPlayerMarketplaceUnlistResultDto(
     val tournamentPlayerId: Long,
     val fantasyPlayerId: Long,

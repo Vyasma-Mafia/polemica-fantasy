@@ -25,6 +25,15 @@ interface SeriesRepository : JpaRepository<Series, Long> {
     @Query(
         """
         SELECT s FROM Series s
+        JOIN FETCH s.tournament
+        WHERE s.id = :id
+        """,
+    )
+    fun findByIdWithTournament(@Param("id") id: Long): Series?
+
+    @Query(
+        """
+        SELECT s FROM Series s
         JOIN FETCH s.tournament t
         WHERE t.status = :tournamentStatus
         AND s.teamDeadline > :now

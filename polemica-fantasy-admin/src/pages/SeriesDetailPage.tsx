@@ -8,6 +8,7 @@ import {
   Modal,
   Select,
   Space,
+  Table,
   Tag,
   Typography,
 } from 'antd'
@@ -15,17 +16,21 @@ import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { TableProps } from 'antd'
 import { getTournament } from '../api/tournaments'
 import {
+  addSeriesGame,
   assignSeriesPlayers,
   calculateScores,
+  deleteSeriesGame,
   finalizeSeries,
   getSeries,
+  listSeriesGames,
   syncGames,
   updateSeries,
 } from '../api/series'
 import type { UpdateSeriesRequest } from '../api/seriesRequests'
-import type { SeriesStatus, TournamentKind } from '../api/types'
+import type { AdminSeriesGameDto, SeriesStatus, TournamentKind } from '../api/types'
 
 export function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -43,6 +48,7 @@ export function SeriesDetailPage() {
     startsAt: ReturnType<typeof dayjs>
     teamDeadline: ReturnType<typeof dayjs>
   }>()
+  const [addGameForm] = Form.useForm<{ polemicaGameId: number }>()
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([])
   const [replacementPolemicaUserIds, setReplacementPolemicaUserIds] = useState<
     Record<number, number | null>
@@ -57,6 +63,16 @@ export function SeriesDetailPage() {
 
   const tournamentId = q.data?.tournamentId
 
+  const invalidateSeriesGameState = () => {
+    void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+    void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId, 'games'] })
+    if (tournamentId != null) {
+      void qc.invalidateQueries({
+        queryKey: ['admin', 'series', 'tournament', tournamentId],
+      })
+    }
+  }
+
   const tq = useQuery({
     queryKey: ['admin', 'tournament', tournamentId],
     queryFn: () => getTournament(tournamentId!),
@@ -65,6 +81,12 @@ export function SeriesDetailPage() {
 
   const tournamentKind: TournamentKind = tq.data?.kind ?? 'STANDALONE'
   const isCompetition = tournamentKind === 'POLEMICA_COMPETITION'
+
+  const gamesQ = useQuery({
+    queryKey: ['admin', 'series', seriesId, 'games'],
+    queryFn: () => listSeriesGames(seriesId),
+    enabled: Number.isFinite(seriesId),
+  })
 
   useEffect(() => {
     const s = q.data
@@ -117,10 +139,7 @@ export function SeriesDetailPage() {
     mutationFn: () => syncGames(seriesId),
     onSuccess: () => {
       message.success('Sync completed')
-      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
-      void qc.invalidateQueries({
-        queryKey: ['admin', 'series', 'tournament', tournamentId],
-      })
+      invalidateSeriesGameState()
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -129,10 +148,26 @@ export function SeriesDetailPage() {
     mutationFn: () => calculateScores(seriesId),
     onSuccess: () => {
       message.success('Scores calculated')
-      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
-      void qc.invalidateQueries({
-        queryKey: ['admin', 'series', 'tournament', tournamentId],
-      })
+      invalidateSeriesGameState()
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const addGameMut = useMutation({
+    mutationFn: (polemicaGameId: number) => addSeriesGame(seriesId, { polemicaGameId }),
+    onSuccess: () => {
+      message.success('Game added. Recalculate scores when ready.')
+      addGameForm.resetFields()
+      invalidateSeriesGameState()
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const deleteGameMut = useMutation({
+    mutationFn: (gameId: number) => deleteSeriesGame(seriesId, gameId),
+    onSuccess: () => {
+      message.success('Game deleted from scoring')
+      invalidateSeriesGameState()
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -173,6 +208,87 @@ export function SeriesDetailPage() {
     Object.prototype.hasOwnProperty.call(replacementPolemicaUserIds, tpId)
   const replacementRowIds = selectedPlayerIds.filter(hasReplacementControl)
   const addableReplacementIds = selectedPlayerIds.filter((tpId) => !hasReplacementControl(tpId))
+  const renderOptionalNumber = (value: number | null) => value ?? '—'
+  const gameColumns: TableProps<AdminSeriesGameDto>['columns'] = [
+    {
+      title: 'Game',
+      dataIndex: 'displayName',
+      render: (value: string, record) => (
+        <Space direction="vertical" size={0}>
+          <Typography.Text strong>{value}</Typography.Text>
+          {record.gameName !== value && record.gameName && (
+            <Typography.Text type="secondary">{record.gameName}</Typography.Text>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: 'Polemica ID',
+      dataIndex: 'polemicaGameId',
+      width: 130,
+    },
+    {
+      title: 'Num',
+      dataIndex: 'gameNum',
+      width: 80,
+      render: renderOptionalNumber,
+    },
+    {
+      title: 'Table',
+      dataIndex: 'table',
+      width: 80,
+      render: renderOptionalNumber,
+    },
+    {
+      title: 'Phase',
+      dataIndex: 'phase',
+      width: 80,
+      render: renderOptionalNumber,
+    },
+    {
+      title: 'Played at',
+      dataIndex: 'playedAt',
+      width: 160,
+      render: (value: string | null) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '—'),
+    },
+    {
+      title: 'State',
+      width: 190,
+      render: (_, record) => (
+        <Space size={4} wrap>
+          <Tag color={record.finished ? 'green' : undefined}>
+            {record.finished ? 'finished' : 'unfinished'}
+          </Tag>
+          <Tag color={record.scored ? 'blue' : 'orange'}>
+            {record.scored ? 'scored' : 'not scored'}
+          </Tag>
+        </Space>
+      ),
+    },
+    {
+      title: 'Actions',
+      width: 110,
+      render: (_, record) => (
+        <Button
+          danger
+          size="small"
+          disabled={!!s?.finalized}
+          loading={deleteGameMut.isPending}
+          onClick={() =>
+            Modal.confirm({
+              title: 'Delete game from series?',
+              content: `${record.displayName} will be removed from saved score breakdowns and totals.`,
+              okText: 'Delete',
+              okButtonProps: { danger: true },
+              onOk: () => deleteGameMut.mutate(record.id),
+            })
+          }
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div>
@@ -420,6 +536,67 @@ export function SeriesDetailPage() {
           </Typography.Text>
         </Space>
       </Modal>
+
+      <Typography.Title level={4} style={{ marginTop: 24 }}>
+        Games
+      </Typography.Title>
+      <Typography.Paragraph type="secondary">
+        Registered Polemica games for this series. Adding a game does not recalculate
+        scores automatically.
+      </Typography.Paragraph>
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Form
+          form={addGameForm}
+          layout="inline"
+          onFinish={(v) => addGameMut.mutate(Number(v.polemicaGameId))}
+        >
+          <Form.Item
+            name="polemicaGameId"
+            rules={[{ required: true, message: 'Enter Polemica game id' }]}
+          >
+            <InputNumber
+              min={1}
+              precision={0}
+              placeholder="Polemica game id"
+              disabled={!!s?.finalized}
+              style={{ width: 180 }}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              disabled={!!s?.finalized}
+              loading={addGameMut.isPending}
+            >
+              Add game
+            </Button>
+          </Form.Item>
+          <Form.Item>
+            <Button onClick={() => void gamesQ.refetch()} loading={gamesQ.isFetching}>
+              Refresh
+            </Button>
+          </Form.Item>
+        </Form>
+        {s?.finalized && (
+          <Typography.Text type="secondary">
+            Finalized series cannot be changed.
+          </Typography.Text>
+        )}
+        {gamesQ.error && (
+          <Typography.Text type="danger">{gamesQ.error.message}</Typography.Text>
+        )}
+        <Table<AdminSeriesGameDto>
+          rowKey="id"
+          size="small"
+          columns={gameColumns}
+          dataSource={gamesQ.data ?? []}
+          loading={gamesQ.isLoading}
+          pagination={false}
+          scroll={{ x: 950 }}
+          locale={{ emptyText: 'No games registered yet' }}
+        />
+      </Space>
 
       <Typography.Title level={4} style={{ marginTop: 24 }}>
         Actions

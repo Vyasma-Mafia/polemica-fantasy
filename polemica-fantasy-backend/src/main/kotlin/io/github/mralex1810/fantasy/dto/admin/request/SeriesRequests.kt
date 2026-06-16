@@ -80,3 +80,8 @@ data class BatchStartSeriesRequest(
     @field:NotNull
     val seriesIds: List<Long>,
 )
+
+data class AddSeriesGameRequest(
+    @field:NotNull @field:Min(1)
+    val polemicaGameId: Long?,
+)

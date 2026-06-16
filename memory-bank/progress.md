@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Backend+admin: ручное управление играми серии (июнь 2026)
+- [x] Admin API получил `GET /api/v1/admin/series/{id}/games`, `POST /api/v1/admin/series/{id}/games` и `DELETE /api/v1/admin/series/{id}/games/{gameId}` для просмотра, добавления и удаления строк `series_game`.
+- [x] Add по Polemica game id загружает полный `PolemicaGame`, делает upsert по `(series_id, polemica_game_id)`, для `POLEMICA_COMPETITION` валидирует принадлежность id связанному соревнованию и оставляет ручной `Calculate scores`.
+- [x] Delete запрещен для `finalized` серий, удаляет связанные `fantasy_team_card_game_score` строки и пересобирает сохраненные totals команд/карт из оставшихся per-game breakdown.
+- [x] Admin `SeriesDetailPage` получил блок **Games** с таблицей id/num/table/phase/playedAt/status, формой add-by-id, refresh и delete с подтверждением; действия заблокированы у finalized серий.
+- [x] Проверки: backend `compileKotlin compileTestKotlin` успешно; admin `npm run build` успешно. Targeted `AdminApiIntegrationTest.admin can list and delete series games from scoring` не выполнился локально из-за недоступного Docker/Testcontainers.
+
 ### DX: skill для создания серий по анонсам (июнь 2026)
 - [x] Добавлен проектный skill `.codex/skills/polemica-create-series-from-announcement` для production workflow по анонсам `Лиги Претендентов` и `Закрытой лиги`.
 - [x] В skill зафиксирован безопасный порядок: read-only найти активный `STANDALONE` tournament и ростер, создать серию через admin API в `UPCOMING`, назначить `series_player`, затем проверить результат read-only запросами.

@@ -21,6 +21,7 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
@@ -1249,6 +1250,80 @@ class AdminApiIntegrationTest {
             .andExpect(status().isBadRequest)
     }
 
+    @Test
+    @Order(26)
+    fun `admin can list and delete series games from scoring`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Games Admin Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+        val seriesId = createReportSeries(auth, tournamentId, "Games Admin Series", "GAS", "2026-12-03T12:00:00Z")
+        val gameOneId = insertSeriesGameWithCache(
+            seriesId = seriesId,
+            polemicaGameId = 882001,
+            gameNum = 11,
+            table = 3,
+            phase = 0,
+            scoreCalculated = true,
+        )
+        val gameTwoId = insertSeriesGameWithCache(
+            seriesId = seriesId,
+            polemicaGameId = 882002,
+            gameNum = 12,
+            table = 4,
+            phase = 1,
+            scoreCalculated = true,
+        )
+        val playerId = createReportPlayer(auth, tournamentId, 882101, "Games Player")
+        val templateId = createReportTemplate(auth, playerId, "COMMON")
+        val userCardId = giveReportCards(auth, 882201, listOf(templateId)).single()
+        val mainLeagueId = mainSeriesLeagueId(seriesId)
+        val teamId = insertFantasyTeam(882201, seriesId, mainLeagueId, 30.0)
+        val teamCardId = insertFantasyTeamCard(teamId, userCardId, 1, 30.0)
+        insertCardGameScore(teamCardId, gameOneId, 10.0)
+        insertCardGameScore(teamCardId, gameTwoId, 20.0)
+
+        mockMvc.perform(get("/api/v1/admin/series/$seriesId/games").header("Authorization", auth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].id").value(gameOneId.toInt()))
+            .andExpect(jsonPath("$[0].polemicaGameId").value(882001))
+            .andExpect(jsonPath("$[0].displayName").value("Игра 11"))
+            .andExpect(jsonPath("$[0].gameNum").value(11))
+            .andExpect(jsonPath("$[0].table").value(3))
+            .andExpect(jsonPath("$[0].phase").value(0))
+            .andExpect(jsonPath("$[0].finished").value(true))
+            .andExpect(jsonPath("$[0].scored").value(true))
+
+        mockMvc.perform(
+            delete("/api/v1/admin/series/$seriesId/games/$gameOneId").header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+
+        assertEquals(0, countRows("series_game", gameOneId))
+        assertEquals(0, countRows("fantasy_team_card_game_score", gameOneId, "series_game_id"))
+        assertEquals(20.0, selectDouble("SELECT score FROM fantasy_team_card WHERE id = ?", teamCardId))
+        assertEquals(20.0, selectDouble("SELECT total_score FROM fantasy_team WHERE id = ?", teamId))
+
+        jdbcTemplate.update("UPDATE series SET finalized = TRUE WHERE id = ?", seriesId)
+        mockMvc.perform(
+            delete("/api/v1/admin/series/$seriesId/games/$gameTwoId").header("Authorization", auth),
+        )
+            .andExpect(status().isConflict)
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/games")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaGameId":882003}"""),
+        )
+            .andExpect(status().isConflict)
+    }
+
     private fun createReportSeries(auth: String, tournamentId: Long, name: String, prefix: String, startsAt: String): Long {
         val json = mockMvc.perform(
             post("/api/v1/admin/tournaments/$tournamentId/series")
@@ -1325,6 +1400,45 @@ class AdminApiIntegrationTest {
         )
     }
 
+    private fun insertSeriesGameWithCache(
+        seriesId: Long,
+        polemicaGameId: Long,
+        gameNum: Int,
+        table: Int,
+        phase: Int,
+        scoreCalculated: Boolean,
+    ): Long =
+        jdbcTemplate.queryForObject(
+            """
+            INSERT INTO series_game (series_id, polemica_game_id, game_name, game_data_cache, scored, played_at)
+            VALUES (
+                ?,
+                ?,
+                '(no name)',
+                jsonb_build_object(
+                    'id', ?,
+                    'name', NULL,
+                    'started', '2026-12-03T12:00:00',
+                    'result', 1,
+                    'num', ?,
+                    'table', ?,
+                    'phase', ?
+                ),
+                ?,
+                now()
+            )
+            RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+            seriesId,
+            polemicaGameId,
+            polemicaGameId,
+            gameNum,
+            table,
+            phase,
+            scoreCalculated,
+        )!!
+
     private fun mainSeriesLeagueId(seriesId: Long): Long =
         jdbcTemplate.queryForObject(
             """
@@ -1352,18 +1466,50 @@ class AdminApiIntegrationTest {
             score,
         )!!
 
-    private fun insertFantasyTeamCard(teamId: Long, userCardId: Long, slot: Int, score: Double) {
-        jdbcTemplate.update(
+    private fun insertFantasyTeamCard(teamId: Long, userCardId: Long, slot: Int, score: Double): Long =
+        jdbcTemplate.queryForObject(
             """
             INSERT INTO fantasy_team_card (fantasy_team_id, user_card_id, slot, score)
             VALUES (?, ?, ?, ?)
+            RETURNING id
             """.trimIndent(),
+            Long::class.java,
             teamId,
             userCardId,
             slot,
             score,
-        )
-    }
+        )!!
+
+    private fun insertCardGameScore(fantasyTeamCardId: Long, seriesGameId: Long, totalScore: Double): Long =
+        jdbcTemplate.queryForObject(
+            """
+            INSERT INTO fantasy_team_card_game_score (
+                fantasy_team_card_id,
+                series_game_id,
+                base_points,
+                perk_bonus,
+                rarity_modifier,
+                total_score
+            )
+            VALUES (?, ?, ?, 0, 1, ?)
+            RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+            fantasyTeamCardId,
+            seriesGameId,
+            totalScore,
+            totalScore,
+        )!!
+
+    private fun countRows(tableName: String, id: Long, columnName: String = "id"): Int =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM $tableName WHERE $columnName = ?",
+            Int::class.java,
+            id,
+        )!!
+
+    private fun selectDouble(sql: String, vararg args: Any): Double =
+        jdbcTemplate.queryForObject(sql, Double::class.java, *args)!!
 
     companion object {
         @JvmField

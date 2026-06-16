@@ -278,6 +278,19 @@ export interface SeriesDto {
   replacementPolemicaUserIds: Record<number, number>
 }
 
+export interface AdminSeriesGameDto {
+  id: number
+  polemicaGameId: number
+  displayName: string
+  gameName: string
+  gameNum: number | null
+  table: number | null
+  phase: number | null
+  playedAt: string | null
+  finished: boolean
+  scored: boolean
+}
+
 export interface SeriesPlayerMarketplaceUnlistResultDto {
   tournamentPlayerId: number
   fantasyPlayerId: number

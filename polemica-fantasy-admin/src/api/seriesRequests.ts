@@ -32,3 +32,7 @@ export interface AssignSeriesPlayersRequest {
 export interface BatchStartSeriesRequest {
   seriesIds: number[]
 }
+
+export interface AddSeriesGameRequest {
+  polemicaGameId: number
+}

@@ -1,10 +1,12 @@
 import type {
+  AddSeriesGameRequest,
   AssignSeriesPlayersRequest,
   BatchStartSeriesRequest,
   CreateSeriesRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
 import type {
+  AdminSeriesGameDto,
   BatchStartSeriesResponseDto,
   SeriesDto,
   SeriesFinalizationResultDto,
@@ -13,6 +15,7 @@ import type {
 import { apiJson, apiVoid } from './client'
 
 export type {
+  AddSeriesGameRequest,
   CreateSeriesRequest,
   UpdateSeriesRequest,
   AssignSeriesPlayersRequest,
@@ -70,6 +73,21 @@ export function syncGames(id: number) {
 
 export function calculateScores(id: number) {
   return apiVoid(`/v1/admin/series/${id}/calculate-scores`, { method: 'POST' })
+}
+
+export function listSeriesGames(id: number) {
+  return apiJson<AdminSeriesGameDto[]>(`/v1/admin/series/${id}/games`)
+}
+
+export function addSeriesGame(id: number, body: AddSeriesGameRequest) {
+  return apiJson<AdminSeriesGameDto>(`/v1/admin/series/${id}/games`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function deleteSeriesGame(id: number, gameId: number) {
+  return apiVoid(`/v1/admin/series/${id}/games/${gameId}`, { method: 'DELETE' })
 }
 
 export function finalizeSeries(id: number) {

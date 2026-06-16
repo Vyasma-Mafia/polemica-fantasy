@@ -1,8 +1,13 @@
 package io.github.mralex1810.fantasy.service
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.github.mafia.vyasma.polemica.library.model.game.PolemicaGame
+import io.github.mralex1810.fantasy.config.PolemicaProperties
+import io.github.mralex1810.fantasy.dto.admin.request.AddSeriesGameRequest
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.response.AdminSeriesGameDto
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
@@ -12,6 +17,7 @@ import io.github.mralex1810.fantasy.entity.DeadlineReminder
 import io.github.mralex1810.fantasy.entity.LeagueType
 import io.github.mralex1810.fantasy.entity.MarketplaceListingStatus
 import io.github.mralex1810.fantasy.entity.Series
+import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.entity.SeriesLeague
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
@@ -23,7 +29,10 @@ import io.github.mralex1810.fantasy.event.SeriesRosterReplacementRecipient
 import io.github.mralex1810.fantasy.event.StartedSeriesInfo
 import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMessage
 import io.github.mralex1810.fantasy.polemica.GameSyncService
+import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
+import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
+import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.LeagueRepository
 import io.github.mralex1810.fantasy.repository.MarketplaceListingRepository
 import io.github.mralex1810.fantasy.repository.SeriesLeagueRepository
@@ -36,10 +45,13 @@ import io.github.mralex1810.fantasy.scoring.ScoringService
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 @Service
@@ -53,12 +65,19 @@ class SeriesService(
     private val leagueRepository: LeagueRepository,
     private val marketplaceListingRepository: MarketplaceListingRepository,
     private val seriesLeagueRepository: SeriesLeagueRepository,
+    private val fantasyTeamRepository: FantasyTeamRepository,
+    private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
+    private val polemicaProperties: PolemicaProperties,
+    private val polemicaIntegrationService: PolemicaIntegrationService,
     private val gameSyncService: GameSyncService,
     private val scoringService: ScoringService,
     private val seriesFinalizationService: SeriesFinalizationService,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    platformTransactionManager: PlatformTransactionManager,
 ) {
+
+    private val transactionTemplate = TransactionTemplate(platformTransactionManager)
 
     @Transactional
     fun createSeries(tournamentId: Long, request: CreateSeriesRequest): SeriesDto {
@@ -458,6 +477,175 @@ class SeriesService(
         scoringService.calculateScores(seriesId)
     }
 
+    @Transactional(readOnly = true)
+    fun listSeriesGames(seriesId: Long): List<AdminSeriesGameDto> {
+        if (!seriesRepository.existsById(seriesId)) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        return seriesGameRepository.findAllBySeries_Id(seriesId)
+            .sortedWith(
+                compareBy<SeriesGame>(
+                    { it.playedAt ?: Instant.MAX },
+                    { it.polemicaGameId },
+                    { it.id ?: Long.MAX_VALUE },
+                ),
+            )
+            .map { it.toAdminSeriesGameDto() }
+    }
+
+    fun addSeriesGame(seriesId: Long, request: AddSeriesGameRequest): AdminSeriesGameDto {
+        val polemicaGameId = request.polemicaGameId
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "polemicaGameId is required")
+        val context = seriesGameAdminContext(seriesId)
+        ensureSeriesGamesMutable(context.finalized)
+        ensurePolemicaCredentialsConfigured()
+        val game = fetchManualSeriesGame(context, polemicaGameId)
+        val storedPolemicaGameId = game.id ?: polemicaGameId
+        val prepared = PreparedSeriesGame(
+            polemicaGameId = storedPolemicaGameId,
+            resolvedName = resolvedStoredGameName(game, storedPolemicaGameId),
+            gameDataJson = polemicaIntegrationService.toJsonNode(game),
+            playedAt = game.started.atZone(ZoneId.systemDefault()).toInstant(),
+        )
+        val saved = transactionTemplate.execute {
+            val series = seriesRepository.findById(seriesId).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+            }
+            ensureSeriesGamesMutable(series.finalized)
+            val row = seriesGameRepository.findBySeries_IdAndPolemicaGameId(seriesId, prepared.polemicaGameId)
+                ?: SeriesGame(
+                    series = series,
+                    polemicaGameId = prepared.polemicaGameId,
+                )
+            row.gameName = prepared.resolvedName
+            row.gameDataCache = prepared.gameDataJson
+            row.playedAt = prepared.playedAt
+            row.scored = false
+            seriesGameRepository.save(row)
+        } ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save series game")
+        return saved.toAdminSeriesGameDto()
+    }
+
+    @Transactional
+    fun deleteSeriesGame(seriesId: Long, gameId: Long) {
+        val series = seriesRepository.findById(seriesId).orElseThrow {
+            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        }
+        ensureSeriesGamesMutable(series.finalized)
+        val game = seriesGameRepository.findByIdAndSeries_Id(gameId, seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series game $gameId not found")
+        fantasyTeamCardGameScoreRepository.deleteAllBySeriesGameId(game.id!!)
+        fantasyTeamCardGameScoreRepository.flush()
+        seriesGameRepository.delete(game)
+        seriesGameRepository.flush()
+        recomputeStoredScoresForSeries(seriesId)
+    }
+
+    private fun seriesGameAdminContext(seriesId: Long): SeriesGameAdminContext {
+        val series = seriesRepository.findByIdWithTournament(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        val tournament = series.tournament ?: throw ResponseStatusException(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Series $seriesId has no tournament",
+        )
+        return SeriesGameAdminContext(
+            finalized = series.finalized,
+            tournamentKind = tournament.kind,
+            polemicaCompetitionId = tournament.polemicaCompetitionId,
+        )
+    }
+
+    private fun fetchManualSeriesGame(context: SeriesGameAdminContext, polemicaGameId: Long): PolemicaGame =
+        when (context.tournamentKind) {
+            TournamentKind.STANDALONE -> polemicaIntegrationService.loadMatch(polemicaGameId)
+            TournamentKind.POLEMICA_COMPETITION -> {
+                val competitionId = context.polemicaCompetitionId
+                    ?: throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tournament polemica_competition_id is missing for POLEMICA_COMPETITION",
+                    )
+                val ref = polemicaIntegrationService.listCompetitionGameReferences(competitionId)
+                    .firstOrNull { it.id == polemicaGameId }
+                    ?: throw ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Polemica game $polemicaGameId is not part of competition $competitionId",
+                    )
+                polemicaIntegrationService.loadGameFromCompetition(competitionId, ref.id, ref.version)
+            }
+        }
+
+    private fun ensurePolemicaCredentialsConfigured() {
+        if (polemicaProperties.username.isBlank() || polemicaProperties.password.isBlank()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Polemica API credentials are not configured (POLEMICA_USERNAME / POLEMICA_PASSWORD)",
+            )
+        }
+    }
+
+    private fun ensureSeriesGamesMutable(finalized: Boolean) {
+        if (finalized) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot change games for finalized series")
+        }
+    }
+
+    private fun recomputeStoredScoresForSeries(seriesId: Long) {
+        val teams = fantasyTeamRepository.findAllBySeries_IdWithCards(seriesId)
+        val cards = teams.flatMap { it.cards }
+        val cardIds = cards.mapNotNull { it.id }
+        val scoreByCardId = if (cardIds.isEmpty()) {
+            emptyMap()
+        } else {
+            fantasyTeamCardGameScoreRepository.sumTotalScoreByFantasyTeamCardIdIn(cardIds).associate { row ->
+                val cardId = (row[0] as Number).toLong()
+                val totalScore = (row[1] as Number?)?.toDouble() ?: 0.0
+                cardId to totalScore
+            }
+        }
+        for (team in teams) {
+            var teamTotal = 0.0
+            for (card in team.cards) {
+                val cardScore = card.id?.let { scoreByCardId[it] } ?: 0.0
+                card.score = cardScore
+                teamTotal += cardScore
+            }
+            team.totalScore = teamTotal
+        }
+    }
+
+    private fun SeriesGame.toAdminSeriesGameDto(): AdminSeriesGameDto {
+        val node = gameDataCache
+        return AdminSeriesGameDto(
+            id = id!!,
+            polemicaGameId = polemicaGameId,
+            displayName = formatSeriesGameDisplayName(this),
+            gameName = gameName,
+            gameNum = node?.intField("num"),
+            table = node?.intField("table"),
+            phase = node?.intField("phase"),
+            playedAt = playedAt,
+            finished = node?.hasNonNullField("result") ?: false,
+            scored = scored,
+        )
+    }
+
+    private fun JsonNode.intField(name: String): Int? {
+        val node = path(name)
+        return if (node.isMissingNode || node.isNull) null else node.asInt()
+    }
+
+    private fun JsonNode.hasNonNullField(name: String): Boolean {
+        val node = path(name)
+        return !node.isMissingNode && !node.isNull
+    }
+
+    private fun resolvedStoredGameName(game: PolemicaGame, fallbackGameId: Long): String {
+        val trimmed = game.name?.trim().orEmpty()
+        if (trimmed.isNotEmpty()) return trimmed
+        val num = game.num
+        return if (num != null) "Игра $num" else "Игра #$fallbackGameId"
+    }
+
     private fun upsertDeadlineReminder(series: Series) {
         val seriesId = series.id ?: return
         val remindAt = series.teamDeadline.minus(1, ChronoUnit.HOURS)
@@ -562,6 +750,19 @@ class SeriesService(
     private data class SeriesPlayerAssignment(
         val tournamentPlayerIds: List<Long>,
         val replacementPolemicaUserIds: Map<Long, Long>,
+    )
+
+    private data class SeriesGameAdminContext(
+        val finalized: Boolean,
+        val tournamentKind: TournamentKind,
+        val polemicaCompetitionId: Long?,
+    )
+
+    private data class PreparedSeriesGame(
+        val polemicaGameId: Long,
+        val resolvedName: String,
+        val gameDataJson: JsonNode,
+        val playedAt: Instant,
     )
 
     private data class ValidatedSeriesFields(
