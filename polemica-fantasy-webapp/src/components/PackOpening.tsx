@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { PackOpeningCard, PackOpeningUserCard, UserCardItem } from '../api/types'
 import { skinClass } from '../lib/cardFrameClasses'
@@ -29,18 +29,28 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
   const [phase, setPhase] = useState<Phase>('pack')
   const [visibleIndex, setVisibleIndex] = useState(0)
   const revealRunId = useRef(0)
+  const packTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
 
   useEffect(() => {
     if (cards.length === 0) return undefined
+    revealRunId.current += 1
+    if (packTimerRef.current) clearTimeout(packTimerRef.current)
     queueMicrotask(() => {
       setPhase('pack')
       setVisibleIndex(0)
     })
-    const t = setTimeout(() => {
+    packTimerRef.current = setTimeout(() => {
+      packTimerRef.current = null
       setPhase('reveal')
       setVisibleIndex(0)
     }, PACK_PHASE_MS)
-    return () => clearTimeout(t)
+    return () => {
+      if (packTimerRef.current) {
+        clearTimeout(packTimerRef.current)
+        packTimerRef.current = null
+      }
+    }
   }, [cards])
 
   useEffect(() => {
@@ -70,6 +80,41 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
     }
   }, [phase, cards.length])
 
+  const skipAnimation = useCallback(() => {
+    if (cards.length === 0) return
+    if (packTimerRef.current) {
+      clearTimeout(packTimerRef.current)
+      packTimerRef.current = null
+    }
+    revealRunId.current += 1
+    setVisibleIndex(cards.length - 1)
+    setPhase('summary')
+  }, [cards.length])
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'mouse') return
+
+      const now = window.performance.now()
+      const lastTap = lastTapRef.current
+      const nextTap = { time: now, x: event.clientX, y: event.clientY }
+
+      if (lastTap) {
+        const msSinceLastTap = now - lastTap.time
+        const dx = event.clientX - lastTap.x
+        const dy = event.clientY - lastTap.y
+        if (msSinceLastTap <= 320 && Math.hypot(dx, dy) <= 36) {
+          lastTapRef.current = null
+          skipAnimation()
+          return
+        }
+      }
+
+      lastTapRef.current = nextTap
+    },
+    [skipAnimation],
+  )
+
   const totalPulledValue = useMemo(
     () =>
       cards.length === 0
@@ -91,6 +136,8 @@ export function PackOpening({ cards, packName, onDismiss, onBuyMore }: PackOpeni
       aria-modal
       aria-labelledby="pf-pack-open-title"
       aria-live="polite"
+      onDoubleClick={skipAnimation}
+      onPointerUp={handlePointerUp}
     >
       <div className="pf-pack-open__backdrop" />
 

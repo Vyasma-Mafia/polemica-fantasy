@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.dto.admin.request
 
+import io.github.mralex1810.fantasy.entity.CardPackOpeningMode
 import io.github.mralex1810.fantasy.entity.Rarity
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
@@ -27,6 +28,7 @@ data class CreateCardPackRequest(
     val freeOpensPerUser: Int = 0,
     @field:PositiveOrZero
     val maxOpensPerUser: Int = 0,
+    val openingMode: CardPackOpeningMode = CardPackOpeningMode.INSTANT,
     val perkIds: List<String> = emptyList(),
     val useAllTournamentPlayers: Boolean = false,
     val skinId: Long? = null,
@@ -46,6 +48,7 @@ data class UpdateCardPackRequest(
     val freeOpensPerUser: Int? = null,
     @field:PositiveOrZero
     val maxOpensPerUser: Int? = null,
+    val openingMode: CardPackOpeningMode? = null,
     val perkIds: List<String>? = null,
     val useAllTournamentPlayers: Boolean? = null,
     val skinId: Long? = null,

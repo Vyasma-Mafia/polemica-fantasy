@@ -2,6 +2,14 @@
 
 ## Что реализовано
 
+### Backend+admin+TMA: CHOOSE-паки (июнь 2026)
+- [x] В `card_pack` добавлен `openingMode` (`INSTANT`/`CHOOSE`), Flyway **V58** создаёт `user_card_pack_choice` для pending выбора из 3 вариантов с reservation/payment fields.
+- [x] User Store API: `POST /store/packs/{id}/buy` возвращает `OPENED` или `PENDING_CHOICE`; `POST /store/pack-choices/{choiceId}/select` row-locks choice, материализует выбранный вариант, повтор того же option идемпотентен, другой option после выбора возвращает `409`.
+- [x] Общая логика draw/materialize/finalize вынесена в `CardPackService`, чтобы INSTANT и CHOOSE совпадали по скинам, перкам, uses, ownership history, Tyulenchik и pack-open facts.
+- [x] TMA Store показывает “Выбор 1 из 3 наборов”, pending resume CTA и новый `PackChoiceOverlay` с горизонтальным scroll-snap carousel; после select открывается существующий `PackOpening`.
+- [x] Admin Card packs позволяет выбрать Instant/Choose, для CHOOSE принудительно включает auto-generated и фиксирует V1-ограничение “3 варианта, выбрать 1”; User tools скрывает CHOOSE в прямом open-pack, backend admin open-pack тоже rejects CHOOSE.
+- [x] Проверки: backend `compileKotlin compileTestKotlin`, TMA `npm run build`, admin `npm run build`, Docker backend rebuild, локальный API smoke buy/select/idempotency/409 — успешно. Targeted Testcontainers test не стартовал локально из-за недоступного Docker provider для тестов; Browser plugin заблокировал локальный URL политикой Browser Use, поэтому визуальный in-app pass не завершён.
+
 ### Backend+admin: ручное управление играми серии (июнь 2026)
 - [x] Admin API получил `GET /api/v1/admin/series/{id}/games`, `POST /api/v1/admin/series/{id}/games` и `DELETE /api/v1/admin/series/{id}/games/{gameId}` для просмотра, добавления и удаления строк `series_game`.
 - [x] Add по Polemica game id загружает полный `PolemicaGame`, делает upsert по `(series_id, polemica_game_id)`, для `POLEMICA_COMPETITION` валидирует принадлежность id связанному соревнованию и оставляет ручной `Calculate scores`.

@@ -28,6 +28,10 @@ export function UserToolsPage() {
       ),
     [packsQ.data],
   )
+  const instantPacks = useMemo(
+    () => sortedPacks.filter((p) => p.openingMode !== 'CHOOSE'),
+    [sortedPacks],
+  )
 
   const giveMut = useMutation({
     mutationFn: ({
@@ -163,7 +167,7 @@ export function UserToolsPage() {
             allowClear
             placeholder="Pack"
             loading={packsQ.isLoading}
-            options={sortedPacks.map((p) => ({
+            options={instantPacks.map((p) => ({
               value: p.id,
               label: `#${p.id} ${p.name} (tournament ${p.tournamentId})`,
             }))}

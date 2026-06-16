@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.dto.user.response
 
+import io.github.mralex1810.fantasy.entity.CardPackOpeningMode
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.SeriesStatus
@@ -220,6 +221,7 @@ data class StorePackRaritySlotDto(
 data class StorePackItemDto(
     val id: Long,
     val name: String,
+    val openingMode: CardPackOpeningMode,
     val priceFantiki: Long,
     /** Remaining free opens for the current user; 0 when not applicable. */
     val freeOpensRemaining: Int,
@@ -228,12 +230,47 @@ data class StorePackItemDto(
     /** How many cards the user already got from this pack (opens used). */
     val packOpensUsed: Int,
     val rarityLayout: List<StorePackRaritySlotDto>,
+    val pendingChoice: PackChoiceDto? = null,
 )
 
+enum class BuyPackResponseKind {
+    OPENED,
+    PENDING_CHOICE,
+}
+
 data class BuyPackResponseDto(
+    val kind: BuyPackResponseKind = BuyPackResponseKind.OPENED,
     val fantiki: Long,
-    val cards: List<UserCardItemDto>,
-    val openingCards: List<PackOpeningCardDto>,
+    val cards: List<UserCardItemDto> = emptyList(),
+    val openingCards: List<PackOpeningCardDto> = emptyList(),
+    val choice: PackChoiceDto? = null,
+)
+
+data class SelectPackChoiceRequestDto(
+    val optionId: String,
+)
+
+data class PackChoiceDto(
+    val id: Long,
+    val packId: Long,
+    val packName: String,
+    val requiredCount: Int,
+    val options: List<PackChoiceOptionDto>,
+)
+
+data class PackChoiceOptionDto(
+    val optionId: String,
+    val cards: List<PackChoiceCardDto>,
+)
+
+data class PackChoiceCardDto(
+    val fantasyPlayerId: Long,
+    val playerName: String,
+    val playerPhotoUrl: String?,
+    val rarity: Rarity,
+    val skinCode: String?,
+    val perks: List<CardPerkBriefDto>,
+    val value: Long,
 )
 
 enum class PackOpeningCardKind {

@@ -1,4 +1,4 @@
-import type { Rarity } from './types'
+import type { CardPackOpeningMode, Rarity } from './types'
 
 export interface CardPackRarityConfigDto {
   rarity: Rarity
@@ -15,6 +15,7 @@ export interface CreateCardPackRequest {
   freeOpensPerUser?: number
   /** Max total pack opens per user; 0 = unlimited. */
   maxOpensPerUser?: number
+  openingMode?: CardPackOpeningMode
   /** RNG pool for this pack; empty = global canAppearOnRandomCards pool. */
   perkIds?: string[]
   useAllTournamentPlayers?: boolean
@@ -30,6 +31,7 @@ export interface UpdateCardPackRequest {
   priceFantiki?: number | null
   freeOpensPerUser?: number | null
   maxOpensPerUser?: number | null
+  openingMode?: CardPackOpeningMode | null
   perkIds?: string[] | null
   useAllTournamentPlayers?: boolean | null
   skinId?: number | null

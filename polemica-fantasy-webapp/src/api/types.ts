@@ -151,9 +151,12 @@ export interface StorePackRaritySlot {
   cardsCount: number
 }
 
+export type CardPackOpeningMode = 'INSTANT' | 'CHOOSE'
+
 export interface StorePackItem {
   id: number
   name: string
+  openingMode: CardPackOpeningMode
   priceFantiki: number
   /** Remaining free opens for current user; 0 when not applicable. */
   freeOpensRemaining: number
@@ -162,13 +165,41 @@ export interface StorePackItem {
   /** Cards already received from this pack (opens used). */
   packOpensUsed: number
   rarityLayout: StorePackRaritySlot[]
+  pendingChoice?: PackChoice | null
 }
 
+export type BuyPackResponseKind = 'OPENED' | 'PENDING_CHOICE'
+
 export interface BuyPackResponse {
+  kind: BuyPackResponseKind
   fantiki: number
   cards: UserCardItem[]
   /** Cards shown in pack opening animation; can include visual-only companions. */
   openingCards?: PackOpeningCard[]
+  choice?: PackChoice | null
+}
+
+export interface PackChoice {
+  id: number
+  packId: number
+  packName: string
+  requiredCount: number
+  options: PackChoiceOption[]
+}
+
+export interface PackChoiceOption {
+  optionId: string
+  cards: PackChoiceCard[]
+}
+
+export interface PackChoiceCard {
+  fantasyPlayerId: number
+  playerName: string
+  playerPhotoUrl: string | null
+  rarity: Rarity
+  skinCode: string | null
+  perks: UserCardItem['perks']
+  value: number
 }
 
 export interface PackOpeningUserCard {

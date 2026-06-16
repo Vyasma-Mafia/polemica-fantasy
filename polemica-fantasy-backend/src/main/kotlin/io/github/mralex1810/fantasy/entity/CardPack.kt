@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -41,6 +43,10 @@ class CardPack(
     /** Max total pack opens per user (incl. free); 0 = unlimited. */
     @Column(name = "max_opens_per_user", nullable = false)
     var maxOpensPerUser: Int = 0,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "open_mode", nullable = false)
+    var openingMode: CardPackOpeningMode = CardPackOpeningMode.INSTANT,
 
     @Column(name = "use_all_tournament_players", nullable = false)
     var useAllTournamentPlayers: Boolean = false,

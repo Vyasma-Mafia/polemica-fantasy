@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMarkOnboardingStep } from '../api/antiChurn'
 import { ApiError, apiGet, apiSend } from '../api/client'
-import type { BuyPackResponse, PackOpeningCard, StorePackItem, UserCardItem, UserProfile } from '../api/types'
+import type { BuyPackResponse, PackChoice, PackOpeningCard, StorePackItem, UserCardItem, UserProfile } from '../api/types'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
+import { PackChoiceOverlay } from '../components/PackChoiceOverlay'
 import { PackOpening } from '../components/PackOpening'
 import { PageHeader } from '../components/PageHeader'
 import { useInitData } from '../context/useInitData'
@@ -23,7 +24,9 @@ export function StorePage() {
     packName: string
     packId: number
   } | null>(null)
+  const [pendingChoice, setPendingChoice] = useState<PackChoice | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
+  const [choiceError, setChoiceError] = useState<string | null>(null)
   const meQ = useQuery({
     queryKey: ['me', initData],
     queryFn: () => apiGet<UserProfile>('/api/v1/me', initData),
@@ -41,20 +44,34 @@ export function StorePage() {
       apiSend<BuyPackResponse>('POST', `/api/v1/store/packs/${packId}/buy`, initData),
     onSuccess: (data, packId) => {
       const pack = queryClient.getQueryData<StorePackItem[]>(['store-packs', initData])?.find((p) => p.id === packId)
-      if (data.cards.length > 0) {
+      if (data.kind === 'PENDING_CHOICE' && data.choice) {
+        setPendingChoice(data.choice)
+      } else if (data.cards.length > 0) {
         setLastOpening({ response: data, packName: pack?.name ?? 'Пак', packId })
       }
       setConfirmPackId(null)
       setBuyError(null)
-      void queryClient.invalidateQueries({ queryKey: ['me'] })
-      void queryClient.invalidateQueries({ queryKey: ['cards'] })
-      void queryClient.invalidateQueries({ queryKey: ['achievements'] })
-      void queryClient.invalidateQueries({ queryKey: ['store-packs'] })
-      void queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
-      void queryClient.invalidateQueries({ queryKey: ['marketplace-feed'] })
+      invalidateStoreQueries(queryClient)
     },
     onError: (e: Error) => {
       setBuyError(e instanceof ApiError ? e.message : String(e))
+    },
+  })
+
+  const selectChoiceM = useMutation({
+    mutationFn: ({ choiceId, optionId }: { choiceId: number; optionId: string }) =>
+      apiSend<BuyPackResponse>('POST', `/api/v1/store/pack-choices/${choiceId}/select`, initData, { optionId }),
+    onSuccess: (data) => {
+      const choice = pendingChoice
+      if (data.kind === 'OPENED' && data.cards.length > 0) {
+        setLastOpening({ response: data, packName: choice?.packName ?? 'Пак', packId: choice?.packId ?? 0 })
+      }
+      setPendingChoice(null)
+      setChoiceError(null)
+      invalidateStoreQueries(queryClient)
+    },
+    onError: (e: Error) => {
+      setChoiceError(e instanceof ApiError ? e.message : String(e))
     },
   })
 
@@ -99,9 +116,10 @@ export function StorePage() {
           const nextIsFree = pack.priceFantiki > 0 && freeLeft > 0
           const maxOpens = pack.maxOpensPerUser ?? 0
           const packUsed = pack.packOpensUsed ?? 0
-          const atPackLimit = maxOpens > 0 && packUsed >= maxOpens
+          const hasPendingChoice = pack.pendingChoice != null
+          const atPackLimit = maxOpens > 0 && packUsed >= maxOpens && !hasPendingChoice
           const affordable =
-            !atPackLimit && (pack.priceFantiki === 0 || nextIsFree || balance >= pack.priceFantiki)
+            hasPendingChoice || (!atPackLimit && (pack.priceFantiki === 0 || nextIsFree || balance >= pack.priceFantiki))
           return (
             <li key={pack.id} className="pf-store-card">
               <div className="pf-store-card__head">
@@ -122,16 +140,27 @@ export function StorePage() {
                   </div>
                 ))}
               </div>
+              {pack.openingMode === 'CHOOSE' && (
+                <p className="pf-store-hint pf-store-hint--choice">Выбор 1 из 3 наборов</p>
+              )}
+              {hasPendingChoice && (
+                <p className="pf-store-hint pf-muted">Покупка уже оплачена. Осталось выбрать набор.</p>
+              )}
               <button
                 type="button"
                 className="pf-btn pf-store-buy"
                 disabled={!affordable || buyM.isPending}
                 onClick={() => {
                   setBuyError(null)
-                  setConfirmPackId(pack.id)
+                  setChoiceError(null)
+                  if (pack.pendingChoice) {
+                    setPendingChoice(pack.pendingChoice)
+                  } else {
+                    setConfirmPackId(pack.id)
+                  }
                 }}
               >
-                Купить
+                {pack.pendingChoice ? 'Продолжить выбор' : 'Купить'}
               </button>
               {atPackLimit && (
                 <p className="pf-store-hint pf-muted">Лимит открытий исчерпан</p>
@@ -176,6 +205,19 @@ export function StorePage() {
         />
       )}
 
+      {pendingChoice && (
+        <PackChoiceOverlay
+          choice={pendingChoice}
+          isSubmitting={selectChoiceM.isPending}
+          error={choiceError}
+          onSelect={(optionId) => selectChoiceM.mutate({ choiceId: pendingChoice.id, optionId })}
+          onDismiss={() => {
+            setPendingChoice(null)
+            setChoiceError(null)
+          }}
+        />
+      )}
+
       {confirmingPack && (
         <div className="pf-modal-backdrop" role="dialog" aria-modal aria-label="Подтверждение покупки" onClick={() => setConfirmPackId(null)}>
           <div className="pf-modal pf-modal--narrow" onClick={(e) => e.stopPropagation()}>
@@ -190,6 +232,11 @@ export function StorePage() {
                     ? 'бесплатно (квота)'
                     : `${confirmingPack.priceFantiki.toLocaleString('ru-RU')} фантиков`}
             </p>
+            {confirmingPack.openingMode === 'CHOOSE' && (
+              <p className="pf-muted">
+                После покупки появятся 3 набора. В коллекцию попадёт только выбранный.
+              </p>
+            )}
             {confirmAtLimit && (
               <p className="pf-err" style={{ marginTop: 8 }}>
                 Лимит открытий исчерпан
@@ -224,6 +271,15 @@ function resolvePackOpeningCards(response: BuyPackResponse): PackOpeningCard[] {
     return response.openingCards
   }
   return buildLegacyOpeningCards(response.cards)
+}
+
+function invalidateStoreQueries(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ['me'] })
+  void queryClient.invalidateQueries({ queryKey: ['cards'] })
+  void queryClient.invalidateQueries({ queryKey: ['achievements'] })
+  void queryClient.invalidateQueries({ queryKey: ['store-packs'] })
+  void queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
+  void queryClient.invalidateQueries({ queryKey: ['marketplace-feed'] })
 }
 
 function buildLegacyOpeningCards(cards: UserCardItem[]): PackOpeningCard[] {
