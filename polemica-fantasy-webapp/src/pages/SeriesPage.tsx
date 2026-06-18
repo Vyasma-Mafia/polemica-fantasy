@@ -110,6 +110,36 @@ export function SeriesPage() {
       )}
 
       <section className="pf-section">
+        <h2 className="pf-section-title">Игроки серии</h2>
+        <ul className="pf-participants">
+          {s.players.map((p) => (
+            <li key={p.tournamentPlayerId} className="pf-participants__row">
+              <PlayerImage
+                src={p.photoUrl}
+                seedId={p.fantasyPlayerId}
+                variant="avatar"
+                className="pf-participants__avatar"
+              />
+              <span className="pf-participants__name">{p.nickname}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="pf-section">
+        <h2 className="pf-section-title">Игры</h2>
+        <ul className="pf-link-list pf-link-list--plain">
+          {s.games.map((g) => (
+            <li key={g.polemicaGameId} className="pf-game-row">
+              <span>{g.gameName}</span>
+              <span className="pf-muted">{g.scored ? '✓ учтено' : '…'}</span>
+            </li>
+          ))}
+        </ul>
+        {s.games.length === 0 && <p className="pf-muted">Игры ещё не синхронизированы.</p>}
+      </section>
+
+      <section className="pf-section">
         <h2 className="pf-section-title">Лидерборд: {leagueName}</h2>
         <label className="pf-field">
           <span className="pf-field__label">Фильтр по игроку</span>
@@ -149,36 +179,6 @@ export function SeriesPage() {
             {playerFilter ? 'Нет команд с этим игроком в составе.' : 'Пока нет команд в этой лиге.'}
           </p>
         )}
-      </section>
-
-      <section className="pf-section">
-        <h2 className="pf-section-title">Игроки серии</h2>
-        <ul className="pf-participants">
-          {s.players.map((p) => (
-            <li key={p.tournamentPlayerId} className="pf-participants__row">
-              <PlayerImage
-                src={p.photoUrl}
-                seedId={p.fantasyPlayerId}
-                variant="avatar"
-                className="pf-participants__avatar"
-              />
-              <span className="pf-participants__name">{p.nickname}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="pf-section">
-        <h2 className="pf-section-title">Игры</h2>
-        <ul className="pf-link-list pf-link-list--plain">
-          {s.games.map((g) => (
-            <li key={g.polemicaGameId} className="pf-game-row">
-              <span>{g.gameName}</span>
-              <span className="pf-muted">{g.scored ? '✓ учтено' : '…'}</span>
-            </li>
-          ))}
-        </ul>
-        {s.games.length === 0 && <p className="pf-muted">Игры ещё не синхронизированы.</p>}
       </section>
 
       <p className="pf-footer-link">
