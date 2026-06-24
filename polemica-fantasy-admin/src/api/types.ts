@@ -130,6 +130,14 @@ export interface BroadcastAcceptedDto {
   recipientCount: number
 }
 
+export interface DirectMessageResultDto {
+  telegramUserId: number
+  sent: boolean
+  skippedBlocked: boolean
+  skippedPreference: boolean
+  failed: boolean
+}
+
 export type ProductAudience =
   | 'ALL'
   | 'NEVER_ACTIVATED'
@@ -217,6 +225,7 @@ export interface AdminUserListItemDto {
   username: string | null
   displayName: string | null
   fantiki: number
+  botBlocked: boolean
   cardsInSeries: number | null
 }
 

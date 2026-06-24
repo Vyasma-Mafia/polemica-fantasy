@@ -47,7 +47,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     @Query(
         value =
             """
-            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
+            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, tu.bot_blocked, COUNT(uc.id)
             FROM telegram_user tu
             LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
               AND uc.deleted_at IS NULL
@@ -58,7 +58,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
                 WHERE ct.id = uc.card_template_id
                   AND tp.fantasy_player_id = ct.fantasy_player_id
               )
-            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki
+            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, tu.bot_blocked
             ORDER BY tu.id
             """,
         nativeQuery = true,
@@ -84,7 +84,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     @Query(
         value =
             """
-            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, COUNT(uc.id)
+            SELECT tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, tu.bot_blocked, COUNT(uc.id)
             FROM telegram_user tu
             LEFT JOIN user_card uc ON uc.telegram_user_id = tu.id
               AND uc.deleted_at IS NULL
@@ -99,7 +99,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
               (tu.username IS NOT NULL AND tu.username ILIKE :pattern ESCAPE '!')
               OR (tu.display_name IS NOT NULL AND tu.display_name ILIKE :pattern ESCAPE '!')
               OR (CAST(tu.telegram_id AS text) ILIKE :pattern ESCAPE '!')
-            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki
+            GROUP BY tu.id, tu.telegram_id, tu.username, tu.display_name, tu.fantiki, tu.bot_blocked
             ORDER BY tu.id
             """,
         nativeQuery = true,

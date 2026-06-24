@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Backend+admin: персональные сообщения через бота (июнь 2026)
+- [x] Добавлен admin endpoint `POST /api/v1/admin/notifications/direct` для отправки Telegram MarkdownV2 сообщения одному `telegram_user` по `telegramUserId`.
+- [x] Персональная отправка переиспользует `NotificationDeliveryService` и категорию `ADMIN_BROADCAST`, поэтому учитывает `bot_blocked`, 429 retry и пометку пользователя при 403; ответ возвращает `sent/skippedBlocked/skippedPreference/failed`.
+- [x] `AdminUserListItemDto` расширен `botBlocked`; админская страница Users показывает статус доступности бота.
+- [x] Страница Broadcast в админке стала **Bot messages** с вкладками Direct message и Broadcast; direct-вкладка ищет пользователя, показывает warning для `botBlocked`, валидирует MarkdownV2 и даёт preview.
+- [x] Проверки: targeted `AdminBroadcastNotificationServiceTest` успешно; `npm run build` (`polemica-fantasy-admin`) успешно.
+
 ### Backend+admin+TMA: CHOOSE-паки (июнь 2026)
 - [x] В `card_pack` добавлен `openingMode` (`INSTANT`/`CHOOSE`), Flyway **V58** создаёт `user_card_pack_choice` для pending выбора из 3 вариантов с reservation/payment fields.
 - [x] User Store API: `POST /store/packs/{id}/buy` возвращает `OPENED` или `PENDING_CHOICE`; `POST /store/pack-choices/{choiceId}/select` row-locks choice, материализует выбранный вариант, повтор того же option идемпотентен, другой option после выбора возвращает `409`.

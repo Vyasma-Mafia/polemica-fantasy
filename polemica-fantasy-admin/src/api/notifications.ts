@@ -1,5 +1,6 @@
 import type {
   BroadcastAcceptedDto,
+  DirectMessageResultDto,
   ProductAnalyticsSummaryDto,
   ProductCampaignAnalyticsDto,
   ProductCampaignAudienceCountDto,
@@ -14,6 +15,13 @@ export function broadcastMessage(text: string) {
   return apiJson<BroadcastAcceptedDto>('/v1/admin/notifications/broadcast', {
     method: 'POST',
     body: JSON.stringify({ text }),
+  })
+}
+
+export function sendDirectMessage(telegramUserId: number, text: string) {
+  return apiJson<DirectMessageResultDto>('/v1/admin/notifications/direct', {
+    method: 'POST',
+    body: JSON.stringify({ telegramUserId, text }),
   })
 }
 

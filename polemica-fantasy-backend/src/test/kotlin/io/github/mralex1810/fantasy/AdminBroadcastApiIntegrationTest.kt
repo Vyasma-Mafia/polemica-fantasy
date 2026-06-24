@@ -53,6 +53,28 @@ class AdminBroadcastApiIntegrationTest {
             .andExpect(jsonPath("$.recipientCount").exists())
     }
 
+    @Test
+    fun `direct message without auth returns 401`() {
+        mockMvc.perform(
+            post("/api/v1/admin/notifications/direct")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"telegramUserId":123,"text":"Hello"}"""),
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `direct message to missing user returns 404`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        mockMvc.perform(
+            post("/api/v1/admin/notifications/direct")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"telegramUserId":123,"text":"Hello"}"""),
+        )
+            .andExpect(status().isNotFound)
+    }
+
     private fun basicAuth(user: String, pass: String): String {
         val raw = "$user:$pass"
         return "Basic " + Base64.getEncoder().encodeToString(raw.toByteArray(Charsets.UTF_8))

@@ -66,6 +66,7 @@ class AdminUserListService(
         username = u.username,
         displayName = u.displayName,
         fantiki = u.fantiki,
+        botBlocked = u.botBlocked,
         cardsInSeries = null,
     )
 
@@ -75,13 +76,15 @@ class AdminUserListService(
         val username = row[2] as String?
         val displayName = row[3] as String?
         val fantiki = (row[4] as Number).toLong()
-        val count = (row[5] as Number).toLong()
+        val botBlocked = row[5] as Boolean
+        val count = (row[6] as Number).toLong()
         return AdminUserListItemDto(
             id = id,
             telegramId = telegramId,
             username = username,
             displayName = displayName,
             fantiki = fantiki,
+            botBlocked = botBlocked,
             cardsInSeries = count,
         )
     }

@@ -1,4 +1,4 @@
-import { Input, Select, Space, Table, Typography } from 'antd'
+import { Input, Select, Space, Table, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { listSeriesByTournament } from '../api/series'
@@ -71,6 +71,14 @@ export function UsersOverviewPage() {
         key: 'fantiki',
         align: 'right' as const,
         render: (v: number) => v.toLocaleString('ru-RU'),
+      },
+      {
+        title: 'Bot',
+        dataIndex: 'botBlocked' as const,
+        key: 'botBlocked',
+        render: (v: boolean) => (
+          <Tag color={v ? 'red' : 'green'}>{v ? 'Blocked' : 'Available'}</Tag>
+        ),
       },
       {
         title: 'Cards (series)',

@@ -192,5 +192,6 @@ data class AdminUserListItemDto(
     val username: String?,
     val displayName: String?,
     val fantiki: Long,
+    val botBlocked: Boolean,
     val cardsInSeries: Long?,
 )

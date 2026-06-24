@@ -2,11 +2,13 @@ package io.github.mralex1810.fantasy.controller.admin
 
 import io.github.mralex1810.fantasy.dto.admin.request.BroadcastMessageRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateReleaseNoteRequest
+import io.github.mralex1810.fantasy.dto.admin.request.DirectMessageRequest
 import io.github.mralex1810.fantasy.dto.admin.request.ProductCampaignDryRunRequest
 import io.github.mralex1810.fantasy.dto.admin.request.ProductCampaignPreviewRequest
 import io.github.mralex1810.fantasy.dto.admin.request.SendProductCampaignRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateReleaseNoteRequest
 import io.github.mralex1810.fantasy.dto.admin.response.BroadcastAcceptedResponse
+import io.github.mralex1810.fantasy.dto.admin.response.DirectMessageResultResponse
 import io.github.mralex1810.fantasy.dto.admin.response.ProductCampaignAudienceCountDto
 import io.github.mralex1810.fantasy.dto.admin.response.ProductCampaignDto
 import io.github.mralex1810.fantasy.dto.admin.response.ProductCampaignPreviewDto
@@ -41,6 +43,10 @@ class AdminNotificationController(
         val recipientCount = adminBroadcastNotificationService.queueBroadcast(body.text.trim())
         return BroadcastAcceptedResponse(recipientCount = recipientCount)
     }
+
+    @PostMapping("/direct")
+    fun sendDirect(@Valid @RequestBody body: DirectMessageRequest): DirectMessageResultResponse =
+        adminBroadcastNotificationService.sendDirect(body.telegramUserId, body.text.trim())
 
     @GetMapping("/campaigns")
     fun listCampaigns(): List<ProductCampaignDto> = productCampaignService.list()

@@ -149,6 +149,13 @@ class AdminApiIntegrationTest {
                 .content("""{"text":"test"}"""),
         )
             .andExpect(status().isForbidden)
+        mockMvc.perform(
+            post("/api/v1/admin/notifications/direct")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"telegramUserId":123,"text":"test"}"""),
+        )
+            .andExpect(status().isForbidden)
     }
 
     @Test
