@@ -29,10 +29,10 @@ data class UpdateTournamentRequest(
 )
 
 data class AddTournamentPlayerRequest(
-    @field:NotNull
-    val polemicaUserId: Long,
-    @field:NotBlank @field:Size(max = 512)
-    val nickname: String,
+    val fantasyPlayerId: Long? = null,
+    val polemicaUserId: Long? = null,
+    @field:Size(max = 512)
+    val nickname: String? = null,
 )
 
 data class PatchTournamentPlayerRequest(

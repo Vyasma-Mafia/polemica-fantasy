@@ -17,8 +17,9 @@ export interface UpdateTournamentRequest {
 }
 
 export interface AddTournamentPlayerRequest {
-  polemicaUserId: number
-  nickname: string
+  fantasyPlayerId?: number | null
+  polemicaUserId?: number | null
+  nickname?: string | null
 }
 
 export interface PatchTournamentPlayerRequest {

@@ -49,6 +49,16 @@ data class TournamentPlayerDto(
     val excludedFromPackPool: Boolean,
 )
 
+data class FantasyPlayerAdminDto(
+    val id: Long,
+    val polemicaUserId: Long,
+    val nickname: String,
+    val photoUrl: String?,
+    val tournamentIds: List<Long>,
+    val tournamentCount: Long,
+    val cardTemplateCount: Long,
+)
+
 data class SeriesDto(
     val id: Long,
     val tournamentId: Long,

@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Backend+admin: глобальный каталог игроков (июнь 2026)
+- [x] Добавлена admin-страница **Players** со списком всех `fantasy_player`, поиском, созданием, редактированием ника, загрузкой фото и добавлением выбранного игрока в целевой турнир.
+- [x] Backend получил `FantasyPlayerAdminController` / `FantasyPlayerAdminService`: `GET/POST/PUT /api/v1/admin/fantasy-players`, `POST /api/v1/admin/fantasy-players/{id}/photo`, DTO с `tournamentIds`, `tournamentCount` и `cardTemplateCount`.
+- [x] `POST /api/v1/admin/tournaments/{id}/players` теперь принимает `fantasyPlayerId` для переиспользования существующего игрока, сохраняя старый сценарий `polemicaUserId + nickname`.
+- [x] Форма Add player на странице турнира получила поиск существующего игрока из каталога, чтобы не копировать Polemica id и ник вручную.
+- [x] Проверки: backend `./gradlew compileKotlin compileTestKotlin` успешно; admin `npm run build` успешно.
+
 ### Backend+admin: персональные сообщения через бота (июнь 2026)
 - [x] Добавлен admin endpoint `POST /api/v1/admin/notifications/direct` для отправки Telegram MarkdownV2 сообщения одному `telegram_user` по `telegramUserId`.
 - [x] Персональная отправка переиспользует `NotificationDeliveryService` и категорию `ADMIN_BROADCAST`, поэтому учитывает `bot_blocked`, 429 retry и пометку пользователя при 403; ответ возвращает `sent/skippedBlocked/skippedPreference/failed`.

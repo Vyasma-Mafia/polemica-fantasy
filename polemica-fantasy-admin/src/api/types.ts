@@ -258,6 +258,16 @@ export interface TournamentPlayerDto {
   excludedFromPackPool: boolean
 }
 
+export interface FantasyPlayerAdminDto {
+  id: number
+  polemicaUserId: number
+  nickname: string
+  photoUrl: string | null
+  tournamentIds: number[]
+  tournamentCount: number
+  cardTemplateCount: number
+}
+
 export interface TournamentDetailDto extends TournamentDto {
   players: TournamentPlayerDto[]
 }

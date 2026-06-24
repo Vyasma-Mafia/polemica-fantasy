@@ -29,6 +29,8 @@ import {
   createSeries as createSeriesApi,
   listSeriesByTournament,
 } from '../api/series'
+import { listFantasyPlayers } from '../api/fantasyPlayers'
+import type { AddTournamentPlayerRequest } from '../api/tournamentRequests'
 import type { CreateSeriesRequest } from '../api/seriesRequests'
 import { SeriesFormModal } from './SeriesFormModal'
 import { PlayerAddForm } from './PlayerAddForm'
@@ -56,13 +58,19 @@ export function TournamentDetailPage() {
     enabled: Number.isFinite(tournamentId),
   })
 
+  const playersCatalogQ = useQuery({
+    queryKey: ['admin', 'fantasy-players', 'add-to-tournament'],
+    queryFn: () => listFantasyPlayers(),
+    enabled: addPlayerOpen,
+  })
+
   const addPlayer = useMutation({
-    mutationFn: (body: { polemicaUserId: number; nickname: string }) =>
-      addTournamentPlayer(tournamentId, body),
+    mutationFn: (body: AddTournamentPlayerRequest) => addTournamentPlayer(tournamentId, body),
     onSuccess: () => {
       message.success('Player added')
       setAddPlayerOpen(false)
       void qc.invalidateQueries({ queryKey: ['admin', 'tournament', tournamentId] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'fantasy-players'] })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -393,6 +401,8 @@ export function TournamentDetailPage() {
       >
         <PlayerAddForm
           loading={addPlayer.isPending}
+          players={playersCatalogQ.data}
+          playersLoading={playersCatalogQ.isLoading}
           onSubmit={(v) => addPlayer.mutate(v)}
         />
       </Modal>

@@ -32,6 +32,8 @@ interface CardTemplateRepository : JpaRepository<CardTemplate, Long> {
 
     fun findAllByFantasyPlayer_IdAndRarity(fantasyPlayerId: Long, rarity: Rarity): List<CardTemplate>
 
+    fun countByFantasyPlayer_Id(fantasyPlayerId: Long): Long
+
     @Query(
         """
         SELECT DISTINCT ct FROM CardTemplate ct

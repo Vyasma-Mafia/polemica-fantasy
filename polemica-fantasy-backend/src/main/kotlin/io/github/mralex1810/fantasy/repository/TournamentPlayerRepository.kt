@@ -10,6 +10,8 @@ interface TournamentPlayerRepository : JpaRepository<TournamentPlayer, Long> {
 
     fun existsByTournament_IdAndFantasyPlayer_Id(tournamentId: Long, fantasyPlayerId: Long): Boolean
 
+    fun countByFantasyPlayer_Id(fantasyPlayerId: Long): Long
+
     fun existsByTournament_IdAndFantasyPlayer_IdAndExcludedFromPackPoolIsFalse(
         tournamentId: Long,
         fantasyPlayerId: Long,

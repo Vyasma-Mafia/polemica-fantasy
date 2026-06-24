@@ -6,6 +6,7 @@ const { Header, Sider, Content } = Layout
 
 const allMenuItems = [
   { key: '/tournaments', label: <Link to="/tournaments">Tournaments</Link> },
+  { key: '/players', label: <Link to="/players">Players</Link> },
   {
     key: '/card-templates',
     label: <Link to="/card-templates">Card templates</Link>,

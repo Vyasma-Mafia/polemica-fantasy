@@ -161,13 +161,7 @@ class TournamentService(
     @Transactional
     fun addPlayer(tournamentId: Long, request: AddTournamentPlayerRequest): TournamentPlayerDto {
         val tournament = tournamentRepository.findById(tournamentId).orElseThrow { notFound("Tournament", tournamentId) }
-        val fp = fantasyPlayerRepository.findByPolemicaUserId(request.polemicaUserId)
-            ?: fantasyPlayerRepository.save(
-                FantasyPlayer(
-                    polemicaUserId = request.polemicaUserId,
-                    nickname = request.nickname.trim(),
-                ),
-            )
+        val fp = resolveTournamentPlayerRequest(request)
         if (tournamentPlayerRepository.existsByTournament_IdAndFantasyPlayer_Id(tournamentId, fp.id!!)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Player with this polemica_user_id already in tournament")
         }
@@ -178,6 +172,26 @@ class TournamentService(
             ),
         )
         return p.toDto()
+    }
+
+    private fun resolveTournamentPlayerRequest(request: AddTournamentPlayerRequest): FantasyPlayer {
+        request.fantasyPlayerId?.let { id ->
+            return fantasyPlayerRepository.findById(id).orElseThrow { notFound("FantasyPlayer", id) }
+        }
+        val polemicaUserId = request.polemicaUserId
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "fantasyPlayerId or polemicaUserId is required")
+        if (polemicaUserId <= 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "polemicaUserId must be positive")
+        }
+        val nickname = request.nickname?.trim()?.takeIf { it.isNotEmpty() }
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "nickname is required when fantasyPlayerId is absent")
+        return fantasyPlayerRepository.findByPolemicaUserId(polemicaUserId)
+            ?: fantasyPlayerRepository.save(
+                FantasyPlayer(
+                    polemicaUserId = polemicaUserId,
+                    nickname = nickname,
+                ),
+            )
     }
 
     @Transactional
