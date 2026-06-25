@@ -85,10 +85,12 @@ class SeriesService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
         }
         val validated = validatedSeriesFields(tournament.kind, request)
+        val name = request.name.trim()
         val s = seriesRepository.save(
             Series(
                 tournament = tournament,
-                name = request.name.trim(),
+                name = name,
+                publicNumber = derivePublicNumber(name),
                 namePrefix = validated.namePrefix,
                 gameNumFrom = validated.gameNumFrom,
                 gameNumTo = validated.gameNumTo,
@@ -114,7 +116,11 @@ class SeriesService(
         }
         val kind = s.tournament!!.kind
         val previousStatus = s.status
-        request.name?.let { s.name = it.trim() }
+        request.name?.let {
+            val name = it.trim()
+            s.name = name
+            s.publicNumber = derivePublicNumber(name)
+        }
         request.status?.let { s.status = it }
         request.startsAt?.let { s.startsAt = it }
         request.teamDeadline?.let { s.teamDeadline = it }
@@ -732,6 +738,7 @@ class SeriesService(
         id = id!!,
         tournamentId = tournament!!.id!!,
         name = name,
+        publicNumber = publicNumber,
         namePrefix = namePrefix,
         gameNumFrom = gameNumFrom,
         gameNumTo = gameNumTo,
@@ -746,6 +753,9 @@ class SeriesService(
         tournamentPlayerIds = tournamentPlayerIds,
         replacementPolemicaUserIds = replacementPolemicaUserIds,
     )
+
+    private fun derivePublicNumber(name: String): Long =
+        Regex("""\d+""").findAll(name).lastOrNull()?.value?.toLongOrNull() ?: 1
 
     private data class SeriesPlayerAssignment(
         val tournamentPlayerIds: List<Long>,

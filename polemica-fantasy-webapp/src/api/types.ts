@@ -274,6 +274,7 @@ export interface UserSeriesSummary {
   id: number
   tournamentId: number
   name: string
+  publicNumber: number
   namePrefix: string | null
   gameNumFrom: number | null
   gameNumTo: number | null
@@ -293,6 +294,7 @@ export interface SeriesOpenForTeam {
   tournamentId: number
   tournamentName: string
   seriesName: string
+  publicNumber: number
   gameNumFrom: number | null
   gameNumTo: number | null
   teamDeadline: string
@@ -310,6 +312,7 @@ export interface UserSeriesDetail {
   id: number
   tournamentId: number
   name: string
+  publicNumber: number
   namePrefix: string | null
   gameNumFrom: number | null
   gameNumTo: number | null

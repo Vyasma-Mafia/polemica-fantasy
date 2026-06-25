@@ -59,6 +59,7 @@ class UserSeriesService(
             id = s.id!!,
             tournamentId = s.tournament!!.id!!,
             name = s.name,
+            publicNumber = s.publicNumber,
             namePrefix = s.namePrefix,
             gameNumFrom = s.gameNumFrom,
             gameNumTo = s.gameNumTo,

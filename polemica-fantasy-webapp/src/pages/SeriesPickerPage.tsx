@@ -46,7 +46,7 @@ export function SeriesPickerPage() {
         {t.series.map((s, idx) => {
           const deadline = new Date(s.teamDeadline)
           const expired = now > deadline.getTime()
-          const seriesNum = s.gameNumFrom ?? seriesChronologicalIndex.get(s.id) ?? idx + 1
+          const seriesNum = s.publicNumber ?? s.gameNumFrom ?? seriesChronologicalIndex.get(s.id) ?? idx + 1
           return (
             <li key={s.id}>
               <div className={`pf-day-card ${expired ? 'pf-day-card--expired' : ''}`}>

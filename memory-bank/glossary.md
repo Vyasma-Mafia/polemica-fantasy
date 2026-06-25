@@ -39,6 +39,7 @@
 |--------|----------------|-----------------------|
 | `STANDALONE`-турнир | `TournamentKind.STANDALONE` | Серии не привязаны к соревнованию Polemica; игры подбираются по пересечению match id из профилей игроков, `name_prefix` и опционально `game_started_on`. |
 | `POLEMICA_COMPETITION`-турнир | `TournamentKind.POLEMICA_COMPETITION` | Турнир привязан к соревнованию Polemica; серии выбирают игры по `game_num_from`/`game_num_to` и опционально `game_phase`. |
+| Публичный номер серии | `series.public_number`, API `publicNumber` | Номер для пользовательского бейджа «Серия N». Автоматически берётся из последнего числа в названии серии, а если чисел нет — `1`; не используется для sync. |
 | Префикс серии | `series.name_prefix` | Фильтр названия игры для `STANDALONE`; обязателен для sync таких серий. |
 | День игр серии | `series.game_started_on` | Опциональный фильтр `PolemicaGame.started.toLocalDate()` для `STANDALONE`; нужен, когда одинаковые или похожие префиксы повторяются в разные дни. |
 | Диапазон игр | `game_num_from`, `game_num_to` | Inclusive-диапазон `num` из соревнования Polemica для `POLEMICA_COMPETITION`. |

@@ -240,6 +240,7 @@ CardPack (1) ──── (*) CardPackRarityConfig
 | id | BIGSERIAL | PK |
 | tournament_id | BIGINT | FK → Tournament |
 | name | VARCHAR | Series display name |
+| public_number | BIGINT | Пользовательский номер для бейджа «Серия N»; вычисляется из последнего числа в `name`, fallback `1` |
 | name_prefix | VARCHAR | Prefix for matching game names (используется при `tournament.kind = STANDALONE`; иначе NULL/не используется для sync) |
 | game_num_from | BIGINT | Нижняя граница номера игры в соревновании (inclusive); используется при `POLEMICA_COMPETITION` |
 | game_num_to | BIGINT | Верхняя граница номера игры в соревновании (inclusive); используется при `POLEMICA_COMPETITION` |
@@ -562,7 +563,7 @@ Authentication: Username/password (Basic Auth or JWT — start simple).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/tournaments/{id}/series` | Create series (поля зависят от `kind` турнира: prefix или `gameNumFrom`/`gameNumTo`) |
+| POST | `/tournaments/{id}/series` | Create series (поля зависят от `kind` турнира: prefix или `gameNumFrom`/`gameNumTo`; `publicNumber` вычисляется из названия) |
 | GET | `/tournaments/{id}/series` | Список серий турнира; в каждой записи — **`finalized`** (V3) |
 | GET | `/series/{id}` | Детали серии для админки (в т.ч. **`finalized`**, состав игроков) (V3) |
 | PUT | `/series/{id}` | Update series (name, prefix или num-диапазон, deadline, status) |

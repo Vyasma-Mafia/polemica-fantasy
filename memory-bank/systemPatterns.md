@@ -81,6 +81,7 @@ io.github.mralex1810.fantasy
 ## Турниры и sync игр
 
 - **`TournamentKind`**: `STANDALONE` | `POLEMICA_COMPETITION` (колонка `tournament.kind`, NOT NULL).
+- **`series.public_number`** — пользовательский номер бейджа «Серия N»: backend вычисляет его из последнего числа в `series.name`, а если чисел нет — `1`; поле не влияет на sync/scoring.
 - При **`POLEMICA_COMPETITION`**: `tournament.polemica_competition_id` обязателен (UNIQUE среди не-NULL). Серии хранят `game_num_from` / `game_num_to` (inclusive по `num` из API); `DefaultGameSyncService` вызывает `getGamesFromCompetition` + `getGameFromCompetition`.
 - При **`STANDALONE`**: match id из публичного профиля (до 500 игр на игрока) попадает в кандидаты, если id встречается у **≥ min(8, N)** игроков ростера серии (**N** игроков), затем фильтр по `name_prefix`; `series.game_num_*` NULL.
 - Смена `kind` / `polemica_competition_id` при существующих сериях у турнира — **409 CONFLICT** (проверка по *фактическому* изменению после merge полей запроса с сущностью, а не по «поле присутствует в JSON» — иначе админка не могла менять статус/имя, отправляя те же kind и polemicaCompetitionId).

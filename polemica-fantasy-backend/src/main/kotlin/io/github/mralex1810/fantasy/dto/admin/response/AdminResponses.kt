@@ -63,6 +63,7 @@ data class SeriesDto(
     val id: Long,
     val tournamentId: Long,
     val name: String,
+    val publicNumber: Long,
     val namePrefix: String?,
     val gameNumFrom: Long?,
     val gameNumTo: Long?,

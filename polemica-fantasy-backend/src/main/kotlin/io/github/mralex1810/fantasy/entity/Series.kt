@@ -29,6 +29,9 @@ class Series(
     @Column(nullable = false)
     var name: String = "",
 
+    @Column(name = "public_number", nullable = false)
+    var publicNumber: Long = 1,
+
     @Column(name = "name_prefix")
     var namePrefix: String? = null,
 

@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### Backend+admin+TMA: публичный номер серии (июнь 2026)
+- [x] Flyway **V59** добавляет `series.public_number` и бэкофиллит его из последнего числа в `series.name`; если чисел нет — `1`.
+- [x] Backend вычисляет `publicNumber` при создании серии и пересчитывает при изменении названия; поле отдано в admin/user DTO, при этом `game_num_from/game_num_to` остаются техническими полями sync для `POLEMICA_COMPETITION`.
+- [x] TMA показывает бейдж «Серия N» из `publicNumber`; админка показывает номер в списке серий, но форма создания/редактирования не требует ручного ввода.
+
 ### Backend+admin: глобальный каталог игроков (июнь 2026)
 - [x] Добавлена admin-страница **Players** со списком всех `fantasy_player`, поиском, созданием, редактированием ника, загрузкой фото и добавлением выбранного игрока в целевой турнир.
 - [x] Backend получил `FantasyPlayerAdminController` / `FantasyPlayerAdminService`: `GET/POST/PUT /api/v1/admin/fantasy-players`, `POST /api/v1/admin/fantasy-players/{id}/photo`, DTO с `tournamentIds`, `tournamentCount` и `cardTemplateCount`.
@@ -499,7 +504,7 @@
 
 ### Порядок серий турнира (новые сверху)
 - [x] **Backend:** `findAllByTournament_IdOrderByIdDesc` в `SeriesRepository`; `UserTournamentService.getTournament`, `SeriesService.listSeriesByTournament`
-- [x] **TMA:** `SeriesPickerPage` — бейдж номера серии не зависит от порядка в списке (`gameNumFrom` или порядок по `id`)
+- [x] **TMA:** `SeriesPickerPage` — бейдж номера серии не зависит от порядка в списке; актуальный источник — `publicNumber`, который backend выводит из названия серии.
 
 ### Очистка «призрачных» карт при смене ростера серии
 - [x] **`FantasyTeamRosterPruningService.pruneInvalidCardsForSeries`:** удаляет `fantasy_team_card`, если `card_template.fantasy_player_id` больше не в `series_player` для этой серии; только пока `now <= team_deadline`; уплотняет слоты 1..n; при отсутствии карт удаляет `fantasy_team`; возвращает **`FantasyTeamRosterPruneResult`** (снятые карты по пользователям для уведомлений)

@@ -195,6 +195,7 @@ export function TournamentDetailPage() {
         style={{ marginBottom: 24 }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
+          { title: 'Series #', dataIndex: 'publicNumber', width: 90 },
           {
             title: 'Name',
             dataIndex: 'name',

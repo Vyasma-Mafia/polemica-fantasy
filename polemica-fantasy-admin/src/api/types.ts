@@ -276,6 +276,7 @@ export interface SeriesDto {
   id: number
   tournamentId: number
   name: string
+  publicNumber: number
   namePrefix: string | null
   gameNumFrom: number | null
   gameNumTo: number | null

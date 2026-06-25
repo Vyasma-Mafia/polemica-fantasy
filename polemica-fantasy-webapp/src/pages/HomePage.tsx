@@ -121,7 +121,7 @@ export function HomePage() {
           <ul className="pf-day-list">
             {openSeries.map((s, idx) => {
               const deadline = new Date(s.teamDeadline)
-              const seriesNum = s.gameNumFrom ?? idx + 1
+              const seriesNum = s.publicNumber ?? s.gameNumFrom ?? idx + 1
               const cta = openSeriesCta(s.seriesId)
               return (
                 <li key={s.seriesId}>
