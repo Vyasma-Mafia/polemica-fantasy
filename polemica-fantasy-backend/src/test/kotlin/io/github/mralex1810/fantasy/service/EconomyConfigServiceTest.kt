@@ -39,6 +39,21 @@ class EconomyConfigServiceTest {
     }
 
     @Test
+    fun `getEffectiveLegendaryUpgradeCost applies contract reissue discount`() {
+        val service = EconomyConfigService(economyConfigRepository)
+        whenever(economyConfigRepository.findAll()).thenReturn(
+            listOf(
+                EconomyConfig("legendary.upgrade.cost", "400", null),
+                EconomyConfig("marketplace.contract_reissue_discount_percent", "15", null),
+            ),
+        )
+
+        assertEquals(400L, service.getEffectiveLegendaryUpgradeCost(0))
+        assertEquals(340L, service.getEffectiveLegendaryUpgradeCost(1))
+        assertEquals(280L, service.getEffectiveLegendaryUpgradeCost(2))
+    }
+
+    @Test
     fun `buildEconomyInfo returns series reward tiers in scoring order`() {
         val service = EconomyConfigService(economyConfigRepository)
         val rewardRows = listOf(

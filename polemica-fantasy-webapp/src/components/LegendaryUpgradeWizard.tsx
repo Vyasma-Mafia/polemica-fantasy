@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ApiError, apiGet } from '../api/client'
 import { fetchPerkCatalog } from '../api/perksCatalog'
 import { fetchLegendaryUpgradeInfo, postLegendaryUpgrade } from '../api/legendaryUpgrade'
-import type { PerkCatalogItem, LegendaryUpgradeResponse, UserCardItem } from '../api/types'
+import type { PerkCatalogItem, LegendaryUpgradeInfo, LegendaryUpgradeResponse, UserCardItem } from '../api/types'
 import { cardDisplayImageUrl } from '../lib/cardImage'
 import { rarityScoreModifierLabel } from '../lib/rarity'
 import { CardPerkChips } from './CardPerkChips'
@@ -17,6 +17,15 @@ export function isEligibleEpicForLegendary(c: UserCardItem): boolean {
     c.usesRemaining > 0 &&
     c.perks.length === 2
   )
+}
+
+function legendaryUpgradeCostForCard(info: LegendaryUpgradeInfo | undefined, card: UserCardItem | undefined): number | null {
+  if (!info) return null
+  const timesRenewed = card?.timesRenewed ?? 0
+  const tier = info.costTiers.find((item) => item.timesRenewed === timesRenewed)
+  if (tier) return tier.cost
+  const effectivePercent = Math.max(0, 100 - info.contractReissueDiscountPercent * Math.max(0, timesRenewed))
+  return Math.max(1, Math.trunc((info.cost * effectivePercent) / 100))
 }
 
 export function LegendaryUpgradeWizard({
@@ -113,8 +122,11 @@ export function LegendaryUpgradeWizard({
 
   if (!isOpen) return null
 
-  const cost = infoQ.data?.cost ?? null
-  const canAfford = infoQ.data?.canAfford ?? false
+  const baseCost = infoQ.data?.cost ?? null
+  const selectedCost = legendaryUpgradeCostForCard(infoQ.data, selectedCard)
+  const currentCost = selectedCost ?? baseCost
+  const canAfford = currentCost != null && infoQ.data != null ? infoQ.data.balance >= currentCost : false
+  const discountPercent = infoQ.data?.contractReissueDiscountPercent ?? 0
 
   const goBack = () => {
     setError(null)
@@ -160,13 +172,14 @@ export function LegendaryUpgradeWizard({
 
         <h3 className="pf-modal__title">Легендарный апгрейд</h3>
         <p className="pf-muted pf-legendary-wizard__lead">
-          Эпическая карта с двумя перками получает третье и становится легендарной. Стоимость:{' '}
-          {cost != null ? (
-            <strong>{cost.toLocaleString('ru-RU')}₣</strong>
+          Эпическая карта с двумя перками получает третье и становится легендарной. Базовая стоимость:{' '}
+          {baseCost != null ? (
+            <strong>{baseCost.toLocaleString('ru-RU')}₣</strong>
           ) : (
             <span>…</span>
           )}
-          . После апгрейда остаётся тот же экземпляр карты (+1 использование).
+          {discountPercent > 0 ? `, скидка ${discountPercent}% за каждое переподписание контракта` : ''}. После
+          апгрейда остаётся тот же экземпляр карты (+1 использование).
         </p>
 
         {infoQ.isLoading && <p className="pf-muted">Загрузка…</p>}
@@ -208,6 +221,9 @@ export function LegendaryUpgradeWizard({
                         />
                         <div className="pf-legendary-wizard__pick-cap">
                           <span className="pf-legendary-wizard__pick-name">{c.playerNickname}</span>
+                          <span className="pf-legendary-wizard__pick-contract">
+                            ↻ {c.timesRenewed}: {legendaryUpgradeCostForCard(infoQ.data, c)?.toLocaleString('ru-RU') ?? '…'}₣
+                          </span>
                           <CardPerkChips perks={c.perks} max={4} />
                         </div>
                       </div>
@@ -310,7 +326,15 @@ export function LegendaryUpgradeWizard({
               </div>
             </div>
             <p className="pf-muted" style={{ marginTop: 12 }}>
-              Списание: <strong>{cost?.toLocaleString('ru-RU') ?? '—'}₣</strong>
+              Списание: <strong>{currentCost?.toLocaleString('ru-RU') ?? '—'}₣</strong>
+              {selectedCard.timesRenewed > 0 && discountPercent > 0 && (
+                <>
+                  {' '}
+                  <span className="pf-muted">
+                    (↻ {selectedCard.timesRenewed}, скидка {selectedCard.timesRenewed * discountPercent}%)
+                  </span>
+                </>
+              )}
             </p>
             {error && <p className="pf-err">{error}</p>}
             <div className="pf-modal__actions">

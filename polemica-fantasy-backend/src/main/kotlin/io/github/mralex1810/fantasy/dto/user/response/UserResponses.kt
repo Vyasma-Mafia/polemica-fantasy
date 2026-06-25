@@ -170,6 +170,13 @@ data class LegendaryUpgradeInfoDto(
     val cost: Long,
     val balance: Long,
     val canAfford: Boolean,
+    val contractReissueDiscountPercent: Int,
+    val costTiers: List<LegendaryUpgradeCostTierDto>,
+)
+
+data class LegendaryUpgradeCostTierDto(
+    val timesRenewed: Int,
+    val cost: Long,
 )
 
 data class LegendaryEasterEggDto(

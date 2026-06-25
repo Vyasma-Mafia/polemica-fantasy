@@ -3383,6 +3383,14 @@ button.pf-mini-card:disabled {
   margin-bottom: 4px;
 }
 
+.pf-legendary-wizard__pick-contract {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #facc15;
+  margin-bottom: 4px;
+}
+
 .pf-legendary-wizard__perk-list {
   list-style: none;
   margin: 0 0 12px;

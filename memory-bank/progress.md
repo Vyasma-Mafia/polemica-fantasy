@@ -2,6 +2,18 @@
 
 ## Что реализовано
 
+### Backend+TMA: скидка на legendary upgrade за переподписание (июнь 2026)
+- [x] Legendary upgrade использует existing `marketplace.contract_reissue_discount_percent`: effective cost считается от `legendary.upgrade.cost` с дисконтом за `user_card.times_renewed` (текущие `↻0/1/2`: 400/340/280₣).
+- [x] `/api/v1/legendary-upgrade/info` отдаёт `contractReissueDiscountPercent` и `costTiers`; `LegendaryUpgradeService.upgrade` списывает effective cost конкретной карты.
+- [x] TMA wizard показывает цену выбранной EPIC по контракту и проверяет баланс по effective cost; `/help` добавлена таблица цен legendary upgrade.
+- [x] Flyway **V60** публикует release note “Ветеранам проще стать легендами” с CTA на `/cards?legendaryUpgrade=1`.
+
+### Design: слияние карт (июнь 2026)
+- [x] Подготовлен draft-дизайн `docs/features/DESIGN-CARD-MERGE.md` для механики `3 COMMON -> 1 RARE` и `3 RARE -> 1 EPIC` в рамках одного `fantasy_player`.
+- [x] Зафиксированы продуктовые правила перков: `COMMON -> RARE` выбирает 1 перк из roll; `RARE -> EPIC` выбирает 2 уникальных перка из входных RARE, а при `A/A/A` сохраняет `A` и предлагает второй перк из roll без `A`.
+- [x] Зафиксированы правила контрактов и истории: результат создаётся новым `user_card`, входные карты soft-delete, `times_renewed = max(inputs)`, `uses_remaining = min(baseUses(resultRarity), sum(inputUses))`, provenance хранится через `CARD_MERGE` и audit tables.
+- [ ] Реализация backend/TMA/admin для слияния карт.
+
 ### Backend+admin+TMA: публичный номер серии (июнь 2026)
 - [x] Flyway **V59** добавляет `series.public_number` и бэкофиллит его из последнего числа в `series.name`; если чисел нет — `1`.
 - [x] Backend вычисляет `publicNumber` при создании серии и пересчитывает при изменении названия; поле отдано в admin/user DTO, при этом `game_num_from/game_num_to` остаются техническими полями sync для `POLEMICA_COMPETITION`.

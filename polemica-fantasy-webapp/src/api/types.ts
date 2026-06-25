@@ -430,6 +430,8 @@ export interface LegendaryUpgradeInfo {
   cost: number
   balance: number
   canAfford: boolean
+  contractReissueDiscountPercent: number
+  costTiers: Array<{ timesRenewed: number; cost: number }>
 }
 
 export interface LegendaryUpgradeResponse {

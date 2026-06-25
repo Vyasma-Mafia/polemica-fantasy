@@ -215,25 +215,44 @@ export function HelpPage() {
           <h2 className="pf-help__section-title">Легендарные карты</h2>
           <article className="pf-prose">
             <p>
-              Эпическую карту с <strong>двумя</strong> перками на борту можно улучить до <strong>легендарной</strong> в
-              коллекции или с экрана магазина: добавляется <strong>третье перк</strong> на выбор из каталога, редкость
+              Эпическую карту с <strong>двумя</strong> перками на борту можно улучшить до <strong>легендарной</strong> в
+              коллекции или с экрана магазина: добавляется <strong>третий перк</strong> на выбор из каталога, редкость
               и множитель очков растут, к экземпляру карты прибавляется <strong>одно использование</strong>. Сам экземпляр (
               <code>id</code> карты) сохраняется.
             </p>
             <p>
-              Стоимость апгрейда:{' '}
+              Базовая стоимость апгрейда:{' '}
               {legendaryInfoQ.isLoading && <span className="pf-muted">…</span>}
               {legendaryInfoQ.data && (
                 <strong>{legendaryInfoQ.data.cost.toLocaleString('ru-RU')}₣</strong>
               )}
-              {legendaryInfoQ.isError && <span className="pf-muted"> (не удалось загрузить)</span>}. Улучшать можно только
-              карту с оставшимися использованиями и <strong>не стоящую в команде по незавершённой серии</strong> (после
-              финализации серии карту снова можно прокачать, если она не в активной заявке).
+              {legendaryInfoQ.isError && <span className="pf-muted"> (не удалось загрузить)</span>}. За каждое уже
+              сделанное переподписание контракта цена снижается на тот же процент, что и минимум цены на маркетплейсе.
+              Улучшать можно только карту с оставшимися использованиями и <strong>не стоящую в команде по незавершённой
+              серии</strong> (после финализации серии карту снова можно прокачать, если она не в активной заявке).
             </p>
             <p>
               В одной фэнтези-команде на серию допускается <strong>не больше одной</strong> легендарной карты.
             </p>
           </article>
+          {legendaryInfoQ.data && (
+            <table className="pf-economy__table">
+              <thead>
+                <tr>
+                  <th>Контракт</th>
+                  <th>Цена апгрейда</th>
+                </tr>
+              </thead>
+              <tbody>
+                {legendaryInfoQ.data.costTiers.map((tier) => (
+                  <tr key={tier.timesRenewed}>
+                    <td>↻ {tier.timesRenewed}</td>
+                    <td>{tier.cost.toLocaleString('ru-RU')}₣</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </section>
 
         <section className="pf-help__section pf-help__anchor" id="card-value">

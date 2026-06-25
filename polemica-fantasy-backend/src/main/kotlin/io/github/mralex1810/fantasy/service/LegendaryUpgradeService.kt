@@ -2,6 +2,7 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.config.EasterEggProperties
 import io.github.mralex1810.fantasy.dto.user.response.LegendaryEasterEggDto
+import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeCostTierDto
 import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeInfoDto
 import io.github.mralex1810.fantasy.dto.user.response.LegendaryUpgradeResponseDto
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
@@ -45,10 +46,18 @@ class LegendaryUpgradeService(
         val cost = economyConfigService.getLegendaryUpgradeCost()
         val internalId = user.id!!
         val balance = userService.getBalance(internalId)
+        val maxRenewals = economyConfigService.getMaxRenewals()
         return LegendaryUpgradeInfoDto(
             cost = cost,
             balance = balance,
             canAfford = balance >= cost,
+            contractReissueDiscountPercent = economyConfigService.getMarketplaceContractReissueDiscountPercent(),
+            costTiers = (0..maxRenewals).map { timesRenewed ->
+                LegendaryUpgradeCostTierDto(
+                    timesRenewed = timesRenewed,
+                    cost = economyConfigService.getEffectiveLegendaryUpgradeCost(timesRenewed),
+                )
+            },
         )
     }
 
@@ -87,7 +96,7 @@ class LegendaryUpgradeService(
             ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown perk: $perkId")
         }
 
-        val cost = economyConfigService.getLegendaryUpgradeCost()
+        val cost = economyConfigService.getEffectiveLegendaryUpgradeCost(uc.timesRenewed)
         val internalId = user.id!!
         try {
             userService.deductBalance(internalId, cost, FantikiTransactionReason.LEGENDARY_UPGRADE)

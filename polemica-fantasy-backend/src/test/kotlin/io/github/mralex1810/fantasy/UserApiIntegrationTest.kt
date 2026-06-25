@@ -1761,6 +1761,13 @@ class UserApiIntegrationTest {
             .andExpect(jsonPath("$.cost").value(400))
             .andExpect(jsonPath("$.balance").value(1000))
             .andExpect(jsonPath("$.canAfford").value(true))
+            .andExpect(jsonPath("$.contractReissueDiscountPercent").value(15))
+            .andExpect(jsonPath("$.costTiers[0].timesRenewed").value(0))
+            .andExpect(jsonPath("$.costTiers[0].cost").value(400))
+            .andExpect(jsonPath("$.costTiers[1].timesRenewed").value(1))
+            .andExpect(jsonPath("$.costTiers[1].cost").value(340))
+            .andExpect(jsonPath("$.costTiers[2].timesRenewed").value(2))
+            .andExpect(jsonPath("$.costTiers[2].cost").value(280))
     }
 
     @Test
@@ -1819,6 +1826,7 @@ class UserApiIntegrationTest {
             .andExpect(status().isOk)
             .andReturn().response.contentAsString
         val userCardId = Regex("\"id\"\\s*:\\s*(\\d+)").find(giveJson)!!.groupValues[1].toLong()
+        jdbcTemplate.update("UPDATE user_card SET times_renewed = 2 WHERE id = ?", userCardId)
 
         val initData = buildSignedInitData(
             botToken = "test-token",
@@ -1836,12 +1844,13 @@ class UserApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.card.rarity").value("LEGENDARY"))
             .andExpect(jsonPath("$.card.usesRemaining").value(5))
+            .andExpect(jsonPath("$.card.timesRenewed").value(2))
             .andExpect(jsonPath("$.card.perks.length()").value(3))
             .andExpect(jsonPath("$.card.craftedByTelegramUserId").value(telegramUserId))
 
         mockMvc.perform(get("/api/v1/me").header("Authorization", tma))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.fantiki").value(600))
+            .andExpect(jsonPath("$.fantiki").value(720))
     }
 
     @Test

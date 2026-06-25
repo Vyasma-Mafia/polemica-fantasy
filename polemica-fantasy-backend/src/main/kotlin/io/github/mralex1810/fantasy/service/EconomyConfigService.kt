@@ -65,6 +65,13 @@ class EconomyConfigService(
 
     fun getLegendaryUpgradeCost(): Long = getLong("legendary.upgrade.cost")
 
+    fun getEffectiveLegendaryUpgradeCost(timesRenewed: Int): Long {
+        val base = getLegendaryUpgradeCost()
+        val discountPercent = getMarketplaceContractReissueDiscountPercent()
+        val effectivePercent = (100 - discountPercent * timesRenewed.coerceAtLeast(0)).coerceAtLeast(0)
+        return maxOf(1L, base * effectivePercent / 100)
+    }
+
     fun getLegendaryTeamMaxPerSeries(): Int = getInt("legendary.team.max_per_series")
 
     fun getEasterEggDeveloperFantasyPlayerId(): Long = getLong("easter_egg.developer_fantasy_player_id")
