@@ -614,10 +614,13 @@ export function CardMergePage() {
             className="pf-merge-success__img"
           />
           <div>
+            <span className="pf-merge-success__eyebrow">Собрана {RARITY_LABEL[card.rarity]}-карта</span>
             <h2>{card.playerNickname}</h2>
-            <p>{OPERATION_LABEL[selectedOperation ?? 'COMMON_TO_RARE']} -&gt; {card.rarity}</p>
-            <p>Фантики: {success.newBalance}₣{success.spentFantiki > 0 ? `, списано ${success.spentFantiki}₣` : ''}</p>
+            <p>{card.usesRemaining} использ. · ↻ {card.timesRenewed}/{maxRenewals}</p>
             <CardPerkChips perks={card.perks} max={4} />
+            <p className="pf-muted">
+              Баланс: {success.newBalance}₣{success.spentFantiki > 0 ? `, списано ${success.spentFantiki}₣` : ''}
+            </p>
           </div>
         </section>
         <div className="pf-merge-actions">

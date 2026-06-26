@@ -2886,6 +2886,16 @@ button.pf-merge-perk:disabled {
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
+.pf-merge-success__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--pf-gold-dim);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
 .pf-merge-actions--confirm {
   position: sticky;
   bottom: 8px;
