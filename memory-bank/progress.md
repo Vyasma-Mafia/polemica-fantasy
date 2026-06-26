@@ -12,7 +12,10 @@
 - [x] Подготовлен draft-дизайн `docs/features/DESIGN-CARD-MERGE.md` для механики `3 COMMON -> 1 RARE` и `3 RARE -> 1 EPIC` в рамках одного `fantasy_player`.
 - [x] Зафиксированы продуктовые правила перков: `COMMON -> RARE` выбирает 1 перк из roll; `RARE -> EPIC` выбирает 2 уникальных перка из входных RARE, а при `A/A/A` сохраняет `A` и предлагает второй перк из roll без `A`.
 - [x] Зафиксированы правила контрактов и истории: результат создаётся новым `user_card`, входные карты soft-delete, `times_renewed = max(inputs)`, `uses_remaining = min(baseUses(resultRarity), sum(inputUses))`, provenance хранится через `CARD_MERGE` и audit tables.
-- [ ] Реализация backend/TMA/admin для слияния карт.
+- [x] Уточнён UX: `/cards/merge`, выбор игрока/операции/материалов, полноценный preview, предупреждения про value loss, BUDGET, контракт, скины, stale states и CTA `Снять с продажи` для ACTIVE marketplace cards.
+- [x] Зафиксированы анти-reroll preview rules, `/help`/`/whats-new` коммуникация и V1 achievements для merge (`CARD_MERGES`, `CARD_MERGE_EPIC_RESULTS`, `CARD_MERGE_UNIQUE_PLAYERS`).
+- [x] Реализация backend/TMA/admin для слияния карт: Flyway **V61**, user API `/api/v1/cards/merge/*`, admin read-only `/api/v1/admin/card-merges`, TMA `/cards/merge`, admin page **Card merges**, release note/help and achievement progress.
+- [x] Проверки: backend `compileKotlin compileTestKotlin`, targeted `CardMergeServiceTest`, TMA/admin `npm run build`, `./scripts/codex-check.sh quick` — успешно. Локальный smoke повторно выполнен на backend `28080/28081` из-за занятого `8080`: health ok, Flyway v61 validated, `merge/options` и `merge/preview` ok, TMA `/cards/merge` дошла до preview-state, admin `/card-merges` отрендерился.
 
 ### Backend+admin+TMA: публичный номер серии (июнь 2026)
 - [x] Flyway **V59** добавляет `series.public_number` и бэкофиллит его из последнего числа в `series.name`; если чисел нет — `1`.

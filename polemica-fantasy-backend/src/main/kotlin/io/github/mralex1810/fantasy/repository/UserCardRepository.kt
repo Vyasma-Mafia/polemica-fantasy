@@ -81,6 +81,25 @@ interface UserCardRepository : JpaRepository<UserCard, Long> {
         @Param("telegramUserId") telegramUserId: Long,
     ): List<UserCard>
 
+    @Query(
+        """
+        SELECT DISTINCT uc FROM UserCard uc
+        JOIN FETCH uc.cardTemplate ct
+        JOIN FETCH ct.fantasyPlayer fp
+        LEFT JOIN FETCH uc.cardSkin
+        LEFT JOIN FETCH ct.perks perk
+        LEFT JOIN FETCH perk.perk
+        WHERE uc.telegramUser.id = :telegramUserId
+          AND uc.deletedAt IS NULL
+          AND ct.rarity IN :rarities
+        ORDER BY fp.nickname ASC, uc.acquiredAt ASC, uc.id ASC
+        """,
+    )
+    fun findAllMergeCandidatesByUserId(
+        @Param("telegramUserId") telegramUserId: Long,
+        @Param("rarities") rarities: Collection<Rarity>,
+    ): List<UserCard>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
         """

@@ -5,4 +5,5 @@ enum class CardAcquisitionType {
     ADMIN_GRANT,
     MARKETPLACE_PURCHASE,
     ACHIEVEMENT_REWARD,
+    CARD_MERGE,
 }

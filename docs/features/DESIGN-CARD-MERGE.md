@@ -39,6 +39,11 @@
 `EPIC -> LEGENDARY` остаётся отдельной существующей механикой legendary upgrade.
 Слияние в LEGENDARY в V1 не добавляется.
 
+При этом V1 **не ограничивает** дальнейший путь `RARE -> EPIC` через merge и
+потом `EPIC -> LEGENDARY` через существующий legendary upgrade. Это ожидаемая
+прогрессия: merge создаёт EPIC-материал, а legendary upgrade остаётся отдельной
+платной операцией со своими проверками, стоимостью и выбором третьего перка.
+
 ### 2.2 Почему один и тот же игрок
 
 Слияние должно быть прокачкой конкретного реального игрока, а не конвертером
@@ -138,6 +143,31 @@ Eligible-пул:
 карты слишком сильным материалом. Roll из 3 вариантов решает UX-проблему
 "мёртвой комбинации", но сохраняет ценность разных RARE-перков и не превращает
 слияние в точную сборку идеального EPIC.
+
+### 3.5 Защита от free reroll
+
+Roll не должен превращаться в бесплатный перебор вариантов через повторный
+preview.
+
+Правило V1:
+
+- roll привязан к точному набору входных `user_card_id`, операции и пользователю;
+- `input_user_card_ids` нормализуются сортировкой и сохраняются как
+  `input_set_hash`;
+- если для того же пользователя, операции и набора входных карт уже есть
+  неиспользованный preview, backend возвращает тот же `offered_perk_ids`, а не
+  генерирует новый roll;
+- смена переносимого скина не меняет roll: backend может обновить
+  `selected_skin_source_user_card_id`, но оставляет прежние `offered_perk_ids`;
+- истечение preview не даёт новый roll для тех же входных карт: повторный preview
+  продлевает окно подтверждения с теми же `offered_perk_ids`;
+- новый roll возможен только если пользователь меняет хотя бы одну карту-материал
+  или старый preview был успешно consumed успешным merge.
+
+Если eligible-пул изменился после создания preview и ранее предложенный перк
+стал недоступен, confirm отклоняется как конфигурационная ошибка без списания
+карт. Пользователь должен собрать новый набор материалов или дождаться исправления
+конфигурации.
 
 ---
 
@@ -269,6 +299,12 @@ V1 можно запустить без дополнительной платы 
 Нужно показывать `timesRenewed` и `usesRemaining` в merge UI перед подтверждением,
 иначе пользователь может случайно сделать EPIC с плохим контрактом.
 
+Результат merge считается новым экземпляром `user_card` для marketplace
+provenance. История владельцев входных карт не переносится на результат и не
+участвует в запрете "нельзя купить карту, которой когда-либо владел". Полная
+связь с материалами остаётся в `user_card_merge` / `user_card_merge_input` для
+поддержки и аналитики.
+
 ### 6.4 Скины
 
 Скин привязан к экземпляру `user_card`, поэтому при 3->1 нужен явный перенос.
@@ -316,6 +352,7 @@ V1-правило:
 CREATE TABLE user_card_merge (
     id BIGSERIAL PRIMARY KEY,
     telegram_user_id BIGINT NOT NULL REFERENCES telegram_user(id),
+    preview_id BIGINT UNIQUE,
     result_user_card_id BIGINT NOT NULL UNIQUE REFERENCES user_card(id),
     source_rarity VARCHAR(32) NOT NULL,
     result_rarity VARCHAR(32) NOT NULL,
@@ -343,6 +380,12 @@ CREATE TABLE user_card_merge_input (
 если пользователь выбирал из случайных вариантов. Это нужно для поддержки,
 аналитики и разборов спорных случаев.
 
+Если используется `user_card_merge_preview`, `preview_id` связывает successful
+confirm с исходным preview. Это позволяет сделать confirm идемпотентным: повтор
+того же confirm после сетевого дубля может вернуть уже созданный result card. FK
+на preview можно добавить в миграции после создания обеих таблиц или создать
+preview-таблицу раньше `user_card_merge`.
+
 ### 7.4 Прошлые команды и скоринг
 
 Старые `fantasy_team_card` и score breakdown остаются привязаны к входным
@@ -357,8 +400,15 @@ CREATE TABLE user_card_merge_input (
 
 ### 8.1 Точка входа
 
-В коллекции карты добавить действие **"Слияние"** или отдельный экран
-`/cards/merge`.
+Основной экран: `/cards/merge`.
+
+Точки входа:
+
+- отдельная кнопка **Слияние** в коллекции рядом с фильтрами/режимами просмотра;
+- действие **Слияние** в модалке карты, если у пользователя есть потенциальные
+  материалы того же `fantasy_player`;
+- CTA из `/whats-new` после релиза;
+- ссылка из `/help` в раздел коллекции.
 
 Рекомендуемый V1 flow:
 
@@ -366,24 +416,150 @@ CREATE TABLE user_card_merge_input (
 2. Выбирает игрока, по которому есть доступные комбинации.
 3. Выбирает операцию `COMMON -> RARE` или `RARE -> EPIC`.
 4. Выбирает 3 карты-материала.
-5. Выбирает перк, если операция требует выбора.
-6. Видит preview результата: игрок, редкость, перки, uses, renewals, скин.
-7. Подтверждает.
-8. Получает success state с новой картой и CTA в коллекцию.
+5. При необходимости снимает материалы с marketplace прямо из этого flow.
+6. Выбирает перк, если операция требует выбора.
+7. Выбирает переносимый скин, если материалов со скинами несколько.
+8. Видит preview результата: игрок, редкость, перки, uses, renewals, value,
+   пригодность для BUDGET, скин и список потерянных материалов.
+9. Подтверждает.
+10. Получает success state с новой картой и CTA в коллекцию / legendary upgrade
+    для EPIC-результата.
 
-### 8.2 Состояния
+### 8.2 Экран выбора игрока и операции
+
+Первый экран группирует материалы по `fantasy_player`.
+
+Карточка игрока показывает:
+
+- фото/ник игрока;
+- сколько доступно COMMON и RARE материалов;
+- сколько карт заблокировано и почему: `в команде`, `на продаже`, `0 uses`;
+- доступные операции: `COMMON -> RARE`, `RARE -> EPIC`;
+- preview результата по редкости: `RARE` или `EPIC`.
+
+Сортировка:
+
+1. игроки с доступной операцией `RARE -> EPIC`;
+2. игроки с доступной операцией `COMMON -> RARE`;
+3. игроки, которым не хватает 1 карты до операции;
+4. остальные игроки с заблокированными картами.
+
+Если доступных комбинаций нет, empty state должен объяснить не только "нужны 3
+карты одного игрока", но и показать ближайшие цели: игроки, у которых есть 2/3
+материалов, и причины блокировки третьей карты.
+
+### 8.3 Выбор материалов
+
+После выбора игрока и операции пользователь видит 3 fixed slots и список карт
+этого игрока нужной редкости.
+
+Карточка материала показывает:
+
+- фото, редкость, скин, перки;
+- `usesRemaining`;
+- `timesRenewed/maxRenewals`;
+- `value`;
+- статус marketplace / команды / expired;
+- для RARE — крупный чип перка, потому что он влияет на EPIC.
+
+Eligible cards можно выбрать в слот. Disabled cards остаются видимыми с причиной:
+
+| Причина | UI |
+|---------|----|
+| В незавершённой команде | Disabled, текст `В составе на серию` |
+| ACTIVE marketplace listing | Disabled, текст `На продаже`, кнопка `Снять с продажи` |
+| `usesRemaining = 0` | Disabled, текст `Контракт истёк` |
+| `deleted_at != NULL` | Не показывать в обычном списке; можно учитывать только в debug/support |
+| Другая редкость/игрок | Не показывать на этом шаге |
+
+Кнопка `Снять с продажи` вызывает существующее снятие ACTIVE-листинга. После
+успеха экран обновляет merge options и оставляет пользователя в текущем flow.
+Merge сам не отменяет листинг автоматически.
+
+Рекомендация по автосортировке материалов внутри списка:
+
+1. selectable cards;
+2. карты без скина выше карт со скином;
+3. меньший `usesRemaining` выше, если сумма выбранных uses всё равно даёт полный
+   контракт результата;
+4. меньший `timesRenewed` выше;
+5. затем по `acquiredAt`.
+
+Автовыбор 3 материалов в V1 не нужен: пользователь должен явно выбрать карты,
+потому что операция необратимо уничтожает материалы.
+
+### 8.4 Выбор перков
+
+`COMMON -> RARE`:
+
+- показываем до 3 rolled перков;
+- каждый вариант содержит название, описание, бонус, applicable roles;
+- если preview уже существовал, показываем те же варианты и текст `Варианты
+  зафиксированы для выбранных карт`.
+
+`RARE -> EPIC`:
+
+- `A/B/C`: показываем 3 source-перка с привязкой к материалам; пользователь
+  выбирает 2;
+- `A/A/B`: перки `A+B` выбираются автоматически, UI показывает, из каких карт они
+  пришли;
+- `A/A/A`: `A` фиксируется, второй перк выбирается из rolled options без `A`;
+- дубли одного перка всегда визуально схлопываются, но рядом показывается
+  количество источников, например `sniper x3`.
+
+### 8.5 Preview и подтверждение
+
+Preview должен быть отдельным финальным шагом, а не маленьким текстом под
+кнопкой. Он показывает:
+
+- результат: игрок, редкость, перки, скин;
+- `usesRemaining` результата и формулу `min(baseUses, sum(inputUses))`;
+- `timesRenewed = max(inputs)` и предупреждение, если результат на лимите;
+- `value` до/после: сумма value материалов -> value результата;
+- пригодность для BUDGET при текущем стандартном `valueCap`, если value доступен;
+- список материалов, которые исчезнут из коллекции;
+- скины, которые будут потеряны;
+- marketplace статус результата: можно ли будет выставить после merge с учётом
+  `timesRenewed < maxRenewals`;
+- для EPIC-результата — нейтральную подсказку, что дальнейший LEGENDARY upgrade
+  остаётся отдельной платной операцией.
+
+Требования к подтверждению:
+
+- primary button `Собрать карту`;
+- secondary button `Назад к материалам`;
+- checkbox не нужен, но кнопка должна быть disabled до загрузки preview;
+- при плохом контракте (`timesRenewed = maxRenewals` или result uses ниже base)
+  показывать warning непосредственно над кнопкой.
+
+### 8.6 Success state
+
+После успешного merge:
+
+- показать новую карту крупно;
+- показать краткий summary: `3 COMMON -> RARE` или `3 RARE -> EPIC`;
+- CTA `В коллекцию`;
+- CTA `Собрать ещё`, если есть доступные комбинации;
+- для EPIC-результата CTA `Улучшить до LEGENDARY`, если legendary upgrade
+  доступен по текущим правилам.
+
+### 8.7 Ошибки и stale states
 
 | Состояние | Поведение |
 |-----------|-----------|
-| Нет доступных комбинаций | Empty state с объяснением: нужны 3 карты одного игрока |
+| Нет доступных комбинаций | Empty state с ближайшими 2/3 целями и причинами блокировки |
 | Есть COMMON-комбо | Показать игроков и количество доступных COMMON |
 | Есть RARE-комбо | Показать игроков, перки RARE и предупреждение про выбранные перки |
 | Карта недоступна | Disabled с причиной: команда, marketplace, 0 uses, deleted |
+| Карта на marketplace | Disabled + `Снять с продажи` |
 | Несколько скинов | Явный выбор переносимого скина |
 | Плохой контракт | Warning: результат наследует `timesRenewed = N/max` |
+| Preview истёк | Reopen preview с тем же roll для тех же материалов |
+| Материал изменился после preview | Error state, вернуться к выбору материалов |
 | Ошибка roll/config | Error state без списания карт |
+| Confirm double tap | Вторая попытка возвращает уже созданный результат или понятный consumed-state |
 
-### 8.3 Copy
+### 8.8 Copy
 
 Основные тексты:
 
@@ -395,6 +571,11 @@ CREATE TABLE user_card_merge_input (
 - `Эти карты исчезнут из коллекции`
 - `Скин будет перенесён`
 - `Остальные скины будут потеряны`
+- `Эта карта на продаже`
+- `Снять с продажи`
+- `Варианты перков зафиксированы для выбранных карт`
+- `Ценность коллекции уменьшится: {before} -> {after}`
+- `Можно будет улучшить до LEGENDARY отдельно`
 - `Собрать карту`
 
 Текст для `A/A/A`:
@@ -406,11 +587,15 @@ CREATE TABLE user_card_merge_input (
 
 ## 9. Admin и операционные сценарии
 
-V1 не требует полноценного admin workflow для ручного слияния. Достаточно:
+V1 не требует admin workflow для ручного слияния за пользователя. Но read-only
+поддержка merge нужна сразу, потому что операция необратимая и использует roll.
+
+Минимум для V1:
 
 - видеть acquisition type `CARD_MERGE` в истории карты;
 - при просмотре пользователя/карты иметь возможность понять источник результата;
-- в будущей админской детализации карты показать merge inputs.
+- в детализации карты-результата показать merge inputs, выбранные/предложенные
+  перки, сожжённые скины, cost, timestamp и preview id.
 
 Опционально для админки:
 
@@ -431,6 +616,8 @@ GET /api/v1/cards/merge/options
 ```
 
 Возвращает доступные комбинации и причины недоступности.
+Должен включать не только selectable cards, но и disabled cards того же игрока и
+редкости с причиной блокировки, чтобы TMA могла показать путь к исправлению.
 
 ```json
 {
@@ -445,6 +632,14 @@ GET /api/v1/cards/merge/options
           "sourceRarity": "COMMON",
           "resultRarity": "RARE",
           "availableCards": [],
+          "blockedCards": [
+            {
+              "userCardId": 55,
+              "reason": "MARKETPLACE_ACTIVE",
+              "listingId": 9001,
+              "canCancelListing": true
+            }
+          ],
           "eligible": true
         }
       ]
@@ -472,6 +667,9 @@ POST /api/v1/cards/merge/preview
 ```json
 {
   "operation": "RARE_TO_EPIC",
+  "previewId": 42,
+  "expiresAt": "2026-06-25T12:15:00Z",
+  "sameRollForInputSet": true,
   "fixedPerkIds": ["sniper"],
   "selectablePerks": [
     { "id": "voteForBlack", "name": "..." },
@@ -486,7 +684,11 @@ POST /api/v1/cards/merge/preview
     "timesRenewed": 0,
     "skinCode": "tournament_gold"
   },
-  "warnings": []
+  "valueBefore": 150,
+  "valueAfter": 100,
+  "warnings": [
+    { "code": "PORTFOLIO_VALUE_DECREASE", "message": "Ценность коллекции уменьшится: 150 -> 100" }
+  ]
 }
 ```
 
@@ -502,7 +704,7 @@ POST /api/v1/cards/merge/confirm
   "inputUserCardIds": [101, 102, 103],
   "selectedPerkIds": ["sniper", "voteForBlack"],
   "selectedSkinSourceUserCardId": 101,
-  "previewToken": "..."
+  "previewId": 42
 }
 ```
 
@@ -516,25 +718,46 @@ POST /api/v1/cards/merge/confirm
 }
 ```
 
-### 10.2 Preview token
+### 10.2 Preview и анти-reroll
 
-Если preview генерирует random roll, confirm должен защищаться от подмены выбора.
+Если preview генерирует random roll, confirm должен защищаться и от подмены
+выбора, и от бесплатного reroll.
 
-Варианты:
+V1 использует таблицу `user_card_merge_preview`.
 
-- хранить pending preview в БД с TTL;
-- или подписывать payload HMAC-ом backend secret.
-
-Для простоты V1 лучше завести таблицу `user_card_merge_preview` с:
+Поля:
 
 - `telegram_user_id`;
 - `input_user_card_ids`;
+- `input_set_hash`;
 - `operation`;
 - `fixed_perk_ids`;
 - `offered_perk_ids`;
 - `selected_skin_source_user_card_id`;
 - `expires_at`;
-- `consumed_at`.
+- `consumed_at`;
+- `result_user_card_id`.
+
+Индекс:
+
+```sql
+CREATE UNIQUE INDEX user_card_merge_preview_active_input_set
+    ON user_card_merge_preview (telegram_user_id, operation, input_set_hash)
+    WHERE consumed_at IS NULL;
+```
+
+Поведение:
+
+- preview для того же `input_set_hash` возвращает тот же roll;
+- истёкший preview для того же набора не reroll'ится, а получает новое
+  `expires_at` с прежними `offered_perk_ids`;
+- смена скина не меняет `input_set_hash` и не reroll'ит перки;
+- confirm принимает `previewId`, а не произвольный token;
+- successful confirm записывает `consumed_at` и `result_user_card_id`;
+- повтор confirm consumed preview возвращает result card, если входной payload
+  совпадает с исходным preview;
+- cleanup может удалять только consumed previews и previews, где один из input
+  cards уже deleted / сменил владельца.
 
 Confirm принимает `previewId`, блокирует preview row и входные карты
 `PESSIMISTIC_WRITE`, затем повторно валидирует все условия.
@@ -564,26 +787,95 @@ HTTP-вызовов к Polemica нет, поэтому внешних сетев
 
 ## 12. Analytics и достижения
 
-События, которые стоит трекать:
+Product/analytics events в V1 записываются в `product_event`:
 
 - `CARD_MERGE_PREVIEW_CREATED`;
+- `CARD_MERGE_PREVIEW_REUSED`;
 - `CARD_MERGE_CONFIRMED`;
-- `CARD_MERGE_FAILED`;
-- `COLLECTION_CHANGED`.
+- `CARD_MERGE_FAILED`.
 
-Для достижений можно добавить future conditions:
+Рекомендуемые `subject_type`:
 
-- первое слияние;
-- 10 слияний;
-- первый EPIC через слияние;
-- собрать EPIC конкретного игрока через слияние.
+- preview events: `CARD_MERGE_PREVIEW`, `subject_id = previewId`;
+- confirm events: `CARD_MERGE`, `subject_id = mergeId`;
+- failed events: `CARD_MERGE_PREVIEW` или `CARD_MERGE`, если id уже известен.
 
-В V1 достаточно публиковать общий `COLLECTION_CHANGED`; отдельные achievement
-conditions можно добавить позже.
+Event metadata должен включать: `operation`, `sourceRarity`, `resultRarity`,
+`fantasyPlayerId`, `inputUserCardIds`, `inputUsesSum`, `resultUsesRemaining`,
+`inputMaxTimesRenewed`, `resultTimesRenewed`, `selectedPerkIds`,
+`offeredPerkIds`, `skinTransferred`, `skinsBurnedCount`, `costFantiki`,
+`valueBefore`, `valueAfter`, `failureCode` для failed events.
+
+### 12.1 Достижения V1
+
+Добавить condition types:
+
+| Condition | Расчёт |
+|-----------|--------|
+| `CARD_MERGES` | `COUNT(*) FROM user_card_merge WHERE telegram_user_id = ? AND created_at >= trackingStartedAt` |
+| `CARD_MERGE_EPIC_RESULTS` | то же, но `result_rarity = 'EPIC'` |
+| `CARD_MERGE_UNIQUE_PLAYERS` | `COUNT(DISTINCT fantasy_player_id)` по `user_card_merge` |
+
+Seed достижений:
+
+| Code | Condition | Target | Title | Description | Rarity | Rewards |
+|------|-----------|--------|-------|-------------|--------|---------|
+| `card_merge_1` | `CARD_MERGES` | 1 | `Первая сборка` | `Выполнить первое слияние карт` | COMMON | `FANTIKI 25` |
+| `card_merge_10` | `CARD_MERGES` | 10 | `Мастерская коллекции` | `Выполнить 10 слияний карт` | RARE | `BADGE_STYLE card_merge`, `CARD_CHOICE_ROLL COMMON x2 из 5` |
+| `card_merge_epic_1` | `CARD_MERGE_EPIC_RESULTS` | 1 | `Эпик из деталей` | `Собрать первую EPIC-карту через слияние` | RARE | `CARD_CHOICE_ROLL RARE x2 из 5` |
+| `card_merge_epic_5` | `CARD_MERGE_EPIC_RESULTS` | 5 | `Эпический сборщик` | `Собрать 5 EPIC-карт через слияние` | EPIC | `BADGE_STYLE epic_crafter`, `CARD_CHOICE_ROLL EPIC x1 из 3` |
+| `card_merge_players_5` | `CARD_MERGE_UNIQUE_PLAYERS` | 5 | `Ростерная мастерская` | `Собрать карты через слияние для 5 разных игроков` | RARE | `FANTIKI 75` |
+
+Все достижения используют `history_policy = FROM_ACHIEVEMENTS_LAUNCH` или дату
+релиза merge, чтобы не пытаться восстанавливать исторические события.
+
+После successful confirm backend:
+
+- записывает `product_event` с `event_type = CARD_MERGE_CONFIRMED`,
+  `subject_type = CARD_MERGE`, `subject_id = mergeId`;
+- публикует `AchievementProgressEvent(COLLECTION_CHANGED, user)`, чтобы текущий
+  achievement listener пересчитал новые condition types вместе с остальной
+  коллекцией.
 
 ---
 
-## 13. Acceptance Criteria
+## 13. Help, whats-new и коммуникация
+
+### 13.1 `/help`
+
+Добавить раздел **Слияние карт** в блок экономики/коллекции:
+
+- `3 COMMON одного игрока -> 1 RARE того же игрока`;
+- `3 RARE одного игрока -> 1 EPIC того же игрока`;
+- EPIC после merge можно отдельно улучшить до LEGENDARY через legendary upgrade;
+- материалы исчезают из коллекции навсегда;
+- результат наследует худшую контрактную усталость:
+  `timesRenewed = max(inputs)`;
+- uses результата: `min(baseUses(resultRarity), sum(inputUses))`;
+- value коллекции обычно уменьшается: пользователь меняет ширину коллекции на
+  более сильную точечную карту;
+- карты на marketplace нужно сначала снять с продажи;
+- если у нескольких материалов есть скины, переносится только выбранный скин,
+  остальные сгорают;
+- варианты rolled-перков фиксируются для выбранных материалов, перезапуск preview
+  не даёт бесплатный reroll.
+
+### 13.2 `/whats-new`
+
+Release note:
+
+| Поле | Значение |
+|------|----------|
+| Title | `Слияние карт` |
+| Body | `Теперь дубликаты одного игрока можно собрать в карту выше редкостью: 3 COMMON -> RARE или 3 RARE -> EPIC. Перед подтверждением показываем контракт, перки, ценность и потерю скинов.` |
+| CTA | `Открыть слияние` -> `/cards/merge` |
+
+Дополнительно можно подготовить draft product campaign для активных пользователей
+с 2+ дубликатами одного игрока, но не отправлять её миграцией автоматически.
+
+---
+
+## 14. Acceptance Criteria
 
 - Пользователь может слить 3 COMMON одного игрока в RARE того же игрока.
 - Для COMMON -> RARE пользователь выбирает 1 перк из roll до 3 вариантов.
@@ -603,10 +895,17 @@ conditions можно добавить позже.
   перки.
 - TMA показывает preview результата, потерю входных карт, перенос/потерю скинов
   и контракт результата до подтверждения.
+- Повторный preview для тех же материалов не даёт новый roll.
+- Карта в ACTIVE marketplace listing недоступна для merge, но UI даёт кнопку
+  `Снять с продажи` и возвращает пользователя в merge flow после успеха.
+- `/help` объясняет merge, контракты, value loss, скины и отличие от legendary
+  upgrade.
+- `/whats-new` содержит release note с CTA на `/cards/merge`.
+- Достижения V1 для merge seeded и пересчитываются после successful confirm.
 
 ---
 
-## 14. Non-goals V1
+## 15. Non-goals V1
 
 - Слияние EPIC в LEGENDARY.
 - Слияние карт разных игроков.
@@ -616,10 +915,12 @@ conditions можно добавить позже.
 - Админский ручной merge за пользователя.
 - Автоматическая компенсация за потерянные скины.
 - Изменение правил marketplace contract reissue.
+- Запрет последующего legendary upgrade для EPIC, собранной через merge.
+- Перенос ownership history входных карт на результат merge.
 
 ---
 
-## 15. Open Questions
+## 16. Open Questions
 
 - Нужна ли плата в фантиках за `RARE -> EPIC` уже в V1, или достаточно card
   sink?
@@ -627,5 +928,4 @@ conditions можно добавить позже.
   или запрет expired cards оставить постоянным?
 - Нужно ли ограничивать количество merge operations в день, если появятся
   злоупотребления через мультиаккаунты?
-- Должны ли merge previews истекать через 5, 10 или 15 минут?
 - Нужен ли отдельный merge-specific pool перков вместо общего random-card pool?

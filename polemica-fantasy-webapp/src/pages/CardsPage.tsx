@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMarkOnboardingStep } from '../api/antiChurn'
 import { fetchPerkCatalog } from '../api/perksCatalog'
 import { ApiError, apiGet } from '../api/client'
@@ -526,6 +526,9 @@ export function CardsPage() {
         >
           По игрокам
         </button>
+        <Link to="/cards/merge" className="pf-view-toggle__btn pf-view-toggle__link">
+          Слияние
+        </Link>
       </div>
 
       <div className="pf-filters">

@@ -146,6 +146,32 @@ class AchievementProgressCalculator(
                 internalTelegramUserId,
                 ts,
             )
+            "CARD_MERGES" -> queryLong(
+                "SELECT COUNT(*) FROM user_card_merge WHERE telegram_user_id = ? AND created_at >= ?",
+                internalTelegramUserId,
+                ts,
+            )
+            "CARD_MERGE_EPIC_RESULTS" -> queryLong(
+                """
+                SELECT COUNT(*)
+                FROM user_card_merge
+                WHERE telegram_user_id = ?
+                  AND result_rarity = 'EPIC'
+                  AND created_at >= ?
+                """,
+                internalTelegramUserId,
+                ts,
+            )
+            "CARD_MERGE_UNIQUE_PLAYERS" -> queryLong(
+                """
+                SELECT COUNT(DISTINCT fantasy_player_id)
+                FROM user_card_merge
+                WHERE telegram_user_id = ?
+                  AND created_at >= ?
+                """,
+                internalTelegramUserId,
+                ts,
+            )
             else -> 0L
         }
     }

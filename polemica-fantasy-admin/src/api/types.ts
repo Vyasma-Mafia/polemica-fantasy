@@ -621,3 +621,44 @@ export interface PagedUsersByComplaintsDto {
 export interface BanUserRequest {
   days: number | null
 }
+
+export type CardMergeOperation = 'COMMON_TO_RARE' | 'RARE_TO_EPIC' | string
+
+export interface AdminCardMergeListItemDto {
+  id: number
+  telegramUserId: number
+  telegramUserDisplayName?: string | null
+  previewId?: number | null
+  resultUserCardId: number
+  operation: CardMergeOperation
+  sourceRarity: Rarity | string
+  resultRarity: Rarity | string
+  fantasyPlayerId: number
+  fantasyPlayerNickname: string
+  selectedPerkIds: string[]
+  offeredPerkIds?: string[] | null
+  costFantiki: number
+  createdAt: string
+}
+
+export interface AdminCardMergeInputDto {
+  inputUserCardId: number
+  inputCardTemplateId: number
+  inputRarity: Rarity | string
+  inputPerkIds: string[]
+  inputUsesRemaining: number
+  inputTimesRenewed: number
+  inputSkinCode?: string | null
+}
+
+export interface AdminCardMergeDetailDto extends AdminCardMergeListItemDto {
+  inputs: AdminCardMergeInputDto[]
+}
+
+export interface AdminCardMergePageDto {
+  content: AdminCardMergeListItemDto[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}

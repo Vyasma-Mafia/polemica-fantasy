@@ -66,6 +66,8 @@ class MarketplaceService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
         }
         checkMarketplaceBan(me)
+        userCardRepository.findByIdAndTelegramUser_IdForUpdate(request.userCardId, user.id!!)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         val uc = userCardRepository.findByIdAndTelegramUser_IdWithTemplatePerks(request.userCardId, user.id!!)
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card not found or not owned")
         if (uc.usesRemaining <= 0) {

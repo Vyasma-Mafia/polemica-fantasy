@@ -425,6 +425,103 @@ export interface UserCardItem {
   skinCode?: string | null
 }
 
+export type CardMergeOperation = 'COMMON_TO_RARE' | 'RARE_TO_EPIC'
+export type CardMergeBlockReason = 'ACTIVE_TEAM' | 'MARKETPLACE_ACTIVE' | 'EXPIRED_CONTRACT' | string
+
+export interface CardMergeMaterialCard {
+  userCard: UserCardItem
+  blockReason?: CardMergeBlockReason | null
+  listingId?: number | null
+  canCancelListing?: boolean
+}
+
+export interface CardMergeOperationOption {
+  operation: CardMergeOperation
+  sourceRarity: Rarity
+  resultRarity: Rarity
+  availableCards: CardMergeMaterialCard[]
+  blockedCards: CardMergeMaterialCard[]
+  eligible: boolean
+}
+
+export interface CardMergePlayerGroup {
+  fantasyPlayerId: number
+  nickname: string
+  photoUrl: string | null
+  operations: CardMergeOperationOption[]
+}
+
+export interface CardMergeOptionsResponse {
+  groups: CardMergePlayerGroup[]
+}
+
+export interface CardMergePreviewRequest {
+  operation: CardMergeOperation
+  inputUserCardIds: number[]
+  selectedSkinSourceUserCardId?: number
+}
+
+export interface CardMergeWarning {
+  code?: string | null
+  message: string
+}
+
+export interface CardMergeResultPreview {
+  fantasyPlayerId?: number
+  nickname?: string | null
+  photoUrl?: string | null
+  rarity: Rarity
+  usesRemaining: number
+  baseUses?: number | null
+  timesRenewed: number
+  skinCode?: string | null
+  perks?: UserCardItem['perks']
+  maxRenewals?: number | null
+  budgetValueCap?: number | null
+  marketplaceAvailable?: boolean | null
+  marketplaceHint?: string | null
+}
+
+export interface CardMergeSkinLossDetail {
+  userCardId: number
+  skinCode: string
+}
+
+export interface CardMergePreviewResponse {
+  operation?: CardMergeOperation
+  previewId: number
+  expiresAt: string
+  sameRollForInputSet: boolean
+  fixedPerkIds: string[]
+  selectablePerks: PerkCatalogItem[]
+  requiredSelections: number
+  result: CardMergeResultPreview
+  valueBefore: number
+  valueAfter: number
+  budgetValueCap?: number | null
+  warnings: CardMergeWarning[]
+  materials?: CardMergeMaterialCard[] | UserCardItem[] | null
+  materialCards?: CardMergeMaterialCard[] | UserCardItem[] | null
+  lostSkins?: CardMergeSkinLossDetail[] | null
+  skinsLost?: CardMergeSkinLossDetail[] | null
+  transferredSkinCode?: string | null
+  marketplaceHint?: string | null
+}
+
+export interface CardMergeConfirmRequest {
+  operation: CardMergeOperation
+  inputUserCardIds: number[]
+  selectedPerkIds: string[]
+  selectedSkinSourceUserCardId?: number
+  previewId: number
+}
+
+export interface CardMergeConfirmResponse {
+  card: UserCardItem
+  spentFantiki: number
+  newBalance: number
+}
+
 /** GET /api/v1/legendary-upgrade/info */
 export interface LegendaryUpgradeInfo {
   cost: number

@@ -15,6 +15,7 @@ import { UsersOverviewPage } from './pages/UsersOverviewPage'
 import { MarketplaceModerationPage } from './pages/MarketplaceModerationPage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { PlayersPage } from './pages/PlayersPage'
+import { CardMergesPage } from './pages/CardMergesPage'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="users" element={<UsersOverviewPage />} />
         <Route path="economy" element={<EconomyPage />} />
         <Route path="marketplace-moderation" element={<MarketplaceModerationPage />} />
+        <Route path="card-merges" element={<CardMergesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

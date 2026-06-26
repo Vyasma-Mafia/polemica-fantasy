@@ -6,6 +6,7 @@ import { FantikiBalance } from './components/FantikiBalance'
 import { TopBarDisplayName } from './components/TopBarDisplayName'
 import { InitDataProvider } from './context/InitDataContext.tsx'
 import { CardsPage } from './pages/CardsPage'
+import { CardMergePage } from './pages/CardMergePage'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { HelpPage } from './pages/HelpPage'
 import { FantasyHistoryPage } from './pages/FantasyHistoryPage'
@@ -134,6 +135,7 @@ function Shell() {
           <Route path="/series/:seriesId/leaderboard" element={<LeaderboardPage />} />
           <Route path="/series/:seriesId/leaderboard/player/:telegramId" element={<LeaderboardPlayerTeamPage />} />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/cards/merge" element={<CardMergePage />} />
           <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/rating" element={<RatingPage />} />
           <Route path="/players/:telegramId" element={<PlayerProfilePage />} />
