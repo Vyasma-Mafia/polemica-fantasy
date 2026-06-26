@@ -19,8 +19,10 @@ import com.github.mafia.vyasma.polemica.library.utils.isBlackWin
 import com.github.mafia.vyasma.polemica.library.utils.isRed
 import com.github.mafia.vyasma.polemica.library.utils.isRedWin
 import org.springframework.stereotype.Component
+import kotlin.math.abs
 
 private fun boolToInt(value: Boolean): Int = if (value) 1 else 0
+private const val ZERO_POINTS_EPSILON = 1e-5
 
 /** Цепочка «руль» по полю [PolemicaPlayer.guess] / vice; промежуточные звенья — любая роль, старт только с красного. */
 private fun redViceChainReachCount(game: PolemicaGame, target: PolemicaPlayer): Int {
@@ -171,7 +173,7 @@ class NinjaPerkDetector : PerkDetector {
         game: PolemicaGame,
         player: PolemicaPlayer,
         context: ScoringContext,
-    ): Int = boolToInt(context.basePoints == 0.0)
+    ): Int = boolToInt(abs(context.basePoints) < ZERO_POINTS_EPSILON)
 }
 
 /**
