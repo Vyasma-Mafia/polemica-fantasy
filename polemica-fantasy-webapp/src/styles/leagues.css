@@ -1,0 +1,137 @@
+/* --- Leagues UI --- */
+.pf-league-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.pf-league-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-bg-elevated);
+  color: var(--pf-text);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+.pf-league-tab--active {
+  border-color: rgba(196, 181, 253, 0.85);
+  background: rgba(124, 58, 237, 0.2);
+  color: #ede9fe;
+}
+
+.pf-league-tab__name {
+  white-space: nowrap;
+}
+
+.pf-league-tab__check {
+  color: var(--pf-green);
+  font-weight: 700;
+}
+
+.pf-league-tab__cap {
+  font-size: 0.74rem;
+  color: var(--pf-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.pf-league-caption {
+  margin: -4px 0 12px;
+}
+
+.pf-budget-bar-wrap {
+  margin: 10px 0 14px;
+}
+
+.pf-budget-bar-wrap__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.86rem;
+}
+
+.pf-budget-bar-wrap__label strong {
+  color: var(--pf-text-heading);
+}
+
+.pf-budget-bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.pf-budget-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  transition: width 0.2s ease;
+}
+
+.pf-budget-bar__fill--warning {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.pf-budget-bar__fill--over {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.pf-card--budget-disabled {
+  opacity: 0.52;
+}
+
+.pf-card-league-badge {
+  position: absolute;
+  top: 34px;
+  left: 6px;
+  z-index: 5;
+  max-width: calc(100% - 16px);
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #dbeafe;
+  padding: 2px 8px;
+  font-size: 0.66rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pf-card-league-badge--team-dead {
+  top: 58px;
+}
+
+.pf-home-leagues-status {
+  margin: 6px 0 0;
+  font-size: 0.77rem;
+  color: var(--pf-text-muted);
+}
+
+.pf-link-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pf-link-row__sub {
+  font-size: 0.75rem;
+  color: var(--pf-text-muted);
+}

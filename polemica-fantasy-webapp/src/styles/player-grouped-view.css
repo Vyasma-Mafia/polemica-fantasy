@@ -1,0 +1,320 @@
+/* ——— Коллекция: вид «по игрокам» ——— */
+.pf-player-group-heading {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pf-text-muted);
+  margin: 8px 0 12px;
+  font-weight: 700;
+}
+
+.pf-player-cell,
+.pf-player-cell--empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pf-player-cell[role='button'] {
+  cursor: pointer;
+}
+
+.pf-player-cell[role='button']:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 3px;
+}
+
+.pf-player-cell--empty {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pf-player-cell__stack {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+.pf-player-cell__stack-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  box-sizing: border-box;
+  border: 2px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  background: var(--pf-bg-elevated);
+}
+
+.pf-player-cell__stack-layer--1 {
+  transform: translate(2px, 2px);
+  z-index: 1;
+}
+
+.pf-player-cell__stack-layer--2 {
+  transform: translate(4px, 4px);
+  z-index: 0;
+}
+
+.pf-player-cell[role='button'] .pf-collection-card__frame {
+  position: relative;
+  z-index: 2;
+}
+
+.pf-player-card-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.pf-player-cell[role='button'] .pf-uses-badge {
+  top: 34px;
+}
+
+.pf-player-cell[role='button'] .pf-contract-badge--collection {
+  top: 62px;
+}
+
+.pf-player-cell__empty-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  border-radius: var(--pf-radius-sm);
+  border: 2px dashed var(--pf-border);
+  background: var(--pf-bg-elevated);
+  overflow: hidden;
+}
+
+.pf-player-cell__empty-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.2);
+  opacity: 0.7;
+}
+
+.pf-player-cell__empty-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #1e1e22 0%, #121214 100%);
+}
+
+.pf-player-cell__empty-ico {
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--pf-border);
+  background: #2a2a2f;
+  opacity: 0.5;
+}
+
+.pf-player-cell__cap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 2.5em;
+}
+
+.pf-player-cell__name {
+  font-size: 1.05rem;
+  color: #fff;
+  display: block;
+  line-height: 1.2;
+}
+
+.pf-player-cell__hint {
+  font-size: 0.72rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.pf-player-cell-expand {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  width: 100%;
+}
+
+.pf-player-cell-expand__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--pf-border);
+}
+
+.pf-player-cell-expand__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pf-text-heading);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-player-cell-expand__collapse {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pf-player-cell-expand__collapse:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.pf-player-cell-expand__scroller {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 10px 0 2px;
+  margin: 0 0 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+
+.pf-player-cell-expand__scroller--full {
+  border-top: none;
+  padding-top: 12px;
+}
+
+.pf-player-cell-expand__tile {
+  flex: 0 0 calc(50% - 5px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__frame {
+  border: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%) padding-box,
+    conic-gradient(
+        from 220deg,
+        #e8c547,
+        #fde68a,
+        #f59e0b,
+        #d97706,
+        #b45309,
+        #fbbf24,
+        #e8c547
+      )
+      border-box;
+  border: 2px solid transparent;
+  box-shadow:
+    0 0 28px rgba(232, 197, 71, 0.45),
+    0 0 64px rgba(232, 197, 71, 0.2),
+    inset 0 0 40px rgba(232, 197, 71, 0.06);
+  animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(232, 197, 71, 0.2), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.14), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.1), transparent 40%);
+  z-index: 2;
+  mix-blend-mode: screen;
+  mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__frame::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: calc(var(--pf-radius-sm) - 4px);
+  border: 1px solid rgba(232, 197, 71, 0.22);
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.35);
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__img {
+  position: relative;
+  z-index: 1;
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__cap {
+  z-index: 4;
+}
+
+.pf-collection-card--legendary-crafted .pf-card-perk-chip {
+  border-color: rgba(232, 197, 71, 0.45);
+  background: rgba(15, 23, 42, 0.92);
+  box-shadow: 0 0 12px rgba(232, 197, 71, 0.08);
+}
+
+.pf-collection-card--legendary-crafted .pf-collection-card__name {
+  background: linear-gradient(90deg, #fff 0%, #fde68a 55%, #fff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pf-legendary-crafted-shimmer 4s ease-in-out infinite;
+  will-change: background-position;
+}
+
+@keyframes pf-legendary-crafted-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 28px rgba(232, 197, 71, 0.45),
+      0 0 64px rgba(232, 197, 71, 0.2),
+      inset 0 0 40px rgba(232, 197, 71, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 38px rgba(232, 197, 71, 0.62),
+      0 0 72px rgba(245, 158, 11, 0.22),
+      inset 0 0 48px rgba(232, 197, 71, 0.1);
+  }
+}
+
+@keyframes pf-legendary-crafted-shimmer {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}

@@ -25,6 +25,9 @@ class UserProfileCustomization(
     @Column(name = "profile_frame_code", length = 96)
     var profileFrameCode: String? = null,
 
+    @Column(name = "favorite_badge_fantasy_player_id")
+    var favoriteBadgeFantasyPlayerId: Long? = null,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 )

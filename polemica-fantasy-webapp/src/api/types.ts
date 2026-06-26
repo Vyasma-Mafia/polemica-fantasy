@@ -104,11 +104,20 @@ export interface ProfileCustomization {
   unlockedFrames: ProfileFrame[]
   featuredAchievementCodes: string[]
   availableFeaturedAchievements: AchievementBadge[]
+  favoriteBadgeFantasyPlayerId: number | null
+  favoriteBadgePlayerOptions: FavoriteBadgePlayerOption[]
+}
+
+export interface FavoriteBadgePlayerOption {
+  fantasyPlayerId: number
+  nickname: string
+  rarityCount: number
 }
 
 export interface UpdateProfileCustomizationRequest {
   profileFrameCode: string | null
   featuredAchievementCodes: string[]
+  favoriteBadgeFantasyPlayerId: number | null
 }
 
 export interface PlayerAchievementSummary {

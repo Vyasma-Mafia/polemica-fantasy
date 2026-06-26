@@ -1,0 +1,106 @@
+/* --- Fantasy score matrix --- */
+.pf-score-matrix-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pf-score-matrix {
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  min-width: 100%;
+}
+
+.pf-score-matrix th,
+.pf-score-matrix td {
+  border: 1px solid var(--pf-border);
+  padding: 6px 8px;
+  text-align: center;
+  vertical-align: top;
+}
+
+.pf-score-matrix th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--pf-text-muted);
+  font-weight: 600;
+}
+
+.pf-score-matrix__corner {
+  min-width: 72px;
+}
+
+.pf-score-matrix__game {
+  max-width: 120px;
+  line-height: 1.25;
+}
+
+.pf-score-matrix__head-card {
+  line-height: 1.2;
+}
+
+.pf-score-matrix__cell {
+  width: 100%;
+  min-height: 44px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 6px 8px;
+}
+
+.pf-score-matrix__cell:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pf-score-matrix__cell--best {
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.pf-score-matrix__cell-inner {
+  font-weight: 600;
+  color: var(--pf-text-heading);
+}
+
+.pf-score-matrix__cell-hint {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--pf-text-muted);
+  margin-top: 2px;
+}
+
+.pf-score-breakdown {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-bg);
+  border: 1px solid var(--pf-border);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.pf-score-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--pf-text-muted);
+}
+
+.pf-score-breakdown__row strong {
+  color: var(--pf-text);
+}
+
+.pf-modal__per-game {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-modal__per-game h4 {
+  font-size: 0.85rem;
+  margin: 0 0 8px;
+  color: var(--pf-text-muted);
+}

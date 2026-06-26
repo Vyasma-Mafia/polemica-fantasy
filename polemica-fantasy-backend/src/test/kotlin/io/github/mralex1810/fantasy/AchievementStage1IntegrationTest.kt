@@ -394,20 +394,24 @@ class AchievementStage1IntegrationTest {
 
     @Test
     @Order(32)
-    fun `same player rarities requires all four rarities and uses player nickname in titles`() {
+    fun `same player rarities requires all four rarities and lets user choose badge player`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tournamentId = createTournament(auth, "Favorite player")
-        val fantasyPlayerId = createTournamentPlayer(auth, tournamentId, 920_032_001L, "НикФаворит")
-        val templateIds = listOf("COMMON", "RARE", "EPIC", "LEGENDARY").map { rarity ->
-            createCardTemplate(auth, fantasyPlayerId, rarity)
+        val defaultPlayerId = createTournamentPlayer(auth, tournamentId, 920_032_001L, "AlphaChoice")
+        val favoritePlayerId = createTournamentPlayer(auth, tournamentId, 920_032_002L, "ZFavorite")
+        val defaultTemplateIds = listOf("COMMON", "RARE", "EPIC", "LEGENDARY").map { rarity ->
+            createCardTemplate(auth, defaultPlayerId, rarity)
+        }
+        val favoriteTemplateIds = listOf("COMMON", "RARE", "EPIC", "LEGENDARY").map { rarity ->
+            createCardTemplate(auth, favoritePlayerId, rarity)
         }
         val telegramId = 910_000_032L
         val tma = tmaAuth(telegramId, "FavoriteCollector")
 
-        giveCards(auth, telegramId, templateIds.take(3))
+        giveCards(auth, telegramId, defaultTemplateIds.take(3))
         assertAchievement(tma, "same_player_3_rarities", 0, "LOCKED")
 
-        giveCards(auth, telegramId, listOf(templateIds[3]))
+        giveCards(auth, telegramId, listOf(defaultTemplateIds[3]) + favoriteTemplateIds)
 
         val achievementsJson = mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
             .andExpect(status().isOk)
@@ -415,7 +419,7 @@ class AchievementStage1IntegrationTest {
         val achievement = singleAchievement(achievementsJson, "same_player_3_rarities")
         assertThat((achievement["progressValue"] as Number).toInt()).isEqualTo(1)
         assertThat(achievement["state"]).isEqualTo("COMPLETED_UNCLAIMED")
-        assertThat(achievement["title"]).isEqualTo("Любимый игрок: НикФаворит")
+        assertThat(achievement["title"]).isEqualTo("Любимый игрок: AlphaChoice")
 
         val internalId = internalUserId(telegramId)
         jdbcTemplate.update(
@@ -439,11 +443,37 @@ class AchievementStage1IntegrationTest {
 
         mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.availableFeaturedAchievements[0].title").value("Любимый игрок: НикФаворит"))
+            .andExpect(jsonPath("$.availableFeaturedAchievements[0].title").value("Любимый игрок: AlphaChoice"))
+            .andExpect(jsonPath("$.favoriteBadgePlayerOptions[*].fantasyPlayerId", containsInAnyOrder(defaultPlayerId.toInt(), favoritePlayerId.toInt())))
+            .andExpect(jsonPath("$.favoriteBadgePlayerOptions[*].nickname", containsInAnyOrder("AlphaChoice", "ZFavorite")))
+
+        mockMvc.perform(
+            put("/api/v1/me/profile-customization")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"profileFrameCode":null,"featuredAchievementCodes":["same_player_3_rarities"],"favoriteBadgeFantasyPlayerId":$favoritePlayerId}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.favoriteBadgeFantasyPlayerId").value(favoritePlayerId.toInt()))
+            .andExpect(jsonPath("$.availableFeaturedAchievements[0].title").value("Любимый игрок: ZFavorite"))
+
+        val selectedAchievementsJson = mockMvc.perform(get("/api/v1/achievements").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        assertThat(singleAchievement(selectedAchievementsJson, "same_player_3_rarities")["title"])
+            .isEqualTo("Любимый игрок: ZFavorite")
 
         mockMvc.perform(get("/api/v1/players/$telegramId/profile").header("Authorization", tma))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.featuredAchievements[0].title").value("Любимый игрок: НикФаворит"))
+            .andExpect(jsonPath("$.featuredAchievements[0].title").value("Любимый игрок: ZFavorite"))
+
+        mockMvc.perform(
+            put("/api/v1/me/profile-customization")
+                .header("Authorization", tma)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"profileFrameCode":null,"featuredAchievementCodes":["same_player_3_rarities"],"favoriteBadgeFantasyPlayerId":999999999}"""),
+        )
+            .andExpect(status().isBadRequest)
     }
 
     @Test

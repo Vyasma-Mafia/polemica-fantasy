@@ -2,6 +2,7 @@ package io.github.mralex1810.fantasy.service.achievement
 
 import io.github.mralex1810.fantasy.dto.user.request.UpdateProfileCustomizationRequest
 import io.github.mralex1810.fantasy.dto.user.response.AchievementBadgeDto
+import io.github.mralex1810.fantasy.dto.user.response.FavoriteBadgePlayerOptionDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementItemDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerAchievementShowcaseDto
 import io.github.mralex1810.fantasy.dto.user.response.PlayerAchievementSummaryDto
@@ -34,11 +35,16 @@ class ProfileCustomizationService(
     private val achievementDefinitionRepository: AchievementDefinitionRepository,
     private val telegramUserRepository: TelegramUserRepository,
     private val achievementCatalogService: AchievementCatalogService,
+    private val achievementProgressCalculator: AchievementProgressCalculator,
 ) {
     @Transactional(readOnly = true)
     fun getCustomization(user: TelegramUser): ProfileCustomizationDto {
         val userId = user.id!!
-        val selectedFrame = currentProfileFrameCode(userId)
+        val customization = customizationRepository.findByTelegramUser_Id(userId)
+        val selectedFrame = currentProfileFrameCode(userId, customization)
+        val favoriteBadgeOptions = favoriteBadgePlayerOptions(userId)
+        val favoriteBadgeFantasyPlayerId = customization?.favoriteBadgeFantasyPlayerId
+            ?.takeIf { selectedId -> favoriteBadgeOptions.any { it.fantasyPlayerId == selectedId } }
         val claimedByCode = userAchievementRepository.findClaimedWithDefinitions(userId)
             .associateBy { it.achievement!!.code }
         val featuredCodes = featuredRepository.findAllByTelegramUserIdOrdered(userId)
@@ -52,6 +58,8 @@ class ProfileCustomizationService(
             unlockedFrames = unlockedFrames(userId),
             featuredAchievementCodes = featuredCodes,
             availableFeaturedAchievements = claimedByCode.values.map { toBadge(it.achievement!!, userId) },
+            favoriteBadgeFantasyPlayerId = favoriteBadgeFantasyPlayerId,
+            favoriteBadgePlayerOptions = favoriteBadgeOptions,
         )
     }
 
@@ -71,6 +79,11 @@ class ProfileCustomizationService(
         if (selectedFrameCode != null && !hasProfileFrame(userId, selectedFrameCode)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile frame is not unlocked")
         }
+        val favoriteBadgeOptions = favoriteBadgePlayerOptions(userId)
+        val favoriteBadgeFantasyPlayerId = request.favoriteBadgeFantasyPlayerId
+        if (favoriteBadgeFantasyPlayerId != null && favoriteBadgeOptions.none { it.fantasyPlayerId == favoriteBadgeFantasyPlayerId }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Favorite badge player is not eligible")
+        }
 
         val claimedByCode = userAchievementRepository.findClaimedWithDefinitions(userId)
             .associateBy { it.achievement!!.code }
@@ -82,6 +95,7 @@ class ProfileCustomizationService(
         val customization = customizationRepository.findByTelegramUser_Id(userId)
             ?: UserProfileCustomization(telegramUser = managedUser)
         customization.profileFrameCode = selectedFrameCode
+        customization.favoriteBadgeFantasyPlayerId = favoriteBadgeFantasyPlayerId
         customization.updatedAt = Instant.now()
         customizationRepository.save(customization)
 
@@ -130,8 +144,11 @@ class ProfileCustomizationService(
         )
     }
 
-    private fun currentProfileFrameCode(telegramUserId: Long): String? {
-        val selected = customizationRepository.findByTelegramUser_Id(telegramUserId)?.profileFrameCode ?: return null
+    private fun currentProfileFrameCode(
+        telegramUserId: Long,
+        customization: UserProfileCustomization? = customizationRepository.findByTelegramUser_Id(telegramUserId),
+    ): String? {
+        val selected = customization?.profileFrameCode ?: return null
         return selected.takeIf { hasProfileFrame(telegramUserId, it) }
     }
 
@@ -146,6 +163,18 @@ class ProfileCustomizationService(
         userCosmeticUnlockRepository.findAllByTelegramUser_IdAndCosmeticType(telegramUserId, PROFILE_FRAME_TYPE)
             .sortedBy { it.cosmeticCode }
             .map { unlock -> ProfileFrameDto(code = unlock.cosmeticCode, name = frameName(unlock.cosmeticCode), assetUrl = null) }
+
+    private fun favoriteBadgePlayerOptions(telegramUserId: Long): List<FavoriteBadgePlayerOptionDto> {
+        val definition = achievementDefinitionRepository.findByCode(FAVORITE_PLAYER_ACHIEVEMENT_CODE) ?: return emptyList()
+        return achievementProgressCalculator.samePlayerRarityCollectorCandidates(telegramUserId, definition)
+            .map { candidate ->
+                FavoriteBadgePlayerOptionDto(
+                    fantasyPlayerId = candidate.fantasyPlayerId,
+                    nickname = candidate.nickname,
+                    rarityCount = candidate.rarityCount,
+                )
+            }
+    }
 
     private fun toBadge(definition: AchievementDefinition, internalTelegramUserId: Long): AchievementBadgeDto =
         AchievementBadgeDto(
@@ -182,6 +211,7 @@ class ProfileCustomizationService(
     companion object {
         private const val MAX_FEATURED_ACHIEVEMENTS = 5
         private const val PROFILE_FRAME_TYPE = "PROFILE_FRAME"
+        private const val FAVORITE_PLAYER_ACHIEVEMENT_CODE = "same_player_3_rarities"
         private val frameNames = mapOf(
             "budget_master" to "Мастер бюджета",
             "budget_master_elite" to "Элита бюджета",

@@ -1,0 +1,160 @@
+.pf-btn--small {
+  font-size: 0.72rem;
+  padding: 6px 10px;
+}
+
+.pf-err--inline {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+}
+
+.pf-help {
+  padding-bottom: 1rem;
+}
+
+.pf-help__section {
+  margin-bottom: 2rem;
+}
+
+.pf-help__section-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.pf-help__roles-note {
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.pf-help__perk {
+  border: 1px solid var(--pf-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.pf-help__perk-name {
+  font-weight: 600;
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.pf-help__perk-desc {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.pf-help__perk-meta {
+  font-size: 0.78rem;
+  color: var(--pf-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.pf-help__perk-meta + .pf-help__perk-meta {
+  margin-top: 4px;
+}
+
+.pf-economy__section {
+  margin-bottom: 1.5rem;
+}
+
+.pf-economy__h {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.pf-economy__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.pf-economy__table th,
+.pf-economy__table td {
+  border: 1px solid var(--pf-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.pf-economy__list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.pf-rarity-mod {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-gold-dim);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Perk chips (collection, pack reveal, team builder, pack summary) */
+.pf-card-perk-chips {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pf-card-perk-chips--compact {
+  margin-top: 5px;
+  gap: 3px;
+}
+
+.pf-card-perk-chips--tight {
+  margin-top: 5px;
+  gap: 3px;
+}
+
+.pf-card-perk-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #e8ecf5;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.pf-card-perk-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 10em;
+}
+
+.pf-card-perk-chip__bonus {
+  font-variant-numeric: tabular-nums;
+  color: var(--pf-gold-dim);
+  flex-shrink: 0;
+}
+
+.pf-card-perk-chips--compact .pf-card-perk-chip {
+  font-size: 0.56rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.pf-card-perk-chips--compact .pf-card-perk-chip__name {
+  max-width: 5.5em;
+}
+
+.pf-card-perk-chips--tight .pf-card-perk-chip {
+  font-size: 0.62rem;
+  padding: 3px 6px;
+}
+
+.pf-card-perk-chips--tight .pf-card-perk-chip__name {
+  max-width: 8em;
+}

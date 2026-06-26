@@ -10,6 +10,7 @@ import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserAchievement
 import io.github.mralex1810.fantasy.repository.AchievementDefinitionRepository
 import io.github.mralex1810.fantasy.repository.UserAchievementRepository
+import io.github.mralex1810.fantasy.repository.UserProfileCustomizationRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,6 +19,7 @@ class AchievementCatalogService(
     private val achievementDefinitionRepository: AchievementDefinitionRepository,
     private val userAchievementRepository: UserAchievementRepository,
     private val achievementProgressCalculator: AchievementProgressCalculator,
+    private val customizationRepository: UserProfileCustomizationRepository,
 ) {
     @Transactional(readOnly = true)
     fun catalogFor(user: TelegramUser): AchievementCatalogDto {
@@ -89,9 +91,21 @@ class AchievementCatalogService(
     }
 
     fun displayTitle(definition: AchievementDefinition, internalTelegramUserId: Long): String {
-        val nickname = achievementProgressCalculator.samePlayerRarityCollectorNickname(internalTelegramUserId, definition)
+        val favoriteBadgeFantasyPlayerId = if (definition.isSamePlayerRarityCollector()) {
+            customizationRepository.findByTelegramUser_Id(internalTelegramUserId)?.favoriteBadgeFantasyPlayerId
+        } else {
+            null
+        }
+        val nickname = achievementProgressCalculator.samePlayerRarityCollectorNickname(
+            internalTelegramUserId,
+            definition,
+            favoriteBadgeFantasyPlayerId,
+        )
         return if (nickname == null) definition.title else "${definition.title}: $nickname"
     }
+
+    private fun AchievementDefinition.isSamePlayerRarityCollector(): Boolean =
+        conditionType == "SAME_PLAYER_3_RARITIES" || conditionType == "SAME_PLAYER_4_RARITIES"
 
     private fun categoryName(category: String): String =
         when (category) {

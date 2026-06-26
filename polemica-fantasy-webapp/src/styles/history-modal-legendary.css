@@ -1,0 +1,622 @@
+/* --- History --- */
+.pf-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pf-acc {
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  overflow: hidden;
+  background: var(--pf-bg-elevated);
+}
+
+.pf-acc__head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  color: var(--pf-text-heading);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.pf-acc__chevron {
+  color: var(--pf-text-muted);
+  font-size: 0.8rem;
+}
+
+.pf-acc__body {
+  padding: 0 12px 14px;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-history-points {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  margin: 12px 0;
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-gradient-soft);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+}
+
+.pf-history-points__label {
+  font-size: 0.75rem;
+  color: var(--pf-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pf-history-points__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--pf-text-heading);
+}
+
+.pf-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pf-fantasy-card {
+  position: relative;
+  flex: 0 0 78%;
+  max-width: 260px;
+  scroll-snap-align: center;
+  border: none;
+  padding: 0;
+  border-radius: var(--pf-radius-sm);
+  overflow: hidden;
+  background: var(--pf-bg);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  border: 2px solid var(--pf-border);
+}
+
+.pf-fantasy-card--common {
+  border-color: var(--pf-card-common);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.pf-fantasy-card--rare {
+  border-color: var(--pf-card-rare);
+  box-shadow: 0 0 14px var(--pf-card-rare-glow);
+}
+.pf-fantasy-card--epic {
+  border-color: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+.pf-fantasy-card--legendary {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
+/* Подложка под фото в карусели (та же, что в коллекции) */
+.pf-fantasy-card--common::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-fantasy-card--rare::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-fantasy-card--epic::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-fantasy-card--legendary::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: 3/4;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
+.pf-fantasy-card__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-fantasy-card__ph {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 3/4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2937;
+}
+
+.pf-fantasy-card__cap {
+  padding: 8px;
+}
+
+.pf-fantasy-card__name {
+  font-family: var(--pf-display);
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: block;
+  color: var(--pf-text-heading);
+}
+
+.pf-fantasy-card__pts {
+  font-size: 0.8rem;
+  color: var(--pf-gold);
+}
+
+.pf-fantasy-card__hint {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--pf-text-muted);
+  padding: 0 8px 8px;
+}
+
+.pf-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.pf-modal {
+  position: relative;
+  max-width: 320px;
+  width: 100%;
+  background: var(--pf-bg-elevated);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius);
+  padding: 20px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.pf-modal__close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  color: var(--pf-text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pf-modal__img-frame {
+  position: relative;
+  border-radius: var(--pf-radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 2px solid var(--pf-border);
+}
+
+.pf-modal__img-frame--common {
+  border-color: var(--pf-card-common);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.pf-modal__img-frame--rare {
+  border-color: var(--pf-card-rare);
+  box-shadow: 0 0 14px var(--pf-card-rare-glow);
+}
+.pf-modal__img-frame--epic {
+  border-color: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+.pf-modal__img-frame--legendary {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
+.pf-modal__img-frame--common::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-modal__img-frame--rare::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-modal__img-frame--epic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-modal__img-frame--legendary:not(.pf-modal__img-frame--legendary-crafted)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
+.pf-modal__img-frame--legendary-crafted {
+  border: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.22), transparent 52%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%) padding-box,
+    conic-gradient(from 220deg, #e8c547, #fde68a, #f59e0b, #d97706, #b45309, #fbbf24, #e8c547) border-box;
+  border: 2px solid transparent;
+  box-shadow:
+    0 0 26px rgba(232, 197, 71, 0.45),
+    inset 0 0 24px rgba(232, 197, 71, 0.06);
+  animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.pf-modal__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-modal__title {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.pf-modal__ach {
+  margin: 10px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--pf-text-muted);
+}
+
+.pf-modal--narrow {
+  max-width: 300px;
+}
+
+.pf-modal--legendary-wizard {
+  max-width: 380px;
+}
+
+.pf-legendary-wizard__lead {
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.pf-legendary-wizard__card-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pf-legendary-wizard__pick-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--pf-radius-sm);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.pf-legendary-wizard__pick-frame {
+  position: relative;
+  border-radius: var(--pf-radius-sm);
+  overflow: hidden;
+  border: 2px solid #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+
+.pf-legendary-wizard__pick-img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-legendary-wizard__pick-ph {
+  aspect-ratio: 3/4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2937;
+  font-size: 0.65rem;
+  color: var(--pf-text-muted);
+}
+
+.pf-legendary-wizard__pick-cap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 6px 6px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+.pf-legendary-wizard__pick-name {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.pf-legendary-wizard__pick-contract {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #facc15;
+  margin-bottom: 4px;
+}
+
+.pf-legendary-wizard__perk-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pf-legendary-wizard__perk-item {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pf-legendary-wizard__perk-item--selected {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 0 1px rgba(232, 197, 71, 0.35);
+}
+
+.pf-legendary-wizard__perk-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.pf-legendary-wizard__compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 360px) {
+  .pf-legendary-wizard__compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pf-legendary-wizard__compare-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 6px;
+}
+
+.pf-legendary-wizard__mini {
+  padding: 8px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+}
+
+.pf-legendary-wizard__mini-frame {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid var(--pf-border);
+  margin-bottom: 6px;
+}
+
+.pf-legendary-wizard__mini-frame img,
+.pf-legendary-wizard__mini-frame .pf-player-image {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-legendary-wizard__mini-cap {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin: 0 0 4px;
+}
+
+.pf-legendary-wizard__easter-egg {
+  margin-top: 8px;
+}
+
+.pf-legendary-wizard__easter-egg-message {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.pf-legendary-wizard__easter-egg-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pf-legendary-wizard__easter-egg-card {
+  padding: 8px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+  background: linear-gradient(160deg, rgba(35, 30, 12, 0.7), rgba(22, 24, 34, 0.92));
+}
+
+.pf-legendary-wizard__easter-egg-label {
+  margin: 0 0 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pf-legendary-wizard__easter-egg-frame {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(232, 197, 71, 0.45);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.18);
+  margin-bottom: 6px;
+}
+
+.pf-legendary-wizard__easter-egg-frame img,
+.pf-legendary-wizard__easter-egg-frame .pf-player-image {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-legendary-wizard__easter-egg-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.pf-legendary-wizard__easter-egg-bonus {
+  margin: 12px 0 0;
+  text-align: center;
+  color: #ffd84f;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(232, 197, 71, 0.3);
+}
+
+@media (max-width: 360px) {
+  .pf-legendary-wizard__easter-egg-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pf-store-legendary {
+  margin-bottom: 1.25rem;
+  padding: 12px 14px;
+  border-radius: var(--pf-radius-sm);
+  border: 1px solid var(--pf-border);
+  background: rgba(232, 197, 71, 0.06);
+}
+
+.pf-store-legendary__text {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.pf-store-legendary__btn {
+  width: 100%;
+}
+
+.pf-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}

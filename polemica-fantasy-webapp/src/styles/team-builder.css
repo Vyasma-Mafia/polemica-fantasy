@@ -1,0 +1,362 @@
+/* --- Team builder --- */
+.pf-picked-slots {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pf-team-picked-actions {
+  margin: 0 0 18px;
+}
+
+.pf-team-picked-actions .pf-btn--block {
+  margin-top: 0;
+}
+
+.pf-team-picked-actions .pf-footer-link {
+  margin-top: 12px;
+}
+
+.pf-picked-slots__slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.pf-picked-slots__num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(167, 139, 250, 0.25);
+  color: #ddd6fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pf-mini-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg-elevated);
+}
+
+button.pf-mini-card {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+button.pf-mini-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.pf-mini-card img,
+.pf-mini-card .pf-player-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.pf-mini-card__ph {
+  width: 32px;
+  height: 32px;
+  background: var(--pf-border);
+  border-radius: 4px;
+}
+
+.pf-team-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pf-team-grid__item {
+  position: relative;
+}
+
+.pf-team-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 2px solid var(--pf-border);
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-bg-elevated);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.pf-team-card__media {
+  position: relative;
+  width: 100%;
+}
+
+.pf-team-card__unlist-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  border-radius: 999px;
+  background: rgba(6, 95, 70, 0.3);
+  color: #a7f3d0;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.pf-team-card__unlist-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pf-team-card--picked {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);
+}
+
+.pf-team-card--dead {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+}
+
+.pf-team-card--blocked {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pf-team-uses {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+.pf-team-dead-label {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(127, 29, 29, 0.92);
+  color: #fecaca;
+}
+
+.pf-last-use-warn {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fde68a;
+}
+
+.pf-team-card__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-team-card__ph {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 3/4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  background: #1f2937;
+  color: var(--pf-text-muted);
+}
+
+.pf-team-card__cap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 12px 8px 8px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.72) 40%, rgba(0, 0, 0, 0.93) 100%);
+  text-align: left;
+}
+
+.pf-team-card__name {
+  padding: 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  font-family: var(--pf-display);
+  color: #fff;
+  display: block;
+  line-height: 1.2;
+}
+
+.pf-team-card__meta {
+  padding: 5px 0 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.pf-team-card__meta .pf-rarity-mod {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Rarity borders team cards */
+.pf-team-card--common {
+  border-color: var(--pf-card-common);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.pf-team-card--rare {
+  border-color: var(--pf-card-rare);
+  box-shadow:
+    0 0 18px var(--pf-card-rare-glow),
+    inset 0 0 0 1px rgba(56, 189, 248, 0.14);
+}
+
+.pf-team-card--epic {
+  border-color: #a78bfa;
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.2);
+}
+
+.pf-team-card--legendary {
+  border-color: var(--pf-gold);
+  box-shadow: 0 0 16px rgba(232, 197, 71, 0.2);
+}
+
+/* Подложка под фото (как у коллекции / legendary-card-preview) */
+.pf-team-card--common .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 115%, rgba(82, 82, 82, 0.45), transparent 52%),
+    radial-gradient(circle at 75% 25%, rgba(64, 64, 68, 0.7), transparent 42%),
+    linear-gradient(168deg, #242428 0%, #101114 55%, #0a0a0c 100%);
+}
+
+.pf-team-card--rare .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 95% 75% at 28% 18%, rgba(56, 189, 248, 0.28), transparent 58%),
+    radial-gradient(ellipse 80% 55% at 85% 88%, rgba(34, 211, 238, 0.14), transparent 48%),
+    linear-gradient(198deg, #0a1822 0%, #08121a 45%, #060a10 100%);
+}
+
+.pf-team-card--epic .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 72% at 58% 12%, rgba(167, 139, 250, 0.32), transparent 56%),
+    radial-gradient(circle at 12% 82%, rgba(124, 58, 237, 0.18), transparent 46%),
+    linear-gradient(205deg, #181024 0%, #0c0818 50%, #080612 100%);
+}
+
+.pf-team-card--legendary:not(.pf-team-card--legendary-crafted) .pf-team-card__media::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.24), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.22), transparent 44%),
+    radial-gradient(circle at 100% 60%, rgba(120, 53, 15, 0.12), transparent 40%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%);
+}
+
+.pf-team-card--legendary-crafted:not(.pf-team-card--dead) {
+  border: 2px solid transparent;
+  background:
+    radial-gradient(ellipse 100% 78% at 50% 0%, rgba(232, 197, 71, 0.2), transparent 52%),
+    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.18), transparent 44%),
+    linear-gradient(172deg, #1f1810 0%, #120e0a 48%, #0a0908 100%) padding-box,
+    conic-gradient(from 220deg, #e8c547, #fde68a, #f59e0b, #d97706, #b45309, #fbbf24, #e8c547) border-box;
+  box-shadow:
+    0 0 24px rgba(232, 197, 71, 0.42),
+    0 0 48px rgba(232, 197, 71, 0.18),
+    inset 0 0 28px rgba(232, 197, 71, 0.06);
+  animation: pf-legendary-crafted-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.pf-team-card--legendary-crafted .pf-team-card__name {
+  background: linear-gradient(90deg, #fff 0%, #fde68a 55%, #fff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pf-legendary-crafted-shimmer 4s ease-in-out infinite;
+  will-change: background-position;
+}
+
+.pf-mini-card--common {
+  border-color: var(--pf-card-common);
+}
+
+.pf-mini-card--rare {
+  border-color: var(--pf-card-rare);
+}
+.pf-mini-card--epic {
+  border-color: #a78bfa;
+}
+.pf-mini-card--legendary {
+  border-color: var(--pf-gold);
+}
+
+.pf-mini-card--legendary-crafted {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--pf-bg-elevated), var(--pf-bg-elevated)) padding-box,
+    conic-gradient(from 220deg, #e8c547, #fde68a, #f59e0b, #d97706, #e8c547) border-box;
+  box-shadow: 0 0 12px rgba(232, 197, 71, 0.35);
+}

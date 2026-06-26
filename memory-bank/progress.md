@@ -2,6 +2,16 @@
 
 ## Что реализовано
 
+### DX: TMA CSS modularization (июнь 2026)
+- [x] `polemica-fantasy-webapp/src/index.css` сокращён до ordered import manifest.
+- [x] Существующие TMA CSS-правила механически разнесены по тематическим файлам `polemica-fantasy-webapp/src/styles/*.css` без изменения классов и порядка каскада.
+- [x] Проверки: `git diff --check` для CSS и `npm run build` (`polemica-fantasy-webapp`) — успешно.
+
+### Backend+TMA: выбор игрока для бейджа «Любимый игрок» (июнь 2026)
+- [x] Добавлен nullable `favorite_badge_fantasy_player_id` в `user_profile_customization` (Flyway **V62**) для явного выбора игрока бейджа.
+- [x] Backend отдаёт eligible-options для бейджа по условию `SAME_PLAYER_4_RARITIES`, валидирует выбранный `fantasy_player_id` и использует выбор в заголовках достижений и публичной витрине.
+- [x] TMA `/profile-customization` получила селект «Любимый игрок» с автоподбором как fallback.
+
 ### Backend+TMA: скидка на legendary upgrade за переподписание (июнь 2026)
 - [x] Legendary upgrade использует existing `marketplace.contract_reissue_discount_percent`: effective cost считается от `legendary.upgrade.cost` с дисконтом за `user_card.times_renewed` (текущие `↻0/1/2`: 400/340/280₣).
 - [x] `/api/v1/legendary-upgrade/info` отдаёт `contractReissueDiscountPercent` и `costTiers`; `LegendaryUpgradeService.upgrade` списывает effective cost конкретной карты.

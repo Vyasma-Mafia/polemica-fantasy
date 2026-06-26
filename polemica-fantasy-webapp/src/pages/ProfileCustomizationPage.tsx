@@ -15,11 +15,13 @@ export function ProfileCustomizationPage() {
   const customization = customizationQ.data
   const [profileFrameCode, setProfileFrameCode] = useState<string | null>(null)
   const [featuredCodes, setFeaturedCodes] = useState<string[]>([])
+  const [favoriteBadgeFantasyPlayerId, setFavoriteBadgeFantasyPlayerId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!customization) return
     setProfileFrameCode(customization.profileFrameCode)
     setFeaturedCodes(customization.featuredAchievementCodes)
+    setFavoriteBadgeFantasyPlayerId(customization.favoriteBadgeFantasyPlayerId)
   }, [customization])
 
   const achievementByCode = useMemo(() => {
@@ -64,11 +66,13 @@ export function ProfileCustomizationPage() {
       {
         profileFrameCode,
         featuredAchievementCodes: featuredCodes,
+        favoriteBadgeFantasyPlayerId,
       },
       {
         onSuccess: (data) => {
           setProfileFrameCode(data.profileFrameCode)
           setFeaturedCodes(data.featuredAchievementCodes)
+          setFavoriteBadgeFantasyPlayerId(data.favoriteBadgeFantasyPlayerId)
         },
       },
     )
@@ -127,6 +131,27 @@ export function ProfileCustomizationPage() {
             })}
           </ul>
         </section>
+
+        {customization.favoriteBadgePlayerOptions.length > 0 && (
+          <section className="pf-section">
+            <h2 className="pf-section-title">Любимый игрок</h2>
+            <select
+              className="pf-input pf-showcase-favorite-select"
+              value={favoriteBadgeFantasyPlayerId ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                setFavoriteBadgeFantasyPlayerId(value === '' ? null : Number(value))
+              }}
+            >
+              <option value="">Автовыбор</option>
+              {customization.favoriteBadgePlayerOptions.map((player) => (
+                <option key={player.fantasyPlayerId} value={player.fantasyPlayerId}>
+                  {player.nickname}
+                </option>
+              ))}
+            </select>
+          </section>
+        )}
 
         <section className="pf-section">
           <h2 className="pf-section-title">Доступные значки</h2>

@@ -1,0 +1,470 @@
+/* --- Special card skin: tournament_gold --- */
+.pf-collection-card--skin-tournament_gold .pf-collection-card__frame,
+.pf-team-card--skin-tournament_gold,
+.pf-mini-card--skin-tournament_gold,
+.pf-fantasy-card--skin-tournament_gold,
+.pf-modal__img-frame--skin-tournament_gold,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-pack-open__summary-card-frame {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--pf-bg-elevated), var(--pf-bg-elevated)) padding-box,
+    conic-gradient(
+        from 210deg,
+        #f7f4df,
+        #8ad5b8,
+        #f2df92,
+        #5fae93,
+        #f3e7ba,
+        #9ae1c4,
+        #f7f4df
+      )
+      border-box;
+  border-style: solid;
+  border-width: 2px;
+  box-shadow:
+    0 0 20px rgba(126, 199, 170, 0.35),
+    0 0 44px rgba(243, 231, 186, 0.16),
+    inset 0 0 22px rgba(154, 225, 196, 0.1);
+  animation: pf-skin-gold-glow 2.8s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.pf-collection-card--skin-tournament_gold .pf-collection-card__frame::after,
+.pf-team-card--skin-tournament_gold .pf-team-card__media::after,
+.pf-fantasy-card--skin-tournament_gold::after,
+.pf-modal__img-frame--skin-tournament_gold::after,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-pack-open__summary-card-frame::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.2;
+  background: linear-gradient(
+    130deg,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(205, 245, 224, 0.55) 50%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  animation: pf-skin-gold-sweep 4.2s linear infinite;
+  will-change: transform;
+}
+
+.pf-collection-card--skin-tournament_gold .pf-collection-card__cap::before,
+.pf-team-card--skin-tournament_gold .pf-team-card__cap::before,
+.pf-fantasy-card--skin-tournament_gold .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-pack-open__summary-card-cap::before {
+  content: 'MAJOR';
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f4f5e9;
+  background: rgba(40, 72, 63, 0.78);
+  border: 1px solid rgba(154, 225, 196, 0.6);
+  box-shadow: 0 0 12px rgba(154, 225, 196, 0.2);
+}
+
+.pf-collection-card--skin-tournament_gold .pf-collection-card__name,
+.pf-team-card--skin-tournament_gold .pf-team-card__name,
+.pf-fantasy-card--skin-tournament_gold .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-pack-open__summary-card-name {
+  background: linear-gradient(90deg, #fffde9 0%, #d0f5e7 45%, #fffde9 90%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pf-skin-gold-shimmer 3.2s ease-in-out infinite;
+  will-change: background-position;
+}
+
+.pf-collection-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-team-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-fantasy-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-tournament_gold .pf-card-perk-chip {
+  border-color: rgba(154, 225, 196, 0.52);
+  background: rgba(14, 28, 24, 0.88);
+  box-shadow: 0 0 10px rgba(154, 225, 196, 0.14);
+}
+
+.pf-collection-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-team-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-tournament_gold .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-tournament_gold .pf-card-perk-chip__bonus {
+  color: #8de0be;
+}
+
+@keyframes pf-skin-gold-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(126, 199, 170, 0.35),
+      0 0 44px rgba(243, 231, 186, 0.16),
+      inset 0 0 22px rgba(154, 225, 196, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(141, 224, 190, 0.5),
+      0 0 56px rgba(243, 231, 186, 0.24),
+      inset 0 0 30px rgba(154, 225, 196, 0.16);
+  }
+}
+
+@keyframes pf-skin-gold-shimmer {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+@keyframes pf-skin-gold-sweep {
+  0% {
+    transform: translateX(-18%) rotate(18deg);
+  }
+  100% {
+    transform: translateX(18%) rotate(18deg);
+  }
+}
+
+/* --- Achievement card skins --- */
+.pf-collection-card--skin-budget_edition,
+.pf-team-card--skin-budget_edition,
+.pf-mini-card--skin-budget_edition,
+.pf-fantasy-card--skin-budget_edition,
+.pf-modal__img-frame--skin-budget_edition,
+.pf-pack-open__card-wrap--skin-budget_edition,
+.pf-pack-open__summary-card--skin-budget_edition {
+  --pf-skin-border: conic-gradient(from 215deg, #ecfdf5, #22c55e, #0f766e, #facc15, #ecfdf5);
+  --pf-skin-glow: rgba(34, 197, 94, 0.3);
+  --pf-skin-glow-soft: rgba(250, 204, 21, 0.16);
+  --pf-skin-sweep: rgba(187, 247, 208, 0.48);
+  --pf-skin-badge-bg: rgba(20, 83, 45, 0.84);
+  --pf-skin-badge-border: rgba(134, 239, 172, 0.58);
+  --pf-skin-badge-text: #dcfce7;
+  --pf-skin-badge-label: 'BUDGET';
+  --pf-skin-name-start: #f0fdf4;
+  --pf-skin-name-mid: #86efac;
+  --pf-skin-chip-bg: rgba(5, 46, 22, 0.88);
+  --pf-skin-chip-border: rgba(134, 239, 172, 0.5);
+  --pf-skin-chip-bonus: #86efac;
+}
+
+.pf-collection-card--skin-common_challenge_edition,
+.pf-team-card--skin-common_challenge_edition,
+.pf-mini-card--skin-common_challenge_edition,
+.pf-fantasy-card--skin-common_challenge_edition,
+.pf-modal__img-frame--skin-common_challenge_edition,
+.pf-pack-open__card-wrap--skin-common_challenge_edition,
+.pf-pack-open__summary-card--skin-common_challenge_edition {
+  --pf-skin-border: conic-gradient(from 210deg, #f8fafc, #94a3b8, #ef4444, #38bdf8, #f8fafc);
+  --pf-skin-glow: rgba(148, 163, 184, 0.28);
+  --pf-skin-glow-soft: rgba(239, 68, 68, 0.14);
+  --pf-skin-sweep: rgba(226, 232, 240, 0.48);
+  --pf-skin-badge-bg: rgba(30, 41, 59, 0.86);
+  --pf-skin-badge-border: rgba(203, 213, 225, 0.6);
+  --pf-skin-badge-text: #f8fafc;
+  --pf-skin-badge-label: 'COMMON';
+  --pf-skin-name-start: #f8fafc;
+  --pf-skin-name-mid: #fca5a5;
+  --pf-skin-chip-bg: rgba(15, 23, 42, 0.88);
+  --pf-skin-chip-border: rgba(203, 213, 225, 0.46);
+  --pf-skin-chip-bonus: #7dd3fc;
+}
+
+.pf-collection-card--skin-winner_edition,
+.pf-team-card--skin-winner_edition,
+.pf-mini-card--skin-winner_edition,
+.pf-fantasy-card--skin-winner_edition,
+.pf-modal__img-frame--skin-winner_edition,
+.pf-pack-open__card-wrap--skin-winner_edition,
+.pf-pack-open__summary-card--skin-winner_edition {
+  --pf-skin-border: conic-gradient(from 220deg, #eff6ff, #60a5fa, #fbbf24, #1d4ed8, #eff6ff);
+  --pf-skin-glow: rgba(96, 165, 250, 0.34);
+  --pf-skin-glow-soft: rgba(251, 191, 36, 0.18);
+  --pf-skin-sweep: rgba(219, 234, 254, 0.5);
+  --pf-skin-badge-bg: rgba(30, 64, 175, 0.84);
+  --pf-skin-badge-border: rgba(147, 197, 253, 0.62);
+  --pf-skin-badge-text: #eff6ff;
+  --pf-skin-badge-label: 'WINNER';
+  --pf-skin-name-start: #eff6ff;
+  --pf-skin-name-mid: #fcd34d;
+  --pf-skin-chip-bg: rgba(30, 58, 138, 0.84);
+  --pf-skin-chip-border: rgba(147, 197, 253, 0.54);
+  --pf-skin-chip-bonus: #fcd34d;
+}
+
+.pf-collection-card--skin-crafter_edition,
+.pf-team-card--skin-crafter_edition,
+.pf-mini-card--skin-crafter_edition,
+.pf-fantasy-card--skin-crafter_edition,
+.pf-modal__img-frame--skin-crafter_edition,
+.pf-pack-open__card-wrap--skin-crafter_edition,
+.pf-pack-open__summary-card--skin-crafter_edition {
+  --pf-skin-border: conic-gradient(from 215deg, #f5f3ff, #c084fc, #f97316, #64748b, #f5f3ff);
+  --pf-skin-glow: rgba(192, 132, 252, 0.3);
+  --pf-skin-glow-soft: rgba(249, 115, 22, 0.16);
+  --pf-skin-sweep: rgba(233, 213, 255, 0.48);
+  --pf-skin-badge-bg: rgba(88, 28, 135, 0.82);
+  --pf-skin-badge-border: rgba(216, 180, 254, 0.58);
+  --pf-skin-badge-text: #faf5ff;
+  --pf-skin-badge-label: 'CRAFT';
+  --pf-skin-name-start: #faf5ff;
+  --pf-skin-name-mid: #fdba74;
+  --pf-skin-chip-bg: rgba(59, 7, 100, 0.86);
+  --pf-skin-chip-border: rgba(216, 180, 254, 0.5);
+  --pf-skin-chip-bonus: #fdba74;
+}
+
+.pf-collection-card--skin-pack_hunter_edition,
+.pf-team-card--skin-pack_hunter_edition,
+.pf-mini-card--skin-pack_hunter_edition,
+.pf-fantasy-card--skin-pack_hunter_edition,
+.pf-modal__img-frame--skin-pack_hunter_edition,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition,
+.pf-pack-open__summary-card--skin-pack_hunter_edition {
+  --pf-skin-border: conic-gradient(from 205deg, #ecfeff, #22d3ee, #a3e635, #f472b6, #ecfeff);
+  --pf-skin-glow: rgba(34, 211, 238, 0.32);
+  --pf-skin-glow-soft: rgba(244, 114, 182, 0.15);
+  --pf-skin-sweep: rgba(207, 250, 254, 0.5);
+  --pf-skin-badge-bg: rgba(8, 51, 68, 0.86);
+  --pf-skin-badge-border: rgba(103, 232, 249, 0.6);
+  --pf-skin-badge-text: #ecfeff;
+  --pf-skin-badge-label: 'HUNTER';
+  --pf-skin-name-start: #ecfeff;
+  --pf-skin-name-mid: #bef264;
+  --pf-skin-chip-bg: rgba(8, 47, 73, 0.86);
+  --pf-skin-chip-border: rgba(103, 232, 249, 0.52);
+  --pf-skin-chip-bonus: #bef264;
+}
+
+.pf-collection-card--skin-budget_edition .pf-collection-card__frame,
+.pf-team-card--skin-budget_edition,
+.pf-mini-card--skin-budget_edition,
+.pf-fantasy-card--skin-budget_edition,
+.pf-modal__img-frame--skin-budget_edition,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-budget_edition .pf-pack-open__summary-card-frame,
+.pf-collection-card--skin-common_challenge_edition .pf-collection-card__frame,
+.pf-team-card--skin-common_challenge_edition,
+.pf-mini-card--skin-common_challenge_edition,
+.pf-fantasy-card--skin-common_challenge_edition,
+.pf-modal__img-frame--skin-common_challenge_edition,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-pack-open__summary-card-frame,
+.pf-collection-card--skin-winner_edition .pf-collection-card__frame,
+.pf-team-card--skin-winner_edition,
+.pf-mini-card--skin-winner_edition,
+.pf-fantasy-card--skin-winner_edition,
+.pf-modal__img-frame--skin-winner_edition,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-winner_edition .pf-pack-open__summary-card-frame,
+.pf-collection-card--skin-crafter_edition .pf-collection-card__frame,
+.pf-team-card--skin-crafter_edition,
+.pf-mini-card--skin-crafter_edition,
+.pf-fantasy-card--skin-crafter_edition,
+.pf-modal__img-frame--skin-crafter_edition,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-pack-open__summary-card-frame,
+.pf-collection-card--skin-pack_hunter_edition .pf-collection-card__frame,
+.pf-team-card--skin-pack_hunter_edition,
+.pf-mini-card--skin-pack_hunter_edition,
+.pf-fantasy-card--skin-pack_hunter_edition,
+.pf-modal__img-frame--skin-pack_hunter_edition,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-pack-open__summary-card-frame {
+  border-color: transparent;
+  border-style: solid;
+  border-width: 2px;
+  background:
+    linear-gradient(var(--pf-bg-elevated), var(--pf-bg-elevated)) padding-box,
+    var(--pf-skin-border) border-box;
+  box-shadow:
+    0 0 18px var(--pf-skin-glow),
+    0 0 38px var(--pf-skin-glow-soft),
+    inset 0 0 18px color-mix(in srgb, var(--pf-skin-glow) 36%, transparent);
+}
+
+.pf-collection-card--skin-budget_edition .pf-collection-card__frame::after,
+.pf-team-card--skin-budget_edition .pf-team-card__media::after,
+.pf-fantasy-card--skin-budget_edition::after,
+.pf-modal__img-frame--skin-budget_edition::after,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-budget_edition .pf-pack-open__summary-card-frame::after,
+.pf-collection-card--skin-common_challenge_edition .pf-collection-card__frame::after,
+.pf-team-card--skin-common_challenge_edition .pf-team-card__media::after,
+.pf-fantasy-card--skin-common_challenge_edition::after,
+.pf-modal__img-frame--skin-common_challenge_edition::after,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-pack-open__summary-card-frame::after,
+.pf-collection-card--skin-winner_edition .pf-collection-card__frame::after,
+.pf-team-card--skin-winner_edition .pf-team-card__media::after,
+.pf-fantasy-card--skin-winner_edition::after,
+.pf-modal__img-frame--skin-winner_edition::after,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-winner_edition .pf-pack-open__summary-card-frame::after,
+.pf-collection-card--skin-crafter_edition .pf-collection-card__frame::after,
+.pf-team-card--skin-crafter_edition .pf-team-card__media::after,
+.pf-fantasy-card--skin-crafter_edition::after,
+.pf-modal__img-frame--skin-crafter_edition::after,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-pack-open__summary-card-frame::after,
+.pf-collection-card--skin-pack_hunter_edition .pf-collection-card__frame::after,
+.pf-team-card--skin-pack_hunter_edition .pf-team-card__media::after,
+.pf-fantasy-card--skin-pack_hunter_edition::after,
+.pf-modal__img-frame--skin-pack_hunter_edition::after,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-pack-open__summary-card-frame::after {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.18;
+  background: linear-gradient(130deg, transparent 30%, var(--pf-skin-sweep) 50%, transparent 70%);
+}
+
+.pf-collection-card--skin-budget_edition .pf-collection-card__cap::before,
+.pf-team-card--skin-budget_edition .pf-team-card__cap::before,
+.pf-fantasy-card--skin-budget_edition .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-budget_edition .pf-pack-open__summary-card-cap::before,
+.pf-collection-card--skin-common_challenge_edition .pf-collection-card__cap::before,
+.pf-team-card--skin-common_challenge_edition .pf-team-card__cap::before,
+.pf-fantasy-card--skin-common_challenge_edition .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-pack-open__summary-card-cap::before,
+.pf-collection-card--skin-winner_edition .pf-collection-card__cap::before,
+.pf-team-card--skin-winner_edition .pf-team-card__cap::before,
+.pf-fantasy-card--skin-winner_edition .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-winner_edition .pf-pack-open__summary-card-cap::before,
+.pf-collection-card--skin-crafter_edition .pf-collection-card__cap::before,
+.pf-team-card--skin-crafter_edition .pf-team-card__cap::before,
+.pf-fantasy-card--skin-crafter_edition .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-pack-open__summary-card-cap::before,
+.pf-collection-card--skin-pack_hunter_edition .pf-collection-card__cap::before,
+.pf-team-card--skin-pack_hunter_edition .pf-team-card__cap::before,
+.pf-fantasy-card--skin-pack_hunter_edition .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-pack-open__summary-card-cap::before {
+  content: var(--pf-skin-badge-label);
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--pf-skin-badge-text);
+  background: var(--pf-skin-badge-bg);
+  border: 1px solid var(--pf-skin-badge-border);
+  box-shadow: 0 0 10px var(--pf-skin-glow-soft);
+}
+
+.pf-collection-card--skin-budget_edition .pf-collection-card__name,
+.pf-team-card--skin-budget_edition .pf-team-card__name,
+.pf-fantasy-card--skin-budget_edition .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-budget_edition .pf-pack-open__summary-card-name,
+.pf-collection-card--skin-common_challenge_edition .pf-collection-card__name,
+.pf-team-card--skin-common_challenge_edition .pf-team-card__name,
+.pf-fantasy-card--skin-common_challenge_edition .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-pack-open__summary-card-name,
+.pf-collection-card--skin-winner_edition .pf-collection-card__name,
+.pf-team-card--skin-winner_edition .pf-team-card__name,
+.pf-fantasy-card--skin-winner_edition .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-winner_edition .pf-pack-open__summary-card-name,
+.pf-collection-card--skin-crafter_edition .pf-collection-card__name,
+.pf-team-card--skin-crafter_edition .pf-team-card__name,
+.pf-fantasy-card--skin-crafter_edition .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-pack-open__summary-card-name,
+.pf-collection-card--skin-pack_hunter_edition .pf-collection-card__name,
+.pf-team-card--skin-pack_hunter_edition .pf-team-card__name,
+.pf-fantasy-card--skin-pack_hunter_edition .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-pack-open__summary-card-name {
+  background: linear-gradient(90deg, var(--pf-skin-name-start), var(--pf-skin-name-mid), var(--pf-skin-name-start));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pf-collection-card--skin-budget_edition .pf-card-perk-chip,
+.pf-team-card--skin-budget_edition .pf-card-perk-chip,
+.pf-fantasy-card--skin-budget_edition .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-budget_edition .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-budget_edition .pf-card-perk-chip,
+.pf-collection-card--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-team-card--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-fantasy-card--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-common_challenge_edition .pf-card-perk-chip,
+.pf-collection-card--skin-winner_edition .pf-card-perk-chip,
+.pf-team-card--skin-winner_edition .pf-card-perk-chip,
+.pf-fantasy-card--skin-winner_edition .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-winner_edition .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-winner_edition .pf-card-perk-chip,
+.pf-collection-card--skin-crafter_edition .pf-card-perk-chip,
+.pf-team-card--skin-crafter_edition .pf-card-perk-chip,
+.pf-fantasy-card--skin-crafter_edition .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-crafter_edition .pf-card-perk-chip,
+.pf-collection-card--skin-pack_hunter_edition .pf-card-perk-chip,
+.pf-team-card--skin-pack_hunter_edition .pf-card-perk-chip,
+.pf-fantasy-card--skin-pack_hunter_edition .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-pack_hunter_edition .pf-card-perk-chip {
+  border-color: var(--pf-skin-chip-border);
+  background: var(--pf-skin-chip-bg);
+  box-shadow: 0 0 9px var(--pf-skin-glow-soft);
+}
+
+.pf-collection-card--skin-budget_edition .pf-card-perk-chip__bonus,
+.pf-team-card--skin-budget_edition .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-budget_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-budget_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-budget_edition .pf-card-perk-chip__bonus,
+.pf-collection-card--skin-common_challenge_edition .pf-card-perk-chip__bonus,
+.pf-team-card--skin-common_challenge_edition .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-common_challenge_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-common_challenge_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-common_challenge_edition .pf-card-perk-chip__bonus,
+.pf-collection-card--skin-winner_edition .pf-card-perk-chip__bonus,
+.pf-team-card--skin-winner_edition .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-winner_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-winner_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-winner_edition .pf-card-perk-chip__bonus,
+.pf-collection-card--skin-crafter_edition .pf-card-perk-chip__bonus,
+.pf-team-card--skin-crafter_edition .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-crafter_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-crafter_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-crafter_edition .pf-card-perk-chip__bonus,
+.pf-collection-card--skin-pack_hunter_edition .pf-card-perk-chip__bonus,
+.pf-team-card--skin-pack_hunter_edition .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-pack_hunter_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-pack_hunter_edition .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-pack_hunter_edition .pf-card-perk-chip__bonus {
+  color: var(--pf-skin-chip-bonus);
+}

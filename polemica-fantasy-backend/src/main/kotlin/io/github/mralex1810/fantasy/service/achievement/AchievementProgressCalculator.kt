@@ -87,9 +87,11 @@ class AchievementProgressCalculator(
                 ts,
                 ts,
             ).coerceAtMost(1L)
-            "SAME_PLAYER_3_RARITIES" -> samePlayerRarityCollectorNickname(internalTelegramUserId, ts, 3)
+            "SAME_PLAYER_3_RARITIES" -> samePlayerRarityCollectorCandidates(internalTelegramUserId, ts, 3)
+                .firstOrNull()
                 .completedFlag()
-            "SAME_PLAYER_4_RARITIES" -> samePlayerRarityCollectorNickname(internalTelegramUserId, ts, 4)
+            "SAME_PLAYER_4_RARITIES" -> samePlayerRarityCollectorCandidates(internalTelegramUserId, ts, 4)
+                .firstOrNull()
                 .completedFlag()
             "PACKS_OPENED" -> queryLong(
                 "SELECT COUNT(*) FROM user_card_pack_open_event WHERE telegram_user_id = ? AND opened_at >= ?",
@@ -265,25 +267,41 @@ class AchievementProgressCalculator(
             trackingStartedAt,
         )
 
-    fun samePlayerRarityCollectorNickname(internalTelegramUserId: Long, definition: AchievementDefinition): String? {
-        val startedAt = definition.trackingStartedAt ?: return null
-        if (!definition.enabled) return null
+    fun samePlayerRarityCollectorNickname(
+        internalTelegramUserId: Long,
+        definition: AchievementDefinition,
+        preferredFantasyPlayerId: Long? = null,
+    ): String? {
+        val candidates = samePlayerRarityCollectorCandidates(internalTelegramUserId, definition)
+        return (
+            preferredFantasyPlayerId
+                ?.let { preferredId -> candidates.firstOrNull { it.fantasyPlayerId == preferredId } }
+                ?: candidates.firstOrNull()
+            )?.nickname
+    }
+
+    fun samePlayerRarityCollectorCandidates(
+        internalTelegramUserId: Long,
+        definition: AchievementDefinition,
+    ): List<SamePlayerRarityCandidate> {
+        val startedAt = definition.trackingStartedAt ?: return emptyList()
+        if (!definition.enabled) return emptyList()
         val requiredRarities = when (definition.conditionType) {
             "SAME_PLAYER_3_RARITIES" -> 3
             "SAME_PLAYER_4_RARITIES" -> 4
-            else -> return null
+            else -> return emptyList()
         }
-        return samePlayerRarityCollectorNickname(internalTelegramUserId, Timestamp.from(startedAt), requiredRarities)
+        return samePlayerRarityCollectorCandidates(internalTelegramUserId, Timestamp.from(startedAt), requiredRarities)
     }
 
-    private fun samePlayerRarityCollectorNickname(
+    private fun samePlayerRarityCollectorCandidates(
         internalTelegramUserId: Long,
         trackingStartedAt: Timestamp,
         requiredRarities: Int,
-    ): String? =
-        jdbcTemplate.queryForList(
+    ): List<SamePlayerRarityCandidate> =
+        jdbcTemplate.query(
             """
-            SELECT fp.nickname
+            SELECT fp.id, fp.nickname, COUNT(DISTINCT ct.rarity) AS rarity_count
             FROM user_card uc
             JOIN card_template ct ON ct.id = uc.card_template_id
             JOIN fantasy_player fp ON fp.id = ct.fantasy_player_id
@@ -297,14 +315,19 @@ class AchievementProgressCalculator(
             GROUP BY fp.id, fp.nickname
             HAVING COUNT(DISTINCT ct.rarity) >= ?
             ORDER BY COUNT(DISTINCT ct.rarity) DESC, fp.nickname ASC, fp.id ASC
-            LIMIT 1
             """,
-            String::class.java,
+            { rs, _ ->
+                SamePlayerRarityCandidate(
+                    fantasyPlayerId = rs.getLong("id"),
+                    nickname = rs.getString("nickname"),
+                    rarityCount = rs.getInt("rarity_count"),
+                )
+            },
             internalTelegramUserId,
             trackingStartedAt,
             trackingStartedAt,
             requiredRarities,
-        ).firstOrNull()
+        )
 
     private fun rankedCount(internalTelegramUserId: Long, trackingStartedAt: Timestamp, predicate: String): Long =
         queryLong(
@@ -339,5 +362,11 @@ class AchievementProgressCalculator(
     private fun queryLong(sql: String, vararg args: Any): Long =
         jdbcTemplate.queryForObject(sql, Long::class.java, *args) ?: 0L
 
-    private fun String?.completedFlag(): Long = if (this == null) 0L else 1L
+    private fun SamePlayerRarityCandidate?.completedFlag(): Long = if (this == null) 0L else 1L
 }
+
+data class SamePlayerRarityCandidate(
+    val fantasyPlayerId: Long,
+    val nickname: String,
+    val rarityCount: Int,
+)

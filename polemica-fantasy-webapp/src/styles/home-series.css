@@ -1,0 +1,211 @@
+/* --- Tournament grid (home) --- */
+.pf-tournament-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pf-tournament-card {
+  display: block;
+  padding: 16px;
+  border-radius: var(--pf-radius);
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg-elevated);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-tournament-card:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.2);
+}
+
+.pf-tournament-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pf-tournament-card__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--pf-text-heading);
+}
+
+.pf-tournament-card__desc {
+  font-size: 0.88rem;
+  color: var(--pf-text-muted);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+.pf-tournament-card__cta {
+  font-size: 0.85rem;
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.pf-tournament-archive {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-tournament-archive__head {
+  margin-bottom: 12px;
+}
+
+.pf-tournament-archive__head .pf-muted {
+  margin: 6px 0 0;
+}
+
+.pf-tournament-grid--archive {
+  gap: 10px;
+}
+
+.pf-tournament-card--archive {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(30, 41, 59, 0.72));
+  border-color: rgba(148, 163, 184, 0.26);
+}
+
+.pf-tournament-card--archive .pf-tournament-card__title {
+  color: var(--pf-text);
+}
+
+.pf-tournament-card--archive .pf-tournament-card__cta {
+  color: #cbd5e1;
+}
+
+.pf-card--notice {
+  padding: 16px;
+  border-radius: var(--pf-radius);
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg-elevated);
+}
+
+/* --- Day picker --- */
+.pf-day-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pf-day-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: var(--pf-radius);
+  border: 1px solid var(--pf-border);
+  background: var(--pf-bg-elevated);
+}
+
+.pf-day-card--expired {
+  opacity: 0.65;
+}
+
+.pf-day-card--selected {
+  border-color: var(--pf-green);
+  box-shadow: 0 0 0 1px var(--pf-green-dim);
+}
+
+.pf-day-card__badge {
+  background: linear-gradient(145deg, #6d28d9, #a21caf);
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+  min-width: 56px;
+}
+
+.pf-day-card__badge-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pf-day-card__badge-num {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.pf-day-card__deadline {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--pf-text-muted);
+}
+
+.pf-day-card__name {
+  margin: 4px 0 0;
+  font-weight: 600;
+  color: var(--pf-text-heading);
+  font-size: 0.95rem;
+}
+
+.pf-day-card__status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pf-day-card__status--muted {
+  color: var(--pf-text-muted);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.pf-day-card__status--ok {
+  color: #fff;
+  background: var(--pf-green);
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+/* --- Tabs --- */
+.pf-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pf-tabs--scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pf-tab {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pf-border);
+  background: transparent;
+  color: var(--pf-text-muted);
+  font-family: var(--pf-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pf-tab--active {
+  color: #fff;
+  border-color: transparent;
+  background: var(--pf-gradient);
+}

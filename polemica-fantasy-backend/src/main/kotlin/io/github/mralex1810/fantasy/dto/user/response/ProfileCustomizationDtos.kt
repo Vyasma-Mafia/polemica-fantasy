@@ -5,6 +5,8 @@ data class ProfileCustomizationDto(
     val unlockedFrames: List<ProfileFrameDto>,
     val featuredAchievementCodes: List<String>,
     val availableFeaturedAchievements: List<AchievementBadgeDto>,
+    val favoriteBadgeFantasyPlayerId: Long?,
+    val favoriteBadgePlayerOptions: List<FavoriteBadgePlayerOptionDto>,
 )
 
 data class ProfileFrameDto(
@@ -19,6 +21,12 @@ data class AchievementBadgeDto(
     val iconUrl: String?,
     val rarity: String,
     val accentColor: String?,
+)
+
+data class FavoriteBadgePlayerOptionDto(
+    val fantasyPlayerId: Long,
+    val nickname: String,
+    val rarityCount: Int,
 )
 
 data class PlayerAchievementSummaryDto(

@@ -101,6 +101,7 @@ io.github.mralex1810.fantasy
 ### Frontend (TMA-specific)
 - `@telegram-apps/sdk-react` for Telegram integration; `VITE_DEV_INIT_DATA` for local dev.
 - Dark theme, gradient CTAs, card frames by rarity.
+- TMA styles are split by domain under `polemica-fantasy-webapp/src/styles/`; `src/index.css` is only the ordered import manifest. Preserve import order when moving selectors because it defines the cascade.
 
 ### Frontend (Admin-specific)
 - Ant Design 6 as UI framework.

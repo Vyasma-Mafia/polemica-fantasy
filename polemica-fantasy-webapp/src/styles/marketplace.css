@@ -1,0 +1,247 @@
+/* --- Marketplace --- */
+.pf-marketplace-feed {
+  margin-bottom: 20px;
+  padding: 12px;
+  border-radius: var(--pf-radius);
+  background: var(--pf-bg-elevated);
+  border: 1px solid var(--pf-border);
+}
+
+.pf-marketplace-feed__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pf-text-muted);
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pf-marketplace-feed__strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pf-marketplace-feed__chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-bg);
+  border: 1px solid var(--pf-border);
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pf-marketplace-feed__chip-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pf-marketplace-feed__chip-link:hover {
+  border-color: rgba(167, 139, 250, 0.6);
+}
+
+.pf-marketplace-feed__chip-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-marketplace-feed__chip-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Портрет превью карты в ленте сделок (чуть крупнее слотов команды). */
+.pf-marketplace-feed__thumb.pf-mini-card {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 3px 4px;
+  gap: 0;
+}
+
+.pf-marketplace-feed__thumb.pf-mini-card img,
+.pf-marketplace-feed__thumb.pf-mini-card .pf-player-image,
+.pf-marketplace-feed__thumb .pf-mini-card__ph {
+  width: 44px;
+  height: 56px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.pf-rarity-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--pf-border);
+  color: var(--pf-text-heading);
+  width: fit-content;
+}
+
+.pf-rarity-tag--common {
+  background: #404040;
+  color: #e5e5e5;
+}
+.pf-rarity-tag--rare {
+  background: rgba(56, 189, 248, 0.25);
+  color: #7dd3fc;
+}
+.pf-rarity-tag--epic {
+  background: rgba(167, 139, 250, 0.25);
+  color: #ddd6fe;
+}
+.pf-rarity-tag--legendary {
+  background: rgba(232, 197, 71, 0.2);
+  color: var(--pf-gold);
+}
+
+.pf-marketplace-feed__chip-name {
+  font-weight: 600;
+  color: var(--pf-text-heading);
+}
+
+.pf-marketplace-feed__chip-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pf-marketplace-feed__chip-price-value {
+  color: var(--pf-gold);
+  font-weight: 700;
+}
+
+.pf-marketplace-feed__item--sanctioned .pf-marketplace-feed__chip-price-value {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.pf-sanctioned-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #fecaca;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.pf-marketplace-feed__chip-buyer {
+  color: var(--pf-text-muted);
+  font-size: 0.75rem;
+}
+
+.pf-marketplace-filters {
+  margin-bottom: 12px;
+}
+
+.pf-marketplace-watch-cta {
+  margin-bottom: 14px;
+}
+
+.pf-marketplace-card__open {
+  cursor: default;
+}
+
+.pf-marketplace-card__meta {
+  position: relative;
+  z-index: 4;
+  padding: 10px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(12, 12, 15, 0.96);
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-marketplace-card__price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pf-gold);
+}
+
+.pf-marketplace-card__price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.pf-marketplace-card__price-fantiki {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--pf-gold);
+}
+
+.pf-marketplace-card__value-pill {
+  font-weight: 600;
+  color: #67e8f9;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pf-marketplace-card__seller {
+  font-size: 0.75rem;
+}
+
+.pf-marketplace-card__reason {
+  font-size: 0.75rem;
+  color: var(--pf-text-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.pf-marketplace-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.pf-card-ownership {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pf-border);
+}
+
+.pf-card-ownership__title {
+  font-size: 0.85rem;
+  margin: 0 0 8px;
+  color: var(--pf-text-muted);
+}
+
+.pf-card-ownership__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--pf-text);
+}
+
+.pf-card-ownership__list li {
+  margin-bottom: 6px;
+}
