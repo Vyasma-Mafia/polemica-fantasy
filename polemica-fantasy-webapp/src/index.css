@@ -2897,13 +2897,10 @@ button.pf-merge-perk:disabled {
 }
 
 .pf-merge-actions--confirm {
-  position: sticky;
-  bottom: 8px;
   padding: 8px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: var(--pf-radius-sm);
-  background: rgba(8, 10, 14, 0.9);
-  backdrop-filter: blur(10px);
+  background: rgba(8, 10, 14, 0.72);
 }
 
 .pf-merge-actions__warning {
@@ -3123,6 +3120,10 @@ button.pf-merge-perk:disabled {
 
 .pf-player-cell[role='button'] .pf-uses-badge {
   top: 34px;
+}
+
+.pf-player-cell[role='button'] .pf-contract-badge--collection {
+  top: 62px;
 }
 
 .pf-player-cell__empty-card {

@@ -702,6 +702,7 @@ export function CardsPage() {
           playerFilter=""
           onOpenCard={setDetailCardId}
           usesPerRarity={usesPerRarity}
+          maxRenewals={economyQ.data?.maxRenewals}
         />
       )}
 

@@ -15,6 +15,7 @@ type Props = {
   playerFilter: string
   onOpenCard: (userCardId: number) => void
   usesPerRarity: Record<Rarity, number> | undefined
+  maxRenewals: number | undefined
 }
 
 type RowWith = {
@@ -83,6 +84,7 @@ export function PlayerGroupedView({
   playerFilter,
   onOpenCard,
   usesPerRarity,
+  maxRenewals,
 }: Props) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
@@ -128,6 +130,7 @@ export function PlayerGroupedView({
               onToggle={() => toggle(row.id)}
               onOpenCard={onOpenCard}
               usesPerRarity={usesPerRarity}
+              maxRenewals={maxRenewals}
             />
           ))}
         </ul>

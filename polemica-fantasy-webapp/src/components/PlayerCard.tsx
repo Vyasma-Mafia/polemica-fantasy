@@ -5,6 +5,7 @@ import { pickBestUserCard } from '../lib/collectionByPlayer'
 import { compareRarityDesc, rarityScoreModifierLabel } from '../lib/rarity'
 import { CardPerkChips } from './CardPerkChips'
 import { CardValueBadge } from './CardValueBadge'
+import { ContractReissueBadge } from './ContractReissueBadge'
 import { MarketplaceListedBadge } from './MarketplaceListedBadge'
 import { PlayerImage } from './PlayerImage'
 
@@ -45,6 +46,7 @@ type PlayerCardWithProps = {
   onToggle: () => void
   onOpenCard: (userCardId: number) => void
   usesPerRarity: Record<Rarity, number> | undefined
+  maxRenewals: number | undefined
 }
 
 export type PlayerCardProps = PlayerCardEmptyProps | PlayerCardWithProps
@@ -73,7 +75,7 @@ export function PlayerCard(props: PlayerCardProps) {
     )
   }
 
-  const { cards, expanded, onToggle, onOpenCard, usesPerRarity, nickname } = props
+  const { cards, expanded, onToggle, onOpenCard, usesPerRarity, maxRenewals, nickname } = props
   const best = pickBestUserCard(cards)
   const n = cards.length
   const layers = stackLayerCount(n)
@@ -124,6 +126,13 @@ export function PlayerCard(props: PlayerCardProps) {
                     <span className="pf-uses-badge" title="Осталось использований">
                       ⚡{c.usesRemaining}/{maxFor}
                     </span>
+                    {c.timesRenewed > 0 && (
+                      <ContractReissueBadge
+                        timesRenewed={c.timesRenewed}
+                        maxRenewals={maxRenewals ?? c.timesRenewed}
+                        layout="collection"
+                      />
+                    )}
                     {ex && <span className="pf-expired-badge">Истекла</span>}
                     {c.activeMarketplaceListing && (
                       <MarketplaceListedBadge listing={c.activeMarketplaceListing} />
@@ -179,6 +188,13 @@ export function PlayerCard(props: PlayerCardProps) {
             <span className="pf-uses-badge" title="Осталось использований (лучшая карта)">
               ⚡{best.usesRemaining}/{maxU}
             </span>
+            {best.timesRenewed > 0 && (
+              <ContractReissueBadge
+                timesRenewed={best.timesRenewed}
+                maxRenewals={maxRenewals ?? best.timesRenewed}
+                layout="collection"
+              />
+            )}
             {expired && <span className="pf-expired-badge">Истекла</span>}
             {best.activeMarketplaceListing && (
               <MarketplaceListedBadge listing={best.activeMarketplaceListing} />
