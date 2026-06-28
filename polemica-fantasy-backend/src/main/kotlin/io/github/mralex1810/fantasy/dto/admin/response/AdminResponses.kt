@@ -206,3 +206,20 @@ data class AdminUserListItemDto(
     val botBlocked: Boolean,
     val cardsInSeries: Long?,
 )
+
+data class FantikiAdjustmentDto(
+    val id: Long,
+    val createdAt: java.time.Instant,
+    val telegramId: Long,
+    val amount: Long,
+    val reason: String,
+    val adminReason: String?,
+)
+
+data class PagedFantikiAdjustmentsDto(
+    val content: List<FantikiAdjustmentDto>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)

@@ -1,11 +1,14 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.admin.response.FantikiAdjustmentDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiAdjustmentsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
+import org.springframework.data.domain.Pageable
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -136,26 +139,132 @@ class UserService(
         )
 
     @Transactional
-    fun grantFantikiByTelegramId(telegramUserId: Long, amount: Long): UserProfileDto {
+    fun grantFantikiByTelegramId(telegramUserId: Long, amount: Long, adminReason: String): UserProfileDto {
         val user = getOrCreateAndUpdateProfile(telegramUserId, null, null)
-        addBalance(user.id!!, amount, FantikiTransactionReason.ADMIN_GRANT)
+        addBalanceWithAdminReason(
+            user.id!!,
+            amount,
+            FantikiTransactionReason.ADMIN_GRANT,
+            normalizeAdminReason(adminReason),
+        )
         val fresh = telegramUserRepository.findById(user.id!!).get()
         return toProfileDto(fresh)
     }
 
     @Transactional
-    fun confiscateFantikiByTelegramId(telegramUserId: Long, amount: Long): UserProfileDto {
+    fun confiscateFantikiByTelegramId(telegramUserId: Long, amount: Long, adminReason: String): UserProfileDto {
         val user = telegramUserRepository.findByTelegramId(telegramUserId)
             ?: throw ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "User with telegram id $telegramUserId not found",
             )
-        deductBalance(user.id!!, amount, FantikiTransactionReason.ADMIN_CONFISCATE)
+        deductBalanceWithAdminReason(
+            user.id!!,
+            amount,
+            FantikiTransactionReason.ADMIN_CONFISCATE,
+            normalizeAdminReason(adminReason),
+        )
         val fresh = telegramUserRepository.findById(user.id!!).get()
         return toProfileDto(fresh)
     }
 
+    @Transactional(readOnly = true)
+    fun listFantikiAdjustmentsByTelegramId(
+        telegramUserId: Long,
+        pageable: Pageable,
+    ): PagedFantikiAdjustmentsDto {
+        val page = fantikiTransactionRepository.findManualAdjustmentsByTelegramId(
+            telegramUserId = telegramUserId,
+            reasons = MANUAL_ADMIN_REASONS,
+            pageable = pageable,
+        )
+        return PagedFantikiAdjustmentsDto(
+            content = page.content.map { tx ->
+                FantikiAdjustmentDto(
+                    id = tx.id!!,
+                    createdAt = tx.createdAt,
+                    telegramId = tx.telegramUser!!.telegramId,
+                    amount = tx.amount,
+                    reason = tx.reason.name,
+                    adminReason = tx.adminReason,
+                )
+            },
+            page = page.number,
+            size = page.size,
+            totalElements = page.totalElements,
+            totalPages = page.totalPages,
+        )
+    }
+
+    private fun addBalanceWithAdminReason(
+        internalUserId: Long,
+        amount: Long,
+        reason: FantikiTransactionReason,
+        adminReason: String,
+    ) {
+        require(amount > 0) { "amount must be positive" }
+        val updated = telegramUserRepository.addFantiki(internalUserId, amount)
+        if (updated == 0) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalUserId not found")
+        }
+        val user = telegramUserRepository.getReferenceById(internalUserId)
+        fantikiTransactionRepository.save(
+            FantikiTransaction(
+                telegramUser = user,
+                amount = amount,
+                reason = reason,
+                adminReason = adminReason,
+            ),
+        )
+    }
+
+    private fun deductBalanceWithAdminReason(
+        internalUserId: Long,
+        amount: Long,
+        reason: FantikiTransactionReason,
+        adminReason: String,
+    ) {
+        require(amount >= 0) { "amount must be non-negative" }
+        if (amount == 0L) return
+        val updated = telegramUserRepository.deductFantikiIfSufficient(internalUserId, amount)
+        if (updated == 0) {
+            val balance = telegramUserRepository.findById(internalUserId).orElse(null)?.fantiki
+            if (balance == null) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalUserId not found")
+            }
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient fantiki balance")
+        }
+        val user = telegramUserRepository.getReferenceById(internalUserId)
+        fantikiTransactionRepository.save(
+            FantikiTransaction(
+                telegramUser = user,
+                amount = -amount,
+                reason = reason,
+                adminReason = adminReason,
+            ),
+        )
+    }
+
+    private fun normalizeAdminReason(adminReason: String): String {
+        val normalized = adminReason.trim()
+        if (normalized.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "adminReason must not be blank")
+        }
+        if (normalized.length > MAX_ADMIN_REASON_LENGTH) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "adminReason must be at most $MAX_ADMIN_REASON_LENGTH characters",
+            )
+        }
+        return normalized
+    }
+
     companion object {
         private const val MAX_DISPLAY_NAME_LENGTH = 255
+        private const val MAX_ADMIN_REASON_LENGTH = 500
+        private val MANUAL_ADMIN_REASONS = setOf(
+            FantikiTransactionReason.ADMIN_GRANT,
+            FantikiTransactionReason.ADMIN_CONFISCATE,
+        )
     }
 }

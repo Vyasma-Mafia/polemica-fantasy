@@ -1,10 +1,11 @@
-import { Input, Select, Space, Table, Tag, Typography } from 'antd'
+import { Button, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { listSeriesByTournament } from '../api/series'
 import { listTournaments } from '../api/tournaments'
 import type { AdminUserListItemDto } from '../api/types'
 import { listAdminUsers } from '../api/usersList'
+import { FantikiAdjustmentsTable } from '../components/FantikiAdjustmentsTable'
 
 function dash(v: string | null | undefined) {
   return v != null && v !== '' ? v : '—'
@@ -15,6 +16,7 @@ export function UsersOverviewPage() {
   const [seriesId, setSeriesId] = useState<number | undefined>()
   const [userSearch, setUserSearch] = useState('')
   const [userSearchDebounced, setUserSearchDebounced] = useState('')
+  const [historyUser, setHistoryUser] = useState<AdminUserListItemDto | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -86,6 +88,15 @@ export function UsersOverviewPage() {
         key: 'cardsInSeries',
         render: (v: number | null) => (v == null ? '—' : v),
       },
+      {
+        title: 'Actions',
+        key: 'actions',
+        render: (_: unknown, r: AdminUserListItemDto) => (
+          <Button size="small" onClick={() => setHistoryUser(r)}>
+            Fantiki adjustments
+          </Button>
+        ),
+      },
     ],
     [],
   )
@@ -143,6 +154,24 @@ export function UsersOverviewPage() {
         columns={columns}
         pagination={{ pageSize: 50, showSizeChanger: true }}
       />
+
+      <Modal
+        title={
+          historyUser == null
+            ? 'Fantiki adjustments'
+            : `Fantiki adjustments · ${dash(historyUser.displayName ?? historyUser.username)} · ${historyUser.telegramId}`
+        }
+        open={historyUser != null}
+        onCancel={() => setHistoryUser(null)}
+        footer={null}
+        width={900}
+        destroyOnHidden
+      >
+        <FantikiAdjustmentsTable
+          telegramUserId={historyUser?.telegramId}
+          enabled={historyUser != null}
+        />
+      </Modal>
     </div>
   )
 }

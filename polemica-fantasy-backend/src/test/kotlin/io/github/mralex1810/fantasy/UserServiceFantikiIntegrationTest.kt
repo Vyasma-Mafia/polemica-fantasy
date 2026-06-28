@@ -78,6 +78,19 @@ class UserServiceFantikiIntegrationTest {
         val txs = fantikiTransactionRepository.findAll().filter { it.telegramUser!!.id == u.id }
         assertEquals(1, txs.size)
         assertEquals(42L, txs.single().amount)
+        assertEquals(null, txs.single().adminReason)
+    }
+
+    @Test
+    fun `grantFantikiByTelegramId writes trimmed admin reason`() {
+        userService.grantFantikiByTelegramId(993_003L, 42L, "  Manual correction  ")
+
+        val user = telegramUserRepository.findByTelegramId(993_003L)!!
+        val txs = fantikiTransactionRepository.findAll()
+            .filter { it.telegramUser!!.id == user.id && it.reason == FantikiTransactionReason.ADMIN_GRANT }
+        assertEquals(1, txs.size)
+        assertEquals(42L, txs.single().amount)
+        assertEquals("Manual correction", txs.single().adminReason)
     }
 
     companion object {

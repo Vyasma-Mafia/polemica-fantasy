@@ -31,6 +31,9 @@ class FantikiTransaction(
     @Column(nullable = false, length = 64)
     var reason: FantikiTransactionReason = FantikiTransactionReason.INITIAL,
 
+    @Column(name = "admin_reason", length = 500)
+    var adminReason: String? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 )

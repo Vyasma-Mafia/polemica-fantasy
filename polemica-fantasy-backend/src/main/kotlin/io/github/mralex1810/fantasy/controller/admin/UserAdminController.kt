@@ -3,10 +3,14 @@ package io.github.mralex1810.fantasy.controller.admin
 import io.github.mralex1810.fantasy.dto.admin.request.GiveFantikiRequest
 import io.github.mralex1810.fantasy.dto.admin.request.TakeFantikiRequest
 import io.github.mralex1810.fantasy.dto.admin.response.AdminUserListItemDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiAdjustmentsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.service.AdminUserListService
 import io.github.mralex1810.fantasy.service.UserService
 import jakarta.validation.Valid
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.web.PageableDefault
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -33,11 +37,17 @@ class UserAdminController(
     fun giveFantiki(
         @PathVariable telegramUserId: Long,
         @Valid @RequestBody body: GiveFantikiRequest,
-    ): UserProfileDto = userService.grantFantikiByTelegramId(telegramUserId, body.amount)
+    ): UserProfileDto = userService.grantFantikiByTelegramId(telegramUserId, body.amount, body.adminReason)
 
     @PostMapping("/{telegramUserId}/take-fantiki")
     fun takeFantiki(
         @PathVariable telegramUserId: Long,
         @Valid @RequestBody body: TakeFantikiRequest,
-    ): UserProfileDto = userService.confiscateFantikiByTelegramId(telegramUserId, body.amount)
+    ): UserProfileDto = userService.confiscateFantikiByTelegramId(telegramUserId, body.amount, body.adminReason)
+
+    @GetMapping("/{telegramUserId}/fantiki-adjustments")
+    fun listFantikiAdjustments(
+        @PathVariable telegramUserId: Long,
+        @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC) pageable: Pageable,
+    ): PagedFantikiAdjustmentsDto = userService.listFantikiAdjustmentsByTelegramId(telegramUserId, pageable)
 }

@@ -126,6 +126,25 @@ export interface UserProfileDto {
   fantiki: number
 }
 
+export type FantikiAdjustmentReason = 'ADMIN_GRANT' | 'ADMIN_CONFISCATE' | string
+
+export interface FantikiAdjustmentDto {
+  id: number
+  createdAt: string
+  telegramId: number
+  amount: number
+  reason: FantikiAdjustmentReason
+  adminReason: string | null
+}
+
+export interface PagedFantikiAdjustmentsDto {
+  content: FantikiAdjustmentDto[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 export interface BroadcastAcceptedDto {
   recipientCount: number
 }

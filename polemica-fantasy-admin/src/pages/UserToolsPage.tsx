@@ -1,16 +1,19 @@
-import { App, Button, Form, InputNumber, Select, Space, Typography } from 'antd'
+import { App, Button, Form, Input, InputNumber, Select, Space, Typography } from 'antd'
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { giveCards, listCardTemplates, openPack } from '../api/cards'
 import { listCardPacks } from '../api/packs'
 import { giveFantiki, takeFantiki } from '../api/users'
+import { FantikiAdjustmentsTable } from '../components/FantikiAdjustmentsTable'
 
 export function UserToolsPage() {
   const { message } = App.useApp()
+  const queryClient = useQueryClient()
   const [telegramUserId, setTelegramUserId] = useState<number | undefined>()
   const [packId, setPackId] = useState<number | undefined>()
   const [templateIds, setTemplateIds] = useState<number[]>([])
   const [fantikiAmount, setFantikiAmount] = useState<number | undefined>()
+  const [fantikiReason, setFantikiReason] = useState('')
 
   const templatesQ = useQuery({
     queryKey: ['admin', 'card-templates', 'all'],
@@ -48,19 +51,39 @@ export function UserToolsPage() {
   })
 
   const fantikiMut = useMutation({
-    mutationFn: ({ uid, amount }: { uid: number; amount: number }) =>
-      giveFantiki(uid, amount),
+    mutationFn: ({
+      uid,
+      amount,
+      adminReason,
+    }: {
+      uid: number
+      amount: number
+      adminReason: string
+    }) => giveFantiki(uid, { amount, adminReason }),
     onSuccess: (profile) => {
       message.success(`Balance: ${profile.fantiki} fantiki`)
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'users', profile.telegramId, 'fantiki-adjustments'],
+      })
     },
     onError: (e: Error) => message.error(e.message),
   })
 
   const takeFantikiMut = useMutation({
-    mutationFn: ({ uid, amount }: { uid: number; amount: number }) =>
-      takeFantiki(uid, amount),
+    mutationFn: ({
+      uid,
+      amount,
+      adminReason,
+    }: {
+      uid: number
+      amount: number
+      adminReason: string
+    }) => takeFantiki(uid, { amount, adminReason }),
     onSuccess: (profile) => {
       message.success(`Balance: ${profile.fantiki} fantiki`)
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'users', profile.telegramId, 'fantiki-adjustments'],
+      })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -78,6 +101,13 @@ export function UserToolsPage() {
     },
     onError: (e: Error) => message.error(e.message),
   })
+
+  const fantikiReasonTrimmed = fantikiReason.trim()
+  const canAdjustFantiki =
+    telegramUserId != null &&
+    fantikiAmount != null &&
+    fantikiAmount >= 1 &&
+    fantikiReasonTrimmed.length > 0
 
   return (
     <div>
@@ -108,13 +138,26 @@ export function UserToolsPage() {
             value={fantikiAmount}
             onChange={(v) => setFantikiAmount(v ?? undefined)}
           />
+          <Input.TextArea
+            placeholder="Reason"
+            autoSize={{ minRows: 1, maxRows: 3 }}
+            maxLength={500}
+            showCount
+            style={{ width: 320 }}
+            value={fantikiReason}
+            onChange={(e) => setFantikiReason(e.target.value)}
+          />
           <Button
             type="primary"
             loading={fantikiMut.isPending}
-            disabled={telegramUserId == null || fantikiAmount == null || fantikiAmount < 1}
+            disabled={!canAdjustFantiki}
             onClick={() => {
               if (telegramUserId == null || fantikiAmount == null) return
-              fantikiMut.mutate({ uid: telegramUserId, amount: fantikiAmount })
+              fantikiMut.mutate({
+                uid: telegramUserId,
+                amount: fantikiAmount,
+                adminReason: fantikiReasonTrimmed,
+              })
             }}
           >
             Grant fantiki
@@ -122,10 +165,14 @@ export function UserToolsPage() {
           <Button
             danger
             loading={takeFantikiMut.isPending}
-            disabled={telegramUserId == null || fantikiAmount == null || fantikiAmount < 1}
+            disabled={!canAdjustFantiki}
             onClick={() => {
               if (telegramUserId == null || fantikiAmount == null) return
-              takeFantikiMut.mutate({ uid: telegramUserId, amount: fantikiAmount })
+              takeFantikiMut.mutate({
+                uid: telegramUserId,
+                amount: fantikiAmount,
+                adminReason: fantikiReasonTrimmed,
+              })
             }}
           >
             Take fantiki
@@ -189,6 +236,14 @@ export function UserToolsPage() {
           </Button>
         </Space>
       </Form>
+
+      <Typography.Title level={5} style={{ marginTop: 24 }}>
+        Fantiki adjustments
+      </Typography.Title>
+      <Typography.Paragraph type="secondary">
+        Manual admin grants and takes for the selected Telegram user id.
+      </Typography.Paragraph>
+      <FantikiAdjustmentsTable telegramUserId={telegramUserId} />
     </div>
   )
 }

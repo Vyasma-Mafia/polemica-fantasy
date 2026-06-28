@@ -326,11 +326,24 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/777500/give-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":250}"""),
+                .content("""{"amount":250,"adminReason":"Manual promo"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.telegramId").value(777500))
             .andExpect(jsonPath("$.fantiki").value(1250))
+
+        val row = jdbcTemplate.queryForMap(
+            """
+            SELECT ft.amount, ft.admin_reason
+            FROM fantiki_transaction ft
+            INNER JOIN telegram_user tu ON tu.id = ft.telegram_user_id
+            WHERE tu.telegram_id = 777500 AND ft.reason = 'ADMIN_GRANT'
+            ORDER BY ft.id DESC
+            LIMIT 1
+            """.trimIndent(),
+        )
+        assertEquals(250L, (row["amount"] as Number).toLong())
+        assertEquals("Manual promo", row["admin_reason"])
     }
 
     @Test
@@ -366,7 +379,7 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/777501/give-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":0}"""),
+                .content("""{"amount":0,"adminReason":"Bad adjustment"}"""),
         )
             .andExpect(status().isBadRequest)
     }
@@ -524,7 +537,7 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/$tid/give-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":50}"""),
+                .content("""{"amount":50,"adminReason":"Setup balance"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.fantiki").value(1050))
@@ -533,11 +546,25 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/$tid/take-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":50}"""),
+                .content("""{"amount":50,"adminReason":"Rollback grant"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.telegramId").value(tid))
             .andExpect(jsonPath("$.fantiki").value(1000))
+
+        val row = jdbcTemplate.queryForMap(
+            """
+            SELECT ft.amount, ft.admin_reason
+            FROM fantiki_transaction ft
+            INNER JOIN telegram_user tu ON tu.id = ft.telegram_user_id
+            WHERE tu.telegram_id = ? AND ft.reason = 'ADMIN_CONFISCATE'
+            ORDER BY ft.id DESC
+            LIMIT 1
+            """.trimIndent(),
+            tid,
+        )
+        assertEquals(-50L, (row["amount"] as Number).toLong())
+        assertEquals("Rollback grant", row["admin_reason"])
     }
 
     @Test
@@ -549,7 +576,7 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/$tid/give-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":1}"""),
+                .content("""{"amount":1,"adminReason":"Setup balance"}"""),
         )
             .andExpect(status().isOk)
 
@@ -557,7 +584,7 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/$tid/take-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":999999}"""),
+                .content("""{"amount":999999,"adminReason":"Too much"}"""),
         )
             .andExpect(status().isBadRequest)
     }
@@ -570,9 +597,112 @@ class AdminApiIntegrationTest {
             post("/api/v1/admin/users/999888777/take-fantiki")
                 .header("Authorization", auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"amount":1}"""),
+                .content("""{"amount":1,"adminReason":"Unknown user"}"""),
         )
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    @Order(151)
+    fun `admin fantiki reason is required`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tooLong = "x".repeat(501)
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/778003/give-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":1,"adminReason":"   "}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/778003/give-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":1}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/778003/take-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":1,"adminReason":"$tooLong"}"""),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(152)
+    fun `admin fantiki adjustments history returns manual transactions newest first`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tid = 778004L
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/give-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":20,"adminReason":"History grant"}"""),
+        )
+            .andExpect(status().isOk)
+
+        mockMvc.perform(
+            post("/api/v1/admin/users/$tid/take-fantiki")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"amount":10,"adminReason":"History take"}"""),
+        )
+            .andExpect(status().isOk)
+
+        jdbcTemplate.update(
+            """
+            UPDATE fantiki_transaction ft
+            SET created_at = TIMESTAMP '2026-01-01 10:00:00'
+            FROM telegram_user tu
+            WHERE tu.id = ft.telegram_user_id
+              AND tu.telegram_id = ?
+              AND ft.reason = 'ADMIN_GRANT'
+              AND ft.admin_reason = 'History grant'
+            """.trimIndent(),
+            tid,
+        )
+        jdbcTemplate.update(
+            """
+            UPDATE fantiki_transaction ft
+            SET created_at = TIMESTAMP '2026-01-01 10:02:00'
+            FROM telegram_user tu
+            WHERE tu.id = ft.telegram_user_id
+              AND tu.telegram_id = ?
+              AND ft.reason = 'ADMIN_CONFISCATE'
+              AND ft.admin_reason = 'History take'
+            """.trimIndent(),
+            tid,
+        )
+        jdbcTemplate.update(
+            """
+            INSERT INTO fantiki_transaction (telegram_user_id, amount, reason, admin_reason, created_at)
+            SELECT id, 99, 'SERIES_REWARD', 'Hidden automatic reward', TIMESTAMP '2026-01-01 10:03:00'
+            FROM telegram_user
+            WHERE telegram_id = ?
+            """.trimIndent(),
+            tid,
+        )
+
+        mockMvc.perform(
+            get("/api/v1/admin/users/$tid/fantiki-adjustments")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(2))
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].telegramId").value(tid))
+            .andExpect(jsonPath("$.content[0].amount").value(-10))
+            .andExpect(jsonPath("$.content[0].reason").value("ADMIN_CONFISCATE"))
+            .andExpect(jsonPath("$.content[0].adminReason").value("History take"))
+            .andExpect(jsonPath("$.content[1].amount").value(20))
+            .andExpect(jsonPath("$.content[1].reason").value("ADMIN_GRANT"))
+            .andExpect(jsonPath("$.content[1].adminReason").value("History grant"))
     }
 
     @Test
