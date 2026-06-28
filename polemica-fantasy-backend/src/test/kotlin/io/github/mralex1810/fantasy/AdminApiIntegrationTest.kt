@@ -635,7 +635,7 @@ class AdminApiIntegrationTest {
 
     @Test
     @Order(152)
-    fun `admin fantiki adjustments history returns manual transactions newest first`() {
+    fun `admin fantiki transactions history returns all transactions newest first with optional user filter`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tid = 778004L
 
@@ -658,7 +658,7 @@ class AdminApiIntegrationTest {
         jdbcTemplate.update(
             """
             UPDATE fantiki_transaction ft
-            SET created_at = TIMESTAMP '2026-01-01 10:00:00'
+            SET created_at = TIMESTAMP '2099-01-01 10:00:00'
             FROM telegram_user tu
             WHERE tu.id = ft.telegram_user_id
               AND tu.telegram_id = ?
@@ -670,7 +670,7 @@ class AdminApiIntegrationTest {
         jdbcTemplate.update(
             """
             UPDATE fantiki_transaction ft
-            SET created_at = TIMESTAMP '2026-01-01 10:02:00'
+            SET created_at = TIMESTAMP '2099-01-01 10:02:00'
             FROM telegram_user tu
             WHERE tu.id = ft.telegram_user_id
               AND tu.telegram_id = ?
@@ -682,7 +682,7 @@ class AdminApiIntegrationTest {
         jdbcTemplate.update(
             """
             INSERT INTO fantiki_transaction (telegram_user_id, amount, reason, admin_reason, created_at)
-            SELECT id, 99, 'SERIES_REWARD', 'Hidden automatic reward', TIMESTAMP '2026-01-01 10:03:00'
+            SELECT id, 99, 'SERIES_REWARD', 'Hidden automatic reward', TIMESTAMP '2099-01-01 10:03:00'
             FROM telegram_user
             WHERE telegram_id = ?
             """.trimIndent(),
@@ -690,19 +690,32 @@ class AdminApiIntegrationTest {
         )
 
         mockMvc.perform(
-            get("/api/v1/admin/users/$tid/fantiki-adjustments")
+            get("/api/v1/admin/users/fantiki-transactions")
+                .param("telegramUserId", tid.toString())
                 .header("Authorization", auth),
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.totalElements").value(2))
-            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.totalElements").value(3))
+            .andExpect(jsonPath("$.content.length()").value(3))
             .andExpect(jsonPath("$.content[0].telegramId").value(tid))
-            .andExpect(jsonPath("$.content[0].amount").value(-10))
-            .andExpect(jsonPath("$.content[0].reason").value("ADMIN_CONFISCATE"))
-            .andExpect(jsonPath("$.content[0].adminReason").value("History take"))
-            .andExpect(jsonPath("$.content[1].amount").value(20))
-            .andExpect(jsonPath("$.content[1].reason").value("ADMIN_GRANT"))
-            .andExpect(jsonPath("$.content[1].adminReason").value("History grant"))
+            .andExpect(jsonPath("$.content[0].amount").value(99))
+            .andExpect(jsonPath("$.content[0].reason").value("SERIES_REWARD"))
+            .andExpect(jsonPath("$.content[0].adminReason").value("Hidden automatic reward"))
+            .andExpect(jsonPath("$.content[1].amount").value(-10))
+            .andExpect(jsonPath("$.content[1].reason").value("ADMIN_CONFISCATE"))
+            .andExpect(jsonPath("$.content[1].adminReason").value("History take"))
+            .andExpect(jsonPath("$.content[2].amount").value(20))
+            .andExpect(jsonPath("$.content[2].reason").value("ADMIN_GRANT"))
+            .andExpect(jsonPath("$.content[2].adminReason").value("History grant"))
+
+        mockMvc.perform(
+            get("/api/v1/admin/users/fantiki-transactions")
+                .param("size", "1")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.content[0].telegramId").value(tid))
+            .andExpect(jsonPath("$.content[0].reason").value("SERIES_REWARD"))
     }
 
     @Test

@@ -207,7 +207,7 @@ data class AdminUserListItemDto(
     val cardsInSeries: Long?,
 )
 
-data class FantikiAdjustmentDto(
+data class FantikiTransactionDto(
     val id: Long,
     val createdAt: java.time.Instant,
     val telegramId: Long,
@@ -216,8 +216,8 @@ data class FantikiAdjustmentDto(
     val adminReason: String?,
 )
 
-data class PagedFantikiAdjustmentsDto(
-    val content: List<FantikiAdjustmentDto>,
+data class PagedFantikiTransactionsDto(
+    val content: List<FantikiTransactionDto>,
     val page: Int,
     val size: Int,
     val totalElements: Long,

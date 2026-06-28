@@ -3,7 +3,7 @@ package io.github.mralex1810.fantasy.controller.admin
 import io.github.mralex1810.fantasy.dto.admin.request.GiveFantikiRequest
 import io.github.mralex1810.fantasy.dto.admin.request.TakeFantikiRequest
 import io.github.mralex1810.fantasy.dto.admin.response.AdminUserListItemDto
-import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiAdjustmentsDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiTransactionsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.service.AdminUserListService
 import io.github.mralex1810.fantasy.service.UserService
@@ -49,5 +49,11 @@ class UserAdminController(
     fun listFantikiAdjustments(
         @PathVariable telegramUserId: Long,
         @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC) pageable: Pageable,
-    ): PagedFantikiAdjustmentsDto = userService.listFantikiAdjustmentsByTelegramId(telegramUserId, pageable)
+    ): PagedFantikiTransactionsDto = userService.listFantikiTransactionsForAdmin(telegramUserId, pageable)
+
+    @GetMapping("/fantiki-transactions")
+    fun listFantikiTransactions(
+        @RequestParam(required = false) telegramUserId: Long?,
+        @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC) pageable: Pageable,
+    ): PagedFantikiTransactionsDto = userService.listFantikiTransactionsForAdmin(telegramUserId, pageable)
 }

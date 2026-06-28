@@ -93,7 +93,7 @@ export function UsersOverviewPage() {
         key: 'actions',
         render: (_: unknown, r: AdminUserListItemDto) => (
           <Button size="small" onClick={() => setHistoryUser(r)}>
-            Fantiki adjustments
+            Fantiki transactions
           </Button>
         ),
       },
@@ -158,8 +158,8 @@ export function UsersOverviewPage() {
       <Modal
         title={
           historyUser == null
-            ? 'Fantiki adjustments'
-            : `Fantiki adjustments · ${dash(historyUser.displayName ?? historyUser.username)} · ${historyUser.telegramId}`
+            ? 'Fantiki transactions'
+            : `Fantiki transactions · ${dash(historyUser.displayName ?? historyUser.username)} · ${historyUser.telegramId}`
         }
         open={historyUser != null}
         onCancel={() => setHistoryUser(null)}

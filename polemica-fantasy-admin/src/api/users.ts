@@ -1,4 +1,4 @@
-import type { PagedFantikiAdjustmentsDto, UserProfileDto } from './types'
+import type { PagedFantikiTransactionsDto, UserProfileDto } from './types'
 import { apiJson } from './client'
 
 export function giveFantiki(
@@ -34,7 +34,23 @@ export function getFantikiAdjustments(
   const page = options?.page ?? 0
   const size = options?.size ?? 20
   const q = new URLSearchParams({ page: String(page), size: String(size) })
-  return apiJson<PagedFantikiAdjustmentsDto>(
+  return apiJson<PagedFantikiTransactionsDto>(
     `/v1/admin/users/${telegramUserId}/fantiki-adjustments?${q.toString()}`,
+  )
+}
+
+export function getFantikiTransactions(options?: {
+  telegramUserId?: number
+  page?: number
+  size?: number
+}) {
+  const page = options?.page ?? 0
+  const size = options?.size ?? 20
+  const q = new URLSearchParams({ page: String(page), size: String(size) })
+  if (options?.telegramUserId != null) {
+    q.set('telegramUserId', String(options.telegramUserId))
+  }
+  return apiJson<PagedFantikiTransactionsDto>(
+    `/v1/admin/users/fantiki-transactions?${q.toString()}`,
   )
 }

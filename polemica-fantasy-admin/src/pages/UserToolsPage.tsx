@@ -63,7 +63,7 @@ export function UserToolsPage() {
     onSuccess: (profile) => {
       message.success(`Balance: ${profile.fantiki} fantiki`)
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'users', profile.telegramId, 'fantiki-adjustments'],
+        queryKey: ['admin', 'fantiki-transactions'],
       })
     },
     onError: (e: Error) => message.error(e.message),
@@ -82,7 +82,7 @@ export function UserToolsPage() {
     onSuccess: (profile) => {
       message.success(`Balance: ${profile.fantiki} fantiki`)
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'users', profile.telegramId, 'fantiki-adjustments'],
+        queryKey: ['admin', 'fantiki-transactions'],
       })
     },
     onError: (e: Error) => message.error(e.message),
@@ -238,10 +238,10 @@ export function UserToolsPage() {
       </Form>
 
       <Typography.Title level={5} style={{ marginTop: 24 }}>
-        Fantiki adjustments
+        Fantiki transactions
       </Typography.Title>
       <Typography.Paragraph type="secondary">
-        Manual admin grants and takes for the selected Telegram user id.
+        All balance transactions. Set Telegram user id above to filter this journal.
       </Typography.Paragraph>
       <FantikiAdjustmentsTable telegramUserId={telegramUserId} />
     </div>

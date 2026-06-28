@@ -126,19 +126,17 @@ export interface UserProfileDto {
   fantiki: number
 }
 
-export type FantikiAdjustmentReason = 'ADMIN_GRANT' | 'ADMIN_CONFISCATE' | string
-
-export interface FantikiAdjustmentDto {
+export interface FantikiTransactionDto {
   id: number
   createdAt: string
   telegramId: number
   amount: number
-  reason: FantikiAdjustmentReason
+  reason: string
   adminReason: string | null
 }
 
-export interface PagedFantikiAdjustmentsDto {
-  content: FantikiAdjustmentDto[]
+export interface PagedFantikiTransactionsDto {
+  content: FantikiTransactionDto[]
   page: number
   size: number
   totalElements: number

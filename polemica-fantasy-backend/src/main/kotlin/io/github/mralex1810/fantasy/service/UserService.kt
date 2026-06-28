@@ -1,7 +1,7 @@
 package io.github.mralex1810.fantasy.service
 
-import io.github.mralex1810.fantasy.dto.admin.response.FantikiAdjustmentDto
-import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiAdjustmentsDto
+import io.github.mralex1810.fantasy.dto.admin.response.FantikiTransactionDto
+import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiTransactionsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
@@ -169,18 +169,17 @@ class UserService(
     }
 
     @Transactional(readOnly = true)
-    fun listFantikiAdjustmentsByTelegramId(
-        telegramUserId: Long,
+    fun listFantikiTransactionsForAdmin(
+        telegramUserId: Long?,
         pageable: Pageable,
-    ): PagedFantikiAdjustmentsDto {
-        val page = fantikiTransactionRepository.findManualAdjustmentsByTelegramId(
+    ): PagedFantikiTransactionsDto {
+        val page = fantikiTransactionRepository.findTransactionsForAdmin(
             telegramUserId = telegramUserId,
-            reasons = MANUAL_ADMIN_REASONS,
             pageable = pageable,
         )
-        return PagedFantikiAdjustmentsDto(
+        return PagedFantikiTransactionsDto(
             content = page.content.map { tx ->
-                FantikiAdjustmentDto(
+                FantikiTransactionDto(
                     id = tx.id!!,
                     createdAt = tx.createdAt,
                     telegramId = tx.telegramUser!!.telegramId,
@@ -262,9 +261,5 @@ class UserService(
     companion object {
         private const val MAX_DISPLAY_NAME_LENGTH = 255
         private const val MAX_ADMIN_REASON_LENGTH = 500
-        private val MANUAL_ADMIN_REASONS = setOf(
-            FantikiTransactionReason.ADMIN_GRANT,
-            FantikiTransactionReason.ADMIN_CONFISCATE,
-        )
     }
 }

@@ -2,11 +2,11 @@
 
 ## Что реализовано
 
-### Backend+admin: аудит ручных корректировок фантиков (июнь 2026)
+### Backend+admin: аудит операций фантиков (июнь 2026)
 - [x] Flyway **V63** добавляет `fantiki_transaction.admin_reason` для текстовой причины ручных операций.
 - [x] Admin `give-fantiki` / `take-fantiki` требуют `adminReason`, триммят и сохраняют её только для `ADMIN_GRANT` / `ADMIN_CONFISCATE`.
-- [x] Admin API отдаёт paged историю ручных корректировок пользователя через `/api/v1/admin/users/{telegramUserId}/fantiki-adjustments`.
-- [x] Админка показывает обязательное поле Reason в `User tools`, историю выбранного пользователя и модалку истории со страницы `Users`.
+- [x] Admin API отдаёт paged журнал всех `fantiki_transaction` через `/api/v1/admin/users/fantiki-transactions` с опциональным фильтром `telegramUserId`.
+- [x] Админка показывает обязательное поле Reason в `User tools`, общий журнал операций и фильтрованную модалку истории со страницы `Users`.
 
 ### DX: TMA CSS modularization (июнь 2026)
 - [x] `polemica-fantasy-webapp/src/index.css` сокращён до ordered import manifest.

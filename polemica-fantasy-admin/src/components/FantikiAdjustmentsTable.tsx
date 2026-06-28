@@ -2,11 +2,11 @@ import { Table, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { getFantikiAdjustments } from '../api/users'
-import type { FantikiAdjustmentDto } from '../api/types'
+import { getFantikiTransactions } from '../api/users'
+import type { FantikiTransactionDto } from '../api/types'
 
 type Props = {
-  telegramUserId: number | undefined
+  telegramUserId?: number
   enabled?: boolean
 }
 
@@ -25,9 +25,9 @@ export function FantikiAdjustmentsTable({ telegramUserId, enabled = true }: Prop
   }, [telegramUserId])
 
   const query = useQuery({
-    queryKey: ['admin', 'users', telegramUserId, 'fantiki-adjustments', page, pageSize],
-    queryFn: () => getFantikiAdjustments(telegramUserId!, { page, size: pageSize }),
-    enabled: enabled && telegramUserId != null,
+    queryKey: ['admin', 'fantiki-transactions', telegramUserId ?? null, page, pageSize],
+    queryFn: () => getFantikiTransactions({ telegramUserId, page, size: pageSize }),
+    enabled,
   })
 
   const columns = useMemo(
@@ -40,11 +40,17 @@ export function FantikiAdjustmentsTable({ telegramUserId, enabled = true }: Prop
         render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
       },
       {
+        title: 'Telegram ID',
+        dataIndex: 'telegramId' as const,
+        key: 'telegramId',
+        width: 140,
+      },
+      {
         title: 'Operation',
         dataIndex: 'reason' as const,
         key: 'reason',
         width: 130,
-        render: (v: string, row: FantikiAdjustmentDto) => (
+        render: (v: string, row: FantikiTransactionDto) => (
           <Tag color={row.amount >= 0 ? 'green' : 'red'}>{operationLabel(v)}</Tag>
         ),
       },
@@ -72,7 +78,7 @@ export function FantikiAdjustmentsTable({ telegramUserId, enabled = true }: Prop
   )
 
   return (
-    <Table<FantikiAdjustmentDto>
+    <Table<FantikiTransactionDto>
       rowKey="id"
       size="small"
       loading={query.isLoading}
