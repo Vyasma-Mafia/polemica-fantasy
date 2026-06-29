@@ -716,6 +716,19 @@ class AdminApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.content[0].telegramId").value(tid))
             .andExpect(jsonPath("$.content[0].reason").value("SERIES_REWARD"))
+
+        mockMvc.perform(
+            get("/api/v1/admin/users/fantiki-transactions")
+                .param("telegramUserId", tid.toString())
+                .param("reason", "ADMIN_GRANT")
+                .header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.content[0].telegramId").value(tid))
+            .andExpect(jsonPath("$.content[0].amount").value(20))
+            .andExpect(jsonPath("$.content[0].reason").value("ADMIN_GRANT"))
+            .andExpect(jsonPath("$.content[0].adminReason").value("History grant"))
     }
 
     @Test

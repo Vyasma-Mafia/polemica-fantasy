@@ -238,10 +238,10 @@ export function UserToolsPage() {
       </Form>
 
       <Typography.Title level={5} style={{ marginTop: 24 }}>
-        Fantiki transactions
+        Admin fantiki grants
       </Typography.Title>
       <Typography.Paragraph type="secondary">
-        All balance transactions. Set Telegram user id above to filter this journal.
+        Admin grants across all users by default. Set Telegram user id above to filter, or switch the table filter to see takes/all transactions.
       </Typography.Paragraph>
       <FantikiAdjustmentsTable telegramUserId={telegramUserId} />
     </div>

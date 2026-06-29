@@ -41,6 +41,7 @@ export function getFantikiAdjustments(
 
 export function getFantikiTransactions(options?: {
   telegramUserId?: number
+  reason?: string | null
   page?: number
   size?: number
 }) {
@@ -49,6 +50,9 @@ export function getFantikiTransactions(options?: {
   const q = new URLSearchParams({ page: String(page), size: String(size) })
   if (options?.telegramUserId != null) {
     q.set('telegramUserId', String(options.telegramUserId))
+  }
+  if (options?.reason != null) {
+    q.set('reason', options.reason)
   }
   return apiJson<PagedFantikiTransactionsDto>(
     `/v1/admin/users/fantiki-transactions?${q.toString()}`,

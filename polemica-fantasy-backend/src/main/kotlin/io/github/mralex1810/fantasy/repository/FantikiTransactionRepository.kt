@@ -24,16 +24,19 @@ interface FantikiTransactionRepository : JpaRepository<FantikiTransaction, Long>
             FROM FantikiTransaction t
             JOIN FETCH t.telegramUser u
             WHERE (:telegramUserId IS NULL OR u.telegramId = :telegramUserId)
+              AND (:reason IS NULL OR t.reason = :reason)
             """,
         countQuery = """
             SELECT COUNT(t)
             FROM FantikiTransaction t
             JOIN t.telegramUser u
             WHERE (:telegramUserId IS NULL OR u.telegramId = :telegramUserId)
+              AND (:reason IS NULL OR t.reason = :reason)
             """,
     )
     fun findTransactionsForAdmin(
         @Param("telegramUserId") telegramUserId: Long?,
+        @Param("reason") reason: FantikiTransactionReason?,
         pageable: Pageable,
     ): Page<FantikiTransaction>
 }

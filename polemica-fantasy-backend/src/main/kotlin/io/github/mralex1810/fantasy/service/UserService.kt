@@ -171,10 +171,12 @@ class UserService(
     @Transactional(readOnly = true)
     fun listFantikiTransactionsForAdmin(
         telegramUserId: Long?,
+        reason: FantikiTransactionReason?,
         pageable: Pageable,
     ): PagedFantikiTransactionsDto {
         val page = fantikiTransactionRepository.findTransactionsForAdmin(
             telegramUserId = telegramUserId,
+            reason = reason,
             pageable = pageable,
         )
         return PagedFantikiTransactionsDto(

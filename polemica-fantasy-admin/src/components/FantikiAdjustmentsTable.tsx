@@ -1,4 +1,4 @@
-import { Table, Tag, Typography } from 'antd'
+import { Select, Space, Table, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
@@ -7,6 +7,7 @@ import type { FantikiTransactionDto } from '../api/types'
 
 type Props = {
   telegramUserId?: number
+  defaultReason?: string | null
   enabled?: boolean
 }
 
@@ -16,17 +17,38 @@ function operationLabel(reason: string) {
   return reason
 }
 
-export function FantikiAdjustmentsTable({ telegramUserId, enabled = true }: Props) {
+const reasonOptions = [
+  { value: 'ADMIN_GRANT', label: 'Admin grants' },
+  { value: 'ADMIN_CONFISCATE', label: 'Admin takes' },
+  { value: 'ALL', label: 'All transactions' },
+]
+
+export function FantikiAdjustmentsTable({
+  telegramUserId,
+  defaultReason = 'ADMIN_GRANT',
+  enabled = true,
+}: Props) {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
+  const [reasonFilter, setReasonFilter] = useState<string>(defaultReason ?? 'ALL')
 
   useEffect(() => {
     setPage(0)
   }, [telegramUserId])
 
+  useEffect(() => {
+    setReasonFilter(defaultReason ?? 'ALL')
+  }, [defaultReason])
+
   const query = useQuery({
-    queryKey: ['admin', 'fantiki-transactions', telegramUserId ?? null, page, pageSize],
-    queryFn: () => getFantikiTransactions({ telegramUserId, page, size: pageSize }),
+    queryKey: ['admin', 'fantiki-transactions', telegramUserId ?? null, reasonFilter, page, pageSize],
+    queryFn: () =>
+      getFantikiTransactions({
+        telegramUserId,
+        reason: reasonFilter === 'ALL' ? null : reasonFilter,
+        page,
+        size: pageSize,
+      }),
     enabled,
   })
 
@@ -78,22 +100,33 @@ export function FantikiAdjustmentsTable({ telegramUserId, enabled = true }: Prop
   )
 
   return (
-    <Table<FantikiTransactionDto>
-      rowKey="id"
-      size="small"
-      loading={query.isLoading}
-      dataSource={query.data?.content ?? []}
-      columns={columns}
-      pagination={{
-        current: page + 1,
-        pageSize,
-        total: query.data?.totalElements ?? 0,
-        showSizeChanger: true,
-        onChange: (nextPage, nextPageSize) => {
-          setPage(nextPage - 1)
-          setPageSize(nextPageSize)
-        },
-      }}
-    />
+    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <Select
+        style={{ width: 220 }}
+        options={reasonOptions}
+        value={reasonFilter}
+        onChange={(nextReason) => {
+          setReasonFilter(nextReason)
+          setPage(0)
+        }}
+      />
+      <Table<FantikiTransactionDto>
+        rowKey="id"
+        size="small"
+        loading={query.isLoading}
+        dataSource={query.data?.content ?? []}
+        columns={columns}
+        pagination={{
+          current: page + 1,
+          pageSize,
+          total: query.data?.totalElements ?? 0,
+          showSizeChanger: true,
+          onChange: (nextPage, nextPageSize) => {
+            setPage(nextPage - 1)
+            setPageSize(nextPageSize)
+          },
+        }}
+      />
+    </Space>
   )
 }
