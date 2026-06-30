@@ -16,7 +16,7 @@ import {
   Typography,
   Upload,
 } from 'antd'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   addFantasyPlayerAlias,
@@ -49,6 +49,26 @@ interface MergeFormValues {
   reason: string
 }
 
+interface TargetPlayerOption {
+  value: number
+  label: string
+  searchText: string
+  fantasyIdText: string
+  nicknameText: string
+  aliasTexts: string[]
+}
+
+function targetPlayerRank(option: TargetPlayerOption, searchValue: string): number {
+  const value = searchValue.trim().toLowerCase()
+  if (!value) return 5
+  if (option.fantasyIdText === value) return 0
+  if (option.fantasyIdText.startsWith(value)) return 1
+  if (option.aliasTexts.some((alias) => alias === value)) return 2
+  if (option.aliasTexts.some((alias) => alias.startsWith(value))) return 3
+  if (option.nicknameText.startsWith(value)) return 4
+  return 5
+}
+
 export function PlayersPage() {
   const qc = useQueryClient()
   const { message } = App.useApp()
@@ -73,6 +93,32 @@ export function PlayersPage() {
     queryKey: ['admin', 'tournaments'],
     queryFn: listTournaments,
   })
+
+  const targetPlayerOptions = useMemo<TargetPlayerOption[]>(
+    () =>
+      (playersQ.data ?? [])
+        .filter((player) => player.id !== merging?.id)
+        .map((player) => {
+          const aliases = player.aliases?.length
+            ? player.aliases.map((alias) => alias.polemicaUserId)
+            : [player.polemicaUserId]
+          const aliasTexts = aliases.map(String)
+          return {
+            value: player.id,
+            label: `#${player.id} ${player.nickname} · fantasy ${player.id} · Polemica ${aliasTexts.join(', ')}`,
+            searchText: [
+              player.id,
+              `#${player.id}`,
+              player.nickname,
+              ...aliasTexts,
+            ].join(' ').toLowerCase(),
+            fantasyIdText: String(player.id),
+            nicknameText: player.nickname.toLowerCase(),
+            aliasTexts,
+          }
+        }),
+    [merging?.id, playersQ.data],
+  )
 
   const createMut = useMutation({
     mutationFn: createFantasyPlayer,
@@ -459,16 +505,15 @@ export function PlayersPage() {
               showSearch
               placeholder="Select target player"
               filterOption={(input, option) =>
-                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                String(option?.searchText ?? '').includes(input.trim().toLowerCase())
               }
-              options={(playersQ.data ?? [])
-                .filter((player) => player.id !== merging?.id)
-                .map((player) => ({
-                  value: player.id,
-                  label: `#${player.id} ${player.nickname} · aliases ${
-                    (player.aliases?.map((a) => a.polemicaUserId) ?? [player.polemicaUserId]).join(', ')
-                  }`,
-                }))}
+              filterSort={(a, b, info) => {
+                const aRank = targetPlayerRank(a as TargetPlayerOption, info.searchValue)
+                const bRank = targetPlayerRank(b as TargetPlayerOption, info.searchValue)
+                if (aRank !== bRank) return aRank - bRank
+                return (a.value as number) - (b.value as number)
+              }}
+              options={targetPlayerOptions}
             />
           </Form.Item>
           <Form.Item name="reason" label="Reason" rules={[{ required: true }]}>
