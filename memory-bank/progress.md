@@ -2,6 +2,15 @@
 
 ## Что реализовано
 
+### Backend: sheriff perks (июнь 2026)
+- [x] Flyway **V65** добавляет перки `sheriffCheckBlack` и `voteOutSheriffDay1Or2` в каталог `perk` с applicable roles и стартовыми `bonus_points` `0.75` / `2.75`.
+- [x] Скоринг получил detector `sheriffCheckBlack`: шериф получает бонус за каждого уникального черного игрока, включая дона, которого проверил в игре.
+- [x] Скоринг получил detector `voteOutSheriffDay1Or2`: все черные игроки получают бонус, если шериф покинул стол голосованием на 1 или 2 день.
+- [x] `ninja` выключен из random cards (`can_appear_on_random_cards = false`) по жалобам игроков; уже выданные карты не меняются.
+- [x] Release note для `/whats-new` не сидится миграцией: пользователь напишет анонс вручную.
+- [x] `scripts/balance_perks.py` обновлен для новых ролей. Read-only production sample: 1000 / 18170 уникальных profile matches, target excluding `ninja` = 0.0618; расчетные рекомендации были `sheriffCheckBlack=0.71`, `voteOutSheriffDay1Or2=2.82`, вручную округлено до `0.75` / `2.75`.
+- [x] Проверки: `compileKotlin compileTestKotlin` + targeted `StandardPerkDetectorsTest` / `PerkDetectorRegistryTest` успешно.
+
 ### Backend+admin: aliases и merge fantasy players (июнь 2026)
 - [x] Flyway **V64** добавляет `fantasy_player_alias` как source of truth для Polemica id и `fantasy_player_merge_audit`; `fantasy_player.polemica_user_id` остаётся cached primary alias.
 - [x] Backend получил resolver Polemica id -> `fantasy_player`, admin add-alias и merge preview/confirm под `/api/v1/admin/fantasy-players`.

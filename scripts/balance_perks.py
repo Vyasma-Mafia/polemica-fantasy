@@ -29,6 +29,8 @@ PERK_APPLICABLE_ROLES = {
     "sniper": ["DON", "MAFIA"],
     "winThreeToThree": ["DON", "MAFIA"],
     "findSheriff": ["DON"],
+    "sheriffCheckBlack": ["SHERIFF"],
+    "voteOutSheriffDay1Or2": ["DON", "MAFIA"],
     "voteForBlack": ["PEACE", "SHERIFF"],
     "strongCity": ["PEACE"],
     "firstKickedFullGuess": ["PEACE", "SHERIFF"],

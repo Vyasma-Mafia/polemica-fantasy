@@ -13,6 +13,7 @@ import com.github.mafia.vyasma.polemica.library.utils.getKickedFromTable
 import com.github.mafia.vyasma.polemica.library.utils.getKilled
 import com.github.mafia.vyasma.polemica.library.utils.getRealComKiller
 import com.github.mafia.vyasma.polemica.library.utils.getRole
+import com.github.mafia.vyasma.polemica.library.utils.KickReason
 import com.github.mafia.vyasma.polemica.library.utils.playersOnTable
 import com.github.mafia.vyasma.polemica.library.utils.isBlack
 import com.github.mafia.vyasma.polemica.library.utils.isBlackWin
@@ -81,6 +82,38 @@ class FindSheriffPerkDetector : PerkDetector {
                 check.role == Role.DON &&
                     check.night == 1 &&
                     game.getRole(check.player) == Role.SHERIFF
+            },
+        )
+    }
+}
+
+/** Шериф получает бонус за каждого уникального черного игрока, которого проверил за игру. */
+@Component
+class SheriffCheckBlackPerkDetector : PerkDetector {
+    override val type = "sheriffCheckBlack"
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
+        if (player.role != Role.SHERIFF) return 0
+        return game.checks.orEmpty()
+            .filter { it.role == Role.SHERIFF }
+            .filter { game.getRole(it.player).isBlack() }
+            .map { it.player }
+            .distinct()
+            .count()
+    }
+}
+
+/** Шериф ушел голосованием на 1 или 2 день — бонус всем черным игрокам. */
+@Component
+class VoteOutSheriffDay1Or2PerkDetector : PerkDetector {
+    override val type = "voteOutSheriffDay1Or2"
+    override fun matchCount(game: PolemicaGame, player: PolemicaPlayer): Int {
+        if (!player.role.isBlack()) return 0
+        val sheriff = game.players.orEmpty().firstOrNull { it.role == Role.SHERIFF }?.position ?: return 0
+        return boolToInt(
+            game.getKickedFromTable().any { kicked ->
+                kicked.position == sheriff &&
+                    kicked.reason == KickReason.VOTING &&
+                    kicked.gamePhase.num in 1..2
             },
         )
     }
