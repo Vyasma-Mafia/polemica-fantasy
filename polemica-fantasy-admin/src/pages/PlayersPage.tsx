@@ -89,6 +89,12 @@ export function PlayersPage() {
     queryFn: () => listFantasyPlayers({ query }),
   })
 
+  const mergeTargetsQ = useQuery({
+    queryKey: ['admin', 'fantasy-players', 'merge-targets'],
+    queryFn: () => listFantasyPlayers(),
+    enabled: merging != null,
+  })
+
   const tournamentsQ = useQuery({
     queryKey: ['admin', 'tournaments'],
     queryFn: listTournaments,
@@ -96,7 +102,7 @@ export function PlayersPage() {
 
   const targetPlayerOptions = useMemo<TargetPlayerOption[]>(
     () =>
-      (playersQ.data ?? [])
+      (mergeTargetsQ.data ?? [])
         .filter((player) => player.id !== merging?.id)
         .map((player) => {
           const aliases = player.aliases?.length
@@ -117,7 +123,7 @@ export function PlayersPage() {
             aliasTexts,
           }
         }),
-    [merging?.id, playersQ.data],
+    [mergeTargetsQ.data, merging?.id],
   )
 
   const createMut = useMutation({
@@ -503,6 +509,7 @@ export function PlayersPage() {
           >
             <Select
               showSearch
+              loading={mergeTargetsQ.isLoading}
               placeholder="Select target player"
               filterOption={(input, option) =>
                 String(option?.searchText ?? '').includes(input.trim().toLowerCase())
