@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.ActiveSeriesBriefDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentDetailDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentDto
 import io.github.mralex1810.fantasy.dto.admin.response.TournamentPlayerDto
+import io.github.mralex1810.fantasy.dto.StreamLinkDto
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.Tournament
@@ -33,6 +34,7 @@ class TournamentService(
     private val seriesRepository: SeriesRepository,
     private val imageStorageService: ImageStorageService,
     private val fantasyPlayerResolverService: FantasyPlayerResolverService,
+    private val streamLinkService: StreamLinkService,
 ) {
 
     @Transactional
@@ -52,6 +54,7 @@ class TournamentService(
                 polemicaCompetitionId = if (kind == TournamentKind.STANDALONE) null else compId,
             ),
         )
+        streamLinkService.replaceTournamentLinks(t, request.streamLinks)
         return t.toDto()
     }
 
@@ -98,7 +101,9 @@ class TournamentService(
             }
         }
         validateKindAndCompetition(t.kind, t.polemicaCompetitionId)
-        return tournamentRepository.save(t).toDto()
+        val saved = tournamentRepository.save(t)
+        request.streamLinks?.let { streamLinkService.replaceTournamentLinks(saved, it) }
+        return saved.toDto()
     }
 
     private fun validateKindAndCompetition(kind: TournamentKind, polemicaCompetitionId: Long?) {
@@ -132,6 +137,7 @@ class TournamentService(
             SeriesStatus.FINISHED,
         )
         val byTournamentId = nonFinishedSeries.groupBy { it.tournament!!.id!! }
+        val streamLinksByTournamentId = streamLinkService.linksByTournamentIds(tournamentIds)
         return tournaments.map { t ->
             val tid = t.id!!
             val briefs = (byTournamentId[tid] ?: emptyList())
@@ -139,7 +145,7 @@ class TournamentService(
                 .map { s ->
                     ActiveSeriesBriefDto(id = s.id!!, name = s.name, status = s.status)
                 }
-            t.toDto(activeSeries = briefs)
+            t.toDto(streamLinks = streamLinksByTournamentId[tid] ?: emptyList(), activeSeries = briefs)
         }
     }
 
@@ -155,6 +161,7 @@ class TournamentService(
             kind = t.kind,
             polemicaCompetitionId = t.polemicaCompetitionId,
             createdAt = t.createdAt,
+            streamLinks = streamLinkService.linksForTournament(id),
             players = players,
         )
     }
@@ -231,7 +238,10 @@ class TournamentService(
         return tournamentPlayerRepository.save(p).toDto()
     }
 
-    private fun Tournament.toDto(activeSeries: List<ActiveSeriesBriefDto> = emptyList()) = TournamentDto(
+    private fun Tournament.toDto(
+        streamLinks: List<StreamLinkDto> = id?.let { streamLinkService.linksForTournament(it) } ?: emptyList(),
+        activeSeries: List<ActiveSeriesBriefDto> = emptyList(),
+    ) = TournamentDto(
         id = id!!,
         name = name,
         description = description,
@@ -239,6 +249,7 @@ class TournamentService(
         kind = kind,
         polemicaCompetitionId = polemicaCompetitionId,
         createdAt = createdAt,
+        streamLinks = streamLinks,
         activeSeries = activeSeries,
     )
 

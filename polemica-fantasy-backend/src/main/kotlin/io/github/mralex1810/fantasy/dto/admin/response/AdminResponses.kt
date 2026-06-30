@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.dto.admin.response
 
+import io.github.mralex1810.fantasy.dto.StreamLinkDto
 import io.github.mralex1810.fantasy.entity.CardPackOpeningMode
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -23,6 +24,7 @@ data class TournamentDto(
     val kind: TournamentKind,
     val polemicaCompetitionId: Long?,
     val createdAt: Instant,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
     /** Populated on list tournaments; empty on create/update responses. */
     val activeSeries: List<ActiveSeriesBriefDto> = emptyList(),
 )
@@ -35,6 +37,7 @@ data class TournamentDetailDto(
     val kind: TournamentKind,
     val polemicaCompetitionId: Long?,
     val createdAt: Instant,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
     val players: List<TournamentPlayerDto>,
 )
 
@@ -104,6 +107,7 @@ data class SeriesDto(
     val startsAt: Instant,
     val teamDeadline: Instant,
     val finalized: Boolean,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
     /** Rows in `series_game` (synced from Polemica). */
     val syncedGamesCount: Long,
     /** Subset with `scored = true` (calculated fantasy points). */

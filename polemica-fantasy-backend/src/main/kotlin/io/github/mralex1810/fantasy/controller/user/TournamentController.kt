@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.controller.user
 
+import io.github.mralex1810.fantasy.dto.user.response.ActiveSeriesDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesOpenForTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.UserTournamentDetailDto
@@ -26,6 +27,9 @@ class TournamentController(
 
     @GetMapping("/series-open-for-team")
     fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> = userTournamentService.listSeriesOpenForTeam()
+
+    @GetMapping("/active-series")
+    fun listActiveSeries(): List<ActiveSeriesDto> = userTournamentService.listActiveSeries()
 
     @GetMapping("/{id}")
     fun get(

@@ -279,6 +279,11 @@ export interface UserTournament {
   createdAt: string
 }
 
+export interface StreamLink {
+  label: string | null
+  url: string
+}
+
 export interface UserSeriesSummary {
   id: number
   tournamentId: number
@@ -290,6 +295,7 @@ export interface UserSeriesSummary {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  streamLinks: StreamLink[]
   leagues: SeriesLeagueBrief[]
 }
 
@@ -304,9 +310,25 @@ export interface SeriesOpenForTeam {
   tournamentName: string
   seriesName: string
   publicNumber: number
+  status: SeriesStatus
   gameNumFrom: number | null
   gameNumTo: number | null
   teamDeadline: string
+  streamLinks: StreamLink[]
+}
+
+/** GET /api/v1/tournaments/active-series — активные серии для главной. */
+export interface ActiveSeries {
+  seriesId: number
+  tournamentId: number
+  tournamentName: string
+  seriesName: string
+  publicNumber: number
+  status: SeriesStatus
+  startsAt: string
+  teamDeadline: string
+  teamSubmissionOpen: boolean
+  streamLinks: StreamLink[]
 }
 
 /** Tournament roster / series players share this shape in the API. */
@@ -328,6 +350,7 @@ export interface UserSeriesDetail {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  streamLinks: StreamLink[]
   players: SeriesPlayerEntry[]
   games: { polemicaGameId: number; gameName: string; scored: boolean }[]
   leagues: SeriesLeagueBrief[]

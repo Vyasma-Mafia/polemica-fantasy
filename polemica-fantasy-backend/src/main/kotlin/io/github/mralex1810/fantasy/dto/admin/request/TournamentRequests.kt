@@ -1,7 +1,9 @@
 package io.github.mralex1810.fantasy.dto.admin.request
 
+import io.github.mralex1810.fantasy.dto.StreamLinkRequest
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
@@ -16,6 +18,8 @@ data class CreateTournamentRequest(
     /** Defaults to STANDALONE when omitted in JSON. */
     val kind: TournamentKind? = null,
     val polemicaCompetitionId: Long? = null,
+    @field:Valid
+    val streamLinks: List<StreamLinkRequest> = emptyList(),
 )
 
 data class UpdateTournamentRequest(
@@ -26,6 +30,8 @@ data class UpdateTournamentRequest(
     val status: TournamentStatus? = null,
     val kind: TournamentKind? = null,
     val polemicaCompetitionId: Long? = null,
+    @field:Valid
+    val streamLinks: List<StreamLinkRequest>? = null,
 )
 
 data class AddTournamentPlayerRequest(

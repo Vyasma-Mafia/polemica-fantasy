@@ -2,7 +2,9 @@ package io.github.mralex1810.fantasy.dto.admin.request
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonSetter
+import io.github.mralex1810.fantasy.dto.StreamLinkRequest
 import io.github.mralex1810.fantasy.entity.SeriesStatus
+import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
@@ -27,6 +29,8 @@ data class CreateSeriesRequest(
     val startsAt: Instant,
     @field:NotNull
     val teamDeadline: Instant,
+    @field:Valid
+    val streamLinks: List<StreamLinkRequest> = emptyList(),
 )
 
 class UpdateSeriesRequest {
@@ -60,6 +64,9 @@ class UpdateSeriesRequest {
     var startsAt: Instant? = null
 
     var teamDeadline: Instant? = null
+
+    @field:Valid
+    var streamLinks: List<StreamLinkRequest>? = null
 
     @get:JsonIgnore
     var gamePhaseSpecified: Boolean = false

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { useOnboardingChecklist, useReleaseNotes, useTrackProductEvent } from '../api/antiChurn'
 import { apiGet } from '../api/client'
 import { fetchSeriesLeagues } from '../api/leagues'
-import type { SeriesLeagueInfo, SeriesOpenForTeam, UserTournament } from '../api/types'
+import type { ActiveSeries, SeriesLeagueInfo, SeriesOpenForTeam, UserTournament } from '../api/types'
 import { TournamentStatusBadge } from '../components/StatusBadge'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
+import { StreamLinks } from '../components/StreamLinks'
 import { useInitData } from '../context/useInitData'
 import { leagueShortName } from '../lib/leagues'
 import { formatDateShortWithTime } from '../lib/tournamentDates'
@@ -25,6 +26,11 @@ export function HomePage() {
   const openSeriesQ = useQuery({
     queryKey: ['tournaments', 'series-open-for-team', initData],
     queryFn: () => apiGet<SeriesOpenForTeam[]>('/api/v1/tournaments/series-open-for-team', initData),
+    enabled: !!initData,
+  })
+  const activeSeriesQ = useQuery({
+    queryKey: ['tournaments', 'active-series', initData],
+    queryFn: () => apiGet<ActiveSeries[]>('/api/v1/tournaments/active-series', initData),
     enabled: !!initData,
   })
   const openSeriesIds = openSeriesQ.data?.map((series) => series.seriesId) ?? []
@@ -47,10 +53,11 @@ export function HomePage() {
   const tournamentsBooting = q.isPending && q.data === undefined && !q.isError
   const archiveBooting = archiveQ.isPending && archiveQ.data === undefined && !archiveQ.isError
   const openBooting = openSeriesQ.isPending && openSeriesQ.data === undefined && !openSeriesQ.isError
+  const activeBooting = activeSeriesQ.isPending && activeSeriesQ.data === undefined && !activeSeriesQ.isError
   const openSeriesLeaguesBooting =
     openSeriesIds.length > 0 &&
     openSeriesLeaguesQ.some((item) => (item.isPending || item.isLoading) && item.data === undefined)
-  if (tournamentsBooting || archiveBooting || openBooting || openSeriesLeaguesBooting) {
+  if (tournamentsBooting || archiveBooting || openBooting || activeBooting || openSeriesLeaguesBooting) {
     return <p className="pf-loading">Загрузка…</p>
   }
   if (q.isError) return <p className="pf-err">{(q.error as Error).message}</p>
@@ -58,6 +65,7 @@ export function HomePage() {
   const list = q.data ?? []
   const archive = archiveQ.data ?? []
   const openSeries = openSeriesQ.data ?? []
+  const activeSeries = activeSeriesQ.data ?? []
   const leaguesBySeriesId = new Map<number, SeriesLeagueInfo[]>()
   for (let i = 0; i < openSeries.length; i++) {
     leaguesBySeriesId.set(openSeries[i].seriesId, openSeriesLeaguesQ[i]?.data ?? [])
@@ -106,6 +114,49 @@ export function HomePage() {
 
       <WhatsNewHomeEntry unseenCount={releaseNotesQ.data?.unseenCount ?? 0} />
 
+      {activeSeriesQ.isError ? (
+        <p className="pf-err pf-home-open-series-err">{(activeSeriesQ.error as Error).message}</p>
+      ) : activeSeries.length > 0 ? (
+        <section className="pf-home-open-series" aria-labelledby="home-active-series-heading">
+          <h2 id="home-active-series-heading" className="pf-section-title">
+            Активные серии
+          </h2>
+          <p className="pf-instruction pf-home-open-series-hint">
+            Текущие серии и ссылки на трансляции
+          </p>
+          <ul className="pf-day-list">
+            {activeSeries.map((s, idx) => {
+              const seriesNum = s.publicNumber ?? idx + 1
+              return (
+                <li key={s.seriesId}>
+                  <div className="pf-day-card">
+                    <div className="pf-day-card__badge">
+                      <span className="pf-day-card__badge-label">Серия</span>
+                      <span className="pf-day-card__badge-num">{seriesNum}</span>
+                    </div>
+                    <div className="pf-day-card__body">
+                      <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
+                      <p className="pf-day-card__deadline">
+                        {s.teamSubmissionOpen
+                          ? `Доступно до: ${formatDateShortWithTime(new Date(s.teamDeadline))}`
+                          : `Статус: ${seriesStatusLabel(s.status)}`}
+                      </p>
+                      <p className="pf-day-card__name">{s.seriesName}</p>
+                      <StreamLinks links={s.streamLinks} compact />
+                    </div>
+                    <div className="pf-day-card__action">
+                      <Link className="pf-btn pf-btn--small pf-btn--ghost" to={`/series/${s.seriesId}`}>
+                        Открыть
+                      </Link>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       {openSeriesQ.isError ? (
         <p className="pf-err pf-home-open-series-err">{(openSeriesQ.error as Error).message}</p>
       ) : openSeriesError ? (
@@ -134,6 +185,7 @@ export function HomePage() {
                       <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
                       <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
+                      {s.status !== 'UPCOMING' && <StreamLinks links={s.streamLinks} compact />}
                       <p className="pf-home-leagues-status">{openSeriesStatus(s.seriesId)}</p>
                     </div>
                     <div className="pf-day-card__action">
@@ -198,6 +250,21 @@ export function HomePage() {
       </section>
     </div>
   )
+}
+
+function seriesStatusLabel(status: string) {
+  switch (status) {
+    case 'ACTIVE':
+      return 'идёт'
+    case 'SCORING':
+      return 'подсчёт'
+    case 'UPCOMING':
+      return 'скоро'
+    case 'FINISHED':
+      return 'завершена'
+    default:
+      return status
+  }
 }
 
 function OnboardingChecklistBlock({

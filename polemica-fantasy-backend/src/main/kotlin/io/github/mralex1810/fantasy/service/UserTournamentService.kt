@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.dto.user.response.ActiveSeriesDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesOpenForTeamDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesPlayerEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesLeagueBriefDto
@@ -30,6 +31,7 @@ class UserTournamentService(
     private val tournamentPlayerRepository: TournamentPlayerRepository,
     private val leagueService: LeagueService,
     private val imageStorageService: ImageStorageService,
+    private val streamLinkService: StreamLinkService,
 ) {
 
     @Transactional(readOnly = true)
@@ -43,25 +45,52 @@ class UserTournamentService(
     @Transactional(readOnly = true)
     fun listSeriesOpenForTeam(): List<SeriesOpenForTeamDto> {
         val now = Instant.now()
-        return seriesRepository
-            .findAllOpenForTeamSubmission(
-                tournamentStatus = TournamentStatus.ACTIVE,
-                finishedStatus = SeriesStatus.FINISHED,
-                now = now,
+        val series = seriesRepository.findAllOpenForTeamSubmission(
+            tournamentStatus = TournamentStatus.ACTIVE,
+            finishedStatus = SeriesStatus.FINISHED,
+            now = now,
+        )
+        val linksBySeriesId = streamLinkService.effectiveLinksBySeries(series)
+        return series.map { s ->
+            val t = s.tournament!!
+            SeriesOpenForTeamDto(
+                seriesId = s.id!!,
+                tournamentId = t.id!!,
+                tournamentName = t.name,
+                seriesName = s.name,
+                publicNumber = s.publicNumber,
+                status = s.status,
+                gameNumFrom = s.gameNumFrom,
+                gameNumTo = s.gameNumTo,
+                teamDeadline = s.teamDeadline,
+                streamLinks = linksBySeriesId[s.id!!] ?: emptyList(),
             )
-            .map { s ->
-                val t = s.tournament!!
-                SeriesOpenForTeamDto(
-                    seriesId = s.id!!,
-                    tournamentId = t.id!!,
-                    tournamentName = t.name,
-                    seriesName = s.name,
-                    publicNumber = s.publicNumber,
-                    gameNumFrom = s.gameNumFrom,
-                    gameNumTo = s.gameNumTo,
-                    teamDeadline = s.teamDeadline,
-                )
-            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun listActiveSeries(): List<ActiveSeriesDto> {
+        val now = Instant.now()
+        val series = seriesRepository.findAllActiveForHome(
+            tournamentStatus = TournamentStatus.ACTIVE,
+            statuses = listOf(SeriesStatus.ACTIVE, SeriesStatus.SCORING),
+        )
+        val linksBySeriesId = streamLinkService.effectiveLinksBySeries(series)
+        return series.map { s ->
+            val t = s.tournament!!
+            ActiveSeriesDto(
+                seriesId = s.id!!,
+                tournamentId = t.id!!,
+                tournamentName = t.name,
+                seriesName = s.name,
+                publicNumber = s.publicNumber,
+                status = s.status,
+                startsAt = s.startsAt,
+                teamDeadline = s.teamDeadline,
+                teamSubmissionOpen = s.teamDeadline > now && s.status != SeriesStatus.FINISHED,
+                streamLinks = linksBySeriesId[s.id!!] ?: emptyList(),
+            )
+        }
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +99,9 @@ class UserTournamentService(
             ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $id not found")
         }
         val userId = user.id!!
-        val seriesList = seriesRepository.findAllByTournament_IdOrderByIdDesc(id).map { s ->
+        val seriesEntities = seriesRepository.findAllByTournament_IdOrderByIdDesc(id)
+        val streamLinksBySeriesId = streamLinkService.effectiveLinksBySeries(seriesEntities)
+        val seriesList = seriesEntities.map { s ->
             UserSeriesSummaryDto(
                 id = s.id!!,
                 tournamentId = t.id!!,
@@ -82,6 +113,7 @@ class UserTournamentService(
                 status = s.status,
                 startsAt = s.startsAt,
                 teamDeadline = s.teamDeadline,
+                streamLinks = streamLinksBySeriesId[s.id!!] ?: emptyList(),
                 leagues = listSeriesLeagueBriefs(s.id!!, userId),
             )
         }

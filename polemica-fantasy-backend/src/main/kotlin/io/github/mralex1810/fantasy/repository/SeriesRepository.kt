@@ -25,6 +25,20 @@ interface SeriesRepository : JpaRepository<Series, Long> {
     @Query(
         """
         SELECT s FROM Series s
+        JOIN FETCH s.tournament t
+        WHERE t.status = :tournamentStatus
+        AND s.status IN :statuses
+        ORDER BY s.startsAt ASC, s.id ASC
+        """,
+    )
+    fun findAllActiveForHome(
+        @Param("tournamentStatus") tournamentStatus: TournamentStatus,
+        @Param("statuses") statuses: Collection<SeriesStatus>,
+    ): List<Series>
+
+    @Query(
+        """
+        SELECT s FROM Series s
         JOIN FETCH s.tournament
         WHERE s.id = :id
         """,

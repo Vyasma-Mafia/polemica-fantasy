@@ -1,3 +1,4 @@
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -47,6 +48,7 @@ export function SeriesDetailPage() {
     status: SeriesStatus
     startsAt: ReturnType<typeof dayjs>
     teamDeadline: ReturnType<typeof dayjs>
+    streamLinks: { label?: string | null; url: string }[]
   }>()
   const [addGameForm] = Form.useForm<{ polemicaGameId: number }>()
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([])
@@ -101,6 +103,7 @@ export function SeriesDetailPage() {
       status: s.status,
       startsAt: dayjs(s.startsAt),
       teamDeadline: dayjs(s.teamDeadline),
+      streamLinks: s.streamLinks ?? [],
     })
     queueMicrotask(() => setSelectedPlayerIds(s.tournamentPlayerIds ?? []))
     queueMicrotask(() => setReplacementPolemicaUserIds(s.replacementPolemicaUserIds ?? {}))
@@ -318,6 +321,7 @@ export function SeriesDetailPage() {
             status: v.status,
             startsAt: v.startsAt.toISOString(),
             teamDeadline: v.teamDeadline.toISOString(),
+            streamLinks: v.streamLinks ?? [],
           }
           if (isCompetition) {
             updateMut.mutate({
@@ -400,6 +404,36 @@ export function SeriesDetailPage() {
           rules={[{ required: true }]}
         >
           <DatePicker showTime style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item label="Series stream links">
+          <Form.List name="streamLinks">
+            {(fields, { add, remove }) => (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {fields.map((field) => (
+                  <Space key={field.key} align="baseline" style={{ display: 'flex' }}>
+                    <Form.Item name={[field.name, 'label']} style={{ marginBottom: 8 }}>
+                      <Input placeholder="Label, e.g. Table 1" />
+                    </Form.Item>
+                    <Form.Item
+                      name={[field.name, 'url']}
+                      rules={[{ required: true, message: 'URL is required' }]}
+                      style={{ marginBottom: 8, flex: 1 }}
+                    >
+                      <Input placeholder="https://..." />
+                    </Form.Item>
+                    <Button
+                      aria-label="Remove stream link"
+                      icon={<DeleteOutlined />}
+                      onClick={() => remove(field.name)}
+                    />
+                  </Space>
+                ))}
+                <Button icon={<PlusOutlined />} onClick={() => add({ label: '', url: '' })}>
+                  Add stream link
+                </Button>
+              </Space>
+            )}
+          </Form.List>
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={updateMut.isPending}>

@@ -76,6 +76,7 @@ class SeriesService(
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
+    private val streamLinkService: StreamLinkService,
     platformTransactionManager: PlatformTransactionManager,
 ) {
 
@@ -103,6 +104,7 @@ class SeriesService(
                 teamDeadline = request.teamDeadline,
             ),
         )
+        streamLinkService.replaceSeriesLinks(s, request.streamLinks)
         bootstrapSystemLeagues(s)
         upsertDeadlineReminder(s)
         if (s.status == SeriesStatus.FINISHED && !s.finalized) {
@@ -170,6 +172,7 @@ class SeriesService(
             }
         }
         val saved = seriesRepository.save(s)
+        request.streamLinks?.let { streamLinkService.replaceSeriesLinks(saved, it) }
         upsertDeadlineReminder(saved)
         if (saved.status == SeriesStatus.FINISHED && !saved.finalized) {
             seriesFinalizationService.finalizeSeries(saved.id!!)
@@ -757,6 +760,7 @@ class SeriesService(
         startsAt = startsAt,
         teamDeadline = teamDeadline,
         finalized = finalized,
+        streamLinks = streamLinkService.linksForSeries(id!!),
         syncedGamesCount = syncedGamesCount,
         scoredGamesCount = scoredGamesCount,
         tournamentPlayerIds = tournamentPlayerIds,

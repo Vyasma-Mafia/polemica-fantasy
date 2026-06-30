@@ -2,6 +2,14 @@
 
 ## Что реализовано
 
+### Backend+admin+TMA: ссылки на трансляции серий (июнь 2026)
+- [x] Flyway **V66** добавляет `tournament_stream_link` и `series_stream_link`, чтобы хранить много ссылок на уровне турнира и конкретной серии.
+- [x] Admin create/edit турнира и серии редактирует `streamLinks` списком (`label` + `url`), backend валидирует только `http(s)` URL.
+- [x] User API отдаёт effective ссылки серии как ссылки турнира + ссылки серии; новый `GET /api/v1/tournaments/active-series` показывает на главной `ACTIVE`/`SCORING` серии независимо от дедлайна команды.
+- [x] TMA показывает трансляции в блоке активных серий на главной, в блоке открытой подачи состава и на странице серии; для `UPCOMING` трансляции скрыты.
+- [x] Главная рендерит stream links как icon-only кнопки с `aria-label/title`; страница серии показывает иконку + подпись. Twitch/VK Video определяются по URL.
+- [x] Проверка: `./scripts/codex-check.sh quick`, targeted backend/TMA build и локальный browser smoke успешно; Vite warning про крупный `antd-vendor` остался существующим.
+
 ### Backend: sheriff perks (июнь 2026)
 - [x] Flyway **V65** добавляет перки `sheriffCheckBlack` и `voteOutSheriffDay1Or2` в каталог `perk` с applicable roles и стартовыми `bonus_points` `0.75` / `2.75`.
 - [x] Скоринг получил detector `sheriffCheckBlack`: шериф получает бонус за каждого уникального черного игрока, включая дона, которого проверил в игре.

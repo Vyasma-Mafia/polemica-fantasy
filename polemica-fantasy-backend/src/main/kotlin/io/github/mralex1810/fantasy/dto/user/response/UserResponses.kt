@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.dto.user.response
 
+import io.github.mralex1810.fantasy.dto.StreamLinkDto
 import io.github.mralex1810.fantasy.entity.CardPackOpeningMode
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.entity.Rarity
@@ -41,6 +42,7 @@ data class UserSeriesSummaryDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
     val leagues: List<SeriesLeagueBriefDto> = emptyList(),
 )
 
@@ -62,9 +64,25 @@ data class SeriesOpenForTeamDto(
     val tournamentName: String,
     val seriesName: String,
     val publicNumber: Long,
+    val status: SeriesStatus,
     val gameNumFrom: Long?,
     val gameNumTo: Long?,
     val teamDeadline: Instant,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
+)
+
+/** Active series shown on the home page; stream links include tournament-level and series-level links. */
+data class ActiveSeriesDto(
+    val seriesId: Long,
+    val tournamentId: Long,
+    val tournamentName: String,
+    val seriesName: String,
+    val publicNumber: Long,
+    val status: SeriesStatus,
+    val startsAt: Instant,
+    val teamDeadline: Instant,
+    val teamSubmissionOpen: Boolean,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
 )
 
 data class SeriesPlayerEntryDto(
@@ -98,6 +116,7 @@ data class UserSeriesDetailDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    val streamLinks: List<StreamLinkDto> = emptyList(),
     val players: List<SeriesPlayerEntryDto>,
     val games: List<SeriesGameEntryDto>,
     val leagues: List<SeriesLeagueBriefDto> = emptyList(),

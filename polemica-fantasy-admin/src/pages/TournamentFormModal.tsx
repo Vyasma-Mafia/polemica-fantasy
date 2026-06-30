@@ -1,4 +1,5 @@
-import { Button, Form, Input, InputNumber, Select } from 'antd'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Form, Input, InputNumber, Select, Space } from 'antd'
 import { useEffect } from 'react'
 import type { TournamentKind, TournamentStatus } from '../api/types'
 
@@ -8,6 +9,7 @@ interface Values {
   status: TournamentStatus
   kind: TournamentKind
   polemicaCompetitionId?: number | null
+  streamLinks: { label?: string | null; url: string }[]
 }
 
 export function TournamentFormModal({
@@ -32,6 +34,7 @@ export function TournamentFormModal({
       status: initial?.status ?? 'DRAFT',
       kind: initial?.kind ?? 'STANDALONE',
       polemicaCompetitionId: initial?.polemicaCompetitionId ?? undefined,
+      streamLinks: initial?.streamLinks ?? [],
     })
   }, [initial, form])
 
@@ -45,6 +48,7 @@ export function TournamentFormModal({
         status: initial?.status ?? 'DRAFT',
         kind: initial?.kind ?? 'STANDALONE',
         polemicaCompetitionId: initial?.polemicaCompetitionId ?? undefined,
+        streamLinks: initial?.streamLinks ?? [],
       }}
       onFinish={(v) => onSubmit(v)}
     >
@@ -97,6 +101,36 @@ export function TournamentFormModal({
           />
         </Form.Item>
       )}
+      <Form.Item label="Tournament stream links">
+        <Form.List name="streamLinks">
+          {(fields, { add, remove }) => (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {fields.map((field) => (
+                <Space key={field.key} align="baseline" style={{ display: 'flex' }}>
+                  <Form.Item name={[field.name, 'label']} style={{ marginBottom: 8 }}>
+                    <Input placeholder="Label, e.g. Table 1" />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'url']}
+                    rules={[{ required: true, message: 'URL is required' }]}
+                    style={{ marginBottom: 8, flex: 1 }}
+                  >
+                    <Input placeholder="https://..." />
+                  </Form.Item>
+                  <Button
+                    aria-label="Remove stream link"
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(field.name)}
+                  />
+                </Space>
+              ))}
+              <Button icon={<PlusOutlined />} onClick={() => add({ label: '', url: '' })}>
+                Add stream link
+              </Button>
+            </Space>
+          )}
+        </Form.List>
+      </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit" loading={loading}>
           {submitLabel}

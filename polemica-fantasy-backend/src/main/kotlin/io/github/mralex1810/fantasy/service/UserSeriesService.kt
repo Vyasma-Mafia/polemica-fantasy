@@ -30,6 +30,7 @@ class UserSeriesService(
     private val leagueService: LeagueService,
     private val imageStorageService: ImageStorageService,
     private val profileFrameVisibilityService: ProfileFrameVisibilityService,
+    private val streamLinkService: StreamLinkService,
 ) {
 
     @Transactional(readOnly = true)
@@ -66,6 +67,7 @@ class UserSeriesService(
             status = s.status,
             startsAt = s.startsAt,
             teamDeadline = s.teamDeadline,
+            streamLinks = streamLinkService.effectiveLinksForSeries(s),
             players = players,
             games = games,
             leagues = leagueBriefs,

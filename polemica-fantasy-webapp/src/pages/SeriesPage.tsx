@@ -8,6 +8,7 @@ import { LeagueTabs } from '../components/LeagueTabs'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { PlayerImage } from '../components/PlayerImage'
+import { StreamLinks } from '../components/StreamLinks'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
 import { defaultLeagueCode, leagueShortName, resolveActiveLeagueCode } from '../lib/leagues'
@@ -93,6 +94,7 @@ export function SeriesPage() {
         <p className="pf-hero-card__meta">
           Дедлайн команды: {formatDateShortWithTime(new Date(s.teamDeadline))}
         </p>
+        {s.status !== 'UPCOMING' && <StreamLinks links={s.streamLinks} />}
       </div>
       {leagues.length > 0 && <LeagueTabs leagues={leagues} activeCode={activeLeagueCode} onChange={setLeague} />}
       <div className="pf-action-grid pf-action-grid--single">

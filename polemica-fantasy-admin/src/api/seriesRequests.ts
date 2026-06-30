@@ -1,5 +1,10 @@
 import type { SeriesStatus } from './types'
 
+export interface StreamLinkRequest {
+  label?: string | null
+  url: string
+}
+
 export interface CreateSeriesRequest {
   name: string
   namePrefix?: string | null
@@ -10,6 +15,7 @@ export interface CreateSeriesRequest {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  streamLinks?: StreamLinkRequest[]
 }
 
 export interface UpdateSeriesRequest {
@@ -22,6 +28,7 @@ export interface UpdateSeriesRequest {
   status?: SeriesStatus | null
   startsAt?: string | null
   teamDeadline?: string | null
+  streamLinks?: StreamLinkRequest[] | null
 }
 
 export interface AssignSeriesPlayersRequest {

@@ -50,6 +50,7 @@ export function TournamentsPage() {
       status?: TournamentStatus | null
       kind?: TournamentKind | null
       polemicaCompetitionId?: number | null
+      streamLinks?: { label?: string | null; url: string }[] | null
     }) => updateTournament(id, body),
     onSuccess: () => {
       message.success('Tournament updated')
@@ -195,6 +196,7 @@ export function TournamentsPage() {
                 v.kind === 'POLEMICA_COMPETITION'
                   ? v.polemicaCompetitionId ?? null
                   : null,
+              streamLinks: v.streamLinks ?? [],
             })
           }
           loading={createMut.isPending}
@@ -216,6 +218,7 @@ export function TournamentsPage() {
               status: editing.status,
               kind: editing.kind,
               polemicaCompetitionId: editing.polemicaCompetitionId ?? undefined,
+              streamLinks: editing.streamLinks ?? [],
             }}
             onSubmit={(v) =>
               updateMut.mutate({
@@ -228,6 +231,7 @@ export function TournamentsPage() {
                   v.kind === 'POLEMICA_COMPETITION'
                     ? v.polemicaCompetitionId ?? null
                     : null,
+                streamLinks: v.streamLinks ?? [],
               })
             }
             loading={updateMut.isPending}

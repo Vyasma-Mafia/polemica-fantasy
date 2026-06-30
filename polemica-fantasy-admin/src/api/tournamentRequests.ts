@@ -1,11 +1,17 @@
 import type { TournamentKind, TournamentStatus } from './types'
 
+export interface StreamLinkRequest {
+  label?: string | null
+  url: string
+}
+
 export interface CreateTournamentRequest {
   name: string
   description?: string | null
   status: TournamentStatus
   kind?: TournamentKind | null
   polemicaCompetitionId?: number | null
+  streamLinks?: StreamLinkRequest[]
 }
 
 export interface UpdateTournamentRequest {
@@ -14,6 +20,7 @@ export interface UpdateTournamentRequest {
   status?: TournamentStatus | null
   kind?: TournamentKind | null
   polemicaCompetitionId?: number | null
+  streamLinks?: StreamLinkRequest[] | null
 }
 
 export interface AddTournamentPlayerRequest {

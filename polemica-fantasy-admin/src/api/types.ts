@@ -252,6 +252,11 @@ export interface ActiveSeriesBriefDto {
   status: SeriesStatus
 }
 
+export interface StreamLinkDto {
+  label: string | null
+  url: string
+}
+
 export interface TournamentDto {
   id: number
   name: string
@@ -260,6 +265,7 @@ export interface TournamentDto {
   kind: TournamentKind
   polemicaCompetitionId: number | null
   createdAt: string
+  streamLinks: StreamLinkDto[]
   /** Non-finished series; set on list tournaments. Omitted on single-tournament responses. */
   activeSeries?: ActiveSeriesBriefDto[]
 }
@@ -334,6 +340,7 @@ export interface SeriesDto {
   startsAt: string
   teamDeadline: string
   finalized: boolean
+  streamLinks: StreamLinkDto[]
   /** Games synced from Polemica (`series_game` rows). */
   syncedGamesCount: number
   /** Games with calculated fantasy scores (`scored`). */
