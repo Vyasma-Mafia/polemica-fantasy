@@ -1,7 +1,10 @@
 import {
+  Alert,
   App,
   Avatar,
   Button,
+  Checkbox,
+  Divider,
   Form,
   Input,
   InputNumber,
@@ -16,13 +19,16 @@ import {
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  addFantasyPlayerAlias,
   createFantasyPlayer,
+  getFantasyPlayerMergePreview,
   listFantasyPlayers,
+  mergeFantasyPlayers,
   updateFantasyPlayer,
   uploadFantasyPlayerPhoto,
 } from '../api/fantasyPlayers'
 import { listTournaments, addTournamentPlayer } from '../api/tournaments'
-import type { FantasyPlayerAdminDto } from '../api/types'
+import type { FantasyPlayerAdminDto, FantasyPlayerMergePreviewDto } from '../api/types'
 
 interface CreatePlayerFormValues {
   polemicaUserId: number
@@ -33,15 +39,30 @@ interface EditPlayerFormValues {
   nickname: string
 }
 
+interface AliasFormValues {
+  polemicaUserId: number
+  primary?: boolean
+}
+
+interface MergeFormValues {
+  targetFantasyPlayerId: number
+  reason: string
+}
+
 export function PlayersPage() {
   const qc = useQueryClient()
   const { message } = App.useApp()
   const [query, setQuery] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<FantasyPlayerAdminDto | null>(null)
+  const [aliasing, setAliasing] = useState<FantasyPlayerAdminDto | null>(null)
+  const [merging, setMerging] = useState<FantasyPlayerAdminDto | null>(null)
+  const [mergePreview, setMergePreview] = useState<FantasyPlayerMergePreviewDto | null>(null)
   const [targetTournamentId, setTargetTournamentId] = useState<number | undefined>()
   const [createForm] = Form.useForm<CreatePlayerFormValues>()
   const [editForm] = Form.useForm<EditPlayerFormValues>()
+  const [aliasForm] = Form.useForm<AliasFormValues>()
+  const [mergeForm] = Form.useForm<MergeFormValues>()
 
   const playersQ = useQuery({
     queryKey: ['admin', 'fantasy-players', query],
@@ -83,6 +104,57 @@ export function PlayersPage() {
       message.success('Photo uploaded')
       void qc.invalidateQueries({ queryKey: ['admin', 'fantasy-players'] })
       void qc.invalidateQueries({ queryKey: ['admin', 'tournament'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const aliasMut = useMutation({
+    mutationFn: ({ id, values }: { id: number; values: AliasFormValues }) =>
+      addFantasyPlayerAlias(id, {
+        polemicaUserId: values.polemicaUserId,
+        primary: values.primary ?? false,
+      }),
+    onSuccess: () => {
+      message.success('Alias added')
+      setAliasing(null)
+      aliasForm.resetFields()
+      void qc.invalidateQueries({ queryKey: ['admin', 'fantasy-players'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournament'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const previewMergeMut = useMutation({
+    mutationFn: ({
+      sourceId,
+      targetId,
+    }: {
+      sourceId: number
+      targetId: number
+    }) => getFantasyPlayerMergePreview(targetId, sourceId),
+    onSuccess: (preview) => setMergePreview(preview),
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const mergeMut = useMutation({
+    mutationFn: ({
+      targetId,
+      sourceId,
+      reason,
+    }: {
+      targetId: number
+      sourceId: number
+      reason: string
+    }) => mergeFantasyPlayers(targetId, { sourceFantasyPlayerId: sourceId, reason }),
+    onSuccess: (result) => {
+      message.success(`Players merged, audit #${result.auditId}`)
+      setMerging(null)
+      setMergePreview(null)
+      mergeForm.resetFields()
+      void qc.invalidateQueries({ queryKey: ['admin', 'fantasy-players'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournament'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'card-merges'] })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -167,6 +239,22 @@ export function PlayersPage() {
           },
           { title: 'Polemica user', dataIndex: 'polemicaUserId' },
           {
+            title: 'Aliases',
+            key: 'aliases',
+            width: 220,
+            render: (_, row) => (
+              <Space size={[4, 4]} wrap>
+                {(row.aliases?.length ? row.aliases : [
+                  { id: 0, polemicaUserId: row.polemicaUserId, primary: true },
+                ]).map((alias) => (
+                  <Tag key={alias.id || alias.polemicaUserId} color={alias.primary ? 'blue' : 'default'}>
+                    {alias.polemicaUserId}{alias.primary ? ' primary' : ''}
+                  </Tag>
+                ))}
+              </Space>
+            ),
+          },
+          {
             title: 'Tournaments',
             key: 'tournaments',
             width: 160,
@@ -229,6 +317,25 @@ export function PlayersPage() {
                   </Button>
                   <Button
                     size="small"
+                    onClick={() => {
+                      setAliasing(row)
+                      aliasForm.resetFields()
+                    }}
+                  >
+                    Alias
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setMerging(row)
+                      setMergePreview(null)
+                      mergeForm.resetFields()
+                    }}
+                  >
+                    Merge into
+                  </Button>
+                  <Button
+                    size="small"
                     disabled={targetTournamentId == null || alreadyInTournament}
                     loading={
                       addToTournamentMut.isPending &&
@@ -277,6 +384,158 @@ export function PlayersPage() {
           <Button type="primary" htmlType="submit" loading={createMut.isPending}>
             Create
           </Button>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={aliasing == null ? 'Add alias' : `Add alias to ${aliasing.nickname}`}
+        open={aliasing != null}
+        onCancel={() => setAliasing(null)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          form={aliasForm}
+          layout="vertical"
+          onFinish={(values) => {
+            if (aliasing) {
+              aliasMut.mutate({ id: aliasing.id, values })
+            }
+          }}
+        >
+          <Form.Item
+            name="polemicaUserId"
+            label="Polemica user id"
+            rules={[{ required: true }]}
+          >
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="primary" valuePropName="checked">
+            <Checkbox>Make primary alias</Checkbox>
+          </Form.Item>
+          <Button type="primary" htmlType="submit" loading={aliasMut.isPending}>
+            Add alias
+          </Button>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={merging == null ? 'Merge player' : `Merge ${merging.nickname} into another player`}
+        open={merging != null}
+        onCancel={() => {
+          setMerging(null)
+          setMergePreview(null)
+        }}
+        footer={null}
+        destroyOnClose
+        width={760}
+      >
+        <Form
+          form={mergeForm}
+          layout="vertical"
+          onValuesChange={() => setMergePreview(null)}
+          onFinish={(values) => {
+            if (!merging) return
+            if (mergePreview?.canMerge) {
+              mergeMut.mutate({
+                targetId: values.targetFantasyPlayerId,
+                sourceId: merging.id,
+                reason: values.reason,
+              })
+            } else {
+              previewMergeMut.mutate({
+                sourceId: merging.id,
+                targetId: values.targetFantasyPlayerId,
+              })
+            }
+          }}
+        >
+          <Form.Item
+            name="targetFantasyPlayerId"
+            label="Target player"
+            rules={[{ required: true }]}
+          >
+            <Select
+              showSearch
+              placeholder="Select target player"
+              filterOption={(input, option) =>
+                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={(playersQ.data ?? [])
+                .filter((player) => player.id !== merging?.id)
+                .map((player) => ({
+                  value: player.id,
+                  label: `#${player.id} ${player.nickname} · aliases ${
+                    (player.aliases?.map((a) => a.polemicaUserId) ?? [player.polemicaUserId]).join(', ')
+                  }`,
+                }))}
+            />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason" rules={[{ required: true }]}>
+            <Input.TextArea rows={3} maxLength={1024} showCount />
+          </Form.Item>
+
+          {mergePreview ? (
+            <>
+              <Divider />
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Typography.Text>
+                  Source aliases: {mergePreview.sourceAliases.join(', ') || '—'}
+                </Typography.Text>
+                <Typography.Text>
+                  Target aliases: {mergePreview.targetAliases.join(', ') || '—'}
+                </Typography.Text>
+                {mergePreview.blockers.map((issue) => (
+                  <Alert
+                    key={issue.code}
+                    type="error"
+                    showIcon
+                    message={`${issue.code}: ${issue.count}`}
+                    description={issue.message}
+                  />
+                ))}
+                {mergePreview.warnings.map((issue) => (
+                  <Alert
+                    key={issue.code}
+                    type="warning"
+                    showIcon
+                    message={`${issue.code}: ${issue.count}`}
+                    description={issue.message}
+                  />
+                ))}
+                {mergePreview.canMerge ? (
+                  <Alert
+                    type="success"
+                    showIcon
+                    message="Merge can be confirmed"
+                    description="Direct references will move to target; source player row will be deleted after aliases transfer."
+                  />
+                ) : null}
+              </Space>
+            </>
+          ) : null}
+
+          <Space style={{ marginTop: 16 }}>
+            <Button
+              onClick={() => {
+                const targetId = mergeForm.getFieldValue('targetFantasyPlayerId')
+                if (merging && targetId) {
+                  previewMergeMut.mutate({ sourceId: merging.id, targetId })
+                }
+              }}
+              loading={previewMergeMut.isPending}
+            >
+              Preview
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              disabled={!mergePreview?.canMerge}
+              loading={mergeMut.isPending}
+            >
+              Confirm merge
+            </Button>
+          </Space>
         </Form>
       </Modal>
 

@@ -280,9 +280,38 @@ export interface FantasyPlayerAdminDto {
   polemicaUserId: number
   nickname: string
   photoUrl: string | null
+  aliases: FantasyPlayerAliasDto[]
   tournamentIds: number[]
   tournamentCount: number
   cardTemplateCount: number
+}
+
+export interface FantasyPlayerAliasDto {
+  id: number
+  polemicaUserId: number
+  primary: boolean
+}
+
+export interface FantasyPlayerMergeIssueDto {
+  code: string
+  severity: 'BLOCKER' | 'WARNING' | string
+  message: string
+  count: number
+}
+
+export interface FantasyPlayerMergePreviewDto {
+  source: FantasyPlayerAdminDto
+  target: FantasyPlayerAdminDto
+  sourceAliases: number[]
+  targetAliases: number[]
+  blockers: FantasyPlayerMergeIssueDto[]
+  warnings: FantasyPlayerMergeIssueDto[]
+  canMerge: boolean
+}
+
+export interface FantasyPlayerMergeResultDto {
+  auditId: number
+  target: FantasyPlayerAdminDto
 }
 
 export interface TournamentDetailDto extends TournamentDto {

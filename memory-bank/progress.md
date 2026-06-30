@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Backend+admin: aliases и merge fantasy players (июнь 2026)
+- [x] Flyway **V64** добавляет `fantasy_player_alias` как source of truth для Polemica id и `fantasy_player_merge_audit`; `fantasy_player.polemica_user_id` остаётся cached primary alias.
+- [x] Backend получил resolver Polemica id -> `fantasy_player`, admin add-alias и merge preview/confirm под `/api/v1/admin/fantasy-players`.
+- [x] Merge переносит прямые FK на target (`tournament_player`/`series_player` с dedupe, `card_pack_player`, watches, favorite badge, card merge audit, `card_template`) и блокирует pending JSON/config references, replacement alias conflicts и active-team duplicate-player conflicts.
+- [x] Add player by Polemica id, STANDALONE sync, scoring, perk statistics и series replacement validation учитывают все aliases; scoring сначала ищет aliases основного игрока, затем replacement fallback.
+- [x] Admin Players показывает aliases, добавляет alias и выполняет merge через preview modal с blockers/warnings и обязательной причиной.
+
 ### Backend+admin: аудит операций фантиков (июнь 2026)
 - [x] Flyway **V63** добавляет `fantiki_transaction.admin_reason` для текстовой причины ручных операций.
 - [x] Admin `give-fantiki` / `take-fantiki` требуют `adminReason`, триммят и сохраняют её только для `ADMIN_GRANT` / `ADMIN_CONFISCATE`.

@@ -9,6 +9,7 @@ import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -24,6 +25,7 @@ class DefaultGameSyncService(
     private val seriesRepository: SeriesRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val seriesGameRepository: SeriesGameRepository,
+    private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
     platformTransactionManager: PlatformTransactionManager,
 ) : GameSyncService {
 
@@ -74,8 +76,13 @@ class DefaultGameSyncService(
         if (players.isEmpty()) return emptyList()
 
         val idSets = players.map { sp ->
-            val uid = sp.tournamentPlayer!!.fantasyPlayer!!.polemicaUserId
-            integration.fetchRecentProfileRowsForSync(uid).map { it.id }.toSet()
+            val fantasyPlayer = sp.tournamentPlayer!!.fantasyPlayer!!
+            val fantasyPlayerId = fantasyPlayer.id!!
+            val aliases = fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(fantasyPlayerId)
+                .ifEmpty { listOf(fantasyPlayer.polemicaUserId) }
+            aliases.flatMap { uid ->
+                integration.fetchRecentProfileRowsForSync(uid).map { it.id }
+            }.toSet()
         }
         val freq = mutableMapOf<Long, Int>()
         for (set in idSets) {

@@ -29,4 +29,7 @@ class FantasyPlayer(
 
     @OneToMany(mappedBy = "fantasyPlayer")
     var cardTemplates: MutableList<CardTemplate> = mutableListOf(),
+
+    @OneToMany(mappedBy = "fantasyPlayer")
+    var aliases: MutableList<FantasyPlayerAlias> = mutableListOf(),
 )

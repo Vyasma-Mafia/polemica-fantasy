@@ -32,6 +32,7 @@ class TournamentService(
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val seriesRepository: SeriesRepository,
     private val imageStorageService: ImageStorageService,
+    private val fantasyPlayerResolverService: FantasyPlayerResolverService,
 ) {
 
     @Transactional
@@ -185,13 +186,8 @@ class TournamentService(
         }
         val nickname = request.nickname?.trim()?.takeIf { it.isNotEmpty() }
             ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "nickname is required when fantasyPlayerId is absent")
-        return fantasyPlayerRepository.findByPolemicaUserId(polemicaUserId)
-            ?: fantasyPlayerRepository.save(
-                FantasyPlayer(
-                    polemicaUserId = polemicaUserId,
-                    nickname = nickname,
-                ),
-            )
+        return fantasyPlayerResolverService.resolveByPolemicaUserId(polemicaUserId)
+            ?: fantasyPlayerResolverService.createWithPrimaryAlias(polemicaUserId, nickname)
     }
 
     @Transactional

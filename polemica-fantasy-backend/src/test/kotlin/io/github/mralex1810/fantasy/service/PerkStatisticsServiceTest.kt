@@ -5,6 +5,7 @@ import io.github.mralex1810.fantasy.entity.Perk
 import io.github.mralex1810.fantasy.entity.OccurrenceType
 import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
 import io.github.mralex1810.fantasy.repository.PerkRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.scoring.perk.PerkDetectorRegistry
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,6 +18,7 @@ class PerkStatisticsServiceTest {
     @Test
     fun `collectReport with no fantasy players still lists catalog perks with zeros`() {
         val fantasyPlayerRepository = mock(FantasyPlayerRepository::class.java)
+        val fantasyPlayerAliasRepository = mock(FantasyPlayerAliasRepository::class.java)
         val perkRepository = mock(PerkRepository::class.java)
         val perkRegistry = mock(PerkDetectorRegistry::class.java)
         val polemicaIntegrationService = mock(PolemicaIntegrationService::class.java)
@@ -32,6 +34,7 @@ class PerkStatisticsServiceTest {
 
         val service = PerkStatisticsService(
             fantasyPlayerRepository,
+            fantasyPlayerAliasRepository,
             perkRepository,
             perkRegistry,
             polemicaIntegrationService,

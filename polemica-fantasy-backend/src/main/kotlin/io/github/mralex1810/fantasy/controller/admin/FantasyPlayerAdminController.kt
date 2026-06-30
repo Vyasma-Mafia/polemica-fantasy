@@ -1,8 +1,12 @@
 package io.github.mralex1810.fantasy.controller.admin
 
+import io.github.mralex1810.fantasy.dto.admin.request.AddFantasyPlayerAliasRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateFantasyPlayerAdminRequest
+import io.github.mralex1810.fantasy.dto.admin.request.MergeFantasyPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateFantasyPlayerAdminRequest
 import io.github.mralex1810.fantasy.dto.admin.response.FantasyPlayerAdminDto
+import io.github.mralex1810.fantasy.dto.admin.response.FantasyPlayerMergePreviewDto
+import io.github.mralex1810.fantasy.dto.admin.response.FantasyPlayerMergeResultDto
 import io.github.mralex1810.fantasy.service.FantasyPlayerAdminService
 import jakarta.validation.Valid
 import org.springframework.http.MediaType
@@ -43,4 +47,22 @@ class FantasyPlayerAdminController(
         @PathVariable id: Long,
         @RequestPart("file") file: MultipartFile,
     ): FantasyPlayerAdminDto = fantasyPlayerAdminService.uploadPhoto(id, file)
+
+    @PostMapping("/{id}/aliases")
+    fun addAlias(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: AddFantasyPlayerAliasRequest,
+    ): FantasyPlayerAdminDto = fantasyPlayerAdminService.addAlias(id, body)
+
+    @GetMapping("/{id}/merge-preview")
+    fun mergePreview(
+        @PathVariable id: Long,
+        @RequestParam sourceFantasyPlayerId: Long,
+    ): FantasyPlayerMergePreviewDto = fantasyPlayerAdminService.mergePreview(id, sourceFantasyPlayerId)
+
+    @PostMapping("/{id}/merge")
+    fun mergeConfirm(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: MergeFantasyPlayersRequest,
+    ): FantasyPlayerMergeResultDto = fantasyPlayerAdminService.mergeConfirm(id, body)
 }

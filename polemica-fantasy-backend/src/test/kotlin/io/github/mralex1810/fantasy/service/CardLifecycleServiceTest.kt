@@ -20,6 +20,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.server.ResponseStatusException
 
 @ExtendWith(MockitoExtension::class)
@@ -39,6 +40,9 @@ class CardLifecycleServiceTest {
 
     @Mock
     private lateinit var marketplaceListingRepository: MarketplaceListingRepository
+
+    @Mock
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @InjectMocks
     private lateinit var service: CardLifecycleService

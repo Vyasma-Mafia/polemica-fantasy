@@ -22,6 +22,7 @@ import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.TournamentPlayer
 import io.github.mralex1810.fantasy.entity.UserCard
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -52,6 +53,9 @@ class DefaultScoringServiceTest {
 
     @Mock
     private lateinit var seriesPlayerRepository: SeriesPlayerRepository
+
+    @Mock
+    private lateinit var fantasyPlayerAliasRepository: FantasyPlayerAliasRepository
 
     @Mock
     private lateinit var perkRegistry: PerkDetectorRegistry
@@ -95,6 +99,24 @@ class DefaultScoringServiceTest {
     }
 
     @Test
+    fun `main alias scores before replacement fallback`() {
+        val team = scoringFixture()
+        val game = seriesGameWithPlayers(
+            player(12L, "main-alias", Position.ONE),
+            player(22L, "replacement", Position.TWO),
+        )
+        stubScoringInputs(team, game, replacementPolemicaUserId = 22L, mainAliases = listOf(11L, 12L))
+
+        service().calculateScores(1L)
+
+        assertEquals(3.0, team.totalScore)
+        val score = team.cards.single().gameScores.single()
+        assertEquals(12L, score.scoredPolemicaUserId)
+        assertEquals("main-alias", score.scoredPlayerName)
+        assertEquals(false, score.scoredViaReplacement)
+    }
+
+    @Test
     fun `card game score is not created when main and replacement are absent`() {
         val team = scoringFixture()
         val game = seriesGameWithPlayers(player(33L, "other", Position.THREE))
@@ -111,6 +133,7 @@ class DefaultScoringServiceTest {
         seriesGameRepository = seriesGameRepository,
         fantasyTeamRepository = fantasyTeamRepository,
         seriesPlayerRepository = seriesPlayerRepository,
+        fantasyPlayerAliasRepository = fantasyPlayerAliasRepository,
         perkRegistry = perkRegistry,
         objectMapper = objectMapper,
         gamePointsService = gamePointsService,
@@ -121,6 +144,7 @@ class DefaultScoringServiceTest {
         team: FantasyTeam,
         game: SeriesGame,
         replacementPolemicaUserId: Long,
+        mainAliases: List<Long> = listOf(11L),
     ) {
         `when`(seriesRepository.existsById(1L)).thenReturn(true)
         `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(game))
@@ -132,12 +156,13 @@ class DefaultScoringServiceTest {
             ),
         )
         `when`(fantasyTeamRepository.findAllWithCardsForScoring(1L)).thenReturn(listOf(team))
+        `when`(fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(11L)).thenReturn(mainAliases)
         `when`(seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(1L)).thenReturn(
             listOf(
                 SeriesPlayer(
                     series = Series().apply { id = 1L },
                     tournamentPlayer = TournamentPlayer(
-                        fantasyPlayer = FantasyPlayer(polemicaUserId = 11L, nickname = "main"),
+                        fantasyPlayer = FantasyPlayer(id = 11L, polemicaUserId = 11L, nickname = "main"),
                     ),
                     replacementPolemicaUserId = replacementPolemicaUserId,
                 ),
@@ -147,7 +172,7 @@ class DefaultScoringServiceTest {
 
     private fun scoringFixture(): FantasyTeam {
         val template = CardTemplate(
-            fantasyPlayer = FantasyPlayer(polemicaUserId = 11L, nickname = "main"),
+            fantasyPlayer = FantasyPlayer(id = 11L, polemicaUserId = 11L, nickname = "main"),
             rarity = Rarity.COMMON,
         )
         val userCard = UserCard(cardTemplate = template).apply { id = 101L }

@@ -31,6 +31,7 @@ import io.github.mralex1810.fantasy.event.buildSeriesRosterReplacementTelegramMe
 import io.github.mralex1810.fantasy.polemica.GameSyncService
 import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
 import io.github.mralex1810.fantasy.repository.DeadlineReminderRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.LeagueRepository
@@ -74,6 +75,7 @@ class SeriesService(
     private val seriesFinalizationService: SeriesFinalizationService,
     private val fantasyTeamRosterPruningService: FantasyTeamRosterPruningService,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
     platformTransactionManager: PlatformTransactionManager,
 ) {
 
@@ -339,9 +341,10 @@ class SeriesService(
         tournamentPlayersById: Map<Long, TournamentPlayer>,
         rawReplacementByTournamentPlayerId: Map<Long, Long?>,
     ): Map<Long, Long> {
-        val mainPolemicaUserIds = tournamentPlayersById.values
-            .map { it.fantasyPlayer!!.polemicaUserId }
-            .toSet()
+        val aliasesByTournamentPlayerId = tournamentPlayersById.mapValues { (_, tp) ->
+            aliasesForFantasyPlayer(tp.fantasyPlayer!!)
+        }
+        val mainPolemicaUserIds = aliasesByTournamentPlayerId.values.flatten().toSet()
         val replacements = rawReplacementByTournamentPlayerId
             .mapNotNull { (tournamentPlayerId, replacementPolemicaUserId) ->
                 replacementPolemicaUserId?.let { tournamentPlayerId to it }
@@ -352,11 +355,11 @@ class SeriesService(
             if (replacementPolemicaUserId <= 0) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Replacement Polemica user id must be positive")
             }
-            val mainPolemicaUserId = tournamentPlayersById.getValue(tournamentPlayerId).fantasyPlayer!!.polemicaUserId
-            if (replacementPolemicaUserId == mainPolemicaUserId) {
+            val mainAliases = aliasesByTournamentPlayerId.getValue(tournamentPlayerId)
+            if (replacementPolemicaUserId in mainAliases) {
                 throw ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Replacement Polemica user id cannot equal the main player id",
+                    "Replacement Polemica user id cannot equal any alias of the main player",
                 )
             }
             if (replacementPolemicaUserId in mainPolemicaUserIds) {
@@ -380,6 +383,12 @@ class SeriesService(
             )
         }
         return replacements
+    }
+
+    private fun aliasesForFantasyPlayer(fantasyPlayer: io.github.mralex1810.fantasy.entity.FantasyPlayer): List<Long> {
+        val fantasyPlayerId = fantasyPlayer.id ?: return listOf(fantasyPlayer.polemicaUserId)
+        return fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(fantasyPlayerId)
+            .ifEmpty { listOf(fantasyPlayer.polemicaUserId) }
     }
 
     @Transactional

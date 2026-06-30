@@ -54,9 +54,38 @@ data class FantasyPlayerAdminDto(
     val polemicaUserId: Long,
     val nickname: String,
     val photoUrl: String?,
+    val aliases: List<FantasyPlayerAliasDto> = emptyList(),
     val tournamentIds: List<Long>,
     val tournamentCount: Long,
     val cardTemplateCount: Long,
+)
+
+data class FantasyPlayerAliasDto(
+    val id: Long,
+    val polemicaUserId: Long,
+    val primary: Boolean,
+)
+
+data class FantasyPlayerMergeIssueDto(
+    val code: String,
+    val severity: String,
+    val message: String,
+    val count: Long,
+)
+
+data class FantasyPlayerMergePreviewDto(
+    val source: FantasyPlayerAdminDto,
+    val target: FantasyPlayerAdminDto,
+    val sourceAliases: List<Long>,
+    val targetAliases: List<Long>,
+    val blockers: List<FantasyPlayerMergeIssueDto>,
+    val warnings: List<FantasyPlayerMergeIssueDto>,
+    val canMerge: Boolean,
+)
+
+data class FantasyPlayerMergeResultDto(
+    val auditId: Long,
+    val target: FantasyPlayerAdminDto,
 )
 
 data class SeriesDto(

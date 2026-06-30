@@ -9,6 +9,7 @@ import io.github.mralex1810.fantasy.entity.FantasyTeamCardGamePerk
 import io.github.mralex1810.fantasy.entity.FantasyTeamCardGameScore
 import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
@@ -26,6 +27,7 @@ class DefaultScoringService(
     private val seriesGameRepository: SeriesGameRepository,
     private val fantasyTeamRepository: FantasyTeamRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
+    private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
     private val perkRegistry: PerkDetectorRegistry,
     private val objectMapper: ObjectMapper,
     private val gamePointsService: GamePointsService,
@@ -61,7 +63,7 @@ class DefaultScoringService(
     ) {
         val games = gamesFinishedForScoring(seriesGameRepository.findAllBySeries_Id(seriesId))
         val teams = fantasyTeamRepository.findAllWithCardsForScoring(seriesId)
-        val replacementByMainPolemicaUserId = replacementByMainPolemicaUserId(seriesId)
+        val replacementByFantasyPlayerId = replacementByFantasyPlayerId(seriesId)
 
         for (team in teams) {
             var teamTotal = 0.0
@@ -72,7 +74,7 @@ class DefaultScoringService(
                     games = games,
                     fantasyCard = card,
                     pointsByTablePositionByGameId = pointsByTablePositionByGameId,
-                    replacementByMainPolemicaUserId = replacementByMainPolemicaUserId,
+                    replacementByFantasyPlayerId = replacementByFantasyPlayerId,
                 )
                 card.score = score
                 teamTotal += score
@@ -98,12 +100,17 @@ class DefaultScoringService(
         games: List<io.github.mralex1810.fantasy.entity.SeriesGame>,
         fantasyCard: FantasyTeamCard,
         pointsByTablePositionByGameId: Map<Long, Map<Int, Double>>,
-        replacementByMainPolemicaUserId: Map<Long, Long>,
+        replacementByFantasyPlayerId: Map<Long, Long>,
     ): Double {
         val userCard = fantasyCard.userCard!!
         val template = userCard.cardTemplate!!
-        val polemicaUserId = template.fantasyPlayer!!.polemicaUserId
-        val replacementPolemicaUserId = replacementByMainPolemicaUserId[polemicaUserId]
+        val fantasyPlayer = template.fantasyPlayer!!
+        val fantasyPlayerId = fantasyPlayer.id
+        val polemicaUserIds = fantasyPlayerId
+            ?.let { fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(it) }
+            ?.ifEmpty { listOf(fantasyPlayer.polemicaUserId) }
+            ?: listOf(fantasyPlayer.polemicaUserId)
+        val replacementPolemicaUserId = fantasyPlayerId?.let { replacementByFantasyPlayerId[it] }
         val templatePerks = template.perks
         val rarityModifier = template.rarity.scoreModifier
 
@@ -111,7 +118,7 @@ class DefaultScoringService(
         for (sg in games) {
             val node = sg.gameDataCache ?: continue
             val polemicaGame = objectMapper.treeToValue(node, PolemicaGame::class.java)
-            val scoredPlayer = findScoringPlayer(polemicaGame, polemicaUserId, replacementPolemicaUserId) ?: continue
+            val scoredPlayer = findScoringPlayer(polemicaGame, polemicaUserIds, replacementPolemicaUserId) ?: continue
             val player = scoredPlayer.player
 
             val basePoints = pointsByTablePositionByGameId[sg.polemicaGameId]
@@ -165,32 +172,32 @@ class DefaultScoringService(
         return total
     }
 
-    private fun replacementByMainPolemicaUserId(seriesId: Long): Map<Long, Long> =
+    private fun replacementByFantasyPlayerId(seriesId: Long): Map<Long, Long> =
         seriesPlayerRepository.findAllBySeries_IdWithTournamentPlayers(seriesId)
             .mapNotNull { sp ->
-                val mainPolemicaUserId = sp.tournamentPlayer!!.fantasyPlayer!!.polemicaUserId
-                sp.replacementPolemicaUserId?.let { mainPolemicaUserId to it }
+                val fantasyPlayerId = sp.tournamentPlayer!!.fantasyPlayer!!.id ?: return@mapNotNull null
+                sp.replacementPolemicaUserId?.let { fantasyPlayerId to it }
             }
             .toMap()
 
     private fun findScoringPlayer(
         game: PolemicaGame,
-        mainPolemicaUserId: Long,
+        mainPolemicaUserIds: List<Long>,
         replacementPolemicaUserId: Long?,
     ): ScoringPlayer? {
-        val mainPlayer = findPlayer(game, mainPolemicaUserId)
+        val mainPlayer = findPlayer(game, mainPolemicaUserIds)
         if (mainPlayer != null) {
             return ScoringPlayer(player = mainPlayer, viaReplacement = false)
         }
         if (replacementPolemicaUserId == null) {
             return null
         }
-        val replacementPlayer = findPlayer(game, replacementPolemicaUserId) ?: return null
+        val replacementPlayer = findPlayer(game, listOf(replacementPolemicaUserId)) ?: return null
         return ScoringPlayer(player = replacementPlayer, viaReplacement = true)
     }
 
-    private fun findPlayer(game: PolemicaGame, polemicaUserId: Long): PolemicaPlayer? =
-        game.players.orEmpty().find { it.player?.id == polemicaUserId }
+    private fun findPlayer(game: PolemicaGame, polemicaUserIds: Collection<Long>): PolemicaPlayer? =
+        game.players.orEmpty().find { it.player?.id in polemicaUserIds }
 
     private data class ScoringPlayer(
         val player: PolemicaPlayer,

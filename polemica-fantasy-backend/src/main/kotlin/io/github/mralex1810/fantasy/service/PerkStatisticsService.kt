@@ -12,6 +12,7 @@ import io.github.mralex1810.fantasy.entity.Perk
 import io.github.mralex1810.fantasy.entity.FantasyPlayer
 import io.github.mralex1810.fantasy.polemica.PolemicaIntegrationService
 import io.github.mralex1810.fantasy.repository.PerkRepository
+import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.scoring.perk.PerkDetectorRegistry
 import io.github.mralex1810.fantasy.scoring.perk.ScoringContext
@@ -25,6 +26,7 @@ import java.time.Instant
 @Service
 class PerkStatisticsService(
     private val fantasyPlayerRepository: FantasyPlayerRepository,
+    private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
     private val perkRepository: PerkRepository,
     private val perkRegistry: PerkDetectorRegistry,
     private val polemicaIntegrationService: PolemicaIntegrationService,
@@ -40,11 +42,15 @@ class PerkStatisticsService(
         val anomalySettings = request.toAnomalySettings()
         val generatedAt = Instant.now()
         val fantasyPlayers = fantasyPlayerRepository.findAll()
-        val fantasyPlayersByPolemicaUserId = fantasyPlayers.associateBy { it.polemicaUserId }
+        val polemicaUserIdsByFantasyPlayerId = fantasyPlayers.associate { fp ->
+            val fantasyPlayerId = fp.id!!
+            fantasyPlayerId to fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(fantasyPlayerId)
+                .ifEmpty { listOf(fp.polemicaUserId) }
+        }
         val uniqueMatchIds = LinkedHashSet<Long>()
         var profileFetchFailures = 0
 
-        for (userId in fantasyPlayersByPolemicaUserId.keys) {
+        for (userId in polemicaUserIdsByFantasyPlayerId.values.flatten().distinct()) {
             try {
                 val rows = polemicaIntegrationService.fetchProfileGamesFirstPageForStatistics(userId)
                 for (row in rows) {
@@ -58,8 +64,14 @@ class PerkStatisticsService(
 
         val perks = perkRepository.findAllWithApplicableRoles()
         val aggregates = perks.associate { it.id to MutablePerkAggregate() }
-        val playerAggregatesByPolemicaUserId = fantasyPlayers
-            .mapNotNull { fp -> fp.id?.let { fp.polemicaUserId to MutablePlayerAggregate(fp, perks) } }
+        val playerAggregatesByFantasyPlayerId = fantasyPlayers
+            .mapNotNull { fp -> fp.id?.let { it to MutablePlayerAggregate(fp, perks) } }
+            .toMap()
+        val playerAggregatesByPolemicaUserId = polemicaUserIdsByFantasyPlayerId
+            .flatMap { (fantasyPlayerId, polemicaUserIds) ->
+                val aggregate = playerAggregatesByFantasyPlayerId.getValue(fantasyPlayerId)
+                polemicaUserIds.map { it to aggregate }
+            }
             .toMap()
         val loadFailures = mutableListOf<MatchLoadFailureDto>()
         var gamesLoaded = 0
@@ -109,12 +121,12 @@ class PerkStatisticsService(
             perks,
             aggregates,
             totalPlayerSlots,
-            playerAggregatesByPolemicaUserId.values,
+            playerAggregatesByFantasyPlayerId.values,
         )
 
         return PerkStatisticsReportDto(
             generatedAt = generatedAt,
-            fantasyPlayerCount = fantasyPlayersByPolemicaUserId.size,
+            fantasyPlayerCount = fantasyPlayers.size,
             profileFetchFailures = profileFetchFailures,
             uniqueMatchIdsFromProfiles = uniqueMatchIds.size,
             uniqueGamesLoaded = gamesLoaded,

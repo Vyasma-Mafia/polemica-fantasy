@@ -15,3 +15,16 @@ data class UpdateFantasyPlayerAdminRequest(
     @field:NotBlank @field:Size(max = 512)
     val nickname: String,
 )
+
+data class AddFantasyPlayerAliasRequest(
+    @field:NotNull
+    val polemicaUserId: Long,
+    val primary: Boolean = false,
+)
+
+data class MergeFantasyPlayersRequest(
+    @field:NotNull
+    val sourceFantasyPlayerId: Long,
+    @field:NotBlank @field:Size(max = 1024)
+    val reason: String,
+)
