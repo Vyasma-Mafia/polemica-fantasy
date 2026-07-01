@@ -140,10 +140,24 @@
   line-height: 1;
 }
 
+.pf-home-league-chip--link {
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.pf-home-league-chip--link:active {
+  transform: translateY(1px);
+}
+
 .pf-home-league-chip--ready {
   border-color: rgba(34, 197, 94, 0.42);
   background: rgba(22, 163, 74, 0.12);
   color: #dcfce7;
+}
+
+.pf-home-league-chip--ready.pf-home-league-chip--link:hover {
+  border-color: rgba(74, 222, 128, 0.58);
+  background: rgba(22, 163, 74, 0.18);
 }
 
 .pf-home-league-chip--missing {
