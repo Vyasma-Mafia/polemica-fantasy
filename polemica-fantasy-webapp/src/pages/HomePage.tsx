@@ -100,7 +100,7 @@ export function HomePage() {
                 className={className}
                 to={`/series/${seriesId}/team?league=${encodeURIComponent(league.code)}`}
                 state={{ fromHome: true }}
-                aria-label={`${label}: изменить состав`}
+                aria-label={`${label}: ${league.hasTeam ? 'изменить состав' : 'собрать состав'}`}
               >
                 {content}
               </Link>
@@ -119,8 +119,6 @@ export function HomePage() {
       </div>
     )
   }
-
-  const hasAnyTeam = (seriesId: number): boolean => (leaguesBySeriesId.get(seriesId) ?? []).some((league) => league.hasTeam)
 
   const openSeriesCta = (seriesId: number) => {
     const leagues = leaguesBySeriesId.get(seriesId) ?? []
@@ -169,7 +167,6 @@ export function HomePage() {
           <ul className="pf-day-list">
             {activeSeries.map((s, idx) => {
               const seriesNum = s.publicNumber ?? idx + 1
-              const showLeagueLinks = s.teamSubmissionOpen && hasAnyTeam(s.seriesId)
               const cta = s.teamSubmissionOpen
                 ? openSeriesCta(s.seriesId)
                 : { to: `/series/${s.seriesId}`, label: 'Открыть' }
@@ -189,8 +186,8 @@ export function HomePage() {
                       </p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
                       <div className="pf-home-active-series-row">
-                        {showLeagueLinks ? (
-                          renderLeagueStatus(s.seriesId, { onlyWithTeam: true, linked: true })
+                        {s.teamSubmissionOpen ? (
+                          renderLeagueStatus(s.seriesId, { linked: true })
                         ) : (
                           <Link className="pf-home-series-action" to={cta.to} state={{ fromHome: true }}>
                             {cta.label}
