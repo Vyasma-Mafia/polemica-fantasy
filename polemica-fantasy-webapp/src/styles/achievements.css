@@ -37,6 +37,48 @@
   gap: 12px;
 }
 
+.pf-achievements-tabs {
+  margin-bottom: 0;
+}
+
+.pf-achievements-tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 7px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  color: inherit;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pf-tab--active .pf-achievements-tab-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.pf-achievements-empty {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 18, 28, 0.58);
+}
+
+.pf-achievements-empty strong {
+  font-size: 0.98rem;
+}
+
+.pf-achievements-empty span {
+  color: var(--pf-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .pf-achievements-category h2 {
   margin: 0;
   font-size: 1.05rem;
@@ -269,6 +311,12 @@
 @media (max-width: 640px) {
   .pf-achievements-summary {
     grid-template-columns: 1fr;
+  }
+
+  .pf-achievements-tabs {
+    margin-right: -16px;
+    padding-right: 16px;
+    flex-wrap: nowrap;
   }
 
   .pf-achievement {

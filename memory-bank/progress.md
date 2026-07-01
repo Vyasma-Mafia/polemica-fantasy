@@ -2,6 +2,12 @@
 
 ## Что реализовано
 
+### TMA: вкладки достижений по состоянию награды (июль 2026)
+- [x] `/achievements` теперь использует primary-фильтры **Забрать / Не завершено / Получено** вместо просмотра только по backend-категориям.
+- [x] По умолчанию открывается **Забрать**, если есть незабранные награды; иначе **Не завершено**. Pending `CARD_CHOICE_ROLL` остаётся actionable: после reload пользователь видит CTA **Выбрать**, а после выбора вариантов карточная награда продолжает прежний claim-flow.
+- [x] Вкладка **Не завершено** показывает `IN_PROGRESS` перед `LOCKED`, а `LOCKED` в карточке подписан как «Не начато».
+- [x] Проверки: `npm run build` (`polemica-fantasy-webapp`), Browser QA `/achievements` desktop/mobile, переключение фильтров, pending choice resume, console warn/error clean.
+
 ### Backend+admin+TMA: ссылки на трансляции серий (июнь 2026)
 - [x] Flyway **V66** добавляет `tournament_stream_link` и `series_stream_link`, чтобы хранить много ссылок на уровне турнира и конкретной серии.
 - [x] Admin create/edit турнира и серии редактирует `streamLinks` списком (`label` + `url`), backend валидирует только `http(s)` URL.

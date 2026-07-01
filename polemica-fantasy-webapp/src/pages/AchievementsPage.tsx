@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAchievements, useClaimAchievement, useSelectAchievementCardChoice } from '../api/achievements'
-import type { AchievementItem, AchievementPendingCardChoice, AchievementReward } from '../api/types'
+import type { AchievementCategory, AchievementItem, AchievementPendingCardChoice, AchievementReward } from '../api/types'
 import { CardPerkChips } from '../components/CardPerkChips'
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
@@ -10,20 +10,66 @@ import { useInitData } from '../context/useInitData'
 import { skinClass } from '../lib/cardFrameClasses'
 import { rarityClass } from '../lib/rarity'
 
+type AchievementTab = 'claimable' | 'unfinished' | 'claimed'
+
+type IndexedAchievement = {
+  achievement: AchievementItem
+  categoryCode: string
+  categoryName: string
+  originalIndex: number
+}
+
+type VisibleAchievementCategory = {
+  code: string
+  name: string
+  achievements: AchievementItem[]
+}
+
+const ACHIEVEMENT_TABS: { id: AchievementTab; label: string }[] = [
+  { id: 'claimable', label: 'Забрать' },
+  { id: 'unfinished', label: 'Не завершено' },
+  { id: 'claimed', label: 'Получено' },
+]
+
+const CATEGORY_ORDER = ['PARTICIPATION', 'BUDGET', 'RESULTS', 'COLLECTION', 'PACKS', 'MARKETPLACE', 'SOCIAL', 'SPECIAL']
+const RARITY_ORDER: Record<AchievementItem['rarity'], number> = {
+  LEGENDARY: 4,
+  EPIC: 3,
+  RARE: 2,
+  COMMON: 1,
+}
+
 export function AchievementsPage() {
   const initData = useInitData()
   const achievementsQ = useAchievements(initData)
   const claimM = useClaimAchievement(initData)
   const selectChoiceM = useSelectAchievementCardChoice(initData)
+  const [selectedTab, setSelectedTab] = useState<AchievementTab | null>(null)
   const [claimingCode, setClaimingCode] = useState<string | null>(null)
   const [pendingChoicesByCode, setPendingChoicesByCode] = useState<Record<string, AchievementPendingCardChoice[]>>({})
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
 
   if (!initData) return <MissingInitDataNotice />
-  if (achievementsQ.isLoading) return <p className="pf-loading">Загрузка…</p>
-  if (achievementsQ.isError) return <p className="pf-err">{(achievementsQ.error as Error).message}</p>
+  if (achievementsQ.isLoading) return <p className="pf-loading">Загружаем достижения…</p>
+  if (achievementsQ.isError) {
+    return (
+      <div className="pf-page pf-achievements">
+        <PageHeader title="Достижения" backTo="/" backLabel="Турниры" />
+        <p className="pf-err">{(achievementsQ.error as Error).message}</p>
+        <button type="button" className="pf-btn" onClick={() => void achievementsQ.refetch()}>
+          Повторить
+        </button>
+      </div>
+    )
+  }
 
   const catalog = achievementsQ.data
+  const indexedAchievements = catalog ? flattenAchievements(catalog.categories) : []
+  const counts = countTabs(indexedAchievements, pendingChoicesByCode)
+  const defaultTab: AchievementTab = counts.claimable > 0 ? 'claimable' : 'unfinished'
+  const activeTab = selectedTab ?? defaultTab
+  const visibleCategories = buildVisibleCategories(indexedAchievements, activeTab, pendingChoicesByCode)
+  const showCategoryHeaders = visibleCategories.length > 1
 
   return (
     <div className="pf-page pf-achievements">
@@ -53,10 +99,26 @@ export function AchievementsPage() {
         <p className="pf-err">{selectChoiceM.error instanceof ApiError ? selectChoiceM.error.message : String(selectChoiceM.error)}</p>
       )}
 
+      <div className="pf-tabs pf-tabs--scroll pf-achievements-tabs" role="group" aria-label="Фильтр достижений">
+        {ACHIEVEMENT_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            aria-pressed={activeTab === tab.id}
+            className={`pf-tab ${activeTab === tab.id ? 'pf-tab--active' : ''}`}
+            onClick={() => setSelectedTab(tab.id)}
+          >
+            {tab.label}
+            <span className="pf-achievements-tab-count">{counts[tab.id]}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="pf-achievements-categories">
-        {(catalog?.categories ?? []).map((category) => (
+        {visibleCategories.length === 0 && <AchievementEmptyState tab={activeTab} />}
+        {visibleCategories.map((category) => (
           <section key={category.code} className="pf-achievements-category">
-            <h2>{category.name}</h2>
+            {showCategoryHeaders && <h2>{category.name}</h2>}
             <div className="pf-achievements-list">
               {category.achievements.map((achievement) => (
                 <AchievementRow
@@ -88,6 +150,7 @@ export function AchievementsPage() {
                             [achievement.code]: result.pendingChoices ?? [],
                           }))
                           setSelectedOptions((prev) => ({ ...prev, [key]: [] }))
+                          if (result.claimedAt) setSelectedTab(null)
                         },
                       },
                     )
@@ -100,6 +163,7 @@ export function AchievementsPage() {
                           ...prev,
                           [achievement.code]: result.pendingChoices ?? [],
                         }))
+                        if (result.claimedAt) setSelectedTab(null)
                       },
                       onSettled: () => setClaimingCode(null),
                     })
@@ -110,6 +174,31 @@ export function AchievementsPage() {
           </section>
         ))}
       </div>
+    </div>
+  )
+}
+
+function AchievementEmptyState({ tab }: { tab: AchievementTab }) {
+  const copy =
+    tab === 'claimable'
+      ? {
+          title: 'Нет наград к получению',
+          body: 'Новые награды появятся здесь, когда достижение будет выполнено.',
+        }
+      : tab === 'claimed'
+        ? {
+            title: 'Пока ничего не получено',
+            body: 'Заберите первую награду, когда выполните достижение.',
+          }
+        : {
+            title: 'Все видимые достижения закрыты',
+            body: 'Полученные награды лежат во вкладке «Получено».',
+          }
+
+  return (
+    <div className="pf-achievements-empty">
+      <strong>{copy.title}</strong>
+      <span>{copy.body}</span>
     </div>
   )
 }
@@ -137,6 +226,7 @@ function AchievementRow({
   const pct = achievement.targetValue > 0 ? Math.min(100, Math.round((progress / achievement.targetValue) * 100)) : 0
   const claimable = achievement.state === 'COMPLETED_UNCLAIMED'
   const hasPendingChoices = pendingChoices.length > 0
+  const choiceReward = hasCardChoiceReward(achievement.rewards)
 
   return (
     <article className={`pf-achievement pf-achievement--${rarityClass(achievement.rarity)} pf-achievement--${achievement.state.toLowerCase()}${hasPendingChoices ? ' pf-achievement--choice-open' : ''}`}>
@@ -204,7 +294,7 @@ function AchievementRow({
       </div>
       {!hasPendingChoices && (
         <button type="button" className="pf-btn pf-achievement__claim" disabled={!claimable || isClaiming} onClick={onClaim}>
-          {achievement.state === 'CLAIMED' ? 'Получено' : isClaiming ? 'Получаем…' : 'Забрать'}
+          {achievement.state === 'CLAIMED' ? 'Получено' : isClaiming ? 'Получаем…' : choiceReward ? 'Выбрать' : 'Забрать'}
         </button>
       )}
     </article>
@@ -220,7 +310,158 @@ function stateLabel(state: AchievementItem['state']): string {
     case 'IN_PROGRESS':
       return 'В процессе'
     default:
-      return 'Закрыто'
+      return 'Не начато'
+  }
+}
+
+function flattenAchievements(categories: AchievementCategory[]): IndexedAchievement[] {
+  const items: IndexedAchievement[] = []
+  categories.forEach((category, categoryIndex) => {
+    category.achievements.forEach((achievement, achievementIndex) => {
+      items.push({
+        achievement,
+        categoryCode: category.code,
+        categoryName: categoryDisplayName(category),
+        originalIndex: categoryIndex * 1000 + achievementIndex,
+      })
+    })
+  })
+  return items
+}
+
+function countTabs(items: IndexedAchievement[], pendingChoicesByCode: Record<string, AchievementPendingCardChoice[]>) {
+  return items.reduce<Record<AchievementTab, number>>(
+    (counts, item) => {
+      const tab = tabForAchievement(item.achievement, pendingChoicesByCode[item.achievement.code] ?? [])
+      counts[tab] += 1
+      return counts
+    },
+    { claimable: 0, unfinished: 0, claimed: 0 },
+  )
+}
+
+function buildVisibleCategories(
+  items: IndexedAchievement[],
+  activeTab: AchievementTab,
+  pendingChoicesByCode: Record<string, AchievementPendingCardChoice[]>,
+): VisibleAchievementCategory[] {
+  const categories = new Map<string, { name: string; order: number; items: IndexedAchievement[] }>()
+  items.forEach((item) => {
+    const pendingChoices = pendingChoicesByCode[item.achievement.code] ?? []
+    if (tabForAchievement(item.achievement, pendingChoices) !== activeTab) return
+    const current = categories.get(item.categoryCode)
+    if (current) {
+      current.items.push(item)
+    } else {
+      categories.set(item.categoryCode, {
+        name: item.categoryName,
+        order: categoryOrder(item.categoryCode, item.originalIndex),
+        items: [item],
+      })
+    }
+  })
+
+  return Array.from(categories.entries())
+    .sort(([, left], [, right]) => left.order - right.order)
+    .map(([code, category]) => ({
+      code,
+      name: category.name,
+      achievements: category.items
+        .slice()
+        .sort((left, right) => compareAchievementsForTab(left, right, activeTab))
+        .map((item) => item.achievement),
+    }))
+}
+
+function tabForAchievement(achievement: AchievementItem, pendingChoices: AchievementPendingCardChoice[]): AchievementTab {
+  if (pendingChoices.length > 0 || achievement.state === 'COMPLETED_UNCLAIMED') return 'claimable'
+  if (achievement.state === 'CLAIMED') return 'claimed'
+  return 'unfinished'
+}
+
+function compareAchievementsForTab(left: IndexedAchievement, right: IndexedAchievement, tab: AchievementTab): number {
+  if (tab === 'claimable') {
+    return (
+      compareNullableDateDesc(left.achievement.completedAt, right.achievement.completedAt) ||
+      RARITY_ORDER[right.achievement.rarity] - RARITY_ORDER[left.achievement.rarity] ||
+      rewardPriority(right.achievement) - rewardPriority(left.achievement) ||
+      left.originalIndex - right.originalIndex
+    )
+  }
+  if (tab === 'claimed') {
+    return (
+      compareNullableDateDesc(left.achievement.claimedAt, right.achievement.claimedAt) ||
+      RARITY_ORDER[right.achievement.rarity] - RARITY_ORDER[left.achievement.rarity] ||
+      left.originalIndex - right.originalIndex
+    )
+  }
+  return (
+    unfinishedPriority(left.achievement) - unfinishedPriority(right.achievement) ||
+    progressRatio(right.achievement) - progressRatio(left.achievement) ||
+    remainingProgress(left.achievement) - remainingProgress(right.achievement) ||
+    left.originalIndex - right.originalIndex
+  )
+}
+
+function unfinishedPriority(achievement: AchievementItem): number {
+  return achievement.state === 'IN_PROGRESS' ? 0 : 1
+}
+
+function progressRatio(achievement: AchievementItem): number {
+  if (achievement.targetValue <= 0) return 0
+  return Math.min(1, achievement.progressValue / achievement.targetValue)
+}
+
+function remainingProgress(achievement: AchievementItem): number {
+  return Math.max(0, achievement.targetValue - achievement.progressValue)
+}
+
+function compareNullableDateDesc(left: string | null, right: string | null): number {
+  if (left === right) return 0
+  if (!left) return 1
+  if (!right) return -1
+  return Date.parse(right) - Date.parse(left)
+}
+
+function rewardPriority(achievement: AchievementItem): number {
+  if (hasCardChoiceReward(achievement.rewards)) return 6
+  if (achievement.rewards.some((reward) => reward.type === 'RANDOM_CARD')) return 5
+  if (achievement.rewards.some((reward) => reward.type === 'PROFILE_FRAME')) return 4
+  if (achievement.rewards.some((reward) => reward.type === 'COSMETIC_UNLOCK')) return 3
+  if (achievement.rewards.some((reward) => reward.type === 'BADGE_STYLE')) return 2
+  if (achievement.rewards.some((reward) => reward.type === 'FANTIKI')) return 1
+  return 0
+}
+
+function hasCardChoiceReward(rewards: AchievementReward[]): boolean {
+  return rewards.some((reward) => reward.type === 'CARD_CHOICE_ROLL')
+}
+
+function categoryOrder(code: string, fallback: number): number {
+  const index = CATEGORY_ORDER.indexOf(code)
+  return index >= 0 ? index : CATEGORY_ORDER.length + fallback
+}
+
+function categoryDisplayName(category: AchievementCategory): string {
+  switch (category.code) {
+    case 'PARTICIPATION':
+      return 'Участие'
+    case 'BUDGET':
+      return 'Бюджетная лига'
+    case 'RESULTS':
+      return 'Результаты'
+    case 'COLLECTION':
+      return 'Коллекция'
+    case 'PACKS':
+      return 'Паки'
+    case 'MARKETPLACE':
+      return 'Маркетплейс'
+    case 'SOCIAL':
+      return 'Социальность'
+    case 'SPECIAL':
+      return 'Особые'
+    default:
+      return category.name
   }
 }
 
