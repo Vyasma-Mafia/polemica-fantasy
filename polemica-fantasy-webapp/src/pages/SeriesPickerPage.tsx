@@ -55,7 +55,7 @@ export function SeriesPickerPage() {
                   <span className="pf-day-card__badge-num">{seriesNum}</span>
                 </div>
                 <div className="pf-day-card__body">
-                  <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
+                  <p className="pf-day-card__deadline">Дедлайн: {formatDateShortWithTime(deadline)}</p>
                   <p className="pf-day-card__name">{s.name}</p>
                 </div>
                 <div className="pf-day-card__action">

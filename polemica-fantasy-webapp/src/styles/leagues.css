@@ -118,10 +118,54 @@
   top: 58px;
 }
 
-.pf-home-leagues-status {
-  margin: 6px 0 0;
-  font-size: 0.77rem;
-  color: var(--pf-text-muted);
+.pf-home-league-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pf-home-league-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 7px 4px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--pf-text);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pf-home-league-chip--ready {
+  border-color: rgba(34, 197, 94, 0.42);
+  background: rgba(22, 163, 74, 0.12);
+  color: #dcfce7;
+}
+
+.pf-home-league-chip--missing {
+  border-color: rgba(244, 114, 182, 0.38);
+  background: rgba(190, 24, 93, 0.1);
+  color: #fce7f3;
+}
+
+.pf-home-league-chip__name {
+  white-space: nowrap;
+}
+
+.pf-home-league-chip__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: currentColor;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .pf-link-row__main {

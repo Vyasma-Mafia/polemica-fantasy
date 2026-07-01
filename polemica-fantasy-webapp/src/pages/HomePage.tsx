@@ -66,18 +66,37 @@ export function HomePage() {
   const archive = archiveQ.data ?? []
   const openSeries = openSeriesQ.data ?? []
   const activeSeries = activeSeriesQ.data ?? []
+  const activeSeriesIds = new Set(activeSeries.map((series) => series.seriesId))
+  const lineupSeries = openSeries.filter((series) => !activeSeriesIds.has(series.seriesId))
   const leaguesBySeriesId = new Map<number, SeriesLeagueInfo[]>()
   for (let i = 0; i < openSeries.length; i++) {
     leaguesBySeriesId.set(openSeries[i].seriesId, openSeriesLeaguesQ[i]?.data ?? [])
   }
   const openSeriesError = openSeriesLeaguesQ.find((item) => item.isError)?.error as Error | undefined
 
-  const openSeriesStatus = (seriesId: number): string => {
+  const renderLeagueStatus = (seriesId: number) => {
     const leagues = leaguesBySeriesId.get(seriesId) ?? []
-    if (leagues.length === 0) return 'Лиги недоступны'
-    return leagues
-      .map((league) => `${leagueShortName(league.code, league.name)} ${league.hasTeam ? '✓' : '✗'}`)
-      .join(' / ')
+    if (leagues.length === 0) return null
+    return (
+      <div className="pf-home-league-chips" aria-label="Статус составов по лигам">
+        {leagues.map((league) => (
+          <span
+            key={league.code}
+            className={`pf-home-league-chip ${
+              league.hasTeam ? 'pf-home-league-chip--ready' : 'pf-home-league-chip--missing'
+            }`}
+            aria-label={`${leagueShortName(league.code, league.name)}: ${
+              league.hasTeam ? 'состав собран' : 'состав не собран'
+            }`}
+          >
+            <span className="pf-home-league-chip__name">{leagueShortName(league.code, league.name)}</span>
+            <span className="pf-home-league-chip__mark" aria-hidden="true">
+              {league.hasTeam ? '✓' : '×'}
+            </span>
+          </span>
+        ))}
+      </div>
+    )
   }
 
   const openSeriesCta = (seriesId: number) => {
@@ -127,9 +146,12 @@ export function HomePage() {
           <ul className="pf-day-list">
             {activeSeries.map((s, idx) => {
               const seriesNum = s.publicNumber ?? idx + 1
+              const cta = s.teamSubmissionOpen
+                ? openSeriesCta(s.seriesId)
+                : { to: `/series/${s.seriesId}`, label: 'Открыть' }
               return (
                 <li key={s.seriesId}>
-                  <div className="pf-day-card">
+                  <div className="pf-day-card pf-day-card--active-home">
                     <div className="pf-day-card__badge">
                       <span className="pf-day-card__badge-label">Серия</span>
                       <span className="pf-day-card__badge-num">{seriesNum}</span>
@@ -138,16 +160,17 @@ export function HomePage() {
                       <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
                       <p className="pf-day-card__deadline">
                         {s.teamSubmissionOpen
-                          ? `Доступно до: ${formatDateShortWithTime(new Date(s.teamDeadline))}`
+                          ? `Дедлайн: ${formatDateShortWithTime(new Date(s.teamDeadline))}`
                           : `Статус: ${seriesStatusLabel(s.status)}`}
                       </p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
+                      <div className="pf-home-active-series-row">
+                        {s.teamSubmissionOpen && renderLeagueStatus(s.seriesId)}
+                        <Link className="pf-home-series-action" to={cta.to} state={{ fromHome: true }}>
+                          {cta.label}
+                        </Link>
+                      </div>
                       <StreamLinks links={s.streamLinks} compact />
-                    </div>
-                    <div className="pf-day-card__action">
-                      <Link className="pf-btn pf-btn--small pf-btn--ghost" to={`/series/${s.seriesId}`}>
-                        Открыть
-                      </Link>
                     </div>
                   </div>
                 </li>
@@ -161,7 +184,7 @@ export function HomePage() {
         <p className="pf-err pf-home-open-series-err">{(openSeriesQ.error as Error).message}</p>
       ) : openSeriesError ? (
         <p className="pf-err pf-home-open-series-err">{openSeriesError.message}</p>
-      ) : openSeries.length > 0 ? (
+      ) : lineupSeries.length > 0 ? (
         <section className="pf-home-open-series" aria-labelledby="home-open-series-heading">
           <h2 id="home-open-series-heading" className="pf-section-title">
             Состав на серию
@@ -170,7 +193,7 @@ export function HomePage() {
             Активные серии с открытым дедлайном: можно подать новый состав или изменить текущий
           </p>
           <ul className="pf-day-list">
-            {openSeries.map((s, idx) => {
+            {lineupSeries.map((s, idx) => {
               const deadline = new Date(s.teamDeadline)
               const seriesNum = s.publicNumber ?? s.gameNumFrom ?? idx + 1
               const cta = openSeriesCta(s.seriesId)
@@ -183,10 +206,10 @@ export function HomePage() {
                     </div>
                     <div className="pf-day-card__body">
                       <p className="pf-home-open-series-tournament">{s.tournamentName}</p>
-                      <p className="pf-day-card__deadline">Доступно до: {formatDateShortWithTime(deadline)}</p>
+                      <p className="pf-day-card__deadline">Дедлайн: {formatDateShortWithTime(deadline)}</p>
                       <p className="pf-day-card__name">{s.seriesName}</p>
                       {s.status !== 'UPCOMING' && <StreamLinks links={s.streamLinks} compact />}
-                      <p className="pf-home-leagues-status">{openSeriesStatus(s.seriesId)}</p>
+                      {renderLeagueStatus(s.seriesId)}
                     </div>
                     <div className="pf-day-card__action">
                       <Link className="pf-btn pf-btn--small pf-btn--ghost" to={cta.to} state={{ fromHome: true }}>

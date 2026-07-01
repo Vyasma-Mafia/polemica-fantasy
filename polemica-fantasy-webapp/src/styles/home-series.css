@@ -110,6 +110,39 @@
   background: var(--pf-bg-elevated);
 }
 
+.pf-day-card--active-home {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.pf-home-active-series-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pf-home-active-series-row .pf-home-league-chips {
+  margin-top: 0;
+}
+
+.pf-home-series-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid rgba(196, 181, 253, 0.28);
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.1);
+  color: #ddd6fe;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+}
+
 .pf-day-card--expired {
   opacity: 0.65;
 }
