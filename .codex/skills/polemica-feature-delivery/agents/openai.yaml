@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polemica Feature Delivery"
+  short_description: "Multi-agent delivery loop for large features"
+  default_prompt: "Use $polemica-feature-delivery to plan, implement, review, and locally test this large Polemica Fantasy feature."

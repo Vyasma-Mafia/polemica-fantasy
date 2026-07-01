@@ -282,6 +282,7 @@
 ### DX: Codex workflow и быстрые проверки (май 2026)
 - [x] Добавлен multi-agent workflow для крупных фич: `docs/codex/MULTI_AGENT_WORKFLOW.md` описывает spec-first процесс с product/design/technical/QA ролями, шаблоны промптов, ownership worker'ов, integration rules и verification defaults
 - [x] Добавлен проектный skill `.codex/skills/polemica-feature-discovery`, который включает product/design discovery перед разработкой и указывает использовать workflow-документ
+- [x] Добавлен проектный skill `.codex/skills/polemica-feature-delivery` для полного delivery-loop крупных фич: plan writer, plan reviewer gate, pre-code QA/risk review, vertical-slice first, ownership fan-out after stable contract, code reviewer gate, local tester, UX review before/after implementation, final integration owner
 - [x] `AGENTS.md` дополнен разделом `Codex Workflow`: что читать перед задачами, как держать DTO/API контракты синхронными, когда обновлять `memory-bank/`, какие проверки предпочитать
 - [x] Актуализированы агентские версии и ориентиры: `polemica-library:1.8.8`, Flyway `V1` … `V42+`, key backend tests без устаревшего `CardPackServiceProbabilityTest`
 - [x] Добавлен `scripts/codex-check.sh` с целями `quick`, `backend`, `backend-test`, `webapp`, `admin`, `frontend`, `lint`

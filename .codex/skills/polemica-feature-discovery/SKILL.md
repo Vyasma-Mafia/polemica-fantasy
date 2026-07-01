@@ -7,6 +7,8 @@ description: Guide Polemica Fantasy feature discovery with product, design, tech
 
 Use this skill to run a structured product/design discovery pass before implementation.
 
+For large features that proceed to implementation, hand off to `polemica-feature-delivery` after the feature brief, flow, or technical impact map is clear.
+
 ## First Steps
 
 1. Read `AGENTS.md`.
@@ -64,3 +66,5 @@ For implementation handoff, produce:
 - migration/test plan;
 - worker scopes with forbidden areas;
 - verification commands.
+
+Then use `.codex/skills/polemica-feature-delivery` for the plan review, vertical-slice implementation, ownership fan-out, code review, local testing, UX review, and final integration loop.
