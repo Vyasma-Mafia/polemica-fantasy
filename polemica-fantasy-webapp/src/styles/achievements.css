@@ -60,6 +60,24 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.pf-achievements-customization-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 204, 92, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 204, 92, 0.08);
+}
+
+.pf-achievements-customization-cta span {
+  min-width: 0;
+  color: var(--pf-text-heading);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .pf-achievements-empty {
   display: grid;
   gap: 5px;

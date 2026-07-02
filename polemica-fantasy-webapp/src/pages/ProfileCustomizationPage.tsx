@@ -12,16 +12,23 @@ const AUTO_FAVORITE_BADGE_VALUE = ''
 
 type ProfileCustomizationDraft = {
   profileFrameCode: string | null
+  profileTitleCode: string | null
+  profileAccentCode: string | null
+  profileBackgroundCode: string | null
   featuredAchievementCodes: string[]
   favoriteBadgeValue: string
 }
 
 type ProfileFrame = ProfileCustomization['unlockedFrames'][number]
+type ProfileCosmetic = ProfileCustomization['unlockedCosmetics']['titles'][number]
 type FeaturedAchievement = ProfileCustomization['availableFeaturedAchievements'][number]
 type AchievementByCode = Map<string, FeaturedAchievement>
 
 const EMPTY_DRAFT: ProfileCustomizationDraft = {
   profileFrameCode: null,
+  profileTitleCode: null,
+  profileAccentCode: null,
+  profileBackgroundCode: null,
   featuredAchievementCodes: [],
   favoriteBadgeValue: AUTO_FAVORITE_BADGE_VALUE,
 }
@@ -43,6 +50,9 @@ function favoriteBadgeFantasyPlayerIdFromValue(value: string, options: FavoriteB
 function draftFromCustomization(customization: ProfileCustomization): ProfileCustomizationDraft {
   return {
     profileFrameCode: customization.profileFrameCode,
+    profileTitleCode: customization.profileTitleCode,
+    profileAccentCode: customization.profileAccentCode,
+    profileBackgroundCode: customization.profileBackgroundCode,
     featuredAchievementCodes: customization.featuredAchievementCodes,
     favoriteBadgeValue: favoriteBadgeSelectValue(
       customization.favoriteBadgeFantasyPlayerId,
@@ -79,6 +89,47 @@ function FramePicker({
             onClick={() => onChange(frame.code)}
           >
             {frame.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CosmeticPicker({
+  title,
+  emptyLabel,
+  selectedCode,
+  cosmetics,
+  onChange,
+}: {
+  title: string
+  emptyLabel: string
+  selectedCode: string | null
+  cosmetics: ProfileCosmetic[]
+  onChange: (code: string | null) => void
+}) {
+  if (cosmetics.length === 0) return null
+
+  return (
+    <section className="pf-section">
+      <h2 className="pf-section-title">{title}</h2>
+      <div className="pf-showcase-frame-options">
+        <button
+          type="button"
+          className={`pf-showcase-frame-option${selectedCode === null ? ' active' : ''}`}
+          onClick={() => onChange(null)}
+        >
+          {emptyLabel}
+        </button>
+        {cosmetics.map((cosmetic) => (
+          <button
+            key={cosmetic.code}
+            type="button"
+            className={`pf-showcase-frame-option${selectedCode === cosmetic.code ? ' active' : ''}`}
+            onClick={() => onChange(cosmetic.code)}
+          >
+            {cosmetic.name}
           </button>
         ))}
       </div>
@@ -299,6 +350,9 @@ export function ProfileCustomizationPage() {
     saveM.mutate(
       {
         profileFrameCode: draft.profileFrameCode,
+        profileTitleCode: draft.profileTitleCode,
+        profileAccentCode: draft.profileAccentCode,
+        profileBackgroundCode: draft.profileBackgroundCode,
         featuredAchievementCodes: draft.featuredAchievementCodes,
         favoriteBadgeFantasyPlayerId,
       },
@@ -319,6 +373,30 @@ export function ProfileCustomizationPage() {
           profileFrameCode={draft.profileFrameCode}
           frames={customization.unlockedFrames}
           onChange={(profileFrameCode) => updateDraft({ profileFrameCode })}
+        />
+
+        <CosmeticPicker
+          title="Титул"
+          emptyLabel="Без титула"
+          selectedCode={draft.profileTitleCode}
+          cosmetics={customization.unlockedCosmetics.titles}
+          onChange={(profileTitleCode) => updateDraft({ profileTitleCode })}
+        />
+
+        <CosmeticPicker
+          title="Акцент витрины"
+          emptyLabel="Без акцента"
+          selectedCode={draft.profileAccentCode}
+          cosmetics={customization.unlockedCosmetics.accents}
+          onChange={(profileAccentCode) => updateDraft({ profileAccentCode })}
+        />
+
+        <CosmeticPicker
+          title="Фон витрины"
+          emptyLabel="Без фона"
+          selectedCode={draft.profileBackgroundCode}
+          cosmetics={customization.unlockedCosmetics.backgrounds}
+          onChange={(profileBackgroundCode) => updateDraft({ profileBackgroundCode })}
         />
 
         <FeaturedBadgesEditor

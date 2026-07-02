@@ -25,6 +25,15 @@ class UserProfileCustomization(
     @Column(name = "profile_frame_code", length = 96)
     var profileFrameCode: String? = null,
 
+    @Column(name = "profile_title_code", length = 96)
+    var profileTitleCode: String? = null,
+
+    @Column(name = "profile_accent_code", length = 96)
+    var profileAccentCode: String? = null,
+
+    @Column(name = "profile_background_code", length = 96)
+    var profileBackgroundCode: String? = null,
+
     @Column(name = "favorite_badge_fantasy_player_id")
     var favoriteBadgeFantasyPlayerId: Long? = null,
 

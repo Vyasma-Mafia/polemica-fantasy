@@ -156,11 +156,14 @@ class FantasyPlayerAliasMergeIntegrationTest {
         assertTrue(preview.canMerge)
         assertTrue(preview.warnings.any { it.code == "ROSTER_CONFLICTS" })
 
-        fantasyPlayerAdminService.mergeConfirm(
+        val result = fantasyPlayerAdminService.mergeConfirm(
             target.id!!,
             MergeFantasyPlayersRequest(sourceFantasyPlayerId = source.id!!, reason = "same real player"),
         )
 
+        assertTrue(result.auditId > 0)
+        assertEquals(target.id, result.target.id)
+        assertEquals(3, result.target.aliases.size)
         assertFalse(fantasyPlayerRepository.existsById(source.id!!))
         assertEquals(target.id, resolverService.requireByPolemicaUserId(77_002L).id)
         assertEquals(target.id, resolverService.requireByPolemicaUserId(77_003L).id)
@@ -194,6 +197,25 @@ class FantasyPlayerAliasMergeIntegrationTest {
             ),
         )
         assertEquals(3, fantasyPlayerAliasRepository.findAllByFantasyPlayer_IdOrderByPrimaryAliasDescPolemicaUserIdAsc(target.id!!).size)
+        assertEquals(
+            1L,
+            jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM fantasy_player_merge_audit
+                WHERE id = ?
+                  AND source_fantasy_player_id = ?
+                  AND target_fantasy_player_id = ?
+                  AND reason = 'same real player'
+                  AND source_polemica_user_ids = '[77002, 77003]'::jsonb
+                  AND target_polemica_user_ids_before = '[77001]'::jsonb
+                """.trimIndent(),
+                Long::class.java,
+                result.auditId,
+                source.id!!,
+                target.id!!,
+            ),
+        )
     }
 
     @Test

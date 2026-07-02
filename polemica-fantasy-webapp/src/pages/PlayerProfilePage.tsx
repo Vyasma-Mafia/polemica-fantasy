@@ -10,6 +10,7 @@ import { PageHeader } from '../components/PageHeader'
 import { SeriesStatusBadge } from '../components/StatusBadge'
 import { useInitData } from '../context/useInitData'
 import { leagueShortName } from '../lib/leagues'
+import { profileAccentClassSuffix } from '../lib/profileCosmeticClass'
 import { profileFrameClassSuffix } from '../lib/profileFrameClass'
 import { rarityClass } from '../lib/rarity'
 import { shareToTelegram } from '../lib/shareLinks'
@@ -255,6 +256,7 @@ export function PlayerProfilePage() {
   const username = profile.user.username ? `@${profile.user.username}` : null
   const isOwnProfile = meQ.data?.telegramId === profile.user.telegramId
   const profileFrameClass = profileFrameClassSuffix(profile.profileFrame?.code)
+  const profileAccentClass = profileAccentClassSuffix(profile.profileAccent?.styleToken)
 
   return (
     <div className="pf-page">
@@ -262,11 +264,12 @@ export function PlayerProfilePage() {
 
       <div className="pf-profile-header">
         {username && <p className="pf-profile-header__username">{username}</p>}
+        {profile.profileTitle ? <p className="pf-profile-header__title">{profile.profileTitle.name}</p> : null}
         <p className="pf-profile-header__since">
           Участник с {formatDateShort(new Date(profile.memberSince))}
         </p>
         <div className={`pf-profile-frame ${profileFrameClass ? `pf-profile-frame--${profileFrameClass}` : ''}`}>
-          <div className="pf-profile-showcase">
+          <div className={`pf-profile-showcase ${profileAccentClass ? `pf-profile-showcase--accent-${profileAccentClass}` : ''}`}>
             <div className="pf-profile-showcase__summary">
               <strong>{profile.achievementSummary.claimed}</strong>
               <span>из {profile.achievementSummary.totalVisible}</span>

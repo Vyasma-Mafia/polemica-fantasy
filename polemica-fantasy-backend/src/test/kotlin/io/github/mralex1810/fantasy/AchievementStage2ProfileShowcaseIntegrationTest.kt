@@ -262,6 +262,100 @@ class AchievementStage2ProfileShowcaseIntegrationTest {
     }
 
     @Test
+    fun `profile customization returns unlocked profile cosmetics and selected values`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val fixture = createClaimedAchievementFixture(auth, "profile-cosmetics-get", "series_win_1")
+        val tma = tmaAuth(fixture.telegramPlatformId, "ProfileCosmeticsGet")
+        insertProfileCosmeticUnlock(fixture.telegramPlatformId, "series_winner_title", "series_win_1")
+        insertProfileCosmeticUnlock(fixture.telegramPlatformId, "top10_accent", "top10_50")
+
+        mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitleCode").value(nullValue()))
+            .andExpect(jsonPath("$.profileAccentCode").value(nullValue()))
+            .andExpect(jsonPath("$.unlockedCosmetics.titles[0].code").value("series_winner_title"))
+            .andExpect(jsonPath("$.unlockedCosmetics.titles[0].kind").value("TITLE"))
+            .andExpect(jsonPath("$.unlockedCosmetics.accents[0].code").value("top10_accent"))
+            .andExpect(jsonPath("$.unlockedCosmetics.accents[0].kind").value("ACCENT"))
+
+        mockMvc.perform(
+            putJson(
+                tma,
+                """
+                {
+                  "profileFrameCode": null,
+                  "profileTitleCode": "series_winner_title",
+                  "profileAccentCode": "top10_accent",
+                  "featuredAchievementCodes": []
+                }
+                """.trimIndent(),
+            ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitleCode").value("series_winner_title"))
+            .andExpect(jsonPath("$.profileAccentCode").value("top10_accent"))
+
+        mockMvc.perform(
+            get("/api/v1/players/${fixture.telegramPlatformId}/profile")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitle.code").value("series_winner_title"))
+            .andExpect(jsonPath("$.profileTitle.name").value("Победитель серии"))
+            .andExpect(jsonPath("$.profileAccent.code").value("top10_accent"))
+            .andExpect(jsonPath("$.profileAccent.styleToken").value("top10"))
+    }
+
+    @Test
+    fun `profile customization validates profile cosmetic unlock kind availability and stale reads`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val fixture = createClaimedAchievementFixture(auth, "profile-cosmetics-validation", "series_win_1")
+        val tma = tmaAuth(fixture.telegramPlatformId, "ProfileCosmeticsValidation")
+        insertProfileCosmeticUnlock(fixture.telegramPlatformId, "series_winner_title", "series_win_1")
+        insertProfileCosmeticUnlock(fixture.telegramPlatformId, "top10_accent", "top10_50")
+
+        mockMvc.perform(putJson(tma, """{"profileFrameCode":null,"profileTitleCode":"budget_winner_title","featuredAchievementCodes":[]}"""))
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(putJson(tma, """{"profileFrameCode":null,"profileTitleCode":"top10_accent","featuredAchievementCodes":[]}"""))
+            .andExpect(status().isBadRequest)
+
+        jdbcTemplate.update("UPDATE profile_cosmetic SET enabled = FALSE WHERE code = 'series_winner_title'")
+        mockMvc.perform(putJson(tma, """{"profileFrameCode":null,"profileTitleCode":"series_winner_title","featuredAchievementCodes":[]}"""))
+            .andExpect(status().isBadRequest)
+        jdbcTemplate.update("UPDATE profile_cosmetic SET enabled = TRUE WHERE code = 'series_winner_title'")
+
+        mockMvc.perform(putJson(tma, """{"profileFrameCode":null,"profileTitleCode":"series_winner_title","featuredAchievementCodes":[]}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitleCode").value("series_winner_title"))
+
+        jdbcTemplate.update(
+            """
+            DELETE FROM user_cosmetic_unlock
+            WHERE telegram_user_id = ?
+              AND cosmetic_type = 'COSMETIC_UNLOCK'
+              AND cosmetic_code = 'series_winner_title'
+            """.trimIndent(),
+            internalUserId(fixture.telegramPlatformId),
+        )
+
+        mockMvc.perform(get("/api/v1/me/profile-customization").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitleCode").value(nullValue()))
+
+        mockMvc.perform(putJson(tma, """{"profileFrameCode":null,"featuredAchievementCodes":[]}"""))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitleCode").value(nullValue()))
+
+        mockMvc.perform(
+            get("/api/v1/players/${fixture.telegramPlatformId}/profile")
+                .header("Authorization", tma),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.profileTitle").value(nullValue()))
+    }
+
+    @Test
     fun `featured achievement reorder preserves order without display order collisions`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val fixture = createTwoClaimedAchievementsFixture(auth, "reorder-featured", "team_submit_1", "series_win_1")
@@ -492,6 +586,19 @@ class AchievementStage2ProfileShowcaseIntegrationTest {
             """
             INSERT INTO user_cosmetic_unlock (telegram_user_id, cosmetic_type, cosmetic_code, source_type, source_code, unlocked_at)
             VALUES (?, 'PROFILE_FRAME', ?, 'ACHIEVEMENT', ?, now())
+            ON CONFLICT (telegram_user_id, cosmetic_type, cosmetic_code) DO NOTHING
+            """.trimIndent(),
+            internalUserId(telegramId),
+            code,
+            sourceCode,
+        )
+    }
+
+    private fun insertProfileCosmeticUnlock(telegramId: Long, code: String, sourceCode: String) {
+        jdbcTemplate.update(
+            """
+            INSERT INTO user_cosmetic_unlock (telegram_user_id, cosmetic_type, cosmetic_code, source_type, source_code, unlocked_at)
+            VALUES (?, 'COSMETIC_UNLOCK', ?, 'ACHIEVEMENT', ?, now())
             ON CONFLICT (telegram_user_id, cosmetic_type, cosmetic_code) DO NOTHING
             """.trimIndent(),
             internalUserId(telegramId),

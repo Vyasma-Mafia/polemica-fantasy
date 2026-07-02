@@ -91,6 +91,20 @@ export interface ProfileFrame {
   assetUrl: string | null
 }
 
+export interface ProfileCosmetic {
+  code: string
+  kind: 'TITLE' | 'ACCENT' | 'BACKGROUND' | string
+  name: string
+  description: string | null
+  styleToken: string | null
+}
+
+export interface ProfileCosmeticOptions {
+  titles: ProfileCosmetic[]
+  accents: ProfileCosmetic[]
+  backgrounds: ProfileCosmetic[]
+}
+
 export interface AchievementBadge {
   code: string
   title: string
@@ -102,6 +116,10 @@ export interface AchievementBadge {
 export interface ProfileCustomization {
   profileFrameCode: string | null
   unlockedFrames: ProfileFrame[]
+  profileTitleCode: string | null
+  profileAccentCode: string | null
+  profileBackgroundCode: string | null
+  unlockedCosmetics: ProfileCosmeticOptions
   featuredAchievementCodes: string[]
   availableFeaturedAchievements: AchievementBadge[]
   favoriteBadgeFantasyPlayerId: number | null
@@ -116,6 +134,9 @@ export interface FavoriteBadgePlayerOption {
 
 export interface UpdateProfileCustomizationRequest {
   profileFrameCode: string | null
+  profileTitleCode: string | null
+  profileAccentCode: string | null
+  profileBackgroundCode: string | null
   featuredAchievementCodes: string[]
   favoriteBadgeFantasyPlayerId: number | null
 }
@@ -841,6 +862,9 @@ export interface PlayerProfile {
   seriesWins: PlayerSeriesWins
   achievementSummary: PlayerAchievementSummary
   profileFrame: ProfileFrame | null
+  profileTitle: ProfileCosmetic | null
+  profileAccent: ProfileCosmetic | null
+  profileBackground: ProfileCosmetic | null
   featuredAchievements: AchievementBadge[]
   nextAchievement: PlayerNextAchievement | null
   seriesHistory: PlayerSeriesResult[]

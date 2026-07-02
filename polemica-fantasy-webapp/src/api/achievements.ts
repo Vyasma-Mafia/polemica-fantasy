@@ -24,6 +24,7 @@ export function useClaimAchievement(initData: string | undefined) {
       void queryClient.invalidateQueries({ queryKey: ['achievements'] })
       void queryClient.invalidateQueries({ queryKey: ['me'] })
       void queryClient.invalidateQueries({ queryKey: ['cards'] })
+      void queryClient.invalidateQueries({ queryKey: ['profile-customization'] })
     },
   })
 }
@@ -37,6 +38,7 @@ export function useSelectAchievementCardChoice(initData: string | undefined) {
       void queryClient.invalidateQueries({ queryKey: ['achievements'] })
       void queryClient.invalidateQueries({ queryKey: ['me'] })
       void queryClient.invalidateQueries({ queryKey: ['cards'] })
+      void queryClient.invalidateQueries({ queryKey: ['profile-customization'] })
     },
   })
 }

@@ -16,6 +16,7 @@ import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerRepository
 import io.github.mralex1810.fantasy.repository.TournamentPlayerRepository
+import jakarta.persistence.EntityManager
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
@@ -34,6 +35,7 @@ class FantasyPlayerAdminService(
     private val resolverService: FantasyPlayerResolverService,
     private val jdbcTemplate: JdbcTemplate,
     private val objectMapper: ObjectMapper,
+    private val entityManager: EntityManager,
 ) {
 
     @Transactional(readOnly = true)
@@ -134,20 +136,24 @@ class FantasyPlayerAdminService(
             )
         }
 
-        val sourceAliases = aliasesFor(source.id!!)
-        val targetAliasesBefore = aliasesFor(target.id!!)
-        val auditId = insertMergeAudit(source.id!!, target.id!!, reason, sourceAliases, targetAliasesBefore)
+        val sourceId = source.id!!
+        val targetPlayerId = target.id!!
+        val sourceAliases = aliasesFor(sourceId)
+        val targetAliasesBefore = aliasesFor(targetPlayerId)
+        val auditId = insertMergeAudit(sourceId, targetPlayerId, reason, sourceAliases, targetAliasesBefore)
 
-        transferDirectReferences(source.id!!, target.id!!)
-        transferRosterReferences(source.id!!, target.id!!)
-        jdbcTemplate.update("UPDATE fantasy_player_alias SET primary_alias = FALSE WHERE fantasy_player_id = ?", source.id!!)
+        transferDirectReferences(sourceId, targetPlayerId)
+        transferRosterReferences(sourceId, targetPlayerId)
+        jdbcTemplate.update("UPDATE fantasy_player_alias SET primary_alias = FALSE WHERE fantasy_player_id = ?", sourceId)
         jdbcTemplate.update(
             "UPDATE fantasy_player_alias SET fantasy_player_id = ? WHERE fantasy_player_id = ?",
-            target.id!!,
-            source.id!!,
+            targetPlayerId,
+            sourceId,
         )
-        fantasyPlayerRepository.delete(source)
-        return FantasyPlayerMergeResultDto(auditId = auditId, target = target.toDto())
+        jdbcTemplate.update("DELETE FROM fantasy_player WHERE id = ?", sourceId)
+        entityManager.clear()
+        val refreshedTarget = fantasyPlayerRepository.findById(targetPlayerId).orElseThrow { notFound(targetPlayerId) }
+        return FantasyPlayerMergeResultDto(auditId = auditId, target = refreshedTarget.toDto())
     }
 
     private fun FantasyPlayer.toDto(): FantasyPlayerAdminDto {

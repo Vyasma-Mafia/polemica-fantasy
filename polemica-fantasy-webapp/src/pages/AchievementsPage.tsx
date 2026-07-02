@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { useAchievements, useClaimAchievement, useSelectAchievementCardChoice } from '../api/achievements'
 import type { AchievementCategory, AchievementItem, AchievementPendingCardChoice, AchievementReward } from '../api/types'
@@ -46,6 +47,7 @@ export function AchievementsPage() {
   const selectChoiceM = useSelectAchievementCardChoice(initData)
   const [selectedTab, setSelectedTab] = useState<AchievementTab | null>(null)
   const [claimingCode, setClaimingCode] = useState<string | null>(null)
+  const [profileCustomizationReady, setProfileCustomizationReady] = useState(false)
   const [pendingChoicesByCode, setPendingChoicesByCode] = useState<Record<string, AchievementPendingCardChoice[]>>({})
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
 
@@ -97,6 +99,14 @@ export function AchievementsPage() {
       )}
       {selectChoiceM.isError && (
         <p className="pf-err">{selectChoiceM.error instanceof ApiError ? selectChoiceM.error.message : String(selectChoiceM.error)}</p>
+      )}
+      {profileCustomizationReady && (
+        <div className="pf-achievements-customization-cta">
+          <span>Новое оформление доступно в витрине профиля.</span>
+          <Link to="/profile-customization" className="pf-btn pf-btn--small">
+            Настроить витрину
+          </Link>
+        </div>
       )}
 
       <div className="pf-tabs pf-tabs--scroll pf-achievements-tabs" role="group" aria-label="Фильтр достижений">
@@ -150,6 +160,7 @@ export function AchievementsPage() {
                             [achievement.code]: result.pendingChoices ?? [],
                           }))
                           setSelectedOptions((prev) => ({ ...prev, [key]: [] }))
+                          if (hasProfileCosmeticUnlock(result.cosmeticUnlocks)) setProfileCustomizationReady(true)
                           if (result.claimedAt) setSelectedTab(null)
                         },
                       },
@@ -163,6 +174,7 @@ export function AchievementsPage() {
                           ...prev,
                           [achievement.code]: result.pendingChoices ?? [],
                         }))
+                        if (hasProfileCosmeticUnlock(result.cosmeticUnlocks)) setProfileCustomizationReady(true)
                         if (result.claimedAt) setSelectedTab(null)
                       },
                       onSettled: () => setClaimingCode(null),
@@ -435,6 +447,10 @@ function rewardPriority(achievement: AchievementItem): number {
 
 function hasCardChoiceReward(rewards: AchievementReward[]): boolean {
   return rewards.some((reward) => reward.type === 'CARD_CHOICE_ROLL')
+}
+
+function hasProfileCosmeticUnlock(unlocks: { type: string; code: string }[] | undefined): boolean {
+  return unlocks?.some((unlock) => unlock.type === 'COSMETIC_UNLOCK') ?? false
 }
 
 function categoryOrder(code: string, fallback: number): number {

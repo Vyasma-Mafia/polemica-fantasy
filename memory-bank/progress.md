@@ -2,6 +2,13 @@
 
 ## Что реализовано
 
+### Backend+TMA: профильная косметика из достижений (июль 2026)
+- [x] Зафиксирован design brief `docs/features/DESIGN-PROFILE-COSMETICS.md`: `COSMETIC_UNLOCK` доводится от claim/unlock до выбора в витрине профиля и публичного отображения; `PROFILE_FRAME` остается отдельным рабочим flow, `BADGE_STYLE` остается через featured achievements.
+- [x] Backend vertical slice: Flyway **V67** добавляет каталог `profile_cosmetic`, выбранные поля `profile_title_code` / `profile_accent_code` / `profile_background_code`, explicit seed текущих title/accent reward codes и fallback для уже выданных `COSMETIC_UNLOCK` rows.
+- [x] User API `/api/v1/me/profile-customization` отдаёт unlocked cosmetics и выбранные title/accent/background, валидирует выбор по enabled catalog + kind + unlock текущего пользователя, а stale saved values читает как `null`. Public profile DTO отдаёт selected title/accent/background.
+- [x] TMA `/profile-customization` получила выбор титула, акцента и зарезервированного фона; публичный профиль показывает титул под именем и allowlisted accent на showcase block. `/achievements` инвалидирует profile-customization после cosmetic claim и показывает CTA **Настроить витрину**.
+- [x] Admin backend validation запрещает `COSMETIC_UNLOCK` reward code без `profile_cosmetic` catalog row. Проверки: backend `compileKotlin compileTestKotlin` и TMA `npm run build` прошли; targeted Testcontainers integration tests не стартовали локально из-за недоступного Docker provider.
+
 ### TMA: вкладки достижений по состоянию награды (июль 2026)
 - [x] `/achievements` теперь использует primary-фильтры **Забрать / Не завершено / Получено** вместо просмотра только по backend-категориям.
 - [x] По умолчанию открывается **Забрать**, если есть незабранные награды; иначе **Не завершено**. Pending `CARD_CHOICE_ROLL` остаётся actionable: после reload пользователь видит CTA **Выбрать**, а после выбора вариантов карточная награда продолжает прежний claim-flow.

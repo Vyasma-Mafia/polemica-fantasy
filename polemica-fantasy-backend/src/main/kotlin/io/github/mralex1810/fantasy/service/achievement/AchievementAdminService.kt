@@ -15,6 +15,7 @@ import io.github.mralex1810.fantasy.repository.AchievementAdminStatsProjection
 import io.github.mralex1810.fantasy.repository.AchievementDefinitionRepository
 import io.github.mralex1810.fantasy.repository.AchievementRewardRepository
 import io.github.mralex1810.fantasy.repository.CardSkinRepository
+import io.github.mralex1810.fantasy.repository.ProfileCosmeticRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserAchievementRepository
 import jakarta.persistence.EntityManager
@@ -31,6 +32,7 @@ class AchievementAdminService(
     private val telegramUserRepository: TelegramUserRepository,
     private val userAchievementRepository: UserAchievementRepository,
     private val cardSkinRepository: CardSkinRepository,
+    private val profileCosmeticRepository: ProfileCosmeticRepository,
     private val achievementProgressCalculator: AchievementProgressCalculator,
     private val objectMapper: ObjectMapper,
     private val entityManager: EntityManager,
@@ -152,6 +154,9 @@ class AchievementAdminService(
                     throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.amount must be null for $type")
                 }
                 val rewardCode = normalizedText(request.code, "reward.code", required = true, max = 96)!!
+                if (type == "COSMETIC_UNLOCK" && !profileCosmeticRepository.existsById(rewardCode)) {
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "reward.code must reference profile_cosmetic for COSMETIC_UNLOCK")
+                }
                 NormalizedReward(type = type, amount = null, code = rewardCode, metadata = metadata, displayOrder = displayOrder)
             }
             in cardRewardTypes -> {
