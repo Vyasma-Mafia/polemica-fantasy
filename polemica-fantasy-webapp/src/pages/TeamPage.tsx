@@ -34,6 +34,16 @@ function leagueCodeEquals(a: string, b: string): boolean {
   return a.trim().toUpperCase() === b.trim().toUpperCase()
 }
 
+type TeamSelectionState = {
+  scope: string
+  ids: number[]
+  hydrated: boolean
+}
+
+function teamSelectionScope(seriesId: number, leagueCode: string): string {
+  return `${seriesId}:${leagueCode.trim().toUpperCase()}`
+}
+
 export function TeamPage() {
   const { seriesId } = useParams<{ seriesId: string }>()
   const sid = Number(seriesId)
@@ -58,6 +68,7 @@ export function TeamPage() {
   const leagues = leaguesQ.data ?? []
   const activeLeagueCode = resolveActiveLeagueCode(leagues, requestedLeagueCode)
   const activeLeague = leagues.find((league) => leagueCodeEquals(league.code, activeLeagueCode))
+  const selectionScope = teamSelectionScope(sid, activeLeagueCode)
 
   const cardsQ = useQuery({
     queryKey: ['cards', 'team', sid, seriesQ.data?.tournamentId, initData],
@@ -97,20 +108,37 @@ export function TeamPage() {
     retry: false,
   })
 
-  const [selected, setSelected] = useState<number[]>([])
+  const [selectionState, setSelectionState] = useState<TeamSelectionState>({
+    scope: '',
+    ids: [],
+    hydrated: false,
+  })
   const [rarityFilter, setRarityFilter] = useState<Rarity | ''>('')
   const [playerFantasyId, setPlayerFantasyId] = useState<number | ''>('')
-  const [teamSelectionHydrated, setTeamSelectionHydrated] = useState(false)
   const [unlistingListingId, setUnlistingListingId] = useState<number | null>(null)
+  const selectionMatchesActiveLeague = selectionState.scope === selectionScope
+  const selected = selectionMatchesActiveLeague ? selectionState.ids : []
+  const teamSelectionHydrated = selectionMatchesActiveLeague && selectionState.hydrated
+
+  const setSelectedForActiveLeague = (updater: number[] | ((prev: number[]) => number[])) => {
+    setSelectionState((prev) => {
+      const currentIds = prev.scope === selectionScope ? prev.ids : []
+      const nextIds = typeof updater === 'function' ? updater(currentIds) : updater
+      return {
+        scope: selectionScope,
+        ids: nextIds,
+        hydrated: prev.scope === selectionScope ? prev.hydrated : false,
+      }
+    })
+  }
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setSelected([])
-      setRarityFilter('')
-      setPlayerFantasyId('')
-      setTeamSelectionHydrated(false)
-    })
-  }, [sid, activeLeagueCode])
+    setSelectionState((prev) =>
+      prev.scope === selectionScope ? prev : { scope: selectionScope, ids: [], hydrated: false },
+    )
+    setRarityFilter('')
+    setPlayerFantasyId('')
+  }, [selectionScope])
 
   useEffect(() => {
     if (!leagues.length) return
@@ -122,17 +150,18 @@ export function TeamPage() {
 
   useEffect(() => {
     if (!teamQ.isSuccess || teamSelectionHydrated) return
-    queueMicrotask(() => {
-      if (teamQ.data?.slots?.length) {
-        setSelected(
-          [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
-        )
-      } else if (selected.length === 0) {
-        setSelected([])
+    const apiSelected = teamQ.data?.slots?.length
+      ? [...teamQ.data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId)
+      : null
+    setSelectionState((prev) => {
+      if (prev.scope === selectionScope && prev.hydrated) return prev
+      return {
+        scope: selectionScope,
+        ids: apiSelected ?? (prev.scope === selectionScope ? prev.ids : []),
+        hydrated: true,
       }
-      setTeamSelectionHydrated(true)
     })
-  }, [teamQ.isSuccess, teamQ.data, teamSelectionHydrated, selected.length])
+  }, [teamQ.isSuccess, teamQ.data, teamSelectionHydrated, selectionScope])
   const cardById = useMemo(() => {
     const m = new Map<number, UserCardItem>()
     for (const c of cardsQ.data ?? []) m.set(c.id, c)
@@ -144,7 +173,7 @@ export function TeamPage() {
   )
 
   const toggle = (id: number) => {
-    setSelected((prev) => {
+    setSelectedForActiveLeague((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
       if (prev.length >= (activeLeague?.maxTeamSize ?? 3)) return prev
       const adding = cardById.get(id)
@@ -179,8 +208,11 @@ export function TeamPage() {
       return submitLeagueTeam(sid, activeLeagueCode, selected, initData)
     },
     onSuccess: (data) => {
-      setSelected([...data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId))
-      setTeamSelectionHydrated(true)
+      setSelectionState({
+        scope: selectionScope,
+        ids: [...data.slots].sort((a, b) => a.slot - b.slot).map((sl) => sl.userCardId),
+        hydrated: true,
+      })
       qc.setQueryData<FantasyTeamDto | null>(['fantasy-team', sid, activeLeagueCode, initData], data)
       void qc.invalidateQueries({ queryKey: ['cards', 'team', sid] })
     },
@@ -321,7 +353,7 @@ export function TeamPage() {
         <button
           type="button"
           className="pf-btn pf-btn--primary pf-btn--block"
-          disabled={selected.length < minTeamSize || deadlinePassed || submit.isPending}
+          disabled={!teamSelectionHydrated || selected.length < minTeamSize || deadlinePassed || submit.isPending}
           onClick={() => submit.mutate()}
         >
           {teamQ.isSuccess && teamQ.data ? `Обновить (${activeLeagueName})` : `Отправить (${activeLeagueName})`}
@@ -422,6 +454,7 @@ export function TeamPage() {
             legendarySlotsUsed >= activeLeague.maxLegendaryCount
           const listed = Boolean(c.activeMarketplaceListing)
           const gridDisabled =
+            !teamSelectionHydrated ||
             deadlinePassed ||
             dead ||
             playerAlreadyPicked ||

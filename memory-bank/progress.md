@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Backend: уведомление при админском начислении фантиков (июль 2026)
+- [x] `UserService.grantFantikiByTelegramId` после успешного `ADMIN_GRANT` публикует событие с telegram id, суммой, балансом после начисления и нормализованной причиной.
+- [x] `AdminFantikiGrantNotificationListener` доставляет сообщение через `NotificationDeliveryService` в категории `ADMIN_BROADCAST` («Сообщения от администрации»), без Markdown-режима, чтобы причина отображалась буквально.
+
 ### Backend+TMA: профильная косметика из достижений (июль 2026)
 - [x] Зафиксирован design brief `docs/features/DESIGN-PROFILE-COSMETICS.md`: `COSMETIC_UNLOCK` доводится от claim/unlock до выбора в витрине профиля и публичного отображения; `PROFILE_FRAME` остается отдельным рабочим flow, `BADGE_STYLE` остается через featured achievements.
 - [x] Backend vertical slice: Flyway **V67** добавляет каталог `profile_cosmetic`, выбранные поля `profile_title_code` / `profile_accent_code` / `profile_background_code`, explicit seed текущих title/accent reward codes и fallback для уже выданных `COSMETIC_UNLOCK` rows.
@@ -696,6 +700,7 @@
 - [x] Проект `polemica-fantasy-webapp/` (Vite + React 19 + TS)
 - [x] `@telegram-apps/sdk` + `InitDataProvider` (`retrieveRawInitData`, опционально `VITE_DEV_INIT_DATA`)
 - [x] Страницы: турниры, хаб турнира, выбор серии, турнирный лидерборд (Общий + по сериям), правила, история фэнтези, участники, серия, сборка команды, лидерборд серии, коллекция (`?tournamentId`, фильтр турнира — select по активным турнирам API)
+- [x] **TeamPage league race fix (2026-07-03):** выбор карт привязан к `seriesId:leagueCode`; stale selection с другой вкладки лиги не отображается и не отправляется, submit/grid блокируются до гидрации текущей лиги. Проверка: `polemica-fantasy-webapp npm run build`.
 - [x] UI: тёмная тема, градиентные CTA, карточки по редкости (фото игрока с fallback на арт шаблона, цветная рамка по редкости в коллекции/команде/истории фэнтези), `PageHeader` / бейджи статусов
 - [x] TanStack Query, React Router, proxy `/api` в `vite.config.ts`
 - [x] **Agent B7:** анимация открытия пака — `components/PackOpening.tsx` + стили `pf-pack-open-*` в `index.css`; интеграция в `StorePage` (имя пака из кэша query), кнопка «В коллекцию» → `/cards`

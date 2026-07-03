@@ -3,11 +3,13 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.admin.response.FantikiTransactionDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiTransactionsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
+import io.github.mralex1810.fantasy.event.AdminFantikiGrantNotificationEvent
 import io.github.mralex1810.fantasy.entity.FantikiTransaction
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.repository.FantikiTransactionRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Pageable
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
@@ -20,6 +22,7 @@ class UserService(
     private val telegramUserRepository: TelegramUserRepository,
     private val fantikiTransactionRepository: FantikiTransactionRepository,
     private val telegramUserBootstrapService: TelegramUserBootstrapService,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -141,14 +144,24 @@ class UserService(
     @Transactional
     fun grantFantikiByTelegramId(telegramUserId: Long, amount: Long, adminReason: String): UserProfileDto {
         val user = getOrCreateAndUpdateProfile(telegramUserId, null, null)
+        val normalizedAdminReason = normalizeAdminReason(adminReason)
         addBalanceWithAdminReason(
             user.id!!,
             amount,
             FantikiTransactionReason.ADMIN_GRANT,
-            normalizeAdminReason(adminReason),
+            normalizedAdminReason,
         )
         val fresh = telegramUserRepository.findById(user.id!!).get()
-        return toProfileDto(fresh)
+        val profile = toProfileDto(fresh)
+        eventPublisher.publishEvent(
+            AdminFantikiGrantNotificationEvent(
+                telegramUserId = profile.telegramId,
+                amount = amount,
+                balanceAfter = profile.fantiki,
+                adminReason = normalizedAdminReason,
+            ),
+        )
+        return profile
     }
 
     @Transactional
