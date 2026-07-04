@@ -5,7 +5,7 @@ import { useTrackProductEvent } from '../api/antiChurn'
 import { ApiError, apiGet } from '../api/client'
 import { fetchSeriesLeagues, submitLeagueTeam, updateLeagueTeam } from '../api/leagues'
 import { cancelMarketplaceListing } from '../api/marketplace'
-import { fetchEconomyInfo } from '../api/userEconomy'
+import { fetchEconomyInfo, renewUserCard } from '../api/userEconomy'
 import type { FantasyTeamDto, Rarity, UserCardItem, UserProfile, UserSeriesDetail } from '../api/types'
 import { BudgetProgressBar } from '../components/BudgetProgressBar'
 import { LeagueTabs } from '../components/LeagueTabs'
@@ -240,6 +240,18 @@ export function TeamPage() {
       setUnlistingListingId(null)
     },
   })
+  const renewCard = useMutation({
+    mutationFn: (cardId: number) => renewUserCard(initData!, cardId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      void qc.invalidateQueries({ queryKey: ['me'] })
+      void qc.invalidateQueries({ queryKey: ['fantasy-team', sid] })
+      void qc.invalidateQueries({ queryKey: ['fantasy-teams'] })
+    },
+    onError: (e: Error) => {
+      window.alert(e instanceof ApiError ? e.message : e.message || 'Не удалось продлить контракт')
+    },
+  })
 
   const now = useNow()
   const deadlinePassed = useMemo(() => {
@@ -292,6 +304,13 @@ export function TeamPage() {
     const next = new URLSearchParams(searchParams)
     next.set('league', code.toUpperCase())
     setSearchParams(next, { replace: true })
+  }
+
+  const runRenew = (c: UserCardItem) => {
+    if (!economyQ.data) return
+    const cost = economyQ.data.renewalCosts[c.rarity]
+    if (!window.confirm(`Продлить контракт за ${cost}₣?`)) return
+    renewCard.mutate(c.id)
   }
 
   return (
@@ -465,7 +484,7 @@ export function TeamPage() {
           const otherLeaguesInSeries =
             c.leaguesInSeries?.filter((code) => !leagueCodeEquals(code, activeLeagueCode)) ?? []
           const gridTitle = dead
-            ? 'Контракт истёк — продлите в коллекции'
+            ? 'Контракт истёк — продлите карту'
             : playerAlreadyPicked
               ? 'Этот игрок уже в команде'
               : budgetBlocked
@@ -479,6 +498,25 @@ export function TeamPage() {
                   : undefined
           const listingId = c.activeMarketplaceListing?.listingId ?? null
           const unlistingThisCard = listingId != null && unlistingListingId === listingId
+          const renewCost = economyQ.data?.renewalCosts[c.rarity] ?? null
+          const renewalLimitReached =
+            economyQ.data != null && c.timesRenewed >= economyQ.data.maxRenewals
+          const renewalBalanceBlocked =
+            renewCost != null && meQ.data != null && meQ.data.fantiki < renewCost
+          const renewDisabled =
+            !economyQ.data ||
+            renewCard.isPending ||
+            renewalLimitReached ||
+            renewalBalanceBlocked ||
+            listingId != null
+          const renewTitle = renewalLimitReached
+            ? 'Игрок уходит на покой'
+            : renewalBalanceBlocked
+              ? 'Не хватает фантиков'
+              : listingId != null
+                ? 'Сначала снимите карту с продажи'
+                : undefined
+          const renewingThisCard = renewCard.isPending && renewCard.variables === c.id
           return (
             <li key={c.id} className="pf-team-grid__item">
               <button
@@ -541,6 +579,23 @@ export function TeamPage() {
                   }}
                 >
                   {unlistingThisCard ? 'Снимаем…' : 'Снять с продажи'}
+                </button>
+              )}
+              {dead && (
+                <button
+                  type="button"
+                  className="pf-team-card__renew-btn"
+                  disabled={renewDisabled}
+                  title={renewTitle}
+                  onClick={() => runRenew(c)}
+                >
+                  {renewingThisCard
+                    ? 'Продлеваем…'
+                    : renewalLimitReached
+                      ? 'Лимит продлений'
+                      : renewCost != null
+                        ? `Продлить (${renewCost}₣)`
+                        : 'Продлить'}
                 </button>
               )}
             </li>

@@ -133,6 +133,30 @@ button.pf-mini-card:disabled {
   cursor: not-allowed;
 }
 
+.pf-team-card__renew-btn {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  min-height: 32px;
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  border-radius: 8px;
+  background: rgba(120, 53, 15, 0.86);
+  color: #fef3c7;
+  padding: 7px 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.pf-team-card__renew-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .pf-team-card--picked {
   border-color: #a78bfa;
   box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.25);

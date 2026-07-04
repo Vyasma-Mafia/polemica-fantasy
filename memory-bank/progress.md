@@ -2,6 +2,11 @@
 
 ## Что реализовано
 
+### DX: Telegram support export (июль 2026)
+- [x] Добавлен `scripts/telegram-support-export/export_support_messages.py` для выгрузки support-супергруппы через Telegram user-account MTProto на Telethon.
+- [x] Скрипт умеет `--list-dialogs`, читать чат по `--chat`, по умолчанию оставлять только forwarded user messages, ограничивать период/лимит и писать JSONL/CSV.
+- [x] Дополнительно генерируется первичный Markdown-отчет `support-requests.md` с эвристической раскладкой на bug/feature/question/noise; финальная продуктовая кластеризация остается ручным/LLM-этапом после выгрузки.
+
 ### Backend: уведомление при админском начислении фантиков (июль 2026)
 - [x] `UserService.grantFantikiByTelegramId` после успешного `ADMIN_GRANT` публикует событие с telegram id, суммой, балансом после начисления и нормализованной причиной.
 - [x] `AdminFantikiGrantNotificationListener` доставляет сообщение через `NotificationDeliveryService` в категории `ADMIN_BROADCAST` («Сообщения от администрации»), без Markdown-режима, чтобы причина отображалась буквально.
