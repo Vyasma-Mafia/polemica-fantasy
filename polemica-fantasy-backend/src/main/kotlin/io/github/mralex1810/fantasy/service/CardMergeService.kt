@@ -203,8 +203,6 @@ class CardMergeService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Preview does not match selected skin")
         }
 
-        val sourcePerkIds = cards.flatMap { cardPerkIds(it) }.toSet()
-        validateOfferedPerksStillAvailable(jsonStringList(preview.offeredPerkIds), sourcePerkIds)
         val selectedPerkIds = resolveSelectedPerkIds(
             operation = request.operation,
             fixedPerkIds = jsonStringList(preview.fixedPerkIds),
@@ -560,15 +558,6 @@ class CardMergeService(
                 else -> 0
             }
         }
-
-    private fun validateOfferedPerksStillAvailable(offeredPerkIds: List<String>, sourcePerkIds: Set<String>) {
-        val randomOfferedIds = offeredPerkIds.filter { it !in sourcePerkIds }
-        if (randomOfferedIds.isEmpty()) return
-        val currentRandomIds = perkRepository.findAllByCanAppearOnRandomCardsTrueOrderById().map { it.id }.toSet()
-        if (randomOfferedIds.any { it !in currentRandomIds }) {
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Offered merge perk is no longer available")
-        }
-    }
 
     private fun loadPerks(selectedPerkIds: List<String>): List<Perk> {
         val found = perkRepository.findAllByIdIn(selectedPerkIds).associateBy { it.id }

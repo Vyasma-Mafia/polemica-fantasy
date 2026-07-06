@@ -104,6 +104,41 @@ class CardMergeServiceIntegrationTest {
 
     @Test
     @Transactional
+    fun `confirm honors promised preview even when selected offered perk leaves random pool`() {
+        val user = createUser(991_003L)
+        val fp = createFantasyPlayer(991_003L, "merge-promised-preview")
+        val template = cardPackService.findOrCreateCardTemplateForPerks(fp, Rarity.COMMON, emptyList())
+        val cards = listOf(
+            saveCard(user, template),
+            saveCard(user, template),
+            saveCard(user, template),
+        )
+
+        val preview = cardMergeService.preview(
+            user,
+            CardMergePreviewRequest(CardMergeOperation.COMMON_TO_RARE, cards.map { it.id!! }),
+        )
+        val promisedPerkId = preview.selectablePerks.first().id
+        val promisedPerk = perkRepository.findById(promisedPerkId).orElseThrow()
+        promisedPerk.canAppearOnRandomCards = false
+        perkRepository.saveAndFlush(promisedPerk)
+
+        val response = cardMergeService.confirm(
+            user,
+            CardMergeConfirmRequest(
+                operation = CardMergeOperation.COMMON_TO_RARE,
+                inputUserCardIds = cards.map { it.id!! },
+                selectedPerkIds = listOf(promisedPerkId),
+                previewId = preview.previewId,
+            ),
+        )
+
+        assertEquals(Rarity.RARE, response.card.rarity)
+        assertEquals(listOf(promisedPerkId), response.card.perks.map { it.perkId })
+    }
+
+    @Test
+    @Transactional
     fun `RARE preview handles ABC AAB and AAA perk selection rules`() {
         val user = createUser(991_002L)
         val fp = createFantasyPlayer(991_002L, "merge-rare")
