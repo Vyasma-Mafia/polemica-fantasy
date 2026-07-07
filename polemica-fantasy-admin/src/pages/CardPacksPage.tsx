@@ -167,6 +167,7 @@ export function CardPacksPage() {
         rowKey="id"
         loading={pq.isLoading}
         dataSource={sortedPacks}
+        pagination={false}
         scroll={{ x: true }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
@@ -250,7 +251,7 @@ export function CardPacksPage() {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={720}
       >
         <Form
@@ -462,7 +463,7 @@ export function CardPacksPage() {
         open={editId != null}
         onCancel={() => setEditId(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={720}
       >
         {editing && (

@@ -186,6 +186,7 @@ export function AchievementsPage() {
         rowKey="code"
         loading={achievementsQ.isLoading}
         dataSource={rows}
+        pagination={false}
         scroll={{ x: true }}
         columns={[
           { title: 'Code', dataIndex: 'code', width: 190, fixed: 'left' },
@@ -261,7 +262,7 @@ export function AchievementsPage() {
         open={editRow != null}
         onClose={() => setEditRow(null)}
         width={760}
-        destroyOnClose
+        destroyOnHidden
       >
         {editRow && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -464,7 +465,7 @@ function DryRunCard({
         <Table<AchievementDryRunRowDto>
           rowKey="code"
           size="small"
-          pagination={{ pageSize: 5 }}
+          pagination={false}
           dataSource={rows}
           columns={[
             { title: 'Code', dataIndex: 'code' },

@@ -192,6 +192,7 @@ export function TournamentDetailPage() {
         rowKey="id"
         loading={sq.isLoading}
         dataSource={sq.data}
+        pagination={false}
         style={{ marginBottom: 24 }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
@@ -307,6 +308,7 @@ export function TournamentDetailPage() {
         rowKey="id"
         loading={tq.isLoading}
         dataSource={t?.players}
+        pagination={false}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
           { title: 'Polemica user', dataIndex: 'polemicaUserId' },
@@ -398,7 +400,7 @@ export function TournamentDetailPage() {
         open={addPlayerOpen}
         onCancel={() => setAddPlayerOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <PlayerAddForm
           loading={addPlayer.isPending}
@@ -413,7 +415,7 @@ export function TournamentDetailPage() {
         open={seriesOpen}
         onCancel={() => setSeriesOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={560}
       >
         <SeriesFormModal

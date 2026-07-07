@@ -153,6 +153,7 @@ export function CardTemplatesPage() {
         rowKey="id"
         loading={cq.isLoading}
         dataSource={cq.data}
+        pagination={false}
         scroll={{ x: true }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
@@ -218,7 +219,7 @@ export function CardTemplatesPage() {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           layout="vertical"
@@ -259,7 +260,7 @@ export function CardTemplatesPage() {
         open={editId != null}
         onCancel={() => setEditId(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         {editing && (
           <Form
@@ -301,7 +302,7 @@ export function CardTemplatesPage() {
         open={achOpen != null}
         onCancel={() => setAchOpen(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         {perkRow && (
           <Form

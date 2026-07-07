@@ -1,0 +1,1 @@
+export const ADMIN_UNPAGINATED_SIZE = 10000

@@ -2,6 +2,7 @@ import { Select, Space, Table, Tag, Typography } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
+import { ADMIN_UNPAGINATED_SIZE } from '../api/pagination'
 import { getFantikiTransactions } from '../api/users'
 import type { FantikiTransactionDto } from '../api/types'
 
@@ -28,26 +29,20 @@ export function FantikiAdjustmentsTable({
   defaultReason = 'ADMIN_GRANT',
   enabled = true,
 }: Props) {
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
   const [reasonFilter, setReasonFilter] = useState<string>(defaultReason ?? 'ALL')
-
-  useEffect(() => {
-    setPage(0)
-  }, [telegramUserId])
 
   useEffect(() => {
     setReasonFilter(defaultReason ?? 'ALL')
   }, [defaultReason])
 
   const query = useQuery({
-    queryKey: ['admin', 'fantiki-transactions', telegramUserId ?? null, reasonFilter, page, pageSize],
+    queryKey: ['admin', 'fantiki-transactions', telegramUserId ?? null, reasonFilter],
     queryFn: () =>
       getFantikiTransactions({
         telegramUserId,
         reason: reasonFilter === 'ALL' ? null : reasonFilter,
-        page,
-        size: pageSize,
+        page: 0,
+        size: ADMIN_UNPAGINATED_SIZE,
       }),
     enabled,
   })
@@ -107,7 +102,6 @@ export function FantikiAdjustmentsTable({
         value={reasonFilter}
         onChange={(nextReason) => {
           setReasonFilter(nextReason)
-          setPage(0)
         }}
       />
       <Table<FantikiTransactionDto>
@@ -116,16 +110,7 @@ export function FantikiAdjustmentsTable({
         loading={query.isLoading}
         dataSource={query.data?.content ?? []}
         columns={columns}
-        pagination={{
-          current: page + 1,
-          pageSize,
-          total: query.data?.totalElements ?? 0,
-          showSizeChanger: true,
-          onChange: (nextPage, nextPageSize) => {
-            setPage(nextPage - 1)
-            setPageSize(nextPageSize)
-          },
-        }}
+        pagination={false}
       />
     </Space>
   )

@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import { getCardMerge, listCardMerges } from '../api/cardMerges'
+import { ADMIN_UNPAGINATED_SIZE } from '../api/pagination'
 import type {
   AdminCardMergeDetailDto,
   AdminCardMergeInputDto,
@@ -88,17 +89,15 @@ function hasInputDetails(
 
 export function CardMergesPage() {
   const [form] = Form.useForm<FilterValues>()
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
   const [filters, setFilters] = useState<FilterValues>({})
   const [selectedMergeId, setSelectedMergeId] = useState<number | null>(null)
 
   const listQ = useQuery({
-    queryKey: ['admin', 'card-merges', page, pageSize, filters],
+    queryKey: ['admin', 'card-merges', filters],
     queryFn: () =>
       listCardMerges({
-        page,
-        size: pageSize,
+        page: 0,
+        size: ADMIN_UNPAGINATED_SIZE,
         telegramUserId: filters.telegramUserId,
         resultUserCardId: filters.resultUserCardId,
       }),
@@ -237,7 +236,6 @@ export function CardMergesPage() {
   )
 
   const applyFilters = (values: FilterValues) => {
-    setPage(0)
     setFilters({
       telegramUserId: values.telegramUserId?.trim() || undefined,
       resultUserCardId: values.resultUserCardId?.trim() || undefined,
@@ -246,7 +244,6 @@ export function CardMergesPage() {
 
   const resetFilters = () => {
     form.resetFields()
-    setPage(0)
     setFilters({})
   }
 
@@ -308,16 +305,7 @@ export function CardMergesPage() {
         locale={{
           emptyText: hasFilters ? 'No card merges match the filters' : 'No card merges yet',
         }}
-        pagination={{
-          current: page + 1,
-          pageSize,
-          total: listQ.data?.totalElements ?? 0,
-          showSizeChanger: true,
-          onChange: (nextPage, nextPageSize) => {
-            setPage(nextPage - 1)
-            setPageSize(nextPageSize)
-          },
-        }}
+        pagination={false}
       />
 
       <Drawer

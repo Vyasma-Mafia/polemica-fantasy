@@ -265,6 +265,7 @@ export function PlayersPage() {
         rowKey="id"
         loading={playersQ.isLoading}
         dataSource={playersQ.data}
+        pagination={false}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 80 },
           {
@@ -416,7 +417,7 @@ export function PlayersPage() {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={createForm}
@@ -444,7 +445,7 @@ export function PlayersPage() {
         open={aliasing != null}
         onCancel={() => setAliasing(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={aliasForm}
@@ -479,7 +480,7 @@ export function PlayersPage() {
           setMergePreview(null)
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={760}
       >
         <Form
@@ -596,7 +597,7 @@ export function PlayersPage() {
         open={editing != null}
         onCancel={() => setEditing(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={editForm}

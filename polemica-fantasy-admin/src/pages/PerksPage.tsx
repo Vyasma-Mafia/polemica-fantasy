@@ -71,6 +71,7 @@ export function PerksPage() {
         rowKey="id"
         loading={q.isLoading}
         dataSource={q.data}
+        pagination={false}
         scroll={{ x: true }}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 200, ellipsis: true },
@@ -130,7 +131,7 @@ export function PerksPage() {
         open={editRow != null}
         onCancel={() => setEditRow(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={560}
       >
         {editRow && (

@@ -20,6 +20,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useMemo, useState } from 'react'
 import { listEconomyConfig } from '../api/economy'
+import { ADMIN_UNPAGINATED_SIZE } from '../api/pagination'
 import {
   banMarketplaceUser,
   banPair,
@@ -165,12 +166,6 @@ export function MarketplaceModerationPage() {
   const [markClearOpen, setMarkClearOpen] = useState(false)
   const [markClearFor, setMarkClearFor] = useState<PairAnalysisDto | null>(null)
   const [markNote, setMarkNote] = useState('')
-  const [historyPage, setHistoryPage] = useState(0)
-  const historyPageSize = 20
-  const [complaintsPage, setComplaintsPage] = useState(0)
-  const complaintsPageSize = 20
-  const [usersComplaintsPage, setUsersComplaintsPage] = useState(0)
-  const usersComplaintsPageSize = 20
   const [minComplaints, setMinComplaints] = useState(1)
   const [sanctionOpen, setSanctionOpen] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<ComplainedTransactionDto | null>(null)
@@ -210,27 +205,27 @@ export function MarketplaceModerationPage() {
   })
 
   const historyQ = useQuery({
-    queryKey: ['admin', 'marketplace', 'ban-pair-history', historyPage],
-    queryFn: () => getBanPairHistory({ page: historyPage, size: historyPageSize }),
+    queryKey: ['admin', 'marketplace', 'ban-pair-history'],
+    queryFn: () => getBanPairHistory({ page: 0, size: ADMIN_UNPAGINATED_SIZE }),
   })
 
   const complainedTransactionsQ = useQuery({
-    queryKey: ['admin', 'marketplace', 'complained-transactions', complaintsPage, minComplaints],
+    queryKey: ['admin', 'marketplace', 'complained-transactions', minComplaints],
     queryFn: () =>
       getComplainedTransactions({
-        page: complaintsPage,
-        size: complaintsPageSize,
+        page: 0,
+        size: ADMIN_UNPAGINATED_SIZE,
         minComplaints,
         sortBy: 'complaints_desc',
       }),
   })
 
   const usersByComplaintsQ = useQuery({
-    queryKey: ['admin', 'users-by-complaints', usersComplaintsPage],
+    queryKey: ['admin', 'users-by-complaints'],
     queryFn: () =>
       getUsersByComplaints({
-        page: usersComplaintsPage,
-        size: usersComplaintsPageSize,
+        page: 0,
+        size: ADMIN_UNPAGINATED_SIZE,
         sortBy: 'total_complaints_desc',
       }),
   })
@@ -944,7 +939,6 @@ export function MarketplaceModerationPage() {
                       value={minComplaints}
                       onChange={(v) => {
                         setMinComplaints(v == null ? 1 : Math.max(1, Math.trunc(v)))
-                        setComplaintsPage(0)
                       }}
                     />
                   </Space>
@@ -953,13 +947,7 @@ export function MarketplaceModerationPage() {
                     loading={complainedTransactionsQ.isLoading}
                     dataSource={complainedTransactionsQ.data?.content ?? []}
                     columns={complainedTransactionsColumns}
-                    pagination={{
-                      current: complaintsPage + 1,
-                      pageSize: complaintsPageSize,
-                      total: complainedTransactionsQ.data?.totalElements ?? 0,
-                      showSizeChanger: false,
-                      onChange: (page) => setComplaintsPage(page - 1),
-                    }}
+                    pagination={false}
                   />
                 </Space>
               ),
@@ -973,13 +961,7 @@ export function MarketplaceModerationPage() {
                   loading={usersByComplaintsQ.isLoading}
                   dataSource={usersByComplaintsQ.data?.content ?? []}
                   columns={usersByComplaintsColumns}
-                  pagination={{
-                    current: usersComplaintsPage + 1,
-                    pageSize: usersComplaintsPageSize,
-                    total: usersByComplaintsQ.data?.totalElements ?? 0,
-                    showSizeChanger: false,
-                    onChange: (page) => setUsersComplaintsPage(page - 1),
-                  }}
+                  pagination={false}
                 />
               ),
             },
@@ -1083,15 +1065,7 @@ export function MarketplaceModerationPage() {
                   loading={historyQ.isLoading}
                   dataSource={historyQ.data?.content ?? []}
                   columns={sanctionHistoryColumns}
-                  pagination={{
-                    current: historyPage + 1,
-                    pageSize: historyPageSize,
-                    total: historyQ.data?.totalElements ?? 0,
-                    showSizeChanger: false,
-                    onChange: (p) => {
-                      setHistoryPage(p - 1)
-                    },
-                  }}
+                  pagination={false}
                 />
               ),
             },

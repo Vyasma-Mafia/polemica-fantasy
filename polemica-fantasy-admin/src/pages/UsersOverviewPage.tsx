@@ -152,7 +152,7 @@ export function UsersOverviewPage() {
         loading={usersQ.isLoading}
         dataSource={usersQ.data ?? []}
         columns={columns}
-        pagination={{ pageSize: 50, showSizeChanger: true }}
+        pagination={false}
       />
 
       <Modal

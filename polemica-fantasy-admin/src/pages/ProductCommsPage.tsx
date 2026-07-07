@@ -155,6 +155,7 @@ function CampaignsTab() {
         rowKey="id"
         loading={campaignsQ.isLoading}
         dataSource={campaignsQ.data ?? []}
+        pagination={false}
         columns={[
           { title: 'Created', dataIndex: 'createdAt', render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
           { title: 'Title', dataIndex: 'title' },
@@ -186,7 +187,6 @@ function CampaignsTab() {
               ) : null,
           },
         ]}
-        pagination={{ pageSize: 10 }}
       />
     </Space>
   )
@@ -261,6 +261,7 @@ function ReleaseNotesTab() {
         rowKey="id"
         loading={notesQ.isLoading}
         dataSource={notesQ.data ?? []}
+        pagination={false}
         columns={[
           { title: 'Published at', dataIndex: 'publishedAt', render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
           { title: 'Title', dataIndex: 'title' },
@@ -290,7 +291,6 @@ function ReleaseNotesTab() {
             </Space>
           ),
         }}
-        pagination={{ pageSize: 10 }}
       />
     </Space>
   )

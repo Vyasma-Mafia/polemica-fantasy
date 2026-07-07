@@ -1,4 +1,6 @@
-import { Layout, Menu, Tag, theme } from 'antd'
+import { MenuOutlined } from '@ant-design/icons'
+import { Button, Drawer, Grid, Layout, Menu, Tag, theme } from 'antd'
+import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
@@ -35,9 +37,12 @@ const allMenuItems = [
 export function AdminLayout() {
   const { logout, role, roleLoading } = useAuth()
   const location = useLocation()
+  const screens = Grid.useBreakpoint()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const {
     token: { colorBgContainer },
   } = theme.useToken()
+  const isMobile = screens.md === false
 
   const menuItems =
     role === 'moderator'
@@ -54,40 +59,36 @@ export function AdminLayout() {
         (k !== '/' && location.pathname.startsWith(`${k}/`)),
     )
 
+  const navigation = (
+    <>
+      <div className="pf-admin-brand">Polemica Admin</div>
+      <Menu
+        theme={isMobile ? 'light' : 'dark'}
+        mode="inline"
+        selectedKeys={selected ? [selected] : []}
+        items={menuItems}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+    </>
+  )
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth={0}>
-        <div
-          style={{
-            height: 48,
-            margin: 12,
-            color: 'white',
-            fontWeight: 600,
-            fontSize: 14,
-            lineHeight: '48px',
-            textAlign: 'center',
-          }}
-        >
-          Polemica Admin
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={selected ? [selected] : []}
-          items={menuItems}
-        />
-      </Sider>
+    <Layout className="pf-admin-layout">
+      {!isMobile && <Sider width={228}>{navigation}</Sider>}
       <Layout>
         <Header
-          style={{
-            padding: '0 24px',
-            background: colorBgContainer,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 16,
-          }}
+          className="pf-admin-header"
+          style={{ background: colorBgContainer }}
         >
+          {isMobile && (
+            <Button
+              aria-label="Open navigation"
+              icon={<MenuOutlined />}
+              onClick={() => setMobileMenuOpen(true)}
+            />
+          )}
+          {isMobile && <div className="pf-admin-header__title">Polemica Admin</div>}
+          <div className="pf-admin-header__spacer" />
           <Tag color={role === 'admin' ? 'blue' : 'orange'}>
             {roleLoading ? 'Loading role' : role === 'admin' ? 'Admin' : 'Moderator'}
           </Tag>
@@ -95,10 +96,20 @@ export function AdminLayout() {
             Log out
           </a>
         </Header>
-        <Content style={{ margin: 24 }}>
+        <Content className="pf-admin-content">
           <Outlet />
         </Content>
       </Layout>
+      <Drawer
+        title="Navigation"
+        placement="left"
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        size="default"
+        styles={{ body: { padding: 0 } }}
+      >
+        {navigation}
+      </Drawer>
     </Layout>
   )
 }

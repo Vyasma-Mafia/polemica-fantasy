@@ -121,6 +121,7 @@ export function TournamentsPage() {
         rowKey="id"
         loading={isLoading}
         dataSource={sortedTournaments}
+        pagination={false}
         columns={[
           { title: 'ID', dataIndex: 'id', width: 80 },
           {
@@ -183,7 +184,7 @@ export function TournamentsPage() {
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <TournamentFormModal
           onSubmit={(v) =>
@@ -208,7 +209,7 @@ export function TournamentsPage() {
         open={editId != null}
         onCancel={() => setEditId(null)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         {editing && (
           <TournamentFormModal
