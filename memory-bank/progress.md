@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Backend: баланс перков (июль 2026)
+- [x] Flyway **V68** меняет системные `bonus_points`: `sniper=4.0`, `firstKickedFullGuess=3.0`, `winThreeToThree=1.3`, `ninja=2.0`.
+- [x] В `/whats-new` добавлена новость “Баланс перков обновлен” с пояснением, что изменения применяются к новым расчетам и не пересчитывают уже завершенные результаты автоматически.
+
 ### DX: Telegram support export (июль 2026)
 - [x] Добавлен `scripts/telegram-support-export/export_support_messages.py` для выгрузки support-супергруппы через Telegram user-account MTProto на Telethon.
 - [x] Скрипт умеет `--list-dialogs`, читать чат по `--chat`, по умолчанию оставлять только forwarded user messages, ограничивать период/лимит и писать JSONL/CSV.

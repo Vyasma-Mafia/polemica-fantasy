@@ -1,4 +1,4 @@
 interface:
   display_name: "Polemica Prod DB Readonly"
-  short_description: "Safely inspect the production PostgreSQL DB."
-  default_prompt: "Use $polemica-prod-db-readonly to inspect production database data safely."
+  short_description: "Safely inspect production PostgreSQL data and perk balance stats."
+  default_prompt: "Use $polemica-prod-db-readonly to inspect production database data or perk balance statistics safely."

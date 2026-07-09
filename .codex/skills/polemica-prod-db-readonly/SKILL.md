@@ -1,6 +1,6 @@
 ---
 name: polemica-prod-db-readonly
-description: Connect to and inspect the Polemica Fantasy production PostgreSQL database safely. Use when the user asks to read, query, inspect, diagnose, count, export small samples from, or verify data in the production database; never use for writes, migrations, data repair, or destructive operations.
+description: Connect to and inspect the Polemica Fantasy production PostgreSQL database safely. Use when the user asks to read, query, inspect, diagnose, count, export small samples from, verify data in the production database, or collect production perk balance statistics; never use for writes, migrations, data repair, or destructive operations.
 ---
 
 # Polemica Production DB Readonly
@@ -109,6 +109,17 @@ from pg_stat_user_tables
 order by n_live_tup desc
 limit 20;
 ```
+
+## Perk Balance Statistics
+
+When evaluating perk balance from production leaderboard/scoring data, read
+[references/perk-balance-statistics.md](references/perk-balance-statistics.md).
+It contains the standard definitions and SQL templates for:
+
+- per-perk top-rank prevalence and lift;
+- raw perk contribution per scored row and per lineup exposure;
+- multiple cards with the same perk in one team;
+- counterfactual ranking for candidate `bonus_points` values.
 
 ## Reporting
 
