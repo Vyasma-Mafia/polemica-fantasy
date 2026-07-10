@@ -24,7 +24,7 @@ interface FantasyTeamRepository : JpaRepository<FantasyTeam, Long> {
     )
     fun findAllWithCardsForScoring(@Param("seriesId") seriesId: Long): List<FantasyTeam>
 
-    fun findByTelegramUser_IdAndSeries_Id(telegramUserId: Long, seriesId: Long): FantasyTeam?
+    fun existsByTelegramUser_IdAndSeries_Id(telegramUserId: Long, seriesId: Long): Boolean
 
     fun findByTelegramUser_IdAndSeriesLeague_Id(telegramUserId: Long, seriesLeagueId: Long): FantasyTeam?
 

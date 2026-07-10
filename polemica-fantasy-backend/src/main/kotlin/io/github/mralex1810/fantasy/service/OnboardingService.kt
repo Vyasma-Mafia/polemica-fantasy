@@ -156,7 +156,7 @@ class OnboardingService(
             finishedStatus = SeriesStatus.FINISHED,
             now = Instant.now(),
         )
-        val firstMissing = series.firstOrNull { fantasyTeamRepository.findByTelegramUser_IdAndSeries_Id(userId, it.id!!) == null }
+        val firstMissing = series.firstOrNull { !fantasyTeamRepository.existsByTelegramUser_IdAndSeries_Id(userId, it.id!!) }
         return firstMissing?.let { OpenTeamTarget(path = "/series/${it.id}/team", deadline = it.teamDeadline) }
     }
 

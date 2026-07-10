@@ -2,6 +2,10 @@
 
 ## Что реализовано
 
+### Backend: исправление onboarding для нескольких лиг (июль 2026)
+- [x] `firstOpenTeamTarget` проверяет наличие команды пользователя в серии через `exists`, поэтому MAIN + BUDGET больше не приводят к `NonUniqueResultException` и `500` в onboarding checklist.
+- [x] Production health и публичная статика проверены; backend `compileKotlin compileTestKotlin` прошел.
+
 ### Backend: баланс перков (июль 2026)
 - [x] Flyway **V68** меняет системные `bonus_points`: `sniper=4.0`, `firstKickedFullGuess=3.0`, `winThreeToThree=1.3`, `ninja=2.0`.
 - [x] В `/whats-new` добавлена новость “Баланс перков обновлен” с пояснением, что изменения применяются к новым расчетам и не пересчитывают уже завершенные результаты автоматически.
