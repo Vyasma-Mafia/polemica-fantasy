@@ -17,4 +17,5 @@ enum class FantikiTransactionReason {
     ACHIEVEMENT_REWARD,
     ADMIN_PAIR_BAN,
     ADMIN_CARD_CONFISCATE,
+    PERIODIC_RATING_REWARD,
 }

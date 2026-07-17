@@ -32,7 +32,7 @@ const ACHIEVEMENT_TABS: { id: AchievementTab; label: string }[] = [
   { id: 'claimed', label: 'Получено' },
 ]
 
-const CATEGORY_ORDER = ['PARTICIPATION', 'BUDGET', 'RESULTS', 'COLLECTION', 'PACKS', 'MARKETPLACE', 'SOCIAL', 'SPECIAL']
+const CATEGORY_ORDER = ['PARTICIPATION', 'BUDGET', 'RESULTS', 'PERIODIC_RATING', 'COLLECTION', 'PACKS', 'MARKETPLACE', 'SOCIAL', 'SPECIAL']
 const RARITY_ORDER: Record<AchievementItem['rarity'], number> = {
   LEGENDARY: 4,
   EPIC: 3,
@@ -239,6 +239,7 @@ function AchievementRow({
   const claimable = achievement.state === 'COMPLETED_UNCLAIMED'
   const hasPendingChoices = pendingChoices.length > 0
   const choiceReward = hasCardChoiceReward(achievement.rewards)
+  const progressText = formatProgress(achievement, progress)
 
   return (
     <article className={`pf-achievement pf-achievement--${rarityClass(achievement.rarity)} pf-achievement--${achievement.state.toLowerCase()}${hasPendingChoices ? ' pf-achievement--choice-open' : ''}`}>
@@ -248,12 +249,12 @@ function AchievementRow({
           <span className="pf-achievement__state">{stateLabel(achievement.state)}</span>
         </div>
         {achievement.description && <p>{achievement.description}</p>}
-        <div className="pf-achievement__progress" aria-label={`${progress} из ${achievement.targetValue}`}>
+        <div className="pf-achievement__progress" aria-label={progressText}>
           <span style={{ width: `${pct}%` }} />
         </div>
         <div className="pf-achievement__meta">
           <span>
-            {achievement.progressValue} / {achievement.targetValue}
+            {progressText}
           </span>
           <span>{formatRewards(achievement.rewards)}</span>
         </div>
@@ -466,6 +467,8 @@ function categoryDisplayName(category: AchievementCategory): string {
       return 'Бюджетная лига'
     case 'RESULTS':
       return 'Результаты'
+    case 'PERIODIC_RATING':
+      return 'Рейтинг периодов'
     case 'COLLECTION':
       return 'Коллекция'
     case 'PACKS':
@@ -479,6 +482,14 @@ function categoryDisplayName(category: AchievementCategory): string {
     default:
       return category.name
   }
+}
+
+function formatProgress(achievement: AchievementItem, displayedProgress: number): string {
+  if (achievement.category !== 'PERIODIC_RATING') {
+    return `${displayedProgress} / ${achievement.targetValue}`
+  }
+  const targetSuffix = achievement.targetValue === 1 ? 'периода' : 'периодов'
+  return `${displayedProgress} из ${achievement.targetValue} ${targetSuffix}`
 }
 
 function formatRewards(rewards: AchievementReward[]): string {

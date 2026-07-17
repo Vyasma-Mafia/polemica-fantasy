@@ -32,6 +32,7 @@ const allMenuItems = [
     label: <Link to="/marketplace-moderation">Marketplace</Link>,
   },
   { key: '/card-merges', label: <Link to="/card-merges">Card merges</Link> },
+  { key: '/periodic-ratings', label: <Link to="/periodic-ratings">Periodic ratings</Link> },
 ]
 
 export function AdminLayout() {

@@ -6,4 +6,5 @@ enum class CardAcquisitionType {
     MARKETPLACE_PURCHASE,
     ACHIEVEMENT_REWARD,
     CARD_MERGE,
+    PERIODIC_RATING_REWARD,
 }

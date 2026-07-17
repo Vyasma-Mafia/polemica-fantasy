@@ -8,6 +8,7 @@ enum class CardMergeBlockReason {
     ACTIVE_TEAM,
     MARKETPLACE_ACTIVE,
     EXPIRED_CONTRACT,
+    PERIODIC_RATING_TROPHY,
 }
 
 data class CardMergeOptionsDto(

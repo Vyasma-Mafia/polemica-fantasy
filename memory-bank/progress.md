@@ -2,6 +2,20 @@
 
 ## Что реализовано
 
+### Backend + TMA + Admin: периодический рейтинг и уникальные награды (июль 2026)
+- [x] Исправлен discovery draft `docs/features/DESIGN-PERIODIC-RATING-AWARDS.md`: итог пользователя — сумма `FantasyTeam.totalScore` по зачётным финализированным сериям выбранной лиги; карточки не являются отдельными единицами рейтинга.
+- [x] Реализован biweekly MAIN-рейтинг: серия относится к периоду по `MAX(series_game.played_at)`, учитываются только финализированные серии, границы `[start, end)` в `Europe/Moscow`, итог округляется до 2 знаков, места — competition ranking; незавершённая серия блокирует finalize.
+- [x] Реализован top-10 trophy ladder: #1 EPIC, #2–5 RARE с убывающей свободой выбора, #6–10 COMMON выбранного игрока + 50₣; при ничьей награждаются все пользователи с `rank <= 10`.
+- [x] Добавлен полный reward journey `/rating/rewards/{rewardId}/create`: reward hub, серверный поиск игрока, выбор перков и skin, autosave draft, атомарная auto-issue после финального подтверждения, reveal и deep-link в коллекцию; admin review/changes/issue оставлен для legacy/exception записей.
+- [x] Добавлены 12 tier/accent skin codes, реалистичный preview с редкостью, множителем, перками, местом и serial; immutable period/rank/serial/original-owner provenance хранится на `user_card` и показывается в коллекции после последующей продажи.
+- [x] Добавлены admin period create/open/preview/finalize и legacy-очередь review/issue; finalize и issue идемпотентны и выполняются под блокировкой с audit actor/reason.
+- [x] Trophy-карты запрещены как входы merge; существующий in-place Legendary upgrade остаётся допустимым.
+- [x] Добавлен пользовательский архив периодов: `/rating` позволяет выбрать прошлый финализированный период и показывает его immutable leaderboard и личный вклад по сериям.
+- [x] Добавлена линейка из 6 достижений «Рейтинг периодов» с прогрессом по finalized snapshot, competition ties, launch cutoff и targeted recompute после finalize; награды — только фантики (50/250₣ за участие, 200/1 000₣ за top-10, 400₣ за пьедестал, 600₣ за победу; 2 500₣ за всю линейку), trophy-карты и скины не дублируются.
+- [x] Flyway **V72** открывает первый период `[17 июля 00:00, 20 июля 00:00)` МСК и публикует анонс в «Что нового» с переходом на `/rating`; пересекающийся открытый период с тем же стартом нормализуется без дубля.
+- [x] Проверено на локальном PostgreSQL: Flyway V69 применён, Hibernate schema validation и backend startup успешны; clean backend compile, targeted rules/merge tests и обе frontend production builds проходят.
+- [ ] Отдельный следующий этап: scheduler создания/закрытия периодов, Telegram reminders, rollout feature flag и расширенные интеграционные тесты полного reward lifecycle.
+
 ### Backend: исправление onboarding для нескольких лиг (июль 2026)
 - [x] `firstOpenTeamTarget` проверяет наличие команды пользователя в серии через `exists`, поэтому MAIN + BUDGET больше не приводят к `NonUniqueResultException` и `500` в onboarding checklist.
 - [x] Production health и публичная статика проверены; backend `compileKotlin compileTestKotlin` прошел.

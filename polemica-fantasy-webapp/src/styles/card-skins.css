@@ -1,3 +1,27 @@
+/* Period rating trophy editions. The concrete code carries both tier and accent. */
+.pf-collection-card[class*="--skin-rating_"] .pf-collection-card__frame,
+:is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="--skin-rating_"] {
+  --pf-rating-skin-a:#78e4d5;
+  --pf-rating-skin-b:#8369f3;
+  border-color:var(--pf-rating-skin-a)!important;
+  box-shadow:0 0 20px color-mix(in srgb,var(--pf-rating-skin-a) 32%,transparent),inset 0 0 18px color-mix(in srgb,var(--pf-rating-skin-b) 12%,transparent);
+  background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 210deg,var(--pf-rating-skin-a),#fff4c4,var(--pf-rating-skin-b),var(--pf-rating-skin-a)) border-box;
+  border-style:solid;
+  border-width:2px;
+}
+:is(.pf-collection-card,.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="edition_crimson"] { --pf-rating-skin-a:#ff786f; --pf-rating-skin-b:#8d174c }
+:is(.pf-collection-card,.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="edition_nocturne"] { --pf-rating-skin-a:#7787ff; --pf-rating-skin-b:#291456 }
+:is(.pf-collection-card,.pf-team-card,.pf-fantasy-card)[class*="--skin-rating_"] :is(.pf-collection-card__name,.pf-team-card__name,.pf-fantasy-card__name) { color:#fff6cf; text-shadow:0 0 11px var(--pf-rating-skin-a) }
+:is(.pf-collection-card,.pf-team-card,.pf-fantasy-card)[class*="--skin-rating_"] .pf-card-perk-chip { border-color:color-mix(in srgb,var(--pf-rating-skin-a) 55%,transparent); background:rgba(8,12,24,.88) }
+.pf-collection-card[class*="rating_champion_edition"] .pf-collection-card__frame,
+:is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_champion_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 200deg,#fff4b0,#f0b93a,var(--pf-rating-skin-a),#fff7d6,#f0b93a) border-box; box-shadow:0 0 28px rgba(240,185,58,.38),inset 0 0 20px rgba(255,244,176,.12) }
+.pf-collection-card[class*="rating_silver_edition"] .pf-collection-card__frame,
+:is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_silver_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 210deg,#f8fbff,#96a8bc,var(--pf-rating-skin-a),#dce7f2,#7b8fa6) border-box }
+.pf-collection-card[class*="rating_bronze_edition"] .pf-collection-card__frame,
+:is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_bronze_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 215deg,#ffd1a8,#a85c2b,var(--pf-rating-skin-a),#e09a61,#7b3f22) border-box }
+.pf-collection-card[class*="rating_finalist_edition"] .pf-collection-card__frame,
+:is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_finalist_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 220deg,#5d6575,#202532,var(--pf-rating-skin-a),#8b93a3,#202532) border-box; box-shadow:0 0 16px color-mix(in srgb,var(--pf-rating-skin-a) 24%,transparent),inset 0 0 18px rgba(255,255,255,.05) }
+
 /* --- Special card skin: tournament_gold --- */
 .pf-collection-card--skin-tournament_gold .pf-collection-card__frame,
 .pf-team-card--skin-tournament_gold,

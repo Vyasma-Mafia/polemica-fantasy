@@ -21,6 +21,7 @@ import io.github.mralex1810.fantasy.repository.UserCardMergePreviewRepository
 import io.github.mralex1810.fantasy.repository.UserCardMergeRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,6 +33,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
+import org.springframework.web.server.ResponseStatusException
 import org.mockito.quality.Strictness
 
 @ExtendWith(MockitoExtension::class)
@@ -202,6 +204,27 @@ class CardMergeServiceTest {
         assertEquals(1, aaa.requiredSelections)
         assertTrue(aaa.selectablePerks.isNotEmpty())
         assertTrue(aaa.selectablePerks.none { it.id == a.id })
+    }
+
+    @Test
+    fun `periodic rating trophy cannot be a merge input`() {
+        val fp = fantasyPlayer(102L)
+        val commonTemplate = template(240L, fp, Rarity.COMMON)
+        registerCards(
+            card(40L, commonTemplate),
+            card(41L, commonTemplate),
+            card(42L, commonTemplate),
+        )
+        whenever(userCardRepository.isPeriodicRatingRewardCard(41L)).thenReturn(true)
+
+        val error = assertThrows(ResponseStatusException::class.java) {
+            service.preview(
+                user,
+                CardMergePreviewRequest(CardMergeOperation.COMMON_TO_RARE, listOf(40L, 41L, 42L)),
+            )
+        }
+
+        assertEquals(409, error.statusCode.value())
     }
 
     private fun fantasyPlayer(id: Long): FantasyPlayer =

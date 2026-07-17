@@ -4,6 +4,16 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 const STORAGE_KEY = 'polemica_admin_basic_b64'
 
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export function getStoredBasicB64(): string | null {
   return sessionStorage.getItem(STORAGE_KEY)
 }
@@ -74,7 +84,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await apiFetch(path, init)
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
+    throw new ApiError(await readErrorMessage(res), res.status)
   }
   if (res.status === 204) {
     return undefined as T
@@ -85,6 +95,6 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 export async function apiVoid(path: string, init?: RequestInit): Promise<void> {
   const res = await apiFetch(path, init)
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
+    throw new ApiError(await readErrorMessage(res), res.status)
   }
 }

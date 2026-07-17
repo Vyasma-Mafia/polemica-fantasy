@@ -49,6 +49,7 @@ function reasonLabel(reason: CardMergeBlockReason | null | undefined): string {
   if (reason === 'ACTIVE_TEAM') return 'В составе на серию'
   if (reason === 'MARKETPLACE_ACTIVE') return 'На продаже'
   if (reason === 'EXPIRED_CONTRACT') return 'Контракт истёк'
+  if (reason === 'PERIODIC_RATING_TROPHY') return 'Трофей рейтинга нельзя объединить'
   return reason ? String(reason) : 'Недоступна'
 }
 

@@ -41,6 +41,7 @@ class UserCardOwnershipService(
             CardAcquisitionType.MARKETPLACE_PURCHASE -> "куплена на маркетплейсе"
             CardAcquisitionType.ACHIEVEMENT_REWARD -> "награда за достижение"
             CardAcquisitionType.CARD_MERGE -> "собрана из карт"
+            CardAcquisitionType.PERIODIC_RATING_REWARD -> "награда рейтинга периода"
         }
 
     @Transactional

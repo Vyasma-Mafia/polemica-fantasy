@@ -25,6 +25,8 @@ import { NotificationSettingsPage } from './pages/NotificationSettingsPage'
 import { PlayerProfilePage } from './pages/PlayerProfilePage'
 import { ProfileCustomizationPage } from './pages/ProfileCustomizationPage'
 import { RatingPage } from './pages/RatingPage'
+import { PeriodicRewardBuilderPage } from './pages/PeriodicRewardBuilderPage'
+import { PeriodicRewardsPage } from './pages/PeriodicRewardsPage'
 import { StorePage } from './pages/StorePage'
 import { TeamPage } from './pages/TeamPage'
 import { TransactionDetailPage } from './pages/TransactionDetailPage'
@@ -138,6 +140,8 @@ function Shell() {
           <Route path="/cards/merge" element={<CardMergePage />} />
           <Route path="/achievements" element={<AchievementsPage />} />
           <Route path="/rating" element={<RatingPage />} />
+          <Route path="/rating/rewards" element={<PeriodicRewardsPage />} />
+          <Route path="/rating/rewards/:rewardId/create" element={<PeriodicRewardBuilderPage />} />
           <Route path="/players/:telegramId" element={<PlayerProfilePage />} />
           <Route path="/profile-customization" element={<ProfileCustomizationPage />} />
           <Route path="/help" element={<HelpPage />} />

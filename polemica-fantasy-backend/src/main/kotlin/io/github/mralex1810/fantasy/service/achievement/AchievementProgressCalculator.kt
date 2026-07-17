@@ -64,6 +64,10 @@ class AchievementProgressCalculator(
                 ts,
                 "winner_rank <= CEIL(participants * 0.25)",
             )
+            "PERIODIC_RATING_PERIODS" -> periodicRatingCount(internalTelegramUserId, ts, null)
+            "PERIODIC_RATING_TOP10" -> periodicRatingCount(internalTelegramUserId, ts, "e.rank <= 10")
+            "PERIODIC_RATING_PODIUMS" -> periodicRatingCount(internalTelegramUserId, ts, "e.rank <= 3")
+            "PERIODIC_RATING_WINS" -> periodicRatingCount(internalTelegramUserId, ts, "e.rank = 1")
             "CARDS_OWNED_TOTAL" -> activeCardsCount(internalTelegramUserId, ts, null)
             "FIRST_EPIC_CARD" -> (
                 activeCardsCount(internalTelegramUserId, ts, "EPIC") +
@@ -176,6 +180,27 @@ class AchievementProgressCalculator(
             )
             else -> 0L
         }
+    }
+
+    private fun periodicRatingCount(
+        internalTelegramUserId: Long,
+        trackingStartedAt: Timestamp,
+        rankPredicate: String?,
+    ): Long {
+        val rankClause = rankPredicate?.let { "AND $it" }.orEmpty()
+        return queryLong(
+            """
+            SELECT COUNT(*)
+            FROM periodic_rating_entry e
+            JOIN periodic_rating_period p ON p.id = e.period_id
+            WHERE e.telegram_user_id = ?
+              AND p.status = 'FINALIZED'
+              AND p.finalized_at >= ?
+              $rankClause
+            """,
+            internalTelegramUserId,
+            trackingStartedAt,
+        )
     }
 
     private fun marketplaceTradesCount(internalTelegramUserId: Long, trackingStartedAt: Timestamp, userColumn: String): Long =

@@ -192,6 +192,11 @@ export function CardsPage() {
     queryFn: () => apiGet<UserCardItem[]>(`/api/v1/me/cards${params}`, initData),
     enabled: !!initData,
   })
+  const deepLinkedCardId = Number(searchParams.get('cardId'))
+  useEffect(() => {
+    if (!q.data || !Number.isFinite(deepLinkedCardId) || deepLinkedCardId <= 0) return
+    if (q.data.some((card) => card.id === deepLinkedCardId)) setDetailCardId(deepLinkedCardId)
+  }, [deepLinkedCardId, q.data])
 
   const teamsQ = useQuery({
     queryKey: ['fantasy-teams', initData],
@@ -477,6 +482,13 @@ export function CardsPage() {
   const closeModal = () => {
     setDetailCardId(null)
     setSelectedSeriesId(null)
+    if (searchParams.has('cardId')) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('cardId')
+        return next
+      }, { replace: true })
+    }
   }
 
   const legendaryParam = searchParams.get('legendaryUpgrade')
@@ -677,6 +689,7 @@ export function CardsPage() {
                     )}
                     <CardValueBadge value={c.value} layout="collection" expired={expired} />
                     <div className="pf-collection-card__cap">
+                      {c.trophyProvenance && <span className="pf-trophy-edition-badge">TOP {c.trophyProvenance.rank} · {c.trophyProvenance.serial}</span>}
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
                         {c.rarity}{' '}
@@ -730,6 +743,13 @@ export function CardsPage() {
             )}
             <h3 className="pf-modal__title">{detailCard.playerNickname}</h3>
             <p className="pf-muted">{detailCard.rarity}</p>
+            {detailCard.trophyProvenance && (
+              <div className="pf-trophy-provenance">
+                <strong>Трофей рейтинга · #{detailCard.trophyProvenance.rank}</strong>
+                <span>{detailCard.trophyProvenance.periodTitle}</span>
+                <small>Serial {detailCard.trophyProvenance.serial} · первый владелец {detailCard.trophyProvenance.originalOwnerTelegramId}</small>
+              </div>
+            )}
             {detailCard.activeMarketplaceListing && (
               <p>
                 <MarketplaceListedBadge listing={detailCard.activeMarketplaceListing} layout="inline" />

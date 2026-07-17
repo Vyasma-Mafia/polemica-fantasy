@@ -11,6 +11,12 @@ import jakarta.persistence.LockModeType
 
 interface UserCardRepository : JpaRepository<UserCard, Long> {
 
+    @Query(
+        value = "SELECT EXISTS(SELECT 1 FROM periodic_rating_reward WHERE issued_user_card_id = :userCardId)",
+        nativeQuery = true,
+    )
+    fun isPeriodicRatingRewardCard(@Param("userCardId") userCardId: Long): Boolean
+
     fun countByTelegramUser_IdAndSourceCardPack_Id(telegramUserId: Long, sourceCardPackId: Long): Long
 
     fun countByTelegramUser_IdAndDeletedAtIsNull(telegramUserId: Long): Long

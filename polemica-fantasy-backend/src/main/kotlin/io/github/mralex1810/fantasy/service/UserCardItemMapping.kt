@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.service
 import io.github.mralex1810.fantasy.dto.user.response.ActiveMarketplaceListingBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.CardPerkBriefDto
 import io.github.mralex1810.fantasy.dto.user.response.UserCardItemDto
+import io.github.mralex1810.fantasy.dto.user.response.TrophyCardProvenanceDto
 import io.github.mralex1810.fantasy.entity.CardTemplate
 import io.github.mralex1810.fantasy.entity.UserCard
 
@@ -51,5 +52,15 @@ fun UserCard.toUserCardItemDto(
         canJoinMoreLeagues = canJoinMoreLeagues,
         activeMarketplaceListing = activeMarketplaceListing,
         skinCode = cardSkin?.code,
+        trophyProvenance = trophyRewardId?.let { rewardId ->
+            TrophyCardProvenanceDto(
+                rewardId = rewardId,
+                periodId = trophyPeriodId!!,
+                periodTitle = trophyPeriodTitle!!,
+                rank = trophyRank!!,
+                serial = trophySerial!!,
+                originalOwnerTelegramId = trophyOriginalOwnerTelegramId!!,
+            )
+        },
     )
 }

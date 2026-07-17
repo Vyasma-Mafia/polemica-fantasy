@@ -363,6 +363,9 @@ class CardMergeService(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cards must belong to the same player")
         }
         cards.forEach { card ->
+            if (userCardRepository.isPeriodicRatingRewardCard(card.id!!)) {
+                throw ResponseStatusException(HttpStatus.CONFLICT, "Periodic rating trophy cards cannot be used as merge inputs")
+            }
             if (fantasyTeamCardRepository.countInNonFinalizedSeries(card.id!!) > 0) {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot merge a card in an active team")
             }
@@ -594,6 +597,7 @@ class CardMergeService(
 
     private fun blockReason(card: UserCard, activeTeamIds: Set<Long>, hasActiveListing: Boolean): CardMergeBlockReason? =
         when {
+            userCardRepository.isPeriodicRatingRewardCard(card.id!!) -> CardMergeBlockReason.PERIODIC_RATING_TROPHY
             card.id!! in activeTeamIds -> CardMergeBlockReason.ACTIVE_TEAM
             hasActiveListing -> CardMergeBlockReason.MARKETPLACE_ACTIVE
             card.usesRemaining <= 0 -> CardMergeBlockReason.EXPIRED_CONTRACT

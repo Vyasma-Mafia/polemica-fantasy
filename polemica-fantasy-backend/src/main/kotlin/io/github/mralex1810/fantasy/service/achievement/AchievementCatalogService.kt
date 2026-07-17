@@ -112,6 +112,7 @@ class AchievementCatalogService(
             "PARTICIPATION" -> "Участие"
             "BUDGET" -> "Бюджетная лига"
             "RESULTS" -> "Результаты"
+            "PERIODIC_RATING" -> "Рейтинг периодов"
             "COLLECTION" -> "Коллекция"
             "PACKS" -> "Паки"
             else -> category

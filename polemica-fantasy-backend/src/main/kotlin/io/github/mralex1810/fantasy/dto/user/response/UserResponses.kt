@@ -183,6 +183,17 @@ data class UserCardItemDto(
     val activeMarketplaceListing: ActiveMarketplaceListingBriefDto? = null,
     /** Cosmetic skin code; null = default card visual. */
     val skinCode: String? = null,
+    /** Immutable periodic-rating provenance that follows this concrete card through marketplace transfers. */
+    val trophyProvenance: TrophyCardProvenanceDto? = null,
+)
+
+data class TrophyCardProvenanceDto(
+    val rewardId: Long,
+    val periodId: Long,
+    val periodTitle: String,
+    val rank: Int,
+    val serial: String,
+    val originalOwnerTelegramId: Long,
 )
 
 data class LegendaryUpgradeInfoDto(

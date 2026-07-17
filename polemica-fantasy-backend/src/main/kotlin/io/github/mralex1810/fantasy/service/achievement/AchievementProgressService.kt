@@ -23,8 +23,29 @@ class AchievementProgressService(
      */
     @Transactional
     fun recomputeEnabledForUser(internalTelegramUserId: Long) {
+        recomputeDefinitionsForUser(internalTelegramUserId, null)
+    }
+
+    @Transactional
+    fun recomputeEnabledForUser(
+        internalTelegramUserId: Long,
+        conditionTypes: Set<String>,
+    ) {
+        if (conditionTypes.isEmpty()) return
+        recomputeDefinitionsForUser(internalTelegramUserId, conditionTypes)
+    }
+
+    private fun recomputeDefinitionsForUser(
+        internalTelegramUserId: Long,
+        conditionTypes: Set<String>?,
+    ) {
         val user = telegramUserRepository.findById(internalTelegramUserId).orElse(null) ?: return
-        achievementDefinitionRepository.findAllEnabledWithRewards().forEach { definition ->
+        val definitions = if (conditionTypes == null) {
+            achievementDefinitionRepository.findAllEnabledWithRewards()
+        } else {
+            achievementDefinitionRepository.findAllEnabledWithRewardsByConditionTypes(conditionTypes)
+        }
+        definitions.forEach { definition ->
             val current = calculator.currentProgress(internalTelegramUserId, definition)
             val existing = userAchievementRepository.findByTelegramUser_IdAndAchievement_Id(
                 internalTelegramUserId,

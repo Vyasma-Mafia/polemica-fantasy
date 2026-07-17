@@ -489,6 +489,6 @@ class AchievementStage3AdminIntegrationTest {
             return "Basic $token"
         }
 
-        private const val EXPECTED_ACHIEVEMENT_COUNT = 81L
+        private const val EXPECTED_ACHIEVEMENT_COUNT = 87L
     }
 }

@@ -476,6 +476,15 @@ export interface UserCardItem {
   activeMarketplaceListing?: { listingId: number; price: number } | null
   /** Cosmetic skin code; null/undefined means default visual. */
   skinCode?: string | null
+  /** Immutable edition data for periodic-rating trophy cards. */
+  trophyProvenance?: {
+    rewardId: number
+    periodId: number
+    periodTitle: string
+    rank: number
+    serial: string
+    originalOwnerTelegramId: number
+  } | null
 }
 
 export type CardMergeOperation = 'COMMON_TO_RARE' | 'RARE_TO_EPIC'
@@ -788,7 +797,7 @@ export interface MarketplaceAnalyticsDetail {
   avgSalePrice: number | null
 }
 
-export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE' | 'ACHIEVEMENT_REWARD'
+export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE' | 'ACHIEVEMENT_REWARD' | 'CARD_MERGE' | 'PERIODIC_RATING_REWARD'
 
 export interface CardOwnershipHistoryEntry {
   ownerDisplayName: string

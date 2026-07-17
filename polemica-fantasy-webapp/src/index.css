@@ -4,6 +4,7 @@
 @import './styles/layout.css';
 @import './styles/home-series.css';
 @import './styles/leaderboards.css';
+@import './styles/periodic-rating.css';
 @import './styles/participants.css';
 @import './styles/team-builder.css';
 @import './styles/collection.css';

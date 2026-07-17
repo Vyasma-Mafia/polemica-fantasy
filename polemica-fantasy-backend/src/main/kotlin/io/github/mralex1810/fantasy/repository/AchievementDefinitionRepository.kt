@@ -35,6 +35,18 @@ interface AchievementDefinitionRepository : JpaRepository<AchievementDefinition,
         SELECT DISTINCT d FROM AchievementDefinition d
         LEFT JOIN FETCH d.rewards r
         WHERE d.enabled = TRUE
+          AND d.conditionType IN :conditionTypes
+        """,
+    )
+    fun findAllEnabledWithRewardsByConditionTypes(
+        @Param("conditionTypes") conditionTypes: Set<String>,
+    ): List<AchievementDefinition>
+
+    @Query(
+        """
+        SELECT DISTINCT d FROM AchievementDefinition d
+        LEFT JOIN FETCH d.rewards r
+        WHERE d.enabled = TRUE
           AND d.visibility = 'PUBLIC'
         ORDER BY d.displayOrder ASC, d.id ASC
         """,

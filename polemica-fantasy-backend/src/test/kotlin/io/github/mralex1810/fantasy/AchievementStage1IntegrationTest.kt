@@ -29,6 +29,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.sql.Timestamp
 import java.time.Instant
 import java.util.Base64
 import javax.crypto.Mac
@@ -177,7 +178,7 @@ class AchievementStage1IntegrationTest {
             .andExpect(jsonPath("$.summary.totalVisible").value(EXPECTED_ACHIEVEMENT_COUNT.toInt()))
             .andExpect(jsonPath("$.summary.completed").value(0))
             .andExpect(jsonPath("$.summary.claimed").value(0))
-            .andExpect(jsonPath("$.categories[*].code", containsInAnyOrder("PARTICIPATION", "BUDGET", "RESULTS", "COLLECTION", "PACKS", "MARKETPLACE", "SOCIAL")))
+            .andExpect(jsonPath("$.categories[*].code", containsInAnyOrder("PARTICIPATION", "BUDGET", "RESULTS", "PERIODIC_RATING", "COLLECTION", "PACKS", "MARKETPLACE", "SOCIAL")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("team_submit_1")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("series_win_50")))
             .andExpect(jsonPath("$.categories[*].achievements[*].code", hasItem("pack_open_1")))
@@ -202,6 +203,82 @@ class AchievementStage1IntegrationTest {
             .andExpect(jsonPath("$.instantCompleted").value(0))
             .andExpect(jsonPath("$.instantFantikiLiability").value(0))
             .andExpect(jsonPath("$.rows", hasSize<Any>(EXPECTED_ACHIEVEMENT_COUNT.toInt())))
+    }
+
+    @Test
+    @Order(5)
+    fun `periodic rating achievements use finalized snapshots cutoff and competition ranks`() {
+        val primaryTelegramId = 910_000_040L
+        val tiedTelegramId = 910_000_041L
+        val primaryTma = tmaAuth(primaryTelegramId, "RatingMilestones")
+        val tiedTma = tmaAuth(tiedTelegramId, "RatingTie")
+        mockMvc.perform(get("/api/v1/achievements").header("Authorization", primaryTma)).andExpect(status().isOk)
+        mockMvc.perform(get("/api/v1/achievements").header("Authorization", tiedTma)).andExpect(status().isOk)
+        val primaryUserId = internalUserId(primaryTelegramId)
+        val tiedUserId = internalUserId(tiedTelegramId)
+        val cutoff = jdbcTemplate.queryForObject(
+            "SELECT tracking_started_at FROM achievement_definition WHERE code='periodic_rating_period_1'",
+            Timestamp::class.java,
+        )!!.toInstant()
+
+        fun createPeriod(code: String, periodStatus: String, finalizedAt: Instant): Long = jdbcTemplate.queryForObject(
+            """
+            INSERT INTO periodic_rating_period(code,title,starts_at,ends_at,status,finalized_at)
+            VALUES (?, ?, ?, ?, ?, ?) RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+            code,
+            code,
+            Timestamp.from(finalizedAt.minusSeconds(7200)),
+            Timestamp.from(finalizedAt.minusSeconds(3600)),
+            periodStatus,
+            Timestamp.from(finalizedAt),
+        )!!
+
+        fun addEntry(periodId: Long, userId: Long, rank: Int) {
+            jdbcTemplate.update(
+                """
+                INSERT INTO periodic_rating_entry(
+                    period_id,telegram_user_id,rank,total_score,series_count,average_score,best_series_score
+                ) VALUES (?, ?, ?, 100, 1, 100, 100)
+                """.trimIndent(),
+                periodId,
+                userId,
+                rank,
+            )
+        }
+
+        addEntry(createPeriod("achievement-before-cutoff", "FINALIZED", cutoff.minusSeconds(1)), primaryUserId, 1)
+        listOf("OPEN", "SETTLING", "CANCELLED").forEachIndexed { index, periodStatus ->
+            addEntry(
+                createPeriod("achievement-${periodStatus.lowercase()}", periodStatus, cutoff.plusSeconds(100L + index)),
+                primaryUserId,
+                1,
+            )
+        }
+        val firstPlacePeriod = createPeriod("achievement-rank-1", "FINALIZED", cutoff.plusSeconds(1000))
+        addEntry(firstPlacePeriod, primaryUserId, 1)
+        addEntry(firstPlacePeriod, tiedUserId, 1)
+        addEntry(createPeriod("achievement-rank-3", "FINALIZED", cutoff.plusSeconds(2000)), primaryUserId, 3)
+        addEntry(createPeriod("achievement-rank-10", "FINALIZED", cutoff.plusSeconds(3000)), primaryUserId, 10)
+        addEntry(createPeriod("achievement-rank-11", "FINALIZED", cutoff.plusSeconds(4000)), primaryUserId, 11)
+
+        assertAchievement(primaryTma, "periodic_rating_period_1", 4, "COMPLETED_UNCLAIMED")
+        assertAchievement(primaryTma, "periodic_rating_period_5", 4, "IN_PROGRESS")
+        assertAchievement(primaryTma, "periodic_rating_top10_1", 3, "COMPLETED_UNCLAIMED")
+        assertAchievement(primaryTma, "periodic_rating_top10_5", 3, "IN_PROGRESS")
+        assertAchievement(primaryTma, "periodic_rating_podium_1", 2, "COMPLETED_UNCLAIMED")
+        assertAchievement(primaryTma, "periodic_rating_champion_1", 1, "COMPLETED_UNCLAIMED")
+        assertAchievement(tiedTma, "periodic_rating_champion_1", 1, "COMPLETED_UNCLAIMED")
+
+        val balanceBefore = jdbcTemplate.queryForObject(
+            "SELECT fantiki FROM telegram_user WHERE id=?",
+            Long::class.java,
+            primaryUserId,
+        )!!
+        mockMvc.perform(post("/api/v1/achievements/periodic_rating_champion_1/claim").header("Authorization", primaryTma))
+            .andExpect(status().isOk)
+        assertSqlLong("SELECT fantiki FROM telegram_user WHERE id=$primaryUserId", balanceBefore + 600)
     }
 
     @Test
@@ -1000,6 +1077,6 @@ class AchievementStage1IntegrationTest {
             return "Basic $token"
         }
 
-        private const val EXPECTED_ACHIEVEMENT_COUNT = 81L
+        private const val EXPECTED_ACHIEVEMENT_COUNT = 87L
     }
 }

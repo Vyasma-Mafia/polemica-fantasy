@@ -49,6 +49,24 @@ class UserCard(
     @Column(name = "times_renewed", nullable = false)
     var timesRenewed: Int = 0,
 
+    @Column(name = "trophy_reward_id")
+    var trophyRewardId: Long? = null,
+
+    @Column(name = "trophy_period_id")
+    var trophyPeriodId: Long? = null,
+
+    @Column(name = "trophy_period_title")
+    var trophyPeriodTitle: String? = null,
+
+    @Column(name = "trophy_rank")
+    var trophyRank: Int? = null,
+
+    @Column(name = "trophy_serial")
+    var trophySerial: String? = null,
+
+    @Column(name = "trophy_original_owner_telegram_id")
+    var trophyOriginalOwnerTelegramId: Long? = null,
+
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
 

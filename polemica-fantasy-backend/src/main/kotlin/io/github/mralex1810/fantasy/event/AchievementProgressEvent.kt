@@ -9,6 +9,7 @@ enum class AchievementProgressEventType {
     MARKETPLACE_WATCH_CREATED,
     SOCIAL_ACTION,
     LEGENDARY_UPGRADE,
+    PERIODIC_RATING_FINALIZED,
 }
 
 data class AchievementProgressEvent(
