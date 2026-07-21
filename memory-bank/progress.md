@@ -2,17 +2,26 @@
 
 ## Что реализовано
 
+### Backend + Admin: сверка результатов игроков серии (июль 2026)
+- [x] Добавлен admin endpoint `GET /api/v1/admin/series/{id}/results`: фактические участники берутся из `series_game.game_data_cache`, а текущие базовые очки — со строгим разбором публичной Polemica match-page по позиции за столом; fantasy-перки, rarity modifiers и неполный `fantasy_team_card_game_score` не используются.
+- [x] Для `STANDALONE` колонки получают номера `1..N` в стабильном хронологическом порядке, для `POLEMICA_COMPETITION` показывают реальный `game.num`; physical duplicate games сохраняются и различаются Polemica ID/table/phase.
+- [x] Partial/unfinished/missing/invalid данные не превращаются в ноль: endpoint возвращает per-game status и warnings, строки с неполным итогом помечаются, а duplicate cached player ids остаются отдельными audit rows.
+- [x] Admin series page получила lazy drawer с горизонтальной таблицей, refresh/error/empty states и TSV-копированием строк `Ник\tБалл1...`; результаты инвалидируются после sync/add/delete/calculate/assign.
+- [x] Проверки: focused `SeriesResultsServiceTest` / `PolemicaPublicPointsLoaderTest`, `./scripts/codex-check.sh quick`, повторный admin production build и `git diff --check` прошли; остаётся существующий Vite warning по крупному `antd-vendor`.
+
 ### Backend + TMA + Admin: периодический рейтинг и уникальные награды (июль 2026)
 - [x] Исправлен discovery draft `docs/features/DESIGN-PERIODIC-RATING-AWARDS.md`: итог пользователя — сумма `FantasyTeam.totalScore` по зачётным финализированным сериям выбранной лиги; карточки не являются отдельными единицами рейтинга.
 - [x] Реализован biweekly MAIN-рейтинг: серия относится к периоду по `MAX(series_game.played_at)`, учитываются только финализированные серии, границы `[start, end)` в `Europe/Moscow`, итог округляется до 2 знаков, места — competition ranking; незавершённая серия блокирует finalize.
 - [x] Реализован top-10 trophy ladder: #1 EPIC, #2–5 RARE с убывающей свободой выбора, #6–10 COMMON выбранного игрока + 50₣; при ничьей награждаются все пользователи с `rank <= 10`.
 - [x] Добавлен полный reward journey `/rating/rewards/{rewardId}/create`: reward hub, серверный поиск игрока, выбор перков и skin, autosave draft, атомарная auto-issue после финального подтверждения, reveal и deep-link в коллекцию; admin review/changes/issue оставлен для legacy/exception записей.
+- [x] Trophy card в коллекции визуально отделена от обычной карты: tier-specific metallic frame, layered glow/sweep, medal-плашка места и периода, premium cap/chips/name; внутренний serial показывается только в detail provenance.
 - [x] Добавлены 12 tier/accent skin codes, реалистичный preview с редкостью, множителем, перками, местом и serial; immutable period/rank/serial/original-owner provenance хранится на `user_card` и показывается в коллекции после последующей продажи.
 - [x] Добавлены admin period create/open/preview/finalize и legacy-очередь review/issue; finalize и issue идемпотентны и выполняются под блокировкой с audit actor/reason.
 - [x] Trophy-карты запрещены как входы merge; существующий in-place Legendary upgrade остаётся допустимым.
 - [x] Добавлен пользовательский архив периодов: `/rating` позволяет выбрать прошлый финализированный период и показывает его immutable leaderboard и личный вклад по сериям.
 - [x] Добавлена линейка из 6 достижений «Рейтинг периодов» с прогрессом по finalized snapshot, competition ties, launch cutoff и targeted recompute после finalize; награды — только фантики (50/250₣ за участие, 200/1 000₣ за top-10, 400₣ за пьедестал, 600₣ за победу; 2 500₣ за всю линейку), trophy-карты и скины не дублируются.
 - [x] Flyway **V72** открывает первый период `[17 июля 00:00, 20 июля 00:00)` МСК и публикует анонс в «Что нового» с переходом на `/rating`; пересекающийся открытый период с тем же стартом нормализуется без дубля.
+- [x] Исправлены finalist options для мест 4–5: каждый reward получает отдельную тройку из актуального RARE-пула активных auto-generated packs, V73 обновляет незавершённые snapshots первого периода, а TMA явно показывает фиксированные комбинации вместо глобального поиска.
 - [x] Проверено на локальном PostgreSQL: Flyway V69 применён, Hibernate schema validation и backend startup успешны; clean backend compile, targeted rules/merge tests и обе frontend production builds проходят.
 - [ ] Отдельный следующий этап: scheduler создания/закрытия периодов, Telegram reminders, rollout feature flag и расширенные интеграционные тесты полного reward lifecycle.
 
@@ -140,6 +149,7 @@
 - [x] В skill зафиксирован безопасный порядок: read-only найти активный `STANDALONE` tournament и ростер, создать серию через admin API в `UPCOMING`, назначить `series_player`, затем проверить результат read-only запросами.
 - [x] Добавлен helper `scripts/prod-admin-series.py`: dry-run по умолчанию, `--execute` для реального вызова admin API через VPS, credentials читаются только из remote `.env`, порт API `18080`.
 - [x] Проверки: helper `--help`, dry-run `create-series`, dry-run `assign-players`, Python syntax parse, ручная проверка frontmatter. `quick_validate.py` не запущен до конца из-за отсутствующего модуля `yaml` в локальном Python окружении.
+- [x] 18 июля skill обобщён на любые активные `STANDALONE` / `POLEMICA_COMPETITION` турниры: добавлены kind-specific payload, batch/resume, защита от дублей, разбор ролей/замен/временных аннотаций, production-derived numbering и проверка реальных `series_game` counters; `--execute` исправлен на глобальную позицию перед subcommand. Проверены YAML/frontmatter, Python syntax, dry-run create/assign, parsing глобального `--execute` и `git diff --check`; штатный `quick_validate.py` по-прежнему недоступен без локального `PyYAML`.
 
 ### TMA: fallback для игроков без фото (июнь 2026)
 - [x] Добавлен общий компонент `PlayerImage`: показывает реальное изображение, а при `null` или `onError` переключается на CSS-силуэт со стабильным цветовым тоном по `fantasyPlayerId`.

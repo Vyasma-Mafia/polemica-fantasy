@@ -131,6 +131,52 @@ data class AdminSeriesGameDto(
     val scored: Boolean,
 )
 
+enum class SeriesResultsPointsStatus {
+    AVAILABLE,
+    PARTIAL,
+    UNFINISHED,
+    CACHE_MISSING,
+    CACHE_INVALID,
+    LOAD_FAILED,
+    EMPTY,
+}
+
+data class SeriesResultsResponseDto(
+    val seriesId: Long,
+    val tournamentKind: TournamentKind,
+    val games: List<SeriesResultsGameDto>,
+    val players: List<SeriesResultsPlayerDto>,
+    val warnings: List<String>,
+)
+
+data class SeriesResultsGameDto(
+    val seriesGameId: Long,
+    val polemicaGameId: Long,
+    val columnLabel: String,
+    val gameNum: Int?,
+    val table: Int?,
+    val phase: Int?,
+    val playedAt: Instant?,
+    val finished: Boolean,
+    val pointsStatus: SeriesResultsPointsStatus,
+)
+
+data class SeriesResultsPlayerDto(
+    val playerKey: String,
+    val polemicaUserId: Long?,
+    val nickname: String,
+    val cells: List<SeriesResultsCellDto>,
+    val totalPoints: Double,
+    val gamesPlayed: Int,
+    val complete: Boolean,
+)
+
+data class SeriesResultsCellDto(
+    val seriesGameId: Long,
+    val participated: Boolean,
+    val points: Double?,
+)
+
 data class SeriesPlayerMarketplaceUnlistResultDto(
     val tournamentPlayerId: Long,
     val fantasyPlayerId: Long,

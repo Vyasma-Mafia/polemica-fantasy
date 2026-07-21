@@ -1,6 +1,8 @@
 package io.github.mralex1810.fantasy
 
 import com.jayway.jsonpath.JsonPath
+import io.github.mralex1810.fantasy.repository.AchievementDefinitionRepository
+import io.github.mralex1810.fantasy.service.achievement.AchievementProgressCalculator
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.greaterThan
@@ -47,6 +49,12 @@ class AchievementStage1IntegrationTest {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    private lateinit var achievementDefinitionRepository: AchievementDefinitionRepository
+
+    @Autowired
+    private lateinit var achievementProgressCalculator: AchievementProgressCalculator
 
     @Test
     @Order(1)
@@ -551,6 +559,58 @@ class AchievementStage1IntegrationTest {
                 .content("""{"profileFrameCode":null,"featuredAchievementCodes":["same_player_3_rarities"],"favoriteBadgeFantasyPlayerId":999999999}"""),
         )
             .andExpect(status().isBadRequest)
+    }
+
+    @Test
+    @Order(33)
+    fun `same player rarities counts a post launch legendary upgrade of an older card`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentId = createTournament(auth, "Favorite player legendary upgrade")
+        val fantasyPlayerId = createTournamentPlayer(auth, tournamentId, 920_033_001L, "UpgradeFavorite")
+        val templateIds = listOf("COMMON", "RARE", "EPIC", "LEGENDARY").map { rarity ->
+            createCardTemplate(auth, fantasyPlayerId, rarity)
+        }
+        val telegramId = 910_000_033L
+        val userCardIds = giveCards(auth, telegramId, templateIds)
+        val legendaryCardId = userCardIds.last()
+        val definition = achievementDefinitionRepository.findByCode("same_player_3_rarities")!!
+        val trackingStartedAt = requireNotNull(definition.trackingStartedAt)
+        val internalUserId = internalUserId(telegramId)
+
+        jdbcTemplate.update(
+            """
+            UPDATE user_card
+            SET acquired_at = (?::timestamptz AT TIME ZONE 'UTC') - interval '1 hour'
+            WHERE id = ?
+            """.trimIndent(),
+            Timestamp.from(trackingStartedAt),
+            legendaryCardId,
+        )
+        jdbcTemplate.update(
+            """
+            UPDATE user_card_ownership_history
+            SET acquired_at = (?::timestamptz AT TIME ZONE 'UTC') - interval '1 hour'
+            WHERE user_card_id = ?
+              AND telegram_user_id = ?
+            """.trimIndent(),
+            Timestamp.from(trackingStartedAt),
+            legendaryCardId,
+            internalUserId,
+        )
+
+        assertThat(achievementProgressCalculator.currentProgress(internalUserId, definition)).isZero()
+
+        jdbcTemplate.update(
+            """
+            INSERT INTO user_legendary_upgrade_event (telegram_user_id, user_card_id, upgraded_at)
+            VALUES (?, ?, ?)
+            """.trimIndent(),
+            internalUserId,
+            legendaryCardId,
+            Timestamp.from(trackingStartedAt.plusSeconds(1)),
+        )
+
+        assertThat(achievementProgressCalculator.currentProgress(internalUserId, definition)).isEqualTo(1)
     }
 
     @Test

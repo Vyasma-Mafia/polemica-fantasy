@@ -11,6 +11,7 @@ export function collectionCardRootClass(c: UserCardItem, opts?: { expired?: bool
   let cls = `pf-collection-card pf-collection-card--${rarityClass(c.rarity)}`
   const skinMod = skinClass(c.skinCode)
   if (skinMod) cls += ` pf-collection-card${skinMod}`
+  if (c.trophyProvenance) cls += ' pf-collection-card--trophy'
   if (opts?.expired) cls += ' pf-collection-card--expired'
   if (c.rarity === 'LEGENDARY' && c.craftedByTelegramUserId != null) {
     cls += ' pf-collection-card--legendary-crafted'

@@ -364,6 +364,51 @@ export interface AdminSeriesGameDto {
   scored: boolean
 }
 
+export type SeriesResultsPointsStatus =
+  | 'AVAILABLE'
+  | 'PARTIAL'
+  | 'UNFINISHED'
+  | 'CACHE_MISSING'
+  | 'CACHE_INVALID'
+  | 'LOAD_FAILED'
+  | 'EMPTY'
+
+export interface SeriesResultsGameDto {
+  seriesGameId: number
+  polemicaGameId: number
+  columnLabel: string
+  gameNum: number | null
+  table: number | null
+  phase: number | null
+  playedAt: string | null
+  finished: boolean
+  pointsStatus: SeriesResultsPointsStatus
+}
+
+export interface SeriesResultsCellDto {
+  seriesGameId: number
+  participated: boolean
+  points: number | null
+}
+
+export interface SeriesResultsPlayerDto {
+  playerKey: string
+  polemicaUserId: number | null
+  nickname: string
+  cells: SeriesResultsCellDto[]
+  totalPoints: number
+  gamesPlayed: number
+  complete: boolean
+}
+
+export interface SeriesResultsDto {
+  seriesId: number
+  tournamentKind: TournamentKind
+  games: SeriesResultsGameDto[]
+  players: SeriesResultsPlayerDto[]
+  warnings: string[]
+}
+
 export interface SeriesPlayerMarketplaceUnlistResultDto {
   tournamentPlayerId: number
   fantasyPlayerId: number

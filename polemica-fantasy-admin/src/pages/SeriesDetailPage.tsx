@@ -32,6 +32,7 @@ import {
 } from '../api/series'
 import type { UpdateSeriesRequest } from '../api/seriesRequests'
 import type { AdminSeriesGameDto, SeriesStatus, TournamentKind } from '../api/types'
+import { SeriesResultsDrawer } from '../components/SeriesResultsDrawer'
 
 export function SeriesDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -56,6 +57,7 @@ export function SeriesDetailPage() {
     Record<number, number | null>
   >({})
   const [replacementModalOpen, setReplacementModalOpen] = useState(false)
+  const [resultsDrawerOpen, setResultsDrawerOpen] = useState(false)
 
   const q = useQuery({
     queryKey: ['admin', 'series', seriesId],
@@ -68,6 +70,7 @@ export function SeriesDetailPage() {
   const invalidateSeriesGameState = () => {
     void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
     void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId, 'games'] })
+    void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId, 'results'] })
     if (tournamentId != null) {
       void qc.invalidateQueries({
         queryKey: ['admin', 'series', 'tournament', tournamentId],
@@ -134,6 +137,7 @@ export function SeriesDetailPage() {
     onSuccess: () => {
       message.success('Players assigned')
       void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'series', seriesId, 'results'] })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -636,6 +640,7 @@ export function SeriesDetailPage() {
         Actions
       </Typography.Title>
       <Space wrap>
+        <Button onClick={() => setResultsDrawerOpen(true)}>Player results</Button>
         <Button
           onClick={() =>
             Modal.confirm({
@@ -677,6 +682,11 @@ export function SeriesDetailPage() {
           Finalize series
         </Button>
       </Space>
+      <SeriesResultsDrawer
+        seriesId={seriesId}
+        open={resultsDrawerOpen}
+        onClose={() => setResultsDrawerOpen(false)}
+      />
     </div>
   )
 }

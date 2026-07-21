@@ -3,7 +3,7 @@
 :is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="--skin-rating_"] {
   --pf-rating-skin-a:#78e4d5;
   --pf-rating-skin-b:#8369f3;
-  border-color:var(--pf-rating-skin-a)!important;
+  border-color:transparent!important;
   box-shadow:0 0 20px color-mix(in srgb,var(--pf-rating-skin-a) 32%,transparent),inset 0 0 18px color-mix(in srgb,var(--pf-rating-skin-b) 12%,transparent);
   background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 210deg,var(--pf-rating-skin-a),#fff4c4,var(--pf-rating-skin-b),var(--pf-rating-skin-a)) border-box;
   border-style:solid;
@@ -21,6 +21,127 @@
 :is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_bronze_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 215deg,#ffd1a8,#a85c2b,var(--pf-rating-skin-a),#e09a61,#7b3f22) border-box }
 .pf-collection-card[class*="rating_finalist_edition"] .pf-collection-card__frame,
 :is(.pf-team-card,.pf-mini-card,.pf-fantasy-card,.pf-modal__img-frame)[class*="rating_finalist_edition"] { background:linear-gradient(var(--pf-bg-elevated),var(--pf-bg-elevated)) padding-box,conic-gradient(from 220deg,#5d6575,#202532,var(--pf-rating-skin-a),#8b93a3,#202532) border-box; box-shadow:0 0 16px color-mix(in srgb,var(--pf-rating-skin-a) 24%,transparent),inset 0 0 18px rgba(255,255,255,.05) }
+
+/* Collection trophy: stronger physical-edition treatment than a regular rarity card. */
+.pf-collection-card--trophy {
+  --pf-trophy-metal:#f5df9b;
+  --pf-trophy-metal-deep:#a97725;
+  --pf-trophy-ink:#fff8dc;
+}
+.pf-collection-card--trophy[class*="rating_silver_edition"] { --pf-trophy-metal:#eaf4ff; --pf-trophy-metal-deep:#8194aa; --pf-trophy-ink:#f5f9ff }
+.pf-collection-card--trophy[class*="rating_bronze_edition"] { --pf-trophy-metal:#ffc38e; --pf-trophy-metal-deep:#9a4e24; --pf-trophy-ink:#fff0df }
+.pf-collection-card--trophy[class*="rating_finalist_edition"] { --pf-trophy-metal:#c9d1df; --pf-trophy-metal-deep:#596375; --pf-trophy-ink:#f3f6ff }
+
+.pf-collection-card--trophy .pf-collection-card__frame {
+  isolation:isolate;
+  border-width:3px;
+  box-shadow:
+    0 0 22px color-mix(in srgb,var(--pf-rating-skin-a) 42%,transparent),
+    0 0 46px color-mix(in srgb,var(--pf-trophy-metal) 16%,transparent),
+    inset 0 0 28px rgba(255,255,255,.08);
+  animation:pf-trophy-collection-glow 3.8s ease-in-out infinite;
+}
+.pf-collection-card--trophy .pf-collection-card__frame::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 105% 70% at 50% -8%,color-mix(in srgb,var(--pf-trophy-metal) 25%,transparent),transparent 58%),
+    radial-gradient(circle at 8% 70%,color-mix(in srgb,var(--pf-rating-skin-a) 18%,transparent),transparent 38%),
+    linear-gradient(180deg,rgba(255,255,255,.08),transparent 28%);
+  mix-blend-mode:screen;
+  -webkit-mask-image:linear-gradient(#000 0%,#000 68%,transparent 96%);
+  mask-image:linear-gradient(#000 0%,#000 68%,transparent 96%);
+}
+.pf-collection-card--trophy .pf-collection-card__frame::after {
+  content:'';
+  position:absolute;
+  inset:-28%;
+  z-index:3;
+  pointer-events:none;
+  opacity:.32;
+  background:linear-gradient(122deg,transparent 36%,rgba(255,255,255,.78) 49%,transparent 61%);
+  transform:translateX(-46%);
+  animation:pf-trophy-collection-sweep 5.2s ease-in-out infinite;
+}
+.pf-collection-card--trophy .pf-collection-card__img { filter:saturate(1.06) contrast(1.04) }
+.pf-collection-card--trophy .pf-collection-card__cap {
+  z-index:4;
+  padding-top:18px;
+  border-top:1px solid color-mix(in srgb,var(--pf-trophy-metal) 32%,transparent);
+  background:
+    radial-gradient(ellipse 95% 90% at 15% 100%,color-mix(in srgb,var(--pf-rating-skin-a) 18%,transparent),transparent 62%),
+    linear-gradient(180deg,transparent 0%,rgba(5,7,13,.72) 23%,rgba(4,6,12,.97) 100%);
+  box-shadow:0 -12px 30px rgba(0,0,0,.28);
+}
+.pf-collection-card--trophy .pf-collection-card__name {
+  color:transparent;
+  background:linear-gradient(100deg,#fff 0%,var(--pf-trophy-metal) 44%,#fff 72%,var(--pf-trophy-metal) 100%);
+  background-size:220% auto;
+  -webkit-background-clip:text;
+  background-clip:text;
+  text-shadow:none;
+  animation:pf-trophy-name-shimmer 5s ease-in-out infinite;
+}
+.pf-collection-card--trophy .pf-collection-card__rarity { color:color-mix(in srgb,var(--pf-trophy-metal) 84%,white) }
+.pf-collection-card--trophy .pf-card-perk-chip {
+  border-color:color-mix(in srgb,var(--pf-trophy-metal) 42%,transparent);
+  background:linear-gradient(110deg,rgba(8,11,20,.94),color-mix(in srgb,var(--pf-rating-skin-b) 19%,rgba(8,11,20,.94)));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 0 12px color-mix(in srgb,var(--pf-rating-skin-a) 12%,transparent);
+}
+
+.pf-trophy-edition-mark {
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  align-items:center;
+  gap:7px;
+  width:min(100%,178px);
+  margin-bottom:7px;
+  padding:5px 7px 5px 5px;
+  border:1px solid color-mix(in srgb,var(--pf-trophy-metal) 48%,transparent);
+  border-radius:12px;
+  color:var(--pf-trophy-ink);
+  background:linear-gradient(110deg,rgba(8,10,18,.9),color-mix(in srgb,var(--pf-rating-skin-b) 28%,rgba(8,10,18,.9)));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 16px color-mix(in srgb,var(--pf-rating-skin-a) 15%,transparent);
+  backdrop-filter:blur(8px);
+}
+.pf-trophy-edition-mark__medal {
+  position:relative;
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--pf-trophy-metal) 72%,white);
+  border-radius:50%;
+  color:#171109;
+  background:radial-gradient(circle at 34% 28%,#fff 0%,var(--pf-trophy-metal) 32%,var(--pf-trophy-metal-deep) 100%);
+  box-shadow:0 0 12px color-mix(in srgb,var(--pf-trophy-metal) 30%,transparent);
+}
+.pf-trophy-edition-mark__medal i { position:absolute; top:1px; right:3px; color:rgba(255,255,255,.8); font:normal 8px/1 sans-serif }
+.pf-trophy-edition-mark__medal b { font-size:11px; font-variant-numeric:tabular-nums }
+.pf-trophy-edition-mark__copy { display:flex; min-width:0; flex-direction:column; line-height:1.08 }
+.pf-trophy-edition-mark__copy strong { overflow:hidden; font-size:7px; text-transform:uppercase; letter-spacing:.07em; text-overflow:ellipsis; white-space:nowrap }
+.pf-trophy-edition-mark__copy small { overflow:hidden; margin-top:3px; color:rgba(255,255,255,.72); font-size:8px; text-overflow:ellipsis; white-space:nowrap }
+
+@keyframes pf-trophy-collection-glow {
+  50% { box-shadow:0 0 30px color-mix(in srgb,var(--pf-rating-skin-a) 52%,transparent),0 0 58px color-mix(in srgb,var(--pf-trophy-metal) 22%,transparent),inset 0 0 34px rgba(255,255,255,.1) }
+}
+@keyframes pf-trophy-collection-sweep {
+  0%,30% { transform:translateX(-46%) }
+  72%,100% { transform:translateX(46%) }
+}
+@keyframes pf-trophy-name-shimmer {
+  0%,35% { background-position:100% 50% }
+  75%,100% { background-position:-80% 50% }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pf-collection-card--trophy .pf-collection-card__frame,
+  .pf-collection-card--trophy .pf-collection-card__frame::after,
+  .pf-collection-card--trophy .pf-collection-card__name { animation:none }
+}
 
 /* --- Special card skin: tournament_gold --- */
 .pf-collection-card--skin-tournament_gold .pf-collection-card__frame,

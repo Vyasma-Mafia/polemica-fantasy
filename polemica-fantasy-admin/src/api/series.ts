@@ -11,6 +11,7 @@ import type {
   SeriesDto,
   SeriesFinalizationResultDto,
   SeriesPlayerMarketplaceUnlistResultDto,
+  SeriesResultsDto,
 } from './types'
 import { apiJson, apiVoid } from './client'
 
@@ -77,6 +78,10 @@ export function calculateScores(id: number) {
 
 export function listSeriesGames(id: number) {
   return apiJson<AdminSeriesGameDto[]>(`/v1/admin/series/${id}/games`)
+}
+
+export function getSeriesResults(id: number) {
+  return apiJson<SeriesResultsDto>(`/v1/admin/series/${id}/results`)
 }
 
 export function addSeriesGame(id: number, body: AddSeriesGameRequest) {

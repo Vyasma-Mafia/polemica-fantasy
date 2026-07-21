@@ -336,6 +336,13 @@ class AchievementProgressCalculator(
               AND (
                 h.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
                 OR uc.acquired_at >= (?::timestamptz AT TIME ZONE 'UTC')
+                OR EXISTS (
+                    SELECT 1
+                    FROM user_legendary_upgrade_event e
+                    WHERE e.user_card_id = uc.id
+                      AND e.telegram_user_id = uc.telegram_user_id
+                      AND e.upgraded_at >= ?
+                )
               )
             GROUP BY fp.id, fp.nickname
             HAVING COUNT(DISTINCT ct.rarity) >= ?
@@ -349,6 +356,7 @@ class AchievementProgressCalculator(
                 )
             },
             internalTelegramUserId,
+            trackingStartedAt,
             trackingStartedAt,
             trackingStartedAt,
             requiredRarities,

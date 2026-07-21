@@ -12,6 +12,7 @@ import io.github.mralex1810.fantasy.dto.periodicrating.PeriodicRatingPreviewDto
 import io.github.mralex1810.fantasy.dto.periodicrating.PeriodicRatingSeriesPreviewDto
 import io.github.mralex1810.fantasy.dto.periodicrating.PeriodicRatingUserDto
 import io.github.mralex1810.fantasy.dto.periodicrating.UpdatePeriodicRatingSeriesRequest
+import io.github.mralex1810.fantasy.entity.Rarity
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.event.AchievementProgressEvent
 import io.github.mralex1810.fantasy.event.AchievementProgressEventType
@@ -35,6 +36,7 @@ class PeriodicRatingService(
     private val jdbc: JdbcTemplate,
     private val objectMapper: ObjectMapper,
     private val eventPublisher: ApplicationEventPublisher,
+    private val cardPackService: CardPackService,
 ) {
     companion object {
         const val TIMEZONE = "Europe/Moscow"
@@ -197,7 +199,7 @@ class PeriodicRatingService(
             )
         }
         val rewarded = calculation.entries.filter { PeriodicRatingRules.isRewarded(it.rank) }
-        val policyInputs = loadPolicyInputs(rewarded.isNotEmpty())
+        val policyInputs = loadPolicyInputs(id, rewarded.isNotEmpty())
 
         calculation.series.forEach { series ->
             jdbc.update(
@@ -249,9 +251,11 @@ class PeriodicRatingService(
             }
         }
 
+        var bundledRewardIndex = 0
         rewarded.sortedWith(compareBy<PeriodicRatingEntryDto> { it.rank }.thenBy { it.user.telegramId })
             .forEachIndexed { index, entry ->
-                val policy = rewardPolicy(entry.rank, policyInputs)
+                val policy = rewardPolicy(entry.rank, policyInputs, bundledRewardIndex)
+                if (entry.rank in 4..5) bundledRewardIndex += 1
                 val serial = "${period.code}-${(index + 1).toString().padStart(3, '0')}"
                 val fantiki = PeriodicRatingRules.rewardFantiki(entry.rank)
                 val userId = internalUserIds.getValue(entry.user.telegramId)
@@ -518,22 +522,25 @@ class PeriodicRatingService(
         )
     }
 
-    private fun loadPolicyInputs(required: Boolean): PolicyInputs {
+    private fun loadPolicyInputs(periodId: Long, required: Boolean): PolicyInputs {
         val perks = jdbc.queryForList(
             "SELECT id FROM perk WHERE can_appear_on_random_cards=true ORDER BY id",
             String::class.java,
         )
-        val players = jdbc.queryForList("SELECT id FROM fantasy_player ORDER BY id", Long::class.java)
+        val players = cardPackService.buildActivePackFantasyPlayerPool(Rarity.RARE)
+            .mapNotNull { it.id }
+            .distinct()
+            .sortedBy { stablePolicyOrder(periodId, it) }
         if (required && perks.size < 3) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "At least 3 eligible perks are required to freeze reward policy")
         }
         if (required && players.size < 3) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "At least 3 fantasy players are required to freeze reward policy")
+            throw ResponseStatusException(HttpStatus.CONFLICT, "At least 3 active-pack RARE players are required to freeze reward policy")
         }
         return PolicyInputs(perks, players)
     }
 
-    private fun rewardPolicy(rank: Int, inputs: PolicyInputs): Map<String, Any> {
+    private fun rewardPolicy(rank: Int, inputs: PolicyInputs, bundledRewardIndex: Int): Map<String, Any> {
         val tier = PeriodicRatingRules.rewardTier(rank)
         val rarity = PeriodicRatingRules.rewardRarity(rank)
         val skins = PeriodicRatingRules.rewardSkinCodes(rank)
@@ -567,8 +574,9 @@ class PeriodicRatingService(
                 "playerSelectionMode" to "BUNDLED_OPTIONS",
                 "perkSelectionMode" to "BUNDLED_OPTIONS",
                 "perkSelectionCount" to 1,
-                "bundles" to inputs.players.take(3).mapIndexed { index, playerId ->
-                    mapOf("playerId" to playerId, "perkIds" to listOf(inputs.perks[index]))
+                "bundles" to circularTake(inputs.players, bundledRewardIndex * 3, 3).mapIndexed { index, playerId ->
+                    val perkId = inputs.perks[(bundledRewardIndex * 3 + index) % inputs.perks.size]
+                    mapOf("playerId" to playerId, "perkIds" to listOf(perkId))
                 },
             ))
             else -> base.putAll(mapOf(
@@ -581,6 +589,11 @@ class PeriodicRatingService(
         }
         return base
     }
+
+    private fun stablePolicyOrder(periodId: Long, playerId: Long): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest("$periodId:$playerId".toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 
     private fun checksum(series: List<PeriodicRatingSeriesPreviewDto>, scores: List<RawScore>): String {
         val source = buildString {
@@ -613,4 +626,10 @@ class PeriodicRatingService(
     )
 
     private data class PolicyInputs(val perks: List<String>, val players: List<Long>)
+}
+
+internal fun <T> circularTake(values: List<T>, offset: Int, count: Int): List<T> {
+    require(values.isNotEmpty()) { "values must not be empty" }
+    require(count >= 0) { "count must be non-negative" }
+    return List(count) { index -> values[(offset + index) % values.size] }
 }

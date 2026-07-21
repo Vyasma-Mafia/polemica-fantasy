@@ -54,8 +54,10 @@ export function PeriodicRewardBuilderPage() {
   })
   const perksQ = useQuery({ queryKey: ['perks-catalog', initData], queryFn: () => fetchPerkCatalog(initData!), enabled: !!initData })
   const reward = rewardQ.data
+  const bundledPlayerSelection = reward?.policy.playerSelectionMode === 'BUNDLED_OPTIONS'
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search.trim(), 350)
+  const playerSearchQuery = bundledPlayerSelection ? '' : debouncedSearch
   const [player, setPlayer] = useState<PeriodicRatingRewardPlayer | null>(null)
   const [playerId, setPlayerId] = useState<number | null>(null)
   const [perkIds, setPerkIds] = useState<string[]>([])
@@ -71,8 +73,8 @@ export function PeriodicRewardBuilderPage() {
   }, [reward?.id])
 
   const playersQ = useInfiniteQuery({
-    queryKey: ['periodic-rating-reward-players', rewardId, debouncedSearch, initData],
-    queryFn: ({ pageParam }) => fetchPeriodicRatingRewardPlayers(rewardId, initData!, debouncedSearch, pageParam),
+    queryKey: ['periodic-rating-reward-players', rewardId, playerSearchQuery, initData],
+    queryFn: ({ pageParam }) => fetchPeriodicRatingRewardPlayers(rewardId, initData!, playerSearchQuery, pageParam),
     initialPageParam: 0,
     getNextPageParam: (last) => last.page + 1 < last.totalPages ? last.page + 1 : undefined,
     enabled: !!initData && !!reward && ['AVAILABLE', 'DRAFT', 'CHANGES_REQUESTED', 'OVERDUE'].includes(reward.status),
@@ -154,11 +156,13 @@ export function PeriodicRewardBuilderPage() {
     </div>
 
     {editable && <div className="pf-reward-builder__steps">
-      <section className="pf-reward-step"><div className="pf-reward-step__title"><span>1</span><div><h2>Игрок</h2><p>Поиск по нику или ID Polemica</p></div></div>
-        <label className="pf-reward-search"><span>⌕</span><input disabled={controlsDisabled} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Например, mralex или 12345" inputMode="search" /></label>
+      <section className="pf-reward-step"><div className="pf-reward-step__title"><span>1</span><div><h2>Игрок</h2><p>{bundledPlayerSelection ? 'Выберите один из вариантов награды' : 'Поиск по нику или ID Polemica'}</p></div></div>
+        {bundledPlayerSelection
+          ? <p className="pf-reward-bundle-note">Для вашего места доступны три актуальные комбинации игрока и перка.</p>
+          : <label className="pf-reward-search"><span>⌕</span><input disabled={controlsDisabled} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Например, mralex или 12345" inputMode="search" /></label>}
         {playersQ.isLoading && <p className="pf-loading">Ищем игроков…</p>}
         {playersQ.isError && <div className="pf-inline-error">Не удалось загрузить игроков. <button onClick={() => playersQ.refetch()}>Повторить</button></div>}
-        {!playersQ.isLoading && !playersQ.isError && players.length === 0 && <p className="pf-reward-empty">Никого не нашли. Проверьте ник или числовой ID.</p>}
+        {!playersQ.isLoading && !playersQ.isError && players.length === 0 && <p className="pf-reward-empty">{bundledPlayerSelection ? 'Варианты награды не сформированы.' : 'Никого не нашли. Проверьте ник или числовой ID.'}</p>}
         <div className="pf-reward-player-list">{players.map((candidate) => <button disabled={controlsDisabled} key={candidate.id} className={playerId === candidate.id ? 'is-selected' : ''} onClick={() => selectPlayer(candidate)}><PlayerImage src={candidate.photoUrl} seedId={candidate.id} variant="avatar" /><span><b>{candidate.nickname}</b><small>Polemica ID {candidate.polemicaUserId}</small></span><i>{playerId === candidate.id ? '✓' : '›'}</i></button>)}</div>
         {playersQ.hasNextPage && <button className="pf-reward-more" disabled={playersQ.isFetchingNextPage} onClick={() => playersQ.fetchNextPage()}>{playersQ.isFetchingNextPage ? 'Загрузка…' : 'Показать ещё'}</button>}
       </section>

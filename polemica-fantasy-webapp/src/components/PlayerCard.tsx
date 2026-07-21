@@ -8,6 +8,7 @@ import { CardValueBadge } from './CardValueBadge'
 import { ContractReissueBadge } from './ContractReissueBadge'
 import { MarketplaceListedBadge } from './MarketplaceListedBadge'
 import { PlayerImage } from './PlayerImage'
+import { TrophyEditionMark } from './TrophyEditionMark'
 
 function maxUsesForCard(c: UserCardItem, usesPerRarity: Record<Rarity, number> | undefined): number {
   if (!usesPerRarity) return Math.max(c.usesRemaining, 1)
@@ -139,6 +140,7 @@ export function PlayerCard(props: PlayerCardProps) {
                     )}
                     <CardValueBadge value={c.value} layout="collection" expired={ex} />
                     <div className="pf-collection-card__cap">
+                      {c.trophyProvenance && <TrophyEditionMark trophy={c.trophyProvenance} />}
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
                         {c.rarity}{' '}
@@ -201,6 +203,7 @@ export function PlayerCard(props: PlayerCardProps) {
             )}
             <CardValueBadge value={best.value} layout="playerStack" expired={expired} />
             <div className="pf-collection-card__cap">
+              {best.trophyProvenance && <TrophyEditionMark trophy={best.trophyProvenance} />}
               <span className="pf-collection-card__name">{nickname}</span>
               <span className="pf-collection-card__rarity">
                 {best.rarity}{' '}

@@ -35,6 +35,7 @@ import { isEligibleEpicForLegendary, LegendaryUpgradeWizard } from '../component
 import { MissingInitDataNotice } from '../components/MissingInitDataNotice'
 import { PageHeader } from '../components/PageHeader'
 import { PlayerImage } from '../components/PlayerImage'
+import { TrophyEditionMark } from '../components/TrophyEditionMark'
 import { ScoreBreakdownBlock } from '../components/ScoreBreakdownBlock'
 import { useInitData } from '../context/useInitData'
 import { cardDisplayImageUrl } from '../lib/cardImage'
@@ -689,7 +690,7 @@ export function CardsPage() {
                     )}
                     <CardValueBadge value={c.value} layout="collection" expired={expired} />
                     <div className="pf-collection-card__cap">
-                      {c.trophyProvenance && <span className="pf-trophy-edition-badge">TOP {c.trophyProvenance.rank} · {c.trophyProvenance.serial}</span>}
+                      {c.trophyProvenance && <TrophyEditionMark trophy={c.trophyProvenance} />}
                       <span className="pf-collection-card__name">{c.playerNickname}</span>
                       <span className="pf-collection-card__rarity">
                         {c.rarity}{' '}
