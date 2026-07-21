@@ -7,7 +7,7 @@ import type {
   SeriesResultsPlayerDto,
   SeriesResultsPointsStatus,
 } from '../api/types'
-import { formatSeriesResultsTsv } from '../lib/seriesResultsCopy'
+import { formatSeriesResultPoint, formatSeriesResultsTsv } from '../lib/seriesResultsCopy'
 
 interface SeriesResultsDrawerProps {
   seriesId: number
@@ -115,7 +115,7 @@ export function SeriesResultsDrawer({ seriesId, open, onClose }: SeriesResultsDr
       render: (_: unknown, player: SeriesResultsPlayerDto) => {
         const cell = player.cells.find((item) => item.seriesGameId === game.seriesGameId)
         if (!cell?.participated) return '—'
-        if (cell.points != null) return cell.points
+        if (cell.points != null) return formatSeriesResultPoint(cell.points)
         return (
           <Tooltip title="Player participated, but the score is unavailable">
             <Typography.Text type="warning">!</Typography.Text>
@@ -132,11 +132,11 @@ export function SeriesResultsDrawer({ seriesId, open, onClose }: SeriesResultsDr
       align: 'right',
       render: (value: number, player) =>
         player.complete ? (
-          <Typography.Text strong>{value}</Typography.Text>
+          <Typography.Text strong>{formatSeriesResultPoint(value)}</Typography.Text>
         ) : (
           <Tooltip title="Partial total: one or more game scores are unavailable">
             <Typography.Text strong type="warning">
-              {value}*
+              {formatSeriesResultPoint(value)}*
             </Typography.Text>
           </Tooltip>
         ),
