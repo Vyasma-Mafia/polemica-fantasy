@@ -4,6 +4,9 @@ set -euo pipefail
 action="${1:-apply}"
 source_cidr="${TELEGRAM_IMPORT_REQUIRED_SOURCE_CIDR:-172.24.0.0/28}"
 route_priority="${TELEGRAM_IMPORT_ROUTE_PRIORITY:-9999}"
+backend_network_name="${TELEGRAM_IMPORT_BACKEND_NETWORK_NAME:-polemica-fantasy_default}"
+backend_route_priority="${TELEGRAM_IMPORT_BACKEND_ROUTE_PRIORITY:-9998}"
+telegram_api_cidr="${TELEGRAM_IMPORT_BOT_API_CIDR:-149.154.160.0/20}"
 table_name="polemica_telegram_guard"
 
 require_root() {
@@ -22,7 +25,31 @@ route_rule_exists() {
   '
 }
 
+backend_subnet() {
+  command -v docker >/dev/null 2>&1 || return 0
+  docker network inspect "$backend_network_name" \
+    --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null || true
+}
+
+backend_route_rule_exists() {
+  local subnet="$1"
+  ip -4 rule show | awk \
+    -v priority="$backend_route_priority:" \
+    -v source="$subnet" \
+    -v destination="$telegram_api_cidr" '
+      $1 == priority && $2 == "from" && $3 == source &&
+      $4 == "to" && $5 == destination && $6 == "lookup" && $7 == "201" {
+        found = 1
+      }
+      END { exit !found }
+    '
+}
+
 check_rules() {
+  local subnet expected_rules
+  subnet="$(backend_subnet)"
+  expected_rules=1
+  [[ -n "$subnet" ]] && expected_rules=2
   nft -j list table inet "$table_name" | python3 -c '
 import json
 import sys
@@ -40,14 +67,22 @@ valid_chain = len(chains) == 1 and all(
     )
     for chain in chains
 )
-raise SystemExit(0 if valid_chain and len(rules) == 1 else 1)
-'
+expected_rules = int(sys.argv[1])
+raise SystemExit(0 if valid_chain and len(rules) == expected_rules else 1)
+' "$expected_rules"
   nft list chain inet "$table_name" forward | grep -Fq \
     "ip saddr $source_cidr oifname != \"wg-tg\" reject"
   route_rule_exists
+  if [[ -n "$subnet" ]]; then
+    nft list chain inet "$table_name" forward | grep -Fq \
+      "ip saddr $subnet ip daddr $telegram_api_cidr oifname != \"wg-tg\" reject"
+    backend_route_rule_exists "$subnet"
+  fi
 }
 
 apply_rules() {
+  local subnet
+  subnet="$(backend_subnet)"
   if ! nft list table inet "$table_name" >/dev/null 2>&1; then
     nft add table inet "$table_name"
   fi
@@ -58,8 +93,20 @@ add chain inet $table_name forward { type filter hook forward priority -10; poli
 add rule inet $table_name forward ip saddr $source_cidr oifname != "wg-tg" reject
 NFT_RULESET
 
+  if [[ -n "$subnet" ]]; then
+    nft add rule inet "$table_name" forward \
+      ip saddr "$subnet" ip daddr "$telegram_api_cidr" oifname != "wg-tg" reject
+  fi
+
   if ! route_rule_exists; then
     ip -4 rule add priority "$route_priority" from "$source_cidr" lookup 201
+  fi
+  while ip -4 rule show | awk -v priority="$backend_route_priority:" '$1 == priority { found = 1 } END { exit !found }'; do
+    ip -4 rule del priority "$backend_route_priority"
+  done
+  if [[ -n "$subnet" ]]; then
+    ip -4 rule add priority "$backend_route_priority" \
+      from "$subnet" to "$telegram_api_cidr" lookup 201
   fi
   check_rules
 }
@@ -72,7 +119,7 @@ case "$action" in
   check)
     require_root
     check_rules
-    echo "Telegram worker egress is forced through wg-tg."
+    echo "Telegram worker and backend Bot API egress are forced through wg-tg."
     ;;
   *)
     echo "Usage: $0 {apply|check}" >&2

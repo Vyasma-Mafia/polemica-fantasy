@@ -148,8 +148,11 @@ sudo /usr/local/sbin/polemica-telegram-egress-guard check
 
 The worker uses only the external `172.24.0.0/28` Docker network. Policy table
 201 routes that source through `wg-tg`; the nftables guard rejects fall-through
-to any other interface. Both auth and daemon launchers refuse to proceed unless
-the VPN, timer, network and guard are present.
+to any other interface. The same guard discovers the backend Compose subnet and
+routes only Telegram Bot API traffic (`149.154.160.0/20`) through `wg-tg`, with
+the same fail-closed protection. Other backend traffic keeps its ordinary
+route. Both auth and daemon launchers refuse to proceed unless the VPN, timer,
+network and guard are present.
 
 Start or upgrade only the worker service:
 
