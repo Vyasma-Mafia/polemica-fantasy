@@ -54,7 +54,9 @@ Before switching to `BACKEND`, remove the legacy
 flag from the worker env. Backend mode refuses to start while those Bot API
 credentials remain. A clean SQLite bootstrap is silent in both delivery modes;
 use the explicit `reclassify-message --message-id ...` command to hand off one
-chosen existing candidate after ingest-only canary checks.
+chosen existing candidate after ingest-only canary checks. In `BACKEND` mode the
+command also creates the missing idempotent backend delivery when the local
+revision is already known from an earlier `DIRECT` run.
 
 The backend has independent, default-off gates for ingest, operator
 notifications, callbacks, result processing and all production writes. Each

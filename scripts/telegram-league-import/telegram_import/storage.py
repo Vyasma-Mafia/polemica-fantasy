@@ -132,11 +132,19 @@ class Inbox:
                 message_date: str | None, edit_date: str | None, grouped_id: int | None,
                 media_kind: str | None, media_id: str | None, text: str, fingerprint: str,
                 classification: str, league: str | None, reason: str, silent: bool,
-                watermark: int | None = None, backend_delivery: bool = False) -> str:
+                watermark: int | None = None, backend_delivery: bool = False,
+                force_backend_delivery: bool = False) -> str:
         with self.transaction() as db:
             previous = db.execute("SELECT latest_revision,latest_source_version,classification FROM messages WHERE channel_peer_id=? AND message_id=?", (peer_id,message_id)).fetchone()
             duplicate = db.execute("SELECT revision_no FROM revisions WHERE channel_peer_id=? AND message_id=? AND fingerprint=?", (peer_id,message_id,fingerprint)).fetchone()
             if duplicate:
+                if (backend_delivery and force_backend_delivery and not silent and previous is not None
+                        and duplicate["revision_no"] == previous["latest_revision"]
+                        and classification in ("ANNOUNCEMENT", "RESULT")):
+                    self._enqueue_backend_delivery(
+                        db, peer_id, message_id, duplicate["revision_no"], source_version,
+                        message_date, edit_date, text, classification, league,
+                    )
                 if previous is not None and source_version > previous["latest_source_version"]:
                     db.execute("UPDATE messages SET latest_source_version=?,observed_at=? WHERE channel_peer_id=? AND message_id=?", (source_version,utcnow(),peer_id,message_id))
                 if watermark is not None:
@@ -171,29 +179,39 @@ class Inbox:
                 created = utcnow()
                 db.execute("INSERT INTO outbox(event_key,channel_peer_id,message_id,revision_no,event_type,payload,created_at,available_at) VALUES(?,?,?,?,?,?,?,?)", (event_key,peer_id,message_id,revision_no,event_type,payload,created,created))
             if backend_delivery and not silent and (classification in ("ANNOUNCEMENT", "RESULT") or (previous and previous["classification"] in ("ANNOUNCEMENT", "RESULT"))):
-                backend_event_key = f"tg:{peer_id}:{message_id}:r{revision_no}"
-                raw_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
-                posted_at = message_date or edit_date or utcnow()
-                backend_payload = json.dumps({
-                    "sourceChannelPeerId": peer_id,
-                    "messageId": message_id,
-                    "revision": revision_no,
-                    "sourceVersion": source_version,
-                    "postedAt": posted_at,
-                    "editedAt": edit_date,
-                    "contentHash": raw_hash,
-                    "rawText": text,
-                    "classification": classification,
-                    "league": league,
-                }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-                created = utcnow()
-                db.execute(
-                    "INSERT INTO backend_outbox(event_key,delivery_id,payload,created_at,available_at) VALUES(?,?,?,?,?) ON CONFLICT(event_key) DO NOTHING",
-                    (backend_event_key, str(uuid.uuid4()), backend_payload, created, created),
+                self._enqueue_backend_delivery(
+                    db, peer_id, message_id, revision_no, source_version,
+                    message_date, edit_date, text, classification, league,
                 )
             if watermark is not None:
                 self.set_state(db, "watermark", watermark)
             return event_type or "STORED"
+
+    def _enqueue_backend_delivery(
+        self, db: sqlite3.Connection, peer_id: int, message_id: int, revision_no: int,
+        source_version: str, message_date: str | None, edit_date: str | None,
+        text: str, classification: str, league: str | None,
+    ) -> None:
+        backend_event_key = f"tg:{peer_id}:{message_id}:r{revision_no}"
+        raw_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        posted_at = message_date or edit_date or utcnow()
+        backend_payload = json.dumps({
+            "sourceChannelPeerId": peer_id,
+            "messageId": message_id,
+            "revision": revision_no,
+            "sourceVersion": source_version,
+            "postedAt": posted_at,
+            "editedAt": edit_date,
+            "contentHash": raw_hash,
+            "rawText": text,
+            "classification": classification,
+            "league": league,
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        created = utcnow()
+        db.execute(
+            "INSERT INTO backend_outbox(event_key,delivery_id,payload,created_at,available_at) VALUES(?,?,?,?,?) ON CONFLICT(event_key) DO NOTHING",
+            (backend_event_key, str(uuid.uuid4()), backend_payload, created, created),
+        )
 
     def lease_outbox(self, seconds: int = 60) -> sqlite3.Row | None:
         with self.transaction() as db:

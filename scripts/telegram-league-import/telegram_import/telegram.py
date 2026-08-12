@@ -138,7 +138,18 @@ def persist_message(
     if classifier_replay:
         semantic["classifier_rule_version"] = CLASSIFIER_RULE_VERSION
     reason = f"{result.reason}; classifier rule v{CLASSIFIER_RULE_VERSION}"
-    return inbox.persist(peer_id=peer_id, fingerprint=fingerprint(semantic), classification=result.kind, league=result.league, reason=reason, silent=silent, watermark=watermark, backend_delivery=mode is DeliveryMode.BACKEND, **payload)
+    return inbox.persist(
+        peer_id=peer_id,
+        fingerprint=fingerprint(semantic),
+        classification=result.kind,
+        league=result.league,
+        reason=reason,
+        silent=silent,
+        watermark=watermark,
+        backend_delivery=mode is DeliveryMode.BACKEND,
+        force_backend_delivery=classifier_replay and mode is DeliveryMode.BACKEND,
+        **payload,
+    )
 
 
 async def drain_outbox(inbox: Inbox, notifier: BotNotifier) -> None:

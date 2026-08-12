@@ -49,6 +49,34 @@ class StorageTest(unittest.TestCase):
         self.inbox.persist(peer_id=-10042, message_id=7, source_version="2026-08-07T00:00:00+00:00", message_date="2026-08-07T00:00:00+00:00", edit_date=None, grouped_id=None, media_kind=None, media_id=None, text="#анонс_зл Серия 7 08.08 20:00", fingerprint="backend-silent", classification="ANNOUNCEMENT", league="ЗЛ", reason="test", silent=True, backend_delivery=True)
         self.assertEqual(self.inbox.connection.execute("SELECT COUNT(*) FROM backend_outbox").fetchone()[0], 0)
 
+    def test_targeted_backend_handoff_enqueues_known_revision_once(self):
+        self.persist("known-direct")
+        common = dict(
+            peer_id=-10042,
+            message_id=7,
+            source_version="2026-08-07T00:00:00+00:00",
+            message_date="2026-08-07T00:00:00+00:00",
+            edit_date=None,
+            grouped_id=123,
+            media_kind="MessageMediaPhoto",
+            media_id="9001",
+            text="#анонс_зл 08.08 20:00",
+            fingerprint="known-direct",
+            classification="ANNOUNCEMENT",
+            league="ЗЛ",
+            reason="targeted handoff",
+            silent=False,
+            backend_delivery=True,
+            force_backend_delivery=True,
+        )
+
+        self.assertEqual(self.inbox.persist(**common), "DUPLICATE")
+        self.assertEqual(self.inbox.persist(**common), "DUPLICATE")
+        rows = self.inbox.connection.execute("SELECT event_key,status FROM backend_outbox").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["event_key"], "tg:-10042:7:r1")
+        self.assertEqual(rows[0]["status"], "PENDING")
+
     def test_backend_delivery_is_atomic_and_suppresses_direct_outbox(self):
         self.inbox.persist(peer_id=-10042, message_id=7, source_version="2026-08-07T00:00:00+00:00", message_date="2026-08-07T00:00:00+00:00", edit_date=None, grouped_id=None, media_kind=None, media_id=None, text="#анонс_зл Серия 7 08.08 20:00", fingerprint="backend-a", classification="ANNOUNCEMENT", league="ЗЛ", reason="test", silent=False, backend_delivery=True)
         self.assertEqual(self.inbox.connection.execute("SELECT COUNT(*) FROM outbox").fetchone()[0], 0)
