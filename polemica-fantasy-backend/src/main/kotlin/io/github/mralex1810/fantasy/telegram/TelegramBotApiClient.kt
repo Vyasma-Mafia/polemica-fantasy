@@ -24,7 +24,7 @@ class TelegramBotApiClient(
         messageThreadId: Int? = null,
         parseMode: String? = null,
         replyMarkup: InlineKeyboardMarkup? = null,
-    ) {
+    ): Int {
         val body = buildMap<String, Any> {
             put("chat_id", chatId)
             put("text", text)
@@ -40,6 +40,8 @@ class TelegramBotApiClient(
         }
         val tree = apiPost(botToken, "sendMessage", body)
         requireTelegramOk(tree, "sendMessage")
+        return tree.path("result").path("message_id").asInt().takeIf { it > 0 }
+            ?: throw IllegalStateException("Telegram API sendMessage returned no message id")
     }
 
     fun sendMessageSafe(
@@ -66,9 +68,12 @@ class TelegramBotApiClient(
             } else {
                 val code = tree.path("error_code").asInt(0)
                 val desc = tree.path("description").asText("")
-                when (code) {
-                    403 -> TelegramSendResult.BotBlocked(desc)
-                    429 -> TelegramSendResult.RateLimited(tree.path("parameters").path("retry_after").asInt(5))
+                when {
+                    code == 403 -> TelegramSendResult.BotBlocked(desc)
+                    code == 400 && desc.equals(CHAT_NOT_FOUND_DESCRIPTION, ignoreCase = true) ->
+                        TelegramSendResult.BotBlocked(desc)
+                    code == 429 ->
+                        TelegramSendResult.RateLimited(tree.path("parameters").path("retry_after").asInt(5))
                     else -> TelegramSendResult.OtherError(code, desc)
                 }
             }
@@ -81,14 +86,16 @@ class TelegramBotApiClient(
      * @return Bot user id (`result.id` from getMe).
      */
     fun getMe(botToken: String): Long {
-        val token = requireBotToken(botToken)
-        val uri = URI.create("https://api.telegram.org/bot$token/getMe")
-        val responseBody = restClient.get()
-            .uri(uri)
-            .retrieve()
-            .body(String::class.java)
-            ?: throw IllegalStateException("Telegram getMe: empty response body")
-        val tree = objectMapper.readTree(responseBody)
+        val tree = callWithoutSecretInException("getMe") {
+            val token = requireBotToken(botToken)
+            val uri = URI.create("https://api.telegram.org/bot$token/getMe")
+            val responseBody = restClient.get()
+                .uri(uri)
+                .retrieve()
+                .body(String::class.java)
+                ?: throw IllegalStateException("empty response body")
+            objectMapper.readTree(responseBody)
+        }
         requireTelegramOk(tree, "getMe")
         return tree.path("result").path("id").asLong()
     }
@@ -149,30 +156,49 @@ class TelegramBotApiClient(
     }
 
     private fun apiPost(botToken: String, method: String, body: Map<String, Any>): JsonNode {
-        val token = requireBotToken(botToken)
-        val uri = URI.create("https://api.telegram.org/bot$token/$method")
-        val responseBody = restClient.post()
-            .uri(uri)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(body)
-            .retrieve()
-            .body(String::class.java)
-            ?: throw IllegalStateException("Telegram $method: empty response body")
-        return objectMapper.readTree(responseBody)
+        return callWithoutSecretInException(method) {
+            val token = requireBotToken(botToken)
+            val uri = URI.create("https://api.telegram.org/bot$token/$method")
+            val responseBody = restClient.post()
+                .uri(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(String::class.java)
+                ?: throw IllegalStateException("empty response body")
+            objectMapper.readTree(responseBody)
+        }
     }
 
     private fun apiPostAllowErrors(botToken: String, method: String, body: Map<String, Any>): JsonNode {
-        val token = requireBotToken(botToken)
-        val uri = URI.create("https://api.telegram.org/bot$token/$method")
-        val responseBody = restClient.method(HttpMethod.POST)
-            .uri(uri)
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(body)
-            .exchange { _, response ->
-                response.bodyTo(String::class.java) ?: """{"ok":false,"error_code":0,"description":"empty response body"}"""
-            }
-        return objectMapper.readTree(responseBody)
+        return callWithoutSecretInException(method) {
+            val token = requireBotToken(botToken)
+            val uri = URI.create("https://api.telegram.org/bot$token/$method")
+            val responseBody = restClient.method(HttpMethod.POST)
+                .uri(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange { _, response ->
+                    response.bodyTo(String::class.java)
+                        ?: """{"ok":false,"error_code":0,"description":"empty response body"}"""
+                }
+            objectMapper.readTree(responseBody)
+        }
     }
+
+    /**
+     * Spring transport exceptions include the absolute request URI. Telegram
+     * puts the bot token in that URI, so never retain the original exception as
+     * message or cause: callers may serialize the complete stack trace.
+     */
+    private fun <T> callWithoutSecretInException(method: String, action: () -> T): T =
+        try {
+            action()
+        } catch (exception: Exception) {
+            throw IllegalStateException(
+                "Telegram API $method request failed (${exception.javaClass.simpleName})",
+            )
+        }
 
     private fun requireBotToken(botToken: String): String {
         val token = botToken.trim()
@@ -189,6 +215,7 @@ class TelegramBotApiClient(
 
     companion object {
         private const val MAX_FORUM_TOPIC_NAME_LENGTH = 128
+        private const val CHAT_NOT_FOUND_DESCRIPTION = "Bad Request: chat not found"
 
         /** Bot API `parse_mode` for [sendMessage]. */
         const val PARSE_MODE_MARKDOWN_V2 = "MarkdownV2"

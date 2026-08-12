@@ -212,6 +212,10 @@ class UserFantasyTeamService(
         request: SubmitFantasyTeamRequest,
         leagueCode: String = LeagueService.MAIN_CODE,
     ): FantasyTeamDto {
+        val lockedSeries = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        if (lockedSeries.finalized) throw ResponseStatusException(HttpStatus.CONFLICT, "Series is finalized")
+        assertDeadline(lockedSeries.teamDeadline)
         val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
         if (fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(user.id!!, seriesLeague.id!!) != null) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Fantasy team already submitted for this series")
@@ -245,6 +249,10 @@ class UserFantasyTeamService(
         request: SubmitFantasyTeamRequest,
         leagueCode: String = LeagueService.MAIN_CODE,
     ): FantasyTeamDto {
+        val lockedSeries = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        if (lockedSeries.finalized) throw ResponseStatusException(HttpStatus.CONFLICT, "Series is finalized")
+        assertDeadline(lockedSeries.teamDeadline)
         val seriesLeague = resolveSeriesLeague(seriesId, leagueCode)
         val team = fantasyTeamRepository.findByTelegramUser_IdAndSeriesLeague_Id(user.id!!, seriesLeague.id!!)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No fantasy team for this series")

@@ -160,12 +160,12 @@ class AdminApiIntegrationTest {
 
     @Test
     @Order(3)
-    fun `sync games returns 400 when polemica credentials not configured`() {
+    fun `sync games returns 404 for missing series before credential validation`() {
         val auth = basicAuth("admin", "test-admin-secret")
         mockMvc.perform(
             post("/api/v1/admin/series/999/sync-games").header("Authorization", auth),
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isNotFound)
     }
 
     @Test
@@ -386,7 +386,7 @@ class AdminApiIntegrationTest {
 
     @Test
     @Order(9)
-    fun `put series status FINISHED runs finalization so finalized flag is true`() {
+    fun `put series status FINISHED is rejected and explicit finalize requires readiness`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tJson = mockMvc.perform(
             post("/api/v1/admin/tournaments")
@@ -420,9 +420,22 @@ class AdminApiIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"status":"FINISHED"}"""),
         )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            get("/api/v1/admin/series/$seriesId/completion-preview").header("Authorization", auth),
+        )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.status").value("FINISHED"))
-            .andExpect(jsonPath("$.finalized").value(true))
+            .andExpect(jsonPath("$.ready").value(false))
+            .andExpect(jsonPath("$.readinessChecksum").doesNotExist())
+
+        mockMvc.perform(
+            post("/api/v1/admin/series/$seriesId/finalize")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"readinessChecksum":"${"0".repeat(64)}"}"""),
+        )
+            .andExpect(status().isConflict)
     }
 
     @Test

@@ -84,16 +84,28 @@ class SeriesService(
 
     @Transactional
     fun createSeries(tournamentId: Long, request: CreateSeriesRequest): SeriesDto {
-        val tournament = tournamentRepository.findById(tournamentId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
+        if (request.status == SeriesStatus.FINISHED) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "A series cannot be created directly as FINISHED")
         }
+        if (request.status == SeriesStatus.SCORING && request.expectedGameCount == null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "expectedGameCount is required before SCORING")
+        }
+        val tournament = tournamentRepository.findByIdForUpdate(tournamentId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
         val validated = validatedSeriesFields(tournament.kind, request)
         val name = request.name.trim()
+        val publicNumber = derivePublicNumber(name)
+        if (seriesRepository.existsByTournament_IdAndPublicNumber(tournamentId, publicNumber)) {
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Series public number $publicNumber already exists in tournament $tournamentId",
+            )
+        }
         val s = seriesRepository.save(
             Series(
                 tournament = tournament,
                 name = name,
-                publicNumber = derivePublicNumber(name),
+                publicNumber = publicNumber,
                 namePrefix = validated.namePrefix,
                 gameNumFrom = validated.gameNumFrom,
                 gameNumTo = validated.gameNumTo,
@@ -102,32 +114,53 @@ class SeriesService(
                 status = request.status,
                 startsAt = request.startsAt,
                 teamDeadline = request.teamDeadline,
+                expectedGameCount = request.expectedGameCount,
             ),
         )
         streamLinkService.replaceSeriesLinks(s, request.streamLinks)
         bootstrapSystemLeagues(s)
         upsertDeadlineReminder(s)
-        if (s.status == SeriesStatus.FINISHED && !s.finalized) {
-            seriesFinalizationService.finalizeSeries(s.id!!)
-        }
         return seriesRepository.findById(s.id!!).get().toDto(emptyList(), emptyMap(), 0L, 0L)
     }
 
     @Transactional
     fun updateSeries(id: Long, request: UpdateSeriesRequest): SeriesDto {
-        val s = seriesRepository.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
-        }
-        val kind = s.tournament!!.kind
+        val s = seriesRepository.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
+        val tournamentId = s.tournament!!.id!!
+        val tournament = tournamentRepository.findByIdForUpdate(tournamentId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
+        val kind = tournament.kind
         val previousStatus = s.status
         request.name?.let {
             val name = it.trim()
+            val publicNumber = derivePublicNumber(name)
+            if (seriesRepository.existsByTournament_IdAndPublicNumberAndIdNot(tournamentId, publicNumber, id)) {
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Series public number $publicNumber already exists in tournament $tournamentId",
+                )
+            }
             s.name = name
-            s.publicNumber = derivePublicNumber(name)
+            s.publicNumber = publicNumber
         }
-        request.status?.let { s.status = it }
+        request.status?.let {
+            if (it == SeriesStatus.FINISHED) {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Use the series finalization operation to finish a series")
+            }
+            s.status = it
+        }
         request.startsAt?.let { s.startsAt = it }
         request.teamDeadline?.let { s.teamDeadline = it }
+        if (request.expectedGameCountSpecified) {
+            if (s.finalized) {
+                throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot change expected game count for finalized series")
+            }
+            s.expectedGameCount = request.expectedGameCount
+        }
+        if (s.status == SeriesStatus.SCORING && s.expectedGameCount == null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "expectedGameCount is required before SCORING")
+        }
         when (kind) {
             TournamentKind.STANDALONE -> {
                 request.namePrefix?.let { p ->
@@ -174,9 +207,6 @@ class SeriesService(
         val saved = seriesRepository.save(s)
         request.streamLinks?.let { streamLinkService.replaceSeriesLinks(saved, it) }
         upsertDeadlineReminder(saved)
-        if (saved.status == SeriesStatus.FINISHED && !saved.finalized) {
-            seriesFinalizationService.finalizeSeries(saved.id!!)
-        }
         if (previousStatus == SeriesStatus.UPCOMING && saved.status == SeriesStatus.ACTIVE) {
             applicationEventPublisher.publishEvent(
                 SeriesBatchStartedEvent(startedSeries = listOf(saved.toStartedSeriesInfo())),
@@ -271,9 +301,9 @@ class SeriesService(
 
     @Transactional
     fun assignPlayers(seriesId: Long, request: AssignSeriesPlayersRequest): SeriesDto {
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-        }
+        val series = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        ensureSeriesMutable(series)
         val tournamentId = series.tournament!!.id!!
         val ids = request.tournamentPlayerIds.distinct()
         val selectedIds = ids.toSet()
@@ -310,6 +340,7 @@ class SeriesService(
                 ),
             )
         }
+        invalidateSeriesScoringMetadata(seriesId, "roster changed")
         val newTpIds = ids.toSet()
         val removedTpIds = previousTpIds - newTpIds
         val addedTpIds = newTpIds - previousTpIds
@@ -495,6 +526,27 @@ class SeriesService(
         scoringService.calculateScores(seriesId)
     }
 
+    /** Result automation may close an already-started series, but never starts an UPCOMING series implicitly. */
+    @Transactional
+    fun moveToScoringForLeagueImport(seriesId: Long) {
+        val series = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        ensureSeriesMutable(series)
+        when (series.status) {
+            SeriesStatus.ACTIVE -> {
+                if (series.expectedGameCount == null) {
+                    throw ResponseStatusException(HttpStatus.CONFLICT, "expectedGameCount is required before SCORING")
+                }
+                series.status = SeriesStatus.SCORING
+            }
+            SeriesStatus.SCORING -> Unit
+            else -> throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Result automation requires ACTIVE or SCORING series, found ${series.status}",
+            )
+        }
+    }
+
     @Transactional(readOnly = true)
     fun listSeriesGames(seriesId: Long): List<AdminSeriesGameDto> {
         if (!seriesRepository.existsById(seriesId)) {
@@ -526,10 +578,9 @@ class SeriesService(
             playedAt = game.started.atZone(ZoneId.systemDefault()).toInstant(),
         )
         val saved = transactionTemplate.execute {
-            val series = seriesRepository.findById(seriesId).orElseThrow {
-                ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-            }
-            ensureSeriesGamesMutable(series.finalized)
+            val series = seriesRepository.findByIdForUpdate(seriesId)
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+            ensureSeriesMutable(series)
             val row = seriesGameRepository.findBySeries_IdAndPolemicaGameId(seriesId, prepared.polemicaGameId)
                 ?: SeriesGame(
                     series = series,
@@ -539,6 +590,11 @@ class SeriesService(
             row.gameDataCache = prepared.gameDataJson
             row.playedAt = prepared.playedAt
             row.scored = false
+            row.pointsStatus = "NOT_SCORED"
+            row.scoringInputChecksum = null
+            row.scoringContextChecksum = null
+            row.scoredAt = null
+            row.scoringError = null
             seriesGameRepository.save(row)
         } ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save series game")
         return saved.toAdminSeriesGameDto()
@@ -546,10 +602,9 @@ class SeriesService(
 
     @Transactional
     fun deleteSeriesGame(seriesId: Long, gameId: Long) {
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-        }
-        ensureSeriesGamesMutable(series.finalized)
+        val series = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        ensureSeriesMutable(series)
         val game = seriesGameRepository.findByIdAndSeries_Id(gameId, seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series game $gameId not found")
         fantasyTeamCardGameScoreRepository.deleteAllBySeriesGameId(game.id!!)
@@ -607,6 +662,23 @@ class SeriesService(
         }
     }
 
+    private fun ensureSeriesMutable(series: Series) {
+        if (series.finalized || series.status == SeriesStatus.FINISHED) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot change finalized series")
+        }
+    }
+
+    private fun invalidateSeriesScoringMetadata(seriesId: Long, reason: String) {
+        seriesGameRepository.findAllBySeries_Id(seriesId).forEach { game ->
+            game.scored = false
+            game.pointsStatus = "NOT_SCORED"
+            game.scoringInputChecksum = null
+            game.scoringContextChecksum = null
+            game.scoredAt = null
+            game.scoringError = reason.take(512)
+        }
+    }
+
     private fun recomputeStoredScoresForSeries(seriesId: Long) {
         val teams = fantasyTeamRepository.findAllBySeries_IdWithCards(seriesId)
         val cards = teams.flatMap { it.cards }
@@ -644,6 +716,7 @@ class SeriesService(
             playedAt = playedAt,
             finished = node?.hasNonNullField("result") ?: false,
             scored = scored,
+            pointsStatus = pointsStatus,
         )
     }
 
@@ -759,6 +832,7 @@ class SeriesService(
         status = status,
         startsAt = startsAt,
         teamDeadline = teamDeadline,
+        expectedGameCount = expectedGameCount,
         finalized = finalized,
         streamLinks = streamLinkService.linksForSeries(id!!),
         syncedGamesCount = syncedGamesCount,

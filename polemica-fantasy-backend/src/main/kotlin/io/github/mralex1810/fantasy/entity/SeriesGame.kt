@@ -40,4 +40,19 @@ class SeriesGame(
 
     @Column(name = "played_at")
     var playedAt: Instant? = null,
+
+    @Column(name = "points_status", nullable = false, length = 24)
+    var pointsStatus: String = "NOT_SCORED",
+
+    @Column(name = "scoring_input_checksum", length = 64)
+    var scoringInputChecksum: String? = null,
+
+    @Column(name = "scoring_context_checksum", length = 64)
+    var scoringContextChecksum: String? = null,
+
+    @Column(name = "scored_at")
+    var scoredAt: Instant? = null,
+
+    @Column(name = "scoring_error", length = 512)
+    var scoringError: String? = null,
 )

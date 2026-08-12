@@ -57,6 +57,15 @@ class Series(
     @Column(name = "team_deadline", nullable = false)
     var teamDeadline: Instant = Instant.now(),
 
+    @Column(name = "expected_game_count")
+    var expectedGameCount: Int? = null,
+
+    @Column(name = "last_synced_selector_checksum")
+    var lastSyncedSelectorChecksum: String? = null,
+
+    @Column(name = "last_scored_selector_checksum")
+    var lastScoredSelectorChecksum: String? = null,
+
     @Column(name = "finalized", nullable = false)
     var finalized: Boolean = false,
 

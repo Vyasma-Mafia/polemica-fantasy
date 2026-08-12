@@ -50,6 +50,44 @@ telegram:
     enabled: ${TELEGRAM_SUPPORT_ENABLED:false}
     forum-chat-id: ${TELEGRAM_SUPPORT_FORUM_CHAT_ID:-1003620873111}
     webhook-secret: ${TELEGRAM_SUPPORT_WEBHOOK_SECRET:}
+  league-import:
+    enabled: ${TELEGRAM_LEAGUE_IMPORT_ENABLED:false}
+    ingest-enabled: ${TELEGRAM_LEAGUE_IMPORT_INGEST_ENABLED:false}
+    operator-notifications-enabled: ${TELEGRAM_LEAGUE_IMPORT_OPERATOR_NOTIFICATIONS_ENABLED:false}
+    callback-enabled: ${TELEGRAM_LEAGUE_IMPORT_CALLBACK_ENABLED:false}
+    result-processing-enabled: ${TELEGRAM_LEAGUE_IMPORT_RESULT_PROCESSING_ENABLED:false}
+    production-writes-enabled: ${TELEGRAM_LEAGUE_IMPORT_PRODUCTION_WRITES_ENABLED:false}
+    source-channel-peer-id: ${TELEGRAM_LEAGUE_IMPORT_SOURCE_CHANNEL_PEER_ID:0}
+    operator-chat-id: ${TELEGRAM_LEAGUE_IMPORT_OPERATOR_CHAT_ID:0}
+    ingest-key-id: ${TELEGRAM_LEAGUE_IMPORT_INGEST_KEY_ID:current}
+    ingest-current-secret: ${TELEGRAM_LEAGUE_IMPORT_INGEST_CURRENT_SECRET:}
+    ingest-previous-key-id: ${TELEGRAM_LEAGUE_IMPORT_INGEST_PREVIOUS_KEY_ID:}
+    ingest-previous-secret: ${TELEGRAM_LEAGUE_IMPORT_INGEST_PREVIOUS_SECRET:}
+    callback-signing-secret: ${TELEGRAM_LEAGUE_IMPORT_CALLBACK_SIGNING_SECRET:}
+    admin-base-url: ${TELEGRAM_LEAGUE_IMPORT_ADMIN_BASE_URL:https://admin.fantasy.maftourbot.ru}
+    automation-cutover-at: ${TELEGRAM_LEAGUE_IMPORT_AUTOMATION_CUTOVER_AT:}
+    policy-generation: ${TELEGRAM_LEAGUE_IMPORT_POLICY_GENERATION:disabled}
+    policies:
+      lp:
+        enabled: ${TELEGRAM_LEAGUE_IMPORT_LP_ENABLED:false}
+        tournament-id: ${TELEGRAM_LEAGUE_IMPORT_LP_TOURNAMENT_ID:0}
+        name-template: ${TELEGRAM_LEAGUE_IMPORT_LP_NAME_TEMPLATE:ЛП. Серия %d}
+        name-prefix: ${TELEGRAM_LEAGUE_IMPORT_LP_NAME_PREFIX:}
+        timezone: Europe/Moscow
+        team-deadline-offset-minutes: 10
+        expected-game-count: ${TELEGRAM_LEAGUE_IMPORT_LP_EXPECTED_GAME_COUNT:5}
+        create-mode: ${TELEGRAM_LEAGUE_IMPORT_LP_CREATE_MODE:DISABLED}
+        finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_LP_FINALIZE_MODE:DISABLED}
+      zl:
+        enabled: ${TELEGRAM_LEAGUE_IMPORT_ZL_ENABLED:false}
+        tournament-id: ${TELEGRAM_LEAGUE_IMPORT_ZL_TOURNAMENT_ID:0}
+        name-template: ${TELEGRAM_LEAGUE_IMPORT_ZL_NAME_TEMPLATE:ЗЛ. Серия %d}
+        name-prefix: ${TELEGRAM_LEAGUE_IMPORT_ZL_NAME_PREFIX:}
+        timezone: Europe/Moscow
+        team-deadline-offset-minutes: 10
+        expected-game-count: ${TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_GAME_COUNT:5}
+        create-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_CREATE_MODE:DISABLED}
+        finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_FINALIZE_MODE:DISABLED}
 
 polemica:
   api:

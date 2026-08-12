@@ -6,10 +6,14 @@ import io.github.mralex1810.fantasy.config.PolemicaProperties
 import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.entity.TournamentKind
+import io.github.mralex1810.fantasy.observability.FantasyMetrics
+import io.github.mralex1810.fantasy.observability.FantasyMetrics.OperationResult
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
+import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
+import io.github.mralex1810.fantasy.service.SeriesGameSelectorFingerprintService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -25,7 +29,10 @@ class DefaultGameSyncService(
     private val seriesRepository: SeriesRepository,
     private val seriesPlayerRepository: SeriesPlayerRepository,
     private val seriesGameRepository: SeriesGameRepository,
+    private val fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository,
     private val fantasyPlayerAliasRepository: FantasyPlayerAliasRepository,
+    private val selectorFingerprintService: SeriesGameSelectorFingerprintService,
+    private val fantasyMetrics: FantasyMetrics,
     platformTransactionManager: PlatformTransactionManager,
 ) : GameSyncService {
 
@@ -35,31 +42,48 @@ class DefaultGameSyncService(
      * Polemica HTTP calls run outside a DB transaction; only persistence is wrapped in a short transaction.
      */
     override fun syncGames(seriesId: Long) {
-        if (polemicaProperties.username.isBlank() || polemicaProperties.password.isBlank()) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Polemica API credentials are not configured (POLEMICA_USERNAME / POLEMICA_PASSWORD)",
-            )
-        }
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-        }
-        val tournament = series.tournament
-            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Series has no tournament")
-        val prepared = when (tournament.kind) {
-            TournamentKind.STANDALONE -> fetchStandalonePrepared(seriesId, series)
-            TournamentKind.POLEMICA_COMPETITION -> {
-                val cid = tournament.polemicaCompetitionId
-                    ?: throw ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Tournament polemica_competition_id is missing for POLEMICA_COMPETITION",
-                    )
-                fetchCompetitionPrepared(seriesId, series, cid)
+        val sample = fantasyMetrics.start()
+        var tournamentKind: TournamentKind? = null
+        try {
+            val series = seriesRepository.findById(seriesId).orElseThrow {
+                ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
             }
-        }
-        if (prepared.isEmpty()) return
-        transactionTemplate.executeWithoutResult {
-            persistPreparedGames(seriesId, prepared)
+            rejectFinalized(series)
+            if (polemicaProperties.username.isBlank() || polemicaProperties.password.isBlank()) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Polemica API credentials are not configured (POLEMICA_USERNAME / POLEMICA_PASSWORD)",
+                )
+            }
+            val tournament = series.tournament
+                ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Series has no tournament")
+            tournamentKind = tournament.kind
+            val selectorChecksum = selectorFingerprintService.fingerprint(seriesId)
+            val prepared = when (tournament.kind) {
+                TournamentKind.STANDALONE -> fetchStandalonePrepared(seriesId, series)
+                TournamentKind.POLEMICA_COMPETITION -> {
+                    val cid = tournament.polemicaCompetitionId
+                        ?: throw ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Tournament polemica_competition_id is missing for POLEMICA_COMPETITION",
+                        )
+                    fetchCompetitionPrepared(seriesId, series, cid)
+                }
+            }
+            val changes = transactionTemplate.execute {
+                persistPreparedGames(seriesId, prepared, selectorChecksum)
+            } ?: SyncChanges()
+            fantasyMetrics.recordSeriesSync(
+                sample = sample,
+                kind = tournamentKind,
+                result = OperationResult.SUCCESS,
+                createdGames = changes.created,
+                updatedGames = changes.updated,
+                empty = prepared.isEmpty(),
+            )
+        } catch (e: Exception) {
+            fantasyMetrics.recordSeriesSync(sample, tournamentKind, OperationResult.ERROR)
+            throw e
         }
     }
 
@@ -147,10 +171,25 @@ class DefaultGameSyncService(
         return result
     }
 
-    private fun persistPreparedGames(seriesId: Long, prepared: List<PreparedSeriesGame>) {
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+    private fun persistPreparedGames(seriesId: Long, prepared: List<PreparedSeriesGame>, selectorChecksum: String): SyncChanges {
+        val series = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
+        rejectFinalized(series)
+        if (selectorFingerprintService.fingerprint(seriesId) != selectorChecksum) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Series game selector changed while syncing")
         }
+        val preparedIds = prepared.mapTo(hashSetOf()) { it.polemicaGameId }
+        val staleGames = seriesGameRepository.findAllBySeries_Id(seriesId)
+            .filter { it.polemicaGameId !in preparedIds }
+        staleGames.forEach { stale ->
+            stale.id?.let(fantasyTeamCardGameScoreRepository::deleteAllBySeriesGameId)
+        }
+        if (staleGames.isNotEmpty()) {
+            seriesGameRepository.deleteAll(staleGames)
+            seriesGameRepository.flush()
+        }
+        var created = 0
+        var updated = 0
         for (p in prepared) {
             val existing = seriesGameRepository.findBySeries_IdAndPolemicaGameId(seriesId, p.polemicaGameId)
             if (existing != null) {
@@ -158,7 +197,13 @@ class DefaultGameSyncService(
                 existing.gameDataCache = p.gameDataJson
                 existing.playedAt = p.playedAt
                 existing.scored = false
+                existing.pointsStatus = "NOT_SCORED"
+                existing.scoringInputChecksum = null
+                existing.scoringContextChecksum = null
+                existing.scoredAt = null
+                existing.scoringError = null
                 seriesGameRepository.save(existing)
+                updated++
             } else {
                 seriesGameRepository.save(
                     SeriesGame(
@@ -170,7 +215,17 @@ class DefaultGameSyncService(
                         playedAt = p.playedAt,
                     ),
                 )
+                created++
             }
+        }
+        series.lastSyncedSelectorChecksum = selectorChecksum
+        series.lastScoredSelectorChecksum = null
+        return SyncChanges(created = created, updated = updated)
+    }
+
+    private fun rejectFinalized(series: Series) {
+        if (series.finalized) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Cannot sync games for finalized series")
         }
     }
 
@@ -179,6 +234,11 @@ class DefaultGameSyncService(
         val resolvedName: String,
         val gameDataJson: JsonNode,
         val playedAt: Instant,
+    )
+
+    private data class SyncChanges(
+        val created: Int = 0,
+        val updated: Int = 0,
     )
 
     private fun resolvedStoredGameName(game: PolemicaGame, name: String): String {

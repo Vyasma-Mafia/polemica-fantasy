@@ -2,13 +2,18 @@ package io.github.mralex1810.fantasy.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mralex1810.fantasy.config.TelegramSupportProperties
+import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.service.TelegramSupportUpdateService
+import io.github.mralex1810.fantasy.service.leagueimport.TelegramLeagueImportCallbackInboxService
 import com.fasterxml.jackson.databind.JsonNode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.never
+import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -19,13 +24,24 @@ class TelegramWebhookControllerTest {
 
     private lateinit var mockMvc: org.springframework.test.web.servlet.MockMvc
     private lateinit var properties: TelegramSupportProperties
+    private lateinit var importProperties: TelegramLeagueImportProperties
     private lateinit var updateService: TelegramSupportUpdateService
+    private lateinit var callbackService: TelegramLeagueImportCallbackInboxService
 
     @BeforeEach
     fun setup() {
         properties = TelegramSupportProperties()
         updateService = org.mockito.kotlin.mock<TelegramSupportUpdateService>()
-        val controller = TelegramWebhookController(properties, updateService, ObjectMapper())
+        importProperties = TelegramLeagueImportProperties()
+        callbackService = org.mockito.kotlin.mock<TelegramLeagueImportCallbackInboxService>()
+        whenever(callbackService.accept(any())).thenReturn(false)
+        val controller = TelegramWebhookController(
+            properties,
+            updateService,
+            importProperties,
+            callbackService,
+            ObjectMapper(),
+        )
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build()
     }
 
@@ -81,5 +97,41 @@ class TelegramWebhookControllerTest {
         )
             .andExpect(status().isOk)
         verify(updateService).processUpdate(any<JsonNode>())
+    }
+
+    @Test
+    fun `accepted import callback short circuits disabled support`() {
+        properties.enabled = false
+        properties.webhookSecret = "good"
+        importProperties.enabled = true
+        whenever(callbackService.accept(any())).thenReturn(true)
+
+        mockMvc.perform(
+            post("/api/v1/telegram/webhook")
+                .header(TelegramWebhookController.X_TELEGRAM_SECRET, "good")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"update_id":1,"callback_query":{"data":"lic:test"}}"""),
+        ).andExpect(status().isOk)
+
+        verify(updateService, never()).processUpdate(any<JsonNode>())
+    }
+
+    @Test
+    fun `callback inbox failure returns retryable error`() {
+        properties.enabled = false
+        properties.webhookSecret = "good"
+        importProperties.enabled = true
+        doThrow(IllegalStateException("db unavailable")).whenever(callbackService).accept(any())
+
+        assertThrows<jakarta.servlet.ServletException> {
+            mockMvc.perform(
+                post("/api/v1/telegram/webhook")
+                    .header(TelegramWebhookController.X_TELEGRAM_SECRET, "good")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"update_id":1,"callback_query":{"data":"lic:test"}}"""),
+            )
+        }
+
+        verify(updateService, never()).processUpdate(any<JsonNode>())
     }
 }

@@ -1,4 +1,6 @@
 .env
+.env.telegram-import
+.telegram-import-session/
 __pycache__/
 .cursor/
 scripts/telegram-support-export/.venv/

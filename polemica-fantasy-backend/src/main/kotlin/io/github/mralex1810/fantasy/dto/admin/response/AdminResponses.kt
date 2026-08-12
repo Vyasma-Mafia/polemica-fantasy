@@ -106,6 +106,7 @@ data class SeriesDto(
     val status: SeriesStatus,
     val startsAt: Instant,
     val teamDeadline: Instant,
+    val expectedGameCount: Int?,
     val finalized: Boolean,
     val streamLinks: List<StreamLinkDto> = emptyList(),
     /** Rows in `series_game` (synced from Polemica). */
@@ -116,6 +117,12 @@ data class SeriesDto(
     val tournamentPlayerIds: List<Long>,
     /** Optional replacement Polemica user id by `tournament_player.id`. */
     val replacementPolemicaUserIds: Map<Long, Long> = emptyMap(),
+)
+
+data class SeriesCompletionPreviewDto(
+    val ready: Boolean,
+    val readinessChecksum: String?,
+    val reason: String?,
 )
 
 data class AdminSeriesGameDto(
@@ -129,6 +136,7 @@ data class AdminSeriesGameDto(
     val playedAt: Instant?,
     val finished: Boolean,
     val scored: Boolean,
+    val pointsStatus: String,
 )
 
 enum class SeriesResultsPointsStatus {

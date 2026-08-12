@@ -4,14 +4,17 @@ import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.AddSeriesGameRequest
 import io.github.mralex1810.fantasy.dto.admin.request.BatchStartSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.request.FinalizeSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.response.AdminSeriesGameDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesResultsResponseDto
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
+import io.github.mralex1810.fantasy.dto.admin.response.SeriesCompletionPreviewDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
+import io.github.mralex1810.fantasy.service.SeriesCompletionService
 import io.github.mralex1810.fantasy.service.SeriesService
 import io.github.mralex1810.fantasy.service.SeriesResultsService
 import jakarta.validation.Valid
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController
 class SeriesAdminController(
     private val seriesService: SeriesService,
     private val seriesFinalizationService: SeriesFinalizationService,
+    private val seriesCompletionService: SeriesCompletionService,
     private val seriesResultsService: SeriesResultsService,
 ) {
 
@@ -100,7 +104,20 @@ class SeriesAdminController(
         seriesService.deleteSeriesGame(id, gameId)
     }
 
+    @GetMapping("/series/{id}/completion-preview")
+    fun getCompletionPreview(@PathVariable id: Long): SeriesCompletionPreviewDto =
+        seriesCompletionService.evaluate(id).let {
+            SeriesCompletionPreviewDto(
+                ready = it.ready,
+                readinessChecksum = it.checksum,
+                reason = it.reason,
+            )
+        }
+
     @PostMapping("/series/{id}/finalize")
-    fun finalizeSeries(@PathVariable id: Long): SeriesFinalizationResultDto =
-        seriesFinalizationService.finalizeSeries(id)
+    fun finalizeSeries(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: FinalizeSeriesRequest,
+    ): SeriesFinalizationResultDto =
+        seriesFinalizationService.finalizeSeries(id, body.readinessChecksum)
 }

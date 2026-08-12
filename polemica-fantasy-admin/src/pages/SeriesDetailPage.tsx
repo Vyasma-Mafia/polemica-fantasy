@@ -25,6 +25,7 @@ import {
   calculateScores,
   deleteSeriesGame,
   finalizeSeries,
+  getSeriesCompletionPreview,
   getSeries,
   listSeriesGames,
   syncGames,
@@ -49,6 +50,7 @@ export function SeriesDetailPage() {
     status: SeriesStatus
     startsAt: ReturnType<typeof dayjs>
     teamDeadline: ReturnType<typeof dayjs>
+    expectedGameCount: number | null
     streamLinks: { label?: string | null; url: string }[]
   }>()
   const [addGameForm] = Form.useForm<{ polemicaGameId: number }>()
@@ -106,6 +108,7 @@ export function SeriesDetailPage() {
       status: s.status,
       startsAt: dayjs(s.startsAt),
       teamDeadline: dayjs(s.teamDeadline),
+      expectedGameCount: s.expectedGameCount,
       streamLinks: s.streamLinks ?? [],
     })
     queueMicrotask(() => setSelectedPlayerIds(s.tournamentPlayerIds ?? []))
@@ -180,7 +183,7 @@ export function SeriesDetailPage() {
   })
 
   const finalizeMut = useMutation({
-    mutationFn: () => finalizeSeries(seriesId),
+    mutationFn: (readinessChecksum: string) => finalizeSeries(seriesId, { readinessChecksum }),
     onSuccess: (res) => {
       message.success(
         `Finalized: rewards ${res.rewardsDistributed}, cards updated ${res.cardsDecremented}`,
@@ -190,6 +193,35 @@ export function SeriesDetailPage() {
         queryKey: ['admin', 'series', 'tournament', tournamentId],
       })
       void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const completionPreviewMut = useMutation({
+    mutationFn: () => getSeriesCompletionPreview(seriesId),
+    onSuccess: (preview) => {
+      if (!preview.ready || !preview.readinessChecksum) {
+        message.error(`Series is not ready to finalize: ${preview.reason ?? 'unknown reason'}`)
+        return
+      }
+      const checksum = preview.readinessChecksum
+      Modal.confirm({
+        title: 'Finalize series with this verified snapshot?',
+        content: (
+          <Space direction="vertical">
+            <Typography.Text>
+              Card uses will be decremented and leaderboard rewards paid. This cannot be undone.
+            </Typography.Text>
+            <Typography.Text code>Readiness: {checksum.slice(0, 12)}…</Typography.Text>
+            <Typography.Text type="secondary">
+              If games, scores, roster, cards, rewards, or Telegram result evidence change, the backend will reject this confirmation.
+            </Typography.Text>
+          </Space>
+        ),
+        okText: 'Finalize verified snapshot',
+        okButtonProps: { danger: true },
+        onOk: () => finalizeMut.mutateAsync(checksum),
+      })
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -325,6 +357,7 @@ export function SeriesDetailPage() {
             status: v.status,
             startsAt: v.startsAt.toISOString(),
             teamDeadline: v.teamDeadline.toISOString(),
+            expectedGameCount: v.expectedGameCount,
             streamLinks: v.streamLinks ?? [],
           }
           if (isCompetition) {
@@ -395,7 +428,6 @@ export function SeriesDetailPage() {
               { value: 'UPCOMING', label: 'UPCOMING' },
               { value: 'ACTIVE', label: 'ACTIVE' },
               { value: 'SCORING', label: 'SCORING' },
-              { value: 'FINISHED', label: 'FINISHED' },
             ]}
           />
         </Form.Item>
@@ -408,6 +440,18 @@ export function SeriesDetailPage() {
           rules={[{ required: true }]}
         >
           <DatePicker showTime style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item
+          name="expectedGameCount"
+          label="Expected game count"
+          rules={[({ getFieldValue }) => ({
+            validator: (_, value) =>
+              getFieldValue('status') !== 'SCORING' || value != null
+                ? Promise.resolve()
+                : Promise.reject(new Error('Required before SCORING')),
+          })]}
+        >
+          <InputNumber min={1} max={32} precision={0} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item label="Series stream links">
           <Form.List name="streamLinks">
@@ -667,17 +711,8 @@ export function SeriesDetailPage() {
         <Button
           danger
           disabled={!!q.data?.finalized}
-          onClick={() =>
-            Modal.confirm({
-              title: 'Finalize series?',
-              content:
-                'Card uses will be decremented and leaderboard rewards paid. This cannot be undone.',
-              okText: 'Finalize',
-              okButtonProps: { danger: true },
-              onOk: () => finalizeMut.mutate(),
-            })
-          }
-          loading={finalizeMut.isPending}
+          onClick={() => completionPreviewMut.mutate()}
+          loading={completionPreviewMut.isPending || finalizeMut.isPending}
         >
           Finalize series
         </Button>

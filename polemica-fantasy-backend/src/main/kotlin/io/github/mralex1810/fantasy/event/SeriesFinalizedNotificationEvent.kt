@@ -20,4 +20,6 @@ data class SeriesFinalizedNotificationEvent(
     val tournamentName: String,
     val seriesName: String,
     val recipients: List<SeriesFinalizedRecipient>,
+    val rewardedUsers: Int,
+    val cardUsesDecremented: Int,
 )

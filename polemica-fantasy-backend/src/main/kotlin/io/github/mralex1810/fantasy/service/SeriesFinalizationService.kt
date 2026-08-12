@@ -29,16 +29,23 @@ class SeriesFinalizationService(
     private val userService: UserService,
     private val economyConfigService: EconomyConfigService,
     private val leagueService: LeagueService,
+    private val seriesCompletionService: SeriesCompletionService,
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
-    fun finalizeSeries(seriesId: Long): SeriesFinalizationResultDto {
-        val series = seriesRepository.findById(seriesId).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
-        }
+    fun finalizeSeries(seriesId: Long, expectedReadinessChecksum: String? = null): SeriesFinalizationResultDto {
+        val series = seriesRepository.findByIdForUpdate(seriesId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         if (series.finalized) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Series already finalized")
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Series already finalized")
+        }
+        val completion = seriesCompletionService.evaluateForFinalization(seriesId)
+        if (!completion.ready) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Series is not ready to finalize: ${completion.reason}")
+        }
+        if (expectedReadinessChecksum != null && expectedReadinessChecksum != completion.checksum) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Series readiness changed before finalization")
         }
         val tournamentName = series.tournament!!.name
         val seriesName = series.name
@@ -148,6 +155,8 @@ class SeriesFinalizationService(
                 tournamentName = tournamentName,
                 seriesName = seriesName,
                 recipients = notificationRecipients,
+                rewardedUsers = totalRewardByTelegramId.count { (_, totalReward) -> totalReward > 0L },
+                cardUsesDecremented = cardsDecremented,
             ),
         )
         applicationEventPublisher.publishEvent(

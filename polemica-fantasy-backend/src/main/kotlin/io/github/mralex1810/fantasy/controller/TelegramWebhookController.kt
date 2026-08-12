@@ -2,7 +2,9 @@ package io.github.mralex1810.fantasy.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mralex1810.fantasy.config.TelegramSupportProperties
+import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.service.TelegramSupportUpdateService
+import io.github.mralex1810.fantasy.service.leagueimport.TelegramLeagueImportCallbackInboxService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController
 class TelegramWebhookController(
     private val telegramSupportProperties: TelegramSupportProperties,
     private val telegramSupportUpdateService: TelegramSupportUpdateService,
+    private val telegramLeagueImportProperties: TelegramLeagueImportProperties,
+    private val telegramLeagueImportCallbackInboxService: TelegramLeagueImportCallbackInboxService,
     private val objectMapper: ObjectMapper,
 ) {
 
@@ -24,7 +28,7 @@ class TelegramWebhookController(
         @RequestHeader(value = X_TELEGRAM_SECRET, required = false) secret: String?,
         @RequestBody body: String,
     ): ResponseEntity<String> {
-        if (!telegramSupportProperties.enabled) {
+        if (!telegramSupportProperties.enabled && !telegramLeagueImportProperties.enabled) {
             return ResponseEntity.ok("ok")
         }
         if (telegramSupportProperties.webhookSecret.isBlank()) {
@@ -36,7 +40,12 @@ class TelegramWebhookController(
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
         }
         val root = objectMapper.readTree(body)
-        telegramSupportUpdateService.processUpdate(root)
+        if (telegramLeagueImportCallbackInboxService.accept(root)) {
+            return ResponseEntity.ok("ok")
+        }
+        if (telegramSupportProperties.enabled) {
+            telegramSupportUpdateService.processUpdate(root)
+        }
         return ResponseEntity.ok("ok")
     }
 

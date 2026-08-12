@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh Polemica Telegram Docker egress guard
+
+[Timer]
+OnBootSec=10s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Persistent=true
+Unit=polemica-telegram-egress-guard.service
+
+[Install]
+WantedBy=timers.target

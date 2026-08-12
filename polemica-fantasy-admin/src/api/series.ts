@@ -3,12 +3,14 @@ import type {
   AssignSeriesPlayersRequest,
   BatchStartSeriesRequest,
   CreateSeriesRequest,
+  FinalizeSeriesRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
 import type {
   AdminSeriesGameDto,
   BatchStartSeriesResponseDto,
   SeriesDto,
+  SeriesCompletionPreviewDto,
   SeriesFinalizationResultDto,
   SeriesPlayerMarketplaceUnlistResultDto,
   SeriesResultsDto,
@@ -95,6 +97,13 @@ export function deleteSeriesGame(id: number, gameId: number) {
   return apiVoid(`/v1/admin/series/${id}/games/${gameId}`, { method: 'DELETE' })
 }
 
-export function finalizeSeries(id: number) {
-  return apiJson<SeriesFinalizationResultDto>(`/v1/admin/series/${id}/finalize`, { method: 'POST' })
+export function getSeriesCompletionPreview(id: number) {
+  return apiJson<SeriesCompletionPreviewDto>(`/v1/admin/series/${id}/completion-preview`)
+}
+
+export function finalizeSeries(id: number, body: FinalizeSeriesRequest) {
+  return apiJson<SeriesFinalizationResultDto>(`/v1/admin/series/${id}/finalize`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }

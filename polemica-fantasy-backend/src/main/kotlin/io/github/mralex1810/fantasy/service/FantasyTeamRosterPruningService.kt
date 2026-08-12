@@ -27,9 +27,9 @@ class FantasyTeamRosterPruningService(
      */
     @Transactional
     fun pruneInvalidCardsForSeries(seriesId: Long): FantasyTeamRosterPruneResult {
-        val series = seriesRepository.findById(seriesId).orElse(null)
+        val series = seriesRepository.findByIdForUpdate(seriesId)
             ?: return FantasyTeamRosterPruneResult(emptyList())
-        if (Instant.now().isAfter(series.teamDeadline)) {
+        if (series.finalized || Instant.now().isAfter(series.teamDeadline)) {
             return FantasyTeamRosterPruneResult(emptyList())
         }
 

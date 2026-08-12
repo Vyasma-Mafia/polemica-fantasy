@@ -21,23 +21,32 @@ import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.TournamentPlayer
 import io.github.mralex1810.fantasy.entity.UserCard
+import io.github.mralex1810.fantasy.observability.FantasyMetrics
 import io.github.mralex1810.fantasy.repository.FantasyTeamRepository
 import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.scoring.perk.PerkDetectorRegistry
+import io.github.mralex1810.fantasy.service.SeriesScoringContextFingerprintService
+import io.github.mralex1810.fantasy.service.SeriesGameSelectorFingerprintService
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.SimpleTransactionStatus
+import org.springframework.web.server.ResponseStatusException
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.LocalDateTime
+import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
 class DefaultScoringServiceTest {
@@ -62,6 +71,12 @@ class DefaultScoringServiceTest {
 
     @Mock
     private lateinit var gamePointsService: GamePointsService
+
+    @Mock
+    private lateinit var scoringContextFingerprintService: SeriesScoringContextFingerprintService
+
+    @Mock
+    private lateinit var selectorFingerprintService: SeriesGameSelectorFingerprintService
 
     @Test
     fun `replacement player scores when main player is absent`() {
@@ -128,7 +143,81 @@ class DefaultScoringServiceTest {
         assertEquals(emptyList<Any>(), team.cards.single().gameScores)
     }
 
-    private fun service() = DefaultScoringService(
+    @Test
+    fun `finalized series is rejected before points fetch`() {
+        val series = Series(finalized = true).apply { id = 1L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().calculateScores(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(gamePointsService, never()).fetchPlayerStats(org.mockito.ArgumentMatchers.anyLong())
+        verify(seriesRepository, never()).findByIdForUpdate(1L)
+    }
+
+    @Test
+    fun `selector changed since sync is rejected before points fetch`() {
+        val series = Series(finalized = false, lastSyncedSelectorChecksum = "old").apply { id = 1L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().calculateScores(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(gamePointsService, never()).fetchPlayerStats(org.mockito.ArgumentMatchers.anyLong())
+    }
+
+    @Test
+    fun `series finalized during points fetch is rejected before score mutation`() {
+        val initial = Series(finalized = false, lastSyncedSelectorChecksum = "f".repeat(64)).apply { id = 1L }
+        val finalized = Series(finalized = true).apply { id = 1L }
+        val game = seriesGameWithPlayers(player(11L, "main", Position.ONE))
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(initial))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(finalized)
+        `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(game))
+        `when`(scoringContextFingerprintService.fingerprint(1L)).thenReturn("a".repeat(64))
+        `when`(gamePointsService.fetchPlayerStats(100L)).thenReturn(
+            listOf(PlayerPoints(position = 1, points = 3.0)),
+        )
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().calculateScores(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(gamePointsService).fetchPlayerStats(100L)
+        verify(fantasyTeamRepository, never()).findAllWithCardsForScoring(1L)
+    }
+
+    @Test
+    fun `duplicate public table position is rejected as partial`() {
+        val game = seriesGameWithPlayers(player(11L, "main", Position.ONE))
+        stubInvalidPoints(game, listOf(PlayerPoints(1, 3.0), PlayerPoints(1, 4.0)))
+
+        assertThrows(ResponseStatusException::class.java) { service().calculateScores(1L) }
+
+        assertEquals("PARTIAL", game.pointsStatus)
+        assertEquals(false, game.scored)
+    }
+
+    @Test
+    fun `extra public table position is rejected as partial`() {
+        val game = seriesGameWithPlayers(player(11L, "main", Position.ONE))
+        stubInvalidPoints(game, listOf(PlayerPoints(1, 3.0), PlayerPoints(2, 4.0)))
+
+        assertThrows(ResponseStatusException::class.java) { service().calculateScores(1L) }
+
+        assertEquals("PARTIAL", game.pointsStatus)
+        assertEquals(false, game.scored)
+    }
+
+    private fun service(): DefaultScoringService {
+        org.mockito.Mockito.lenient().`when`(selectorFingerprintService.fingerprint(org.mockito.ArgumentMatchers.anyLong()))
+            .thenReturn("f".repeat(64))
+        return DefaultScoringService(
         seriesRepository = seriesRepository,
         seriesGameRepository = seriesGameRepository,
         fantasyTeamRepository = fantasyTeamRepository,
@@ -137,8 +226,12 @@ class DefaultScoringServiceTest {
         perkRegistry = perkRegistry,
         objectMapper = objectMapper,
         gamePointsService = gamePointsService,
+        fantasyMetrics = FantasyMetrics(SimpleMeterRegistry()),
+        scoringContextFingerprintService = scoringContextFingerprintService,
+        selectorFingerprintService = selectorFingerprintService,
         platformTransactionManager = NoopTransactionManager(),
-    )
+        )
+    }
 
     private fun stubScoringInputs(
         team: FantasyTeam,
@@ -146,14 +239,15 @@ class DefaultScoringServiceTest {
         replacementPolemicaUserId: Long,
         mainAliases: List<Long> = listOf(11L),
     ) {
-        `when`(seriesRepository.existsById(1L)).thenReturn(true)
+        val series = Series(finalized = false, lastSyncedSelectorChecksum = "f".repeat(64)).apply { id = 1L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
         `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(game))
+        `when`(scoringContextFingerprintService.fingerprint(1L)).thenReturn("a".repeat(64))
         `when`(gamePointsService.fetchPlayerStats(100L)).thenReturn(
-            listOf(
-                PlayerPoints(position = 1, points = 3.0),
-                PlayerPoints(position = 2, points = 7.0),
-                PlayerPoints(position = 3, points = 5.0),
-            ),
+            objectMapper.treeToValue(game.gameDataCache, PolemicaGame::class.java).players.orEmpty().map {
+                PlayerPoints(position = it.position.value, points = mapOf(1 to 3.0, 2 to 7.0, 3 to 5.0).getValue(it.position.value))
+            },
         )
         `when`(fantasyTeamRepository.findAllWithCardsForScoring(1L)).thenReturn(listOf(team))
         `when`(fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(11L)).thenReturn(mainAliases)
@@ -168,6 +262,15 @@ class DefaultScoringServiceTest {
                 ),
             ),
         )
+    }
+
+    private fun stubInvalidPoints(game: SeriesGame, points: List<PlayerPoints>) {
+        val series = Series(finalized = false, lastSyncedSelectorChecksum = "f".repeat(64)).apply { id = 1L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
+        `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(game))
+        `when`(scoringContextFingerprintService.fingerprint(1L)).thenReturn("a".repeat(64))
+        `when`(gamePointsService.fetchPlayerStats(100L)).thenReturn(points)
     }
 
     private fun scoringFixture(): FantasyTeam {

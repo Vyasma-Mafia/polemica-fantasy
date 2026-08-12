@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-apply}"
+source_cidr="${TELEGRAM_IMPORT_REQUIRED_SOURCE_CIDR:-172.24.0.0/28}"
+route_priority="${TELEGRAM_IMPORT_ROUTE_PRIORITY:-9999}"
+table_name="polemica_telegram_guard"
+
+require_root() {
+  if [[ "$EUID" -ne 0 ]]; then
+    echo "This command must run as root" >&2
+    exit 1
+  fi
+}
+
+route_rule_exists() {
+  ip -4 rule show | awk -v priority="$route_priority:" -v source="$source_cidr" '
+    $1 == priority && $2 == "from" && $3 == source && $4 == "lookup" && $5 == "201" {
+      found = 1
+    }
+    END { exit !found }
+  '
+}
+
+check_rules() {
+  nft -j list table inet "$table_name" | python3 -c '
+import json
+import sys
+
+items = json.load(sys.stdin).get("nftables", [])
+chains = [item["chain"] for item in items if "chain" in item]
+rules = [item["rule"] for item in items if "rule" in item]
+valid_chain = len(chains) == 1 and all(
+    (
+        chain.get("name") == "forward"
+        and chain.get("type") == "filter"
+        and chain.get("hook") == "forward"
+        and chain.get("prio") == -10
+        and chain.get("policy") == "accept"
+    )
+    for chain in chains
+)
+raise SystemExit(0 if valid_chain and len(rules) == 1 else 1)
+'
+  nft list chain inet "$table_name" forward | grep -Fq \
+    "ip saddr $source_cidr oifname != \"wg-tg\" reject"
+  route_rule_exists
+}
+
+apply_rules() {
+  if ! nft list table inet "$table_name" >/dev/null 2>&1; then
+    nft add table inet "$table_name"
+  fi
+  nft -f - <<NFT_RULESET
+delete table inet $table_name
+add table inet $table_name
+add chain inet $table_name forward { type filter hook forward priority -10; policy accept; }
+add rule inet $table_name forward ip saddr $source_cidr oifname != "wg-tg" reject
+NFT_RULESET
+
+  if ! route_rule_exists; then
+    ip -4 rule add priority "$route_priority" from "$source_cidr" lookup 201
+  fi
+  check_rules
+}
+
+case "$action" in
+  apply)
+    require_root
+    apply_rules
+    ;;
+  check)
+    require_root
+    check_rules
+    echo "Telegram worker egress is forced through wg-tg."
+    ;;
+  *)
+    echo "Usage: $0 {apply|check}" >&2
+    exit 2
+    ;;
+esac

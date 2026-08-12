@@ -12,11 +12,16 @@ import io.github.mralex1810.fantasy.entity.SeriesPlayer
 import io.github.mralex1810.fantasy.entity.Tournament
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentPlayer
+import io.github.mralex1810.fantasy.observability.FantasyMetrics
 import io.github.mralex1810.fantasy.repository.FantasyPlayerAliasRepository
+import io.github.mralex1810.fantasy.repository.FantasyTeamCardGameScoreRepository
 import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesPlayerRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
+import io.github.mralex1810.fantasy.service.SeriesGameSelectorFingerprintService
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mock
@@ -28,6 +33,8 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.SimpleTransactionStatus
+import org.springframework.web.server.ResponseStatusException
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import java.time.LocalDateTime
 import java.util.Optional
 
@@ -47,12 +54,19 @@ class DefaultGameSyncServiceTest {
     private lateinit var seriesGameRepository: SeriesGameRepository
 
     @Mock
+    private lateinit var fantasyTeamCardGameScoreRepository: FantasyTeamCardGameScoreRepository
+
+    @Mock
     private lateinit var fantasyPlayerAliasRepository: FantasyPlayerAliasRepository
+
+    @Mock
+    private lateinit var selectorFingerprintService: SeriesGameSelectorFingerprintService
 
     @Test
     fun `standalone sync uses secondary aliases for internal player overlap`() {
         val series = standaloneSeries()
         `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
         `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(
             listOf(seriesPlayer(1L, 11L), seriesPlayer(2L, 21L)),
         )
@@ -75,6 +89,7 @@ class DefaultGameSyncServiceTest {
     fun `standalone sync counts aliases as one internal player in overlap`() {
         val series = standaloneSeries()
         `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
         `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(
             listOf(seriesPlayer(1L, 11L), seriesPlayer(2L, 21L)),
         )
@@ -90,20 +105,99 @@ class DefaultGameSyncServiceTest {
         verify(seriesGameRepository, never()).save(anyNotNull())
     }
 
-    private fun service() = DefaultGameSyncService(
+    @Test
+    fun `finalized series is rejected before Polemica calls`() {
+        val series = standaloneSeries(finalized = true)
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().syncGames(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(integration, never()).fetchRecentProfileRowsForSync(anyLong())
+        verify(seriesRepository, never()).findByIdForUpdate(1L)
+    }
+
+    @Test
+    fun `series finalized during fetch is rejected before persistence`() {
+        val initial = standaloneSeries()
+        val finalized = standaloneSeries(finalized = true)
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(initial))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(finalized)
+        `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(
+            listOf(seriesPlayer(1L, 11L), seriesPlayer(2L, 21L)),
+        )
+        `when`(fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(1L)).thenReturn(listOf(11L))
+        `when`(fantasyPlayerAliasRepository.findPolemicaUserIdsByFantasyPlayerId(2L)).thenReturn(listOf(21L))
+        `when`(integration.fetchRecentProfileRowsForSync(11L)).thenReturn(listOf(profileRow(100L)))
+        `when`(integration.fetchRecentProfileRowsForSync(21L)).thenReturn(listOf(profileRow(100L)))
+        val game = polemicaGame(100L, "Alias Cup 1")
+        `when`(integration.loadMatch(100L)).thenReturn(game)
+        `when`(integration.toJsonNode(game)).thenReturn(objectMapper.createObjectNode())
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().syncGames(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(seriesGameRepository, never()).save(anyNotNull())
+    }
+
+    @Test
+    fun `empty sync still rechecks finalized series under lock`() {
+        val initial = standaloneSeries()
+        val finalized = standaloneSeries(finalized = true)
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(initial))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(finalized)
+        `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(emptyList())
+
+        val ex = assertThrows(ResponseStatusException::class.java) {
+            service().syncGames(1L)
+        }
+
+        assertEquals(409, ex.statusCode.value())
+        verify(seriesRepository).findByIdForUpdate(1L)
+        verify(seriesGameRepository, never()).save(anyNotNull())
+    }
+
+    @Test
+    fun `successful selector sync removes games no longer returned`() {
+        val series = standaloneSeries()
+        val stale = SeriesGame(series = series, polemicaGameId = 99L).apply { id = 909L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
+        `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(emptyList())
+        `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(stale))
+
+        service().syncGames(1L)
+
+        verify(fantasyTeamCardGameScoreRepository).deleteAllBySeriesGameId(909L)
+        verify(seriesGameRepository).deleteAll(listOf(stale))
+        verify(seriesGameRepository).flush()
+    }
+
+    private fun service(): DefaultGameSyncService {
+        org.mockito.Mockito.lenient().`when`(selectorFingerprintService.fingerprint(anyLong())).thenReturn("f".repeat(64))
+        return DefaultGameSyncService(
         polemicaProperties = PolemicaProperties(username = "u", password = "p"),
         integration = integration,
         seriesRepository = seriesRepository,
         seriesPlayerRepository = seriesPlayerRepository,
         seriesGameRepository = seriesGameRepository,
+        fantasyTeamCardGameScoreRepository = fantasyTeamCardGameScoreRepository,
         fantasyPlayerAliasRepository = fantasyPlayerAliasRepository,
+        selectorFingerprintService = selectorFingerprintService,
+        fantasyMetrics = FantasyMetrics(SimpleMeterRegistry()),
         platformTransactionManager = NoopTransactionManager(),
-    )
+        )
+    }
 
-    private fun standaloneSeries() =
+    private fun standaloneSeries(finalized: Boolean = false) =
         Series(
             tournament = Tournament(kind = TournamentKind.STANDALONE),
             namePrefix = "Alias Cup",
+            finalized = finalized,
         ).apply { id = 1L }
 
     private fun seriesPlayer(fantasyPlayerId: Long, polemicaUserId: Long) =

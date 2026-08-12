@@ -14,6 +14,7 @@ interface Values {
   status: SeriesStatus
   startsAt: ReturnType<typeof dayjs>
   teamDeadline: ReturnType<typeof dayjs>
+  expectedGameCount: number | null
   streamLinks: { label?: string | null; url: string }[]
 }
 
@@ -41,6 +42,7 @@ export function SeriesFormModal({
         status: 'UPCOMING',
         startsAt: dayjs(),
         teamDeadline: dayjs().hour(19).minute(10).second(0).millisecond(0),
+        expectedGameCount: null,
         streamLinks: [],
       }}
       onFinish={(v) => {
@@ -49,6 +51,7 @@ export function SeriesFormModal({
           status: v.status,
           startsAt: v.startsAt.toISOString(),
           teamDeadline: v.teamDeadline.toISOString(),
+          expectedGameCount: v.expectedGameCount,
           streamLinks: v.streamLinks ?? [],
         }
         if (isCompetition) {
@@ -118,7 +121,6 @@ export function SeriesFormModal({
             { value: 'UPCOMING', label: 'UPCOMING' },
             { value: 'ACTIVE', label: 'ACTIVE' },
             { value: 'SCORING', label: 'SCORING' },
-            { value: 'FINISHED', label: 'FINISHED' },
           ]}
         />
       </Form.Item>
@@ -131,6 +133,18 @@ export function SeriesFormModal({
         rules={[{ required: true }]}
       >
         <DatePicker showTime style={{ width: '100%' }} />
+      </Form.Item>
+      <Form.Item
+        name="expectedGameCount"
+        label="Expected game count"
+        rules={[({ getFieldValue }) => ({
+          validator: (_, value) =>
+            getFieldValue('status') !== 'SCORING' || value != null
+              ? Promise.resolve()
+              : Promise.reject(new Error('Required before SCORING')),
+        })]}
+      >
+        <InputNumber min={1} max={32} precision={0} style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item label="Series stream links">
         <Form.List name="streamLinks">

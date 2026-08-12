@@ -15,6 +15,7 @@ export interface CreateSeriesRequest {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  expectedGameCount?: number | null
   streamLinks?: StreamLinkRequest[]
 }
 
@@ -28,7 +29,12 @@ export interface UpdateSeriesRequest {
   status?: SeriesStatus | null
   startsAt?: string | null
   teamDeadline?: string | null
+  expectedGameCount?: number | null
   streamLinks?: StreamLinkRequest[] | null
+}
+
+export interface FinalizeSeriesRequest {
+  readinessChecksum: string
 }
 
 export interface AssignSeriesPlayersRequest {

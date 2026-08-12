@@ -339,6 +339,7 @@ export interface SeriesDto {
   status: SeriesStatus
   startsAt: string
   teamDeadline: string
+  expectedGameCount: number | null
   finalized: boolean
   streamLinks: StreamLinkDto[]
   /** Games synced from Polemica (`series_game` rows). */
@@ -349,6 +350,12 @@ export interface SeriesDto {
   tournamentPlayerIds: number[]
   /** Optional replacement Polemica user id by tournament_player.id. */
   replacementPolemicaUserIds: Record<number, number>
+}
+
+export interface SeriesCompletionPreviewDto {
+  ready: boolean
+  readinessChecksum: string | null
+  reason: string | null
 }
 
 export interface AdminSeriesGameDto {

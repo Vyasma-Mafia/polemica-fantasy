@@ -59,7 +59,7 @@ class FantasyTeamRosterPruningServiceTest {
             name = "s",
             teamDeadline = Instant.now().minusSeconds(60),
         ).apply { id = seriesId }
-        `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(seriesId)).thenReturn(series)
 
         val result = service.pruneInvalidCardsForSeries(seriesId)
         assertTrue(result.prunedCards.isEmpty())
@@ -74,7 +74,7 @@ class FantasyTeamRosterPruningServiceTest {
             name = "s",
             teamDeadline = Instant.now().plusSeconds(3600),
         ).apply { id = seriesId }
-        `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(seriesId)).thenReturn(series)
 
         val fp1 = fp(1L)
         val fp2 = fp(2L)
@@ -115,7 +115,7 @@ class FantasyTeamRosterPruningServiceTest {
             name = "s",
             teamDeadline = Instant.now().plusSeconds(3600),
         ).apply { id = seriesId }
-        `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(seriesId)).thenReturn(series)
 
         val fp1 = fp(1L)
         val fp2 = fp(2L)
@@ -157,7 +157,7 @@ class FantasyTeamRosterPruningServiceTest {
             name = "s",
             teamDeadline = Instant.now().plusSeconds(3600),
         ).apply { id = seriesId }
-        `when`(seriesRepository.findById(seriesId)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(seriesId)).thenReturn(series)
 
         val fp1 = fp(1L)
         val uc1 = UserCard(telegramUser = TelegramUser(telegramId = 1L), cardTemplate = template(fp1), usesRemaining = 1).apply { id = 101L }

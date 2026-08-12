@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.time.LocalDate
@@ -29,6 +30,8 @@ data class CreateSeriesRequest(
     val startsAt: Instant,
     @field:NotNull
     val teamDeadline: Instant,
+    @field:Min(1) @field:Max(32)
+    val expectedGameCount: Int? = null,
     @field:Valid
     val streamLinks: List<StreamLinkRequest> = emptyList(),
 )
@@ -65,6 +68,14 @@ class UpdateSeriesRequest {
 
     var teamDeadline: Instant? = null
 
+    @field:Min(1) @field:Max(32)
+    var expectedGameCount: Int? = null
+        @JsonSetter("expectedGameCount")
+        set(value) {
+            field = value
+            expectedGameCountSpecified = true
+        }
+
     @field:Valid
     var streamLinks: List<StreamLinkRequest>? = null
 
@@ -74,6 +85,10 @@ class UpdateSeriesRequest {
 
     @get:JsonIgnore
     var gameStartedOnSpecified: Boolean = false
+        private set
+
+    @get:JsonIgnore
+    var expectedGameCountSpecified: Boolean = false
         private set
 }
 
@@ -91,4 +106,10 @@ data class BatchStartSeriesRequest(
 data class AddSeriesGameRequest(
     @field:NotNull @field:Min(1)
     val polemicaGameId: Long?,
+)
+
+data class FinalizeSeriesRequest(
+    @field:NotBlank
+    @field:Pattern(regexp = "[0-9a-f]{64}")
+    val readinessChecksum: String,
 )

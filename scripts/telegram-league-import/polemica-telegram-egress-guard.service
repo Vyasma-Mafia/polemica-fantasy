@@ -1,0 +1,11 @@
+[Unit]
+Description=Polemica Telegram Docker egress fail-closed guard
+After=ufw.service nftables.service firewalld.service
+Before=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/polemica-telegram-egress-guard apply
+
+[Install]
+RequiredBy=docker.service

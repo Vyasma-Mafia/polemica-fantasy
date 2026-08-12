@@ -61,6 +61,9 @@ class SeriesFinalizationServiceTest {
     @Mock
     private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
+    @Mock
+    private lateinit var seriesCompletionService: SeriesCompletionService
+
     @InjectMocks
     private lateinit var service: SeriesFinalizationService
 
@@ -72,19 +75,22 @@ class SeriesFinalizationServiceTest {
     @Test
     fun `finalize throws when already finalized`() {
         val s = Series(tournament = Tournament(), finalized = true).apply { id = 1L }
-        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(s))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(s)
 
         val ex = assertThrows(ResponseStatusException::class.java) {
             service.finalizeSeries(1L)
         }
-        assertEquals(400, ex.statusCode.value())
+        assertEquals(409, ex.statusCode.value())
     }
 
     @Test
     fun `finalize decrements uses and distributes rewards`() {
         val t = Tournament().apply { id = 1L }
         val s = Series(tournament = t, finalized = false).apply { id = 7L }
-        `when`(seriesRepository.findById(7L)).thenReturn(Optional.of(s))
+        `when`(seriesRepository.findByIdForUpdate(7L)).thenReturn(s)
+        `when`(seriesCompletionService.evaluateForFinalization(7L)).thenReturn(
+            SeriesCompletion(SeriesCompletionStatus.READY, "a".repeat(64)),
+        )
 
         val u1 = TelegramUser(telegramId = 1L).apply { id = 10L }
         val u2 = TelegramUser(telegramId = 2L).apply { id = 11L }
@@ -123,6 +129,8 @@ class SeriesFinalizationServiceTest {
         verify(applicationEventPublisher, times(2)).publishEvent(captor.capture())
         val event = captor.allValues.filterIsInstance<SeriesFinalizedNotificationEvent>().single()
         assertEquals(7L, event.seriesId)
+        assertEquals(2, event.rewardedUsers)
+        assertEquals(2, event.cardUsesDecremented)
         assertEquals(2, event.recipients.size)
         assertEquals(1, event.recipients[0].leagueResults.first().place)
         assertEquals(2, event.recipients[1].leagueResults.first().place)
@@ -136,7 +144,10 @@ class SeriesFinalizationServiceTest {
     fun `finalize throws conflict when card has fewer uses than league slots`() {
         val t = Tournament().apply { id = 1L }
         val s = Series(tournament = t, finalized = false).apply { id = 8L }
-        `when`(seriesRepository.findById(8L)).thenReturn(Optional.of(s))
+        `when`(seriesRepository.findByIdForUpdate(8L)).thenReturn(s)
+        `when`(seriesCompletionService.evaluateForFinalization(8L)).thenReturn(
+            SeriesCompletion(SeriesCompletionStatus.READY, "b".repeat(64)),
+        )
 
         val user = TelegramUser(telegramId = 1L).apply { id = 10L }
         val uc = UserCard(telegramUser = user, cardTemplate = template(), usesRemaining = 1).apply { id = 101L }

@@ -3,12 +3,18 @@ package io.github.mralex1810.fantasy.repository
 import io.github.mralex1810.fantasy.entity.Series
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentStatus
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.Instant
 
 interface SeriesRepository : JpaRepository<Series, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Series s WHERE s.id = :id")
+    fun findByIdForUpdate(@Param("id") id: Long): Series?
+
     fun findByIdAndTournament_Id(id: Long, tournamentId: Long): Series?
 
     fun findAllByTournament_IdOrderByIdDesc(tournamentId: Long): List<Series>
@@ -19,6 +25,10 @@ interface SeriesRepository : JpaRepository<Series, Long> {
     ): List<Series>
 
     fun countByTournament_Id(tournamentId: Long): Long
+
+    fun existsByTournament_IdAndPublicNumber(tournamentId: Long, publicNumber: Long): Boolean
+
+    fun existsByTournament_IdAndPublicNumberAndIdNot(tournamentId: Long, publicNumber: Long, id: Long): Boolean
 
     fun findAllByStatusInAndFinalizedIsFalse(statuses: Collection<SeriesStatus>): List<Series>
 
