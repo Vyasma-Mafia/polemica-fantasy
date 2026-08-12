@@ -172,6 +172,9 @@ class SeriesCompletionService(
     private fun normalizeIdentity(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
         .lowercase()
         .replace('ё', 'е')
+        // Polemica usernames can mix the visually identical Latin C and Cyrillic С.
+        // Canonicalize only this observed confusable; punctuation/emoji are removed below.
+        .replace('с', 'c')
         .filter { it.isLetterOrDigit() }
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }

@@ -681,7 +681,7 @@ class TelegramLeagueImportIntegrationTest {
         Победа: Мафия
         Игра 4
         Мафия: Alpha, Houston, TX, Gamma
-        Шериф: Sheriff
+        Шериф: Свой
         Победа: Мирные
         Игра 5
         Мафия: Alpha, Houston, TX, Gamma
@@ -696,7 +696,7 @@ class TelegramLeagueImportIntegrationTest {
             resultPlayer(1, "Alpha", Role.DON),
             resultPlayer(2, "Houston, TX", Role.MAFIA),
             resultPlayer(3, "Gamma", Role.MAFIA),
-            resultPlayer(4, "Sheriff", Role.SHERIFF),
+            resultPlayer(4, if (id == 1004L) "Cвой" else "Sheriff", Role.SHERIFF),
         ),
         checks = emptyList(), shots = emptyList(), stage = null, votes = emptyList(), comKiller = null,
         bonuses = emptyList(), started = LocalDateTime.parse("2030-08-11T19:00:00"), stop = null,
