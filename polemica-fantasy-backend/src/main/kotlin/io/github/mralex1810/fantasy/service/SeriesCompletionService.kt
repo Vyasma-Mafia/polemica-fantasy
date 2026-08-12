@@ -48,8 +48,11 @@ class SeriesCompletionService(
             ?: return notReady("series does not exist")
         if (series.finalized || series.status == SeriesStatus.FINISHED) return notReady("series is already finalized")
         if (series.status != SeriesStatus.SCORING) return notReady("series status must be SCORING")
-        if (series.tournament?.kind != TournamentKind.STANDALONE) return notReady("only STANDALONE series can use result finalization")
         val expected = series.expectedGameCount ?: return notReady("expected game count is not configured")
+        val telegramManaged = leagueImportRepository.hasSourceLinks(seriesId)
+        if (telegramManaged && series.tournament?.kind != TournamentKind.STANDALONE) {
+            return notReady("Telegram RESULT finalization supports only STANDALONE series")
+        }
         val selectorChecksum = selectorFingerprintService.fingerprint(seriesId)
         if (series.lastSyncedSelectorChecksum != selectorChecksum || series.lastScoredSelectorChecksum != selectorChecksum) {
             return notReady("game selector changed since successful sync and scoring")
@@ -57,19 +60,26 @@ class SeriesCompletionService(
         val economy = economyFingerprintService.snapshot(seriesId)
         if (!economy.ready) return notReady(economy.reason ?: "series economy inputs are not ready")
 
-        val resultItems = leagueImportRepository.findCurrentResultItemsForSeries(seriesId, lock = lockEvidence)
-        if (resultItems.size != 1) return notReady("exactly one current RESULT source is required")
-        if (resultItems.single().policyGeneration != properties.policyGeneration || properties.policyGeneration == "disabled") {
-            return notReady("RESULT policy generation is stale")
+        val resultItem = if (telegramManaged) {
+            val resultItems = leagueImportRepository.findCurrentResultItemsForSeries(seriesId, lock = lockEvidence)
+            if (resultItems.size != 1) return notReady("exactly one current RESULT source is required")
+            resultItems.single()
+        } else null
+        val resultDraft = resultItem?.let { item ->
+            if (item.policyGeneration != properties.policyGeneration || properties.policyGeneration == "disabled") {
+                return notReady("RESULT policy generation is stale")
+            }
+            item.draftJson?.let {
+                runCatching { objectMapper.treeToValue(it, LeagueResultDraft::class.java) }.getOrNull()
+            } ?: return notReady("RESULT source draft is invalid")
         }
-        val resultDraft = resultItems.single().draftJson?.let {
-            runCatching { objectMapper.treeToValue(it, LeagueResultDraft::class.java) }.getOrNull()
-        } ?: return notReady("RESULT source draft is invalid")
-        if (resultDraft.tournamentId != series.tournament?.id || resultDraft.seriesNumber != series.publicNumber) {
-            return notReady("RESULT source does not match series identity")
-        }
-        if (resultDraft.expectedGameCount != expected || resultDraft.games.size != expected) {
-            return notReady("RESULT game count differs from series expectation")
+        if (resultDraft != null) {
+            if (resultDraft.tournamentId != series.tournament?.id || resultDraft.seriesNumber != series.publicNumber) {
+                return notReady("RESULT source does not match series identity")
+            }
+            if (resultDraft.expectedGameCount != expected || resultDraft.games.size != expected) {
+                return notReady("RESULT game count differs from series expectation")
+            }
         }
 
         val games = seriesGameRepository.findAllBySeries_Id(seriesId).sortedWith(
@@ -93,26 +103,28 @@ class SeriesCompletionService(
             )
         }
 
-        val announced = resultDraft.games.associateBy { it.number }
-        for (game in evaluated) {
-            val announcedGame = announced[game.number] ?: return notReady("RESULT is missing game ${game.number}")
-            val expectedWinner = announcedGame.winner
-            val actualWinner = when (game.result) {
-                PolemicaGameResult.RED_WIN -> AnnouncedGameWinner.CIVILIANS
-                PolemicaGameResult.BLACK_WIN -> AnnouncedGameWinner.MAFIA
-            }
-            if (expectedWinner != actualWinner) return notReady("winner mismatch for game ${game.number}")
-            val blackNames = game.parsedGame.players.orEmpty()
-                .filter { it.role == Role.DON || it.role == Role.MAFIA }
-                .mapNotNull { it.player?.username?.takeIf(String::isNotBlank) ?: it.username.takeIf(String::isNotBlank) }
-            if (blackNames.size != 3 || !matchesMafiaLine(announcedGame.mafiaLine, blackNames)) {
-                return notReady("mafia set mismatch or unresolved alias for game ${game.number}")
-            }
-            val sheriffNames = game.parsedGame.players.orEmpty()
-                .filter { it.role == Role.SHERIFF }
-                .mapNotNull { it.player?.username?.takeIf(String::isNotBlank) ?: it.username.takeIf(String::isNotBlank) }
-            if (sheriffNames.size != 1 || normalizeIdentity(sheriffNames.single()) != normalizeIdentity(announcedGame.sheriff)) {
-                return notReady("sheriff mismatch or unresolved alias for game ${game.number}")
+        if (resultDraft != null) {
+            val announced = resultDraft.games.associateBy { it.number }
+            for (game in evaluated) {
+                val announcedGame = announced[game.number] ?: return notReady("RESULT is missing game ${game.number}")
+                val expectedWinner = announcedGame.winner
+                val actualWinner = when (game.result) {
+                    PolemicaGameResult.RED_WIN -> AnnouncedGameWinner.CIVILIANS
+                    PolemicaGameResult.BLACK_WIN -> AnnouncedGameWinner.MAFIA
+                }
+                if (expectedWinner != actualWinner) return notReady("winner mismatch for game ${game.number}")
+                val blackNames = game.parsedGame.players.orEmpty()
+                    .filter { it.role == Role.DON || it.role == Role.MAFIA }
+                    .mapNotNull { it.player?.username?.takeIf(String::isNotBlank) ?: it.username.takeIf(String::isNotBlank) }
+                if (blackNames.size != 3 || !matchesMafiaLine(announcedGame.mafiaLine, blackNames)) {
+                    return notReady("mafia set mismatch or unresolved alias for game ${game.number}")
+                }
+                val sheriffNames = game.parsedGame.players.orEmpty()
+                    .filter { it.role == Role.SHERIFF }
+                    .mapNotNull { it.player?.username?.takeIf(String::isNotBlank) ?: it.username.takeIf(String::isNotBlank) }
+                if (sheriffNames.size != 1 || normalizeIdentity(sheriffNames.single()) != normalizeIdentity(announcedGame.sheriff)) {
+                    return notReady("sheriff mismatch or unresolved alias for game ${game.number}")
+                }
             }
         }
 
@@ -131,10 +143,13 @@ class SeriesCompletionService(
                 add(scoringContextChecksum)
                 add(selectorChecksum)
                 add(economy.checksum!!)
-                add(properties.policyGeneration)
-                add(resultItems.single().version.toString())
-                add(resultItems.single().currentRevision.toString())
-                add(resultItems.single().draftChecksum.orEmpty())
+                add("telegramManaged=$telegramManaged")
+                resultItem?.let {
+                    add(properties.policyGeneration)
+                    add(it.version.toString())
+                    add(it.currentRevision.toString())
+                    add(it.draftChecksum.orEmpty())
+                }
                 evaluated.forEach {
                     add("${it.number}:${it.rowId}:${it.polemicaGameId}:${it.cacheChecksum}:${it.result.value}:" +
                         "${it.scored}:${it.pointsStatus}:${it.scoringChecksum}:${it.scoringContextChecksum}")

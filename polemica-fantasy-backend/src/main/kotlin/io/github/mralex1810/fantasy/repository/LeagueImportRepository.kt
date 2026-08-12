@@ -589,6 +589,12 @@ class LeagueImportRepository(
             { rs, _ -> rs.getLong(1) }, seriesId, role,
         ).firstOrNull()
 
+    fun hasSourceLinks(seriesId: Long): Boolean = jdbc.queryForObject(
+        "SELECT EXISTS(SELECT 1 FROM series_external_post_link WHERE series_id=?)",
+        Boolean::class.java,
+        seriesId,
+    ) == true
+
     fun insertSourceLinkStrict(item: LeagueImportItemRow, seriesId: Long, role: String): Boolean =
         jdbc.update(
             """

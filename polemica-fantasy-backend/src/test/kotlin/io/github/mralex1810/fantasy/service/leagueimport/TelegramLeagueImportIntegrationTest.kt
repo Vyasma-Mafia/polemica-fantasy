@@ -492,6 +492,64 @@ class TelegramLeagueImportIntegrationTest {
     }
 
     @Test
+    fun `manual competition series without Telegram links can become ready from Polemica evidence only`() {
+        val number = 53L
+        tournament.kind = TournamentKind.POLEMICA_COMPETITION
+        tournament.polemicaCompetitionId = 999_053L
+        tournamentRepository.saveAndFlush(tournament)
+        val created = seriesService.createSeries(
+            tournament.id!!,
+            CreateSeriesRequest(
+                name = "Manual series $number",
+                namePrefix = "Manual",
+                gameNumFrom = 1,
+                gameNumTo = 5,
+                status = SeriesStatus.UPCOMING,
+                startsAt = Instant.parse("2030-08-11T16:00:00Z"),
+                teamDeadline = Instant.parse("2030-08-11T16:10:00Z"),
+                expectedGameCount = 5,
+            ),
+        )
+        val series = seriesRepository.findById(created.id).orElseThrow().also {
+            it.status = SeriesStatus.SCORING
+            it.teamDeadline = Instant.now().minusSeconds(1)
+            seriesRepository.saveAndFlush(it)
+        }
+        val contextChecksum = scoringContextFingerprintService.fingerprint(series.id!!)
+        val base = Instant.parse("2030-08-11T16:00:00Z")
+        (1..5).forEach { index ->
+            seriesGameRepository.save(
+                SeriesGame(
+                    series = series,
+                    polemicaGameId = 2000L + index,
+                    gameName = "Manual game $index",
+                    gameDataCache = objectMapper.valueToTree(
+                        polemicaGame(2000L + index, if (index % 2 == 0) PolemicaGameResult.RED_WIN else PolemicaGameResult.BLACK_WIN),
+                    ),
+                    playedAt = base.plus(index.toLong(), ChronoUnit.MINUTES),
+                    scored = true,
+                    pointsStatus = "COMPLETE",
+                    scoringInputChecksum = sha256("manual-points-$index"),
+                    scoringContextChecksum = contextChecksum,
+                    scoredAt = Instant.now(),
+                ),
+            )
+        }
+        seriesGameRepository.flush()
+        val selectorChecksum = selectorFingerprintService.fingerprint(series.id!!)
+        seriesRepository.findById(series.id!!).orElseThrow().also {
+            it.lastSyncedSelectorChecksum = selectorChecksum
+            it.lastScoredSelectorChecksum = selectorChecksum
+            seriesRepository.saveAndFlush(it)
+        }
+
+        assertEquals(0, intValue("SELECT count(*) FROM series_external_post_link WHERE series_id=?", series.id!!))
+        val completion = completionService.evaluate(series.id!!)
+        assertTrue(completion.ready, completion.reason)
+        assertTrue(completion.checksum!!.matches(Regex("[0-9a-f]{64}")))
+    }
+
+    @Test
     fun `result links only through announcement and manual confirmation finalizes once with atomic outcome`() {
         val number = 47L
         val announcementItemId = ingest(number)
