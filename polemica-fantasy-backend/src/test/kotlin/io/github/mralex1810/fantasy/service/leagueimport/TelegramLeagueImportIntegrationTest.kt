@@ -90,6 +90,7 @@ class TelegramLeagueImportIntegrationTest {
     @Autowired private lateinit var scoringContextFingerprintService: SeriesScoringContextFingerprintService
     @Autowired private lateinit var selectorFingerprintService: SeriesGameSelectorFingerprintService
     @Autowired private lateinit var resultProcessingService: LeagueImportResultProcessingService
+    @Autowired private lateinit var legacyLinkService: LeagueImportLegacyLinkService
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var transactionManager: PlatformTransactionManager
@@ -405,6 +406,89 @@ class TelegramLeagueImportIntegrationTest {
         assertEquals("BLOCKED", stringValue("SELECT event_type FROM league_import_operator_outbox WHERE item_id=?", duplicateItemId))
         assertTrue(stringValue("SELECT blocked_reason FROM league_import_item WHERE id=?", duplicateItemId).contains("already exists"))
         assertEquals(1, intValue("SELECT count(*) FROM series WHERE tournament_id=? AND public_number=34", tournament.id!!))
+    }
+
+    @Test
+    fun `legacy existing series can atomically claim exact announcement and result evidence`() {
+        val number = 52L
+        val created = seriesService.createSeries(
+            tournament.id!!,
+            CreateSeriesRequest(
+                name = "Лига Претендентов: Серия $number.",
+                namePrefix = "Лига Претендентов",
+                gameStartedOn = LocalDate.of(2030, 8, 11),
+                status = SeriesStatus.UPCOMING,
+                startsAt = Instant.parse("2030-08-11T10:58:54Z"),
+                teamDeadline = Instant.parse("2030-08-11T16:10:00Z"),
+                expectedGameCount = 5,
+            ),
+        )
+        val legacySeries = seriesRepository.findById(created.id).orElseThrow().also {
+            it.status = SeriesStatus.SCORING
+            seriesRepository.saveAndFlush(it)
+        }
+        val announcementMessageId = messageSequence.incrementAndGet()
+        val resultMessageId = messageSequence.incrementAndGet()
+        val announcementItemId = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(announcementMessageId, 1, announcement(number, "11 августа 2030")),
+        ).itemId!!
+        val resultItemId = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(), request(resultMessageId, 1, result(number)),
+        ).itemId!!
+        assertEquals("BLOCKED", importRepository.findItemById(announcementItemId)!!.state)
+        assertEquals("BLOCKED_MISMATCH", importRepository.findItemById(resultItemId)!!.state)
+
+        val previousResultProcessing = properties.resultProcessingEnabled
+        val previousFinalizeMode = properties.policies.lp.finalizeMode
+        try {
+            properties.resultProcessingEnabled = true
+            properties.policies.lp.finalizeMode = LeagueImportAutomationMode.MANUAL
+
+            val linked = legacyLinkService.link(legacySeries.id!!, announcementMessageId, resultMessageId)
+            assertFalse(linked.idempotent)
+            assertEquals(announcementItemId, linked.announcementItemId)
+            assertEquals(resultItemId, linked.resultItemId)
+            assertEquals("APPLIED", importRepository.findItemById(announcementItemId)!!.state)
+            assertEquals("WAITING_FOR_GAMES", importRepository.findItemById(resultItemId)!!.state)
+            assertEquals(legacySeries.id, importRepository.findItemById(resultItemId)!!.targetSeriesId)
+            assertEquals(
+                2,
+                intValue("SELECT count(*) FROM series_external_post_link WHERE series_id=?", legacySeries.id!!),
+            )
+            assertEquals(
+                1,
+                intValue(
+                    "SELECT count(*) FROM league_import_job WHERE item_id=? AND operation='RECONCILE' AND status='PENDING'",
+                    resultItemId,
+                ),
+            )
+            assertEquals(
+                2,
+                intValue(
+                    "SELECT count(*) FROM league_import_audit_event WHERE item_id IN (?,?) AND event_type LIKE 'LEGACY_%_LINKED'",
+                    announcementItemId,
+                    resultItemId,
+                ),
+            )
+
+            val replay = legacyLinkService.link(legacySeries.id!!, announcementMessageId, resultMessageId)
+            assertTrue(replay.idempotent)
+            assertEquals(linked.reconcileJobId, replay.reconcileJobId)
+            assertEquals(2, intValue("SELECT count(*) FROM series_external_post_link WHERE series_id=?", legacySeries.id!!))
+            assertEquals(1, intValue("SELECT count(*) FROM league_import_job WHERE item_id=?", resultItemId))
+            assertEquals(
+                2,
+                intValue(
+                    "SELECT count(*) FROM league_import_audit_event WHERE item_id IN (?,?) AND event_type LIKE 'LEGACY_%_LINKED'",
+                    announcementItemId,
+                    resultItemId,
+                ),
+            )
+        } finally {
+            properties.resultProcessingEnabled = previousResultProcessing
+            properties.policies.lp.finalizeMode = previousFinalizeMode
+        }
     }
 
     @Test

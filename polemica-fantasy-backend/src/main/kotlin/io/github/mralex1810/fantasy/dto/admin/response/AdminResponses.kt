@@ -9,6 +9,7 @@ import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import java.time.Instant
 import java.time.LocalDate
+import java.util.UUID
 
 data class ActiveSeriesBriefDto(
     val id: Long,
@@ -123,6 +124,14 @@ data class SeriesCompletionPreviewDto(
     val ready: Boolean,
     val readinessChecksum: String?,
     val reason: String?,
+)
+
+data class LegacySeriesSourcesLinkDto(
+    val seriesId: Long,
+    val announcementItemId: Long,
+    val resultItemId: Long,
+    val reconcileJobId: UUID,
+    val idempotent: Boolean,
 )
 
 data class AdminSeriesGameDto(

@@ -5,18 +5,21 @@ import io.github.mralex1810.fantasy.dto.admin.request.AddSeriesGameRequest
 import io.github.mralex1810.fantasy.dto.admin.request.BatchStartSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.FinalizeSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.request.LinkLegacySeriesSourcesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.response.AdminSeriesGameDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesResultsResponseDto
 import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesCompletionPreviewDto
+import io.github.mralex1810.fantasy.dto.admin.response.LegacySeriesSourcesLinkDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
 import io.github.mralex1810.fantasy.service.SeriesCompletionService
 import io.github.mralex1810.fantasy.service.SeriesService
 import io.github.mralex1810.fantasy.service.SeriesResultsService
+import io.github.mralex1810.fantasy.service.leagueimport.LeagueImportLegacyLinkService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -34,6 +37,7 @@ class SeriesAdminController(
     private val seriesFinalizationService: SeriesFinalizationService,
     private val seriesCompletionService: SeriesCompletionService,
     private val seriesResultsService: SeriesResultsService,
+    private val leagueImportLegacyLinkService: LeagueImportLegacyLinkService,
 ) {
 
     @GetMapping("/tournaments/{tournamentId}/series")
@@ -120,4 +124,11 @@ class SeriesAdminController(
         @Valid @RequestBody body: FinalizeSeriesRequest,
     ): SeriesFinalizationResultDto =
         seriesFinalizationService.finalizeSeries(id, body.readinessChecksum)
+
+    @PostMapping("/series/{id}/telegram-sources/legacy-link")
+    fun linkLegacyTelegramSources(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: LinkLegacySeriesSourcesRequest,
+    ): LegacySeriesSourcesLinkDto =
+        leagueImportLegacyLinkService.link(id, body.announcementMessageId, body.resultMessageId)
 }

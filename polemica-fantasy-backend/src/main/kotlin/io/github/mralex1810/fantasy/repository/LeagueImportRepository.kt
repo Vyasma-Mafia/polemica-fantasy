@@ -236,6 +236,21 @@ class LeagueImportRepository(
         )
     }
 
+    fun cancelOpenActionsForItem(itemId: Long, reason: String) {
+        jdbc.update(
+            """
+            UPDATE league_import_action SET status='CANCELLED',last_error=?,processing_started_at=NULL,updated_at=now()
+            WHERE item_id=? AND status IN ('NOTIFY_PENDING','OFFERED','CALLBACK_RECEIVED','CREATE_PENDING','CREATING',
+                                           'FINALIZE_PENDING','FINALIZING')
+            """.trimIndent(),
+            reason.take(512), itemId,
+        )
+        jdbc.update(
+            "UPDATE league_import_operator_outbox SET status='SUPERSEDED',lease_until=NULL WHERE item_id=? AND status='PENDING'",
+            itemId,
+        )
+    }
+
     fun cancelJobsThroughItemVersion(itemId: Long, maxItemVersion: Long, reason: String = "source revision changed"): Int {
         val cancelled = jdbc.update(
             """
@@ -500,6 +515,18 @@ class LeagueImportRepository(
         jdbc.update("UPDATE league_import_item SET target_series_id=?,updated_at=now() WHERE id=?", seriesId, itemId)
     }
 
+    fun resetResultItemForReconcile(itemId: Long, seriesId: Long) {
+        jdbc.update(
+            """
+            UPDATE league_import_item SET target_series_id=?,state='WAITING_FOR_GAMES',blocked_reason=NULL,
+                readiness_status=NULL,readiness_checksum=NULL,stable_poll_count=0,ready_since=NULL,
+                last_stable_observation_at=NULL,last_reconciled_at=NULL,updated_at=now()
+            WHERE id=?
+            """.trimIndent(),
+            seriesId, itemId,
+        )
+    }
+
     fun updateItemReadiness(
         itemId: Long,
         state: String,
@@ -527,18 +554,51 @@ class LeagueImportRepository(
     }
 
     fun insertSourceLink(item: LeagueImportItemRow, seriesId: Long, role: String) {
-        jdbc.update(
+        val updated = jdbc.update(
+            """
+            UPDATE series_external_post_link SET import_item_id=?,source_revision=?,content_hash=?
+            WHERE series_id=? AND source_channel_id=? AND source_message_id=? AND link_role=?
+            """.trimIndent(),
+            item.id, item.currentRevision, item.currentContentHash,
+            seriesId, item.sourceChannelId, item.sourceMessageId, role,
+        )
+        if (updated == 1) return
+        val inserted = jdbc.update(
             """
             INSERT INTO series_external_post_link(
                 series_id,import_item_id,source_channel_id,source_message_id,link_role,source_revision,content_hash
             ) VALUES(?,?,?,?,?,?,?)
-            ON CONFLICT (source_channel_id,source_message_id,link_role) DO UPDATE SET
-                series_id=EXCLUDED.series_id,import_item_id=EXCLUDED.import_item_id,
-                source_revision=EXCLUDED.source_revision,content_hash=EXCLUDED.content_hash
+            ON CONFLICT DO NOTHING
             """.trimIndent(),
             seriesId, item.id, item.sourceChannelId, item.sourceMessageId, role, item.currentRevision, item.currentContentHash,
         )
+        if (inserted != 1) {
+            throw DuplicateKeyException("$role source link conflicts with an existing source or series role")
+        }
     }
+
+    fun linkedSeriesIdForSource(sourceChannelId: Long, sourceMessageId: Long, role: String): Long? =
+        jdbc.query(
+            "SELECT series_id FROM series_external_post_link WHERE source_channel_id=? AND source_message_id=? AND link_role=?",
+            { rs, _ -> rs.getLong(1) }, sourceChannelId, sourceMessageId, role,
+        ).firstOrNull()
+
+    fun linkedMessageIdForSeriesRole(seriesId: Long, role: String): Long? =
+        jdbc.query(
+            "SELECT source_message_id FROM series_external_post_link WHERE series_id=? AND link_role=?",
+            { rs, _ -> rs.getLong(1) }, seriesId, role,
+        ).firstOrNull()
+
+    fun insertSourceLinkStrict(item: LeagueImportItemRow, seriesId: Long, role: String): Boolean =
+        jdbc.update(
+            """
+            INSERT INTO series_external_post_link(
+                series_id,import_item_id,source_channel_id,source_message_id,link_role,source_revision,content_hash
+            ) VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING
+            """.trimIndent(),
+            seriesId, item.id, item.sourceChannelId, item.sourceMessageId, role,
+            item.currentRevision, item.currentContentHash,
+        ) == 1
 
     fun findAnnouncementLinkedSeriesIds(tournamentId: Long, publicNumber: Long): List<Long> = jdbc.query(
         """

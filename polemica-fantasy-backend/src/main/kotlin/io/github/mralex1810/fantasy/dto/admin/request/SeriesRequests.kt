@@ -113,3 +113,10 @@ data class FinalizeSeriesRequest(
     @field:Pattern(regexp = "[0-9a-f]{64}")
     val readinessChecksum: String,
 )
+
+data class LinkLegacySeriesSourcesRequest(
+    @field:Min(1)
+    val announcementMessageId: Long,
+    @field:Min(1)
+    val resultMessageId: Long,
+)
