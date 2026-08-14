@@ -507,6 +507,59 @@ class TelegramLeagueImportIntegrationTest {
     }
 
     @Test
+    fun `caption substitution is previewed and atomically replaces OCR player`() {
+        val ocrNames = (1..9).map { "Caption Player $it" } + "Монарх"
+        val productionNames = ocrNames + "Воробей"
+        val tournamentPlayerIds = productionNames.associateWith { nickname ->
+            val fantasyPlayerId = jdbc.queryForObject(
+                "INSERT INTO fantasy_player(polemica_user_id,nickname) VALUES(?,?) RETURNING id",
+                Long::class.java,
+                messageSequence.incrementAndGet(),
+                nickname,
+            )!!
+            jdbc.queryForObject(
+                "INSERT INTO tournament_player(tournament_id,fantasy_player_id,excluded_from_pack_pool) VALUES(?,?,false) RETURNING id",
+                Long::class.java,
+                tournament.id!!,
+                fantasyPlayerId,
+            )!!
+        }
+        val messageId = messageSequence.incrementAndGet()
+        val text = announcement(59, "11 августа 2030") + "\n⌛ Заменой Монарха выступит Воробей"
+        val accepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(messageId, 1, text, media = mediaEvidence(ocrNames)),
+        )
+        val itemId = accepted.itemId!!
+        val item = importRepository.findItemById(itemId)!!
+        assertEquals("READY", item.rosterStatus)
+        val rosterDraft = requireNotNull(item.rosterDraftJson)
+        assertEquals("Монарх", rosterDraft.path("substitutions").single().path("outgoingNickname").asText())
+        assertEquals("Воробей", rosterDraft.path("substitutions").single().path("incomingNickname").asText())
+
+        val previewId = actionId(itemId, "CREATE_PREVIEW")
+        importRepository.markActionOffered(previewId, 8111)
+        callbackService.tryHandle(callback(821, "substitution-preview", tokenCodec.encode(previewId), 77, properties.operatorChatId, 8111))
+        val confirmId = actionId(itemId, "CREATE_CONFIRM")
+        importRepository.markActionOffered(confirmId, 8112)
+        callbackService.tryHandle(callback(822, "substitution-confirm", tokenCodec.encode(confirmId), 77, properties.operatorChatId, 8112))
+        jdbc.update("UPDATE league_import_action SET status='CREATING' WHERE id=? AND status='CREATE_PENDING'", confirmId)
+
+        createService.create(confirmId)
+
+        val seriesId = importRepository.findItemById(itemId)!!.targetSeriesId!!
+        val actualIds = jdbc.queryForList(
+            "SELECT tournament_player_id FROM series_player WHERE series_id=? ORDER BY tournament_player_id",
+            Long::class.java,
+            seriesId,
+        )
+        val expectedIds = ((1..9).map { tournamentPlayerIds.getValue("Caption Player $it") } +
+            tournamentPlayerIds.getValue("Воробей")).sorted()
+        assertEquals(expectedIds, actualIds)
+        assertFalse(actualIds.contains(tournamentPlayerIds.getValue("Монарх")))
+    }
+
+    @Test
     fun `incomplete OCR roster requires review and offers no production action`() {
         (1..9).forEach { index ->
             val fantasyPlayerId = jdbc.queryForObject(

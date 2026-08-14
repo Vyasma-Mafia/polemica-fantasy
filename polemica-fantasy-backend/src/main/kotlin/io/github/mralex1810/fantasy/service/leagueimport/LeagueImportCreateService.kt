@@ -271,7 +271,10 @@ class LeagueImportCreateService(
         val media = revision.mediaEvidence?.let {
             objectMapper.treeToValue(it, TelegramLeagueImportMediaEvidence::class.java)
         }
-        return rosterResolver.resolve(draft.league, draft.tournamentId, revision.evidenceHash, media).also {
+        return rosterResolver.resolve(
+            draft.league, draft.tournamentId, revision.evidenceHash, media,
+            announcementText = revision.rawText,
+        ).also {
             check(it.draft.status == item.rosterStatus && it.checksum == item.rosterChecksum) { "Stored roster draft changed" }
         }
     }

@@ -1,0 +1,52 @@
+{
+  "sourceMessageId": 2247,
+  "league": "ЗЛ",
+  "tournamentId": 13,
+  "caption": "Mafprofi Закрытая Лига: Серия 24.\n⌛ Заменой Монарха выступит Воробей\n\nДата: 14 августа\nВремя: 19:00 МСК.\n\n🔼Таблица\n\n📱 Twitch\n#анонс_ЗЛ",
+  "ocrLines": [
+    "Закрытая лига",
+    "2 сезон",
+    "24 серия",
+    "CRIMI",
+    "Монтэг",
+    "Монарх",
+    "BackInBlack",
+    "hanna_ross",
+    "k1ngL",
+    "Big Ben Belgorod",
+    "Crime Time",
+    "HeadShot",
+    "Red Tiger House",
+    "Red Elvis Mafia",
+    "Градиент",
+    "MSR",
+    "НаЛайте",
+    "Safron",
+    "Cristo I",
+    "Titan",
+    "Titan",
+    "Titan",
+    "SHOWDOWN",
+    "Без клуба",
+    "Polemica Game — играть в мафию онлайн, 12+",
+    "Подробнее: www.polemicagame.com"
+  ],
+  "expectedRoster": [
+    "Монтэг",
+    "Воробей",
+    "BackInBlack",
+    "hanna_ross",
+    "k1ngL",
+    "Gradient",
+    "MSR",
+    "НаЛайте",
+    "Safron",
+    "Cristo"
+  ],
+  "expectedSubstitutions": [
+    {
+      "outgoing": "Монарх",
+      "incoming": "Воробей"
+    }
+  ]
+}

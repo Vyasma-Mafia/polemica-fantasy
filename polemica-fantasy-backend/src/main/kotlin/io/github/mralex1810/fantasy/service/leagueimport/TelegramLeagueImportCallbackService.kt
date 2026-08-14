@@ -162,7 +162,10 @@ class TelegramLeagueImportCallbackService(
         val media = revision.mediaEvidence?.let {
             runCatching { objectMapper.treeToValue(it, TelegramLeagueImportMediaEvidence::class.java) }.getOrNull()
         }
-        val roster = rosterResolver.resolve(parsed.draft.league, parsed.draft.tournamentId, revision.evidenceHash, media)
+        val roster = rosterResolver.resolve(
+            parsed.draft.league, parsed.draft.tournamentId, revision.evidenceHash, media,
+            announcementText = revision.rawText,
+        )
         val expectedRosterChecksum = roster.takeIf { it.draft.ready }?.checksum
         if (action.rosterChecksum != expectedRosterChecksum) return null
         if (expectedRosterChecksum != null && item.rosterChecksum != expectedRosterChecksum) return null

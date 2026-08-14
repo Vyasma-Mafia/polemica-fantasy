@@ -1,5 +1,7 @@
 package io.github.mralex1810.fantasy.service.leagueimport
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportOcrEvidence
@@ -21,9 +23,19 @@ class LeagueImportRosterResolverTest {
             tournamentId = 17,
             expectedRosterCount = 10,
         )
+        policies.zl = TelegramLeagueImportProperties.LeaguePolicy(
+            enabled = true,
+            tournamentId = 13,
+            expectedRosterCount = 10,
+            rosterNicknameAliases = linkedMapOf(
+                "Градиент" to "Gradient",
+                "Cristo I" to "Cristo",
+            ),
+        )
     }
     private val repository = mock<TournamentPlayerRepository>()
     private val resolver = LeagueImportRosterResolver(properties, repository)
+    private val objectMapper = ObjectMapper()
 
     @Test
     fun `resolves exactly ten unique tournament nicknames and ignores poster noise`() {
@@ -81,6 +93,88 @@ class LeagueImportRosterResolverTest {
         assertTrue(result.draft.issues.single().contains("manual review"))
     }
 
+    @Test
+    fun `real LP 35 OCR golden resolves all ten players`() {
+        val fixture = fixture("announcement-2243.json")
+        val expected = fixture.path("expectedRoster").map(JsonNode::asText)
+        val players = expected.mapIndexed { index, nickname -> player(index.toLong() + 1, nickname) }
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(17)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЛП", 17, "1".repeat(64), media(fixture.path("ocrLines").map(JsonNode::asText)),
+            announcementText = fixture.path("caption").asText(),
+        )
+
+        assertTrue(result.draft.ready, result.draft.issues.joinToString("; "))
+        assertEquals(expected, result.draft.resolved.map { it.productionNickname })
+        assertTrue(result.draft.substitutions.isEmpty())
+    }
+
+    @Test
+    fun `real ZL 24 OCR golden applies caption substitution`() {
+        val fixture = fixture("announcement-2247.json")
+        val expected = fixture.path("expectedRoster").map(JsonNode::asText)
+        val players = (expected + "Монарх").distinct().mapIndexed { index, nickname -> player(index.toLong() + 1, nickname) }
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(13)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЗЛ", 13, "2".repeat(64), media(fixture.path("ocrLines").map(JsonNode::asText)),
+            announcementText = fixture.path("caption").asText(),
+        )
+
+        assertTrue(result.draft.ready, result.draft.issues.joinToString("; "))
+        assertEquals(expected, result.draft.resolved.map { it.productionNickname })
+        assertEquals(1, result.draft.substitutions.size)
+        assertEquals("Монарх", result.draft.substitutions.single().outgoingNickname)
+        assertEquals("Воробей", result.draft.substitutions.single().incomingNickname)
+        assertTrue(result.draft.resolved.any { it.ocrText == "Градиент" && it.productionNickname == "Gradient" })
+        assertTrue(result.draft.resolved.any { it.ocrText == "Cristo I" && it.productionNickname == "Cristo" })
+    }
+
+    @Test
+    fun `unsupported caption substitution wording requires review`() {
+        val players = (1L..10L).map { player(it, "Player $it") }
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(17)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЛП", 17, "3".repeat(64), media(players.map { it.fantasyPlayer!!.nickname }),
+            announcementText = "Замена: Player 1 / Player 11",
+        )
+
+        assertFalse(result.draft.ready)
+        assertTrue(result.draft.issues.single().contains("unsupported"))
+    }
+
+    @Test
+    fun `instead-of caption form applies exact incoming player`() {
+        val players = (1L..9L).map { player(it, "Player $it") } + player(10, "SM") + player(11, "День")
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(17)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЛП", 17, "4".repeat(64), media((1L..9L).map { "Player $it" } + "SM"),
+            announcementText = "Вместо SM выступит День",
+        )
+
+        assertTrue(result.draft.ready, result.draft.issues.joinToString("; "))
+        assertFalse(result.draft.resolved.any { it.productionNickname == "SM" })
+        assertTrue(result.draft.resolved.any { it.productionNickname == "День" })
+    }
+
+    @Test
+    fun `exact outgoing colliding with another players genitive requires review`() {
+        val players = (1L..8L).map { player(it, "Player $it") } +
+            player(9, "Монарх") + player(10, "Монарха") + player(11, "Воробей")
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(17)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЛП", 17, "5".repeat(64), media((1L..8L).map { "Player $it" } + listOf("Монарх", "Монарха")),
+            announcementText = "Заменой Монарха выступит Воробей",
+        )
+
+        assertFalse(result.draft.ready)
+        assertTrue(result.draft.issues.any { it.contains("not exact-unique") })
+    }
+
     private fun player(id: Long, nickname: String) = TournamentPlayer(
         id = id,
         fantasyPlayer = FantasyPlayer(id = 100 + id, polemicaUserId = 1000 + id, nickname = nickname),
@@ -103,4 +197,8 @@ class LeagueImportRosterResolverTest {
             lines = lines.map(::TelegramLeagueImportOcrLine),
         ),
     )
+
+    private fun fixture(name: String): JsonNode = requireNotNull(
+        javaClass.getResourceAsStream("/league-import/ocr/$name"),
+    ).use(objectMapper::readTree)
 }

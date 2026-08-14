@@ -94,6 +94,23 @@ key bound to the canonical evidence hash: upgrading a previously delivered
 text-only revision therefore creates one new delivery, while exact evidence
 replay keeps its original delivery ID.
 
+For a successful media announcement the backend resolves OCR lines only against
+exact-unique nicknames from the configured tournament. It also parses caption
+substitutions in the bounded forms `Заменой X выступит Y` and
+`Вместо X выступит Y`. The outgoing name must identify exactly one player in
+the already recognized OCR roster; a small deterministic Russian genitive
+normalization is allowed only for that outgoing name (`Монарха` → `Монарх`).
+The incoming name must be an exact-unique tournament nickname. The preview and
+roster checksum include the explicit `X → Y` replacement. Unsupported wording,
+an absent/ambiguous outgoing player, or an absent/ambiguous incoming player
+keeps the item in `NEEDS_REVIEW` and cannot write a roster.
+
+Known OCR spelling artifacts are allowed only through explicit per-policy
+`roster-nickname-aliases`; the alias target must still resolve exact-uniquely in
+the configured tournament and the preview shows the original OCR text and the
+production nickname. The current ZL golden corpus records `Градиент → Gradient`
+and `Cristo I → Cristo`. There is no general fuzzy or transliteration fallback.
+
 Before switching to `BACKEND`, remove the legacy
 `TELEGRAM_IMPORT_OPERATOR_BOT_TOKEN`, chat/thread IDs and notification-enable
 flag from the worker env. Backend mode refuses to start while those Bot API
@@ -266,9 +283,11 @@ stage is observed:
    OCR-to-tournament-player mapping. The closed write gate prevents the confirm
    action from becoming a production write.
 3. Verify every expected player and tournament-player ID in that review. Any
-   missing, duplicate, ambiguous, confusable, commentator/substitution marker,
-   album, unsupported file, or provider failure stays `NEEDS_REVIEW`; it never
-   falls back to creating an empty roster.
+   missing, duplicate, ambiguous, confusable, commentator, unsupported
+   substitution wording, album, unsupported file, or provider failure stays
+   `NEEDS_REVIEW`; it never falls back to creating an empty roster. A supported
+   caption substitution must be shown explicitly as `исходящий → входящий` and
+   the final `N/N` roster must contain the incoming player only.
 4. Enable roster writes and global production writes, then explicitly reprocess
    a fresh announcement. The first button shows a fresh `N/N` preview and is bound to
    the exact chat/message and human actor; the second creates the UPCOMING

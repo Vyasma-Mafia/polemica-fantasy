@@ -136,7 +136,10 @@ class LeagueImportIngestService(
         }
         val league = (checked as? LeagueAnnouncementParseResult.Ready)?.draft?.league ?: leagueHint(request.rawText)
         val roster = (checked as? LeagueAnnouncementParseResult.Ready)?.let {
-            rosterResolver.resolve(it.draft.league, it.draft.tournamentId, evidenceHash, request.mediaEvidence)
+            rosterResolver.resolve(
+                it.draft.league, it.draft.tournamentId, evidenceHash, request.mediaEvidence,
+                announcementText = request.rawText,
+            )
         }
         val rosterBlocksApply = request.mediaEvidence != null && (
             !properties.ocrRosterEnabled || roster?.draft?.ready != true

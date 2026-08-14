@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy.config
 
 import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Component
+import java.text.Normalizer
+import java.util.Locale
 
 @Component
 class TelegramLeagueImportConfigurationValidator(
@@ -46,6 +48,13 @@ class TelegramLeagueImportConfigurationValidator(
             require(policy.expectedGameCount in 1..32) { "League expected game count must be between 1 and 32" }
             require(policy.expectedRosterCount in 1..32) { "League expected roster count must be between 1 and 32" }
             require(policy.timezone == "Europe/Moscow") { "Telegram league import currently supports only Europe/Moscow" }
+            require(policy.rosterNicknameAliases.all { it.key.isNotBlank() && it.value.isNotBlank() }) {
+                "League OCR roster aliases must have non-blank source and target nicknames"
+            }
+            val normalizedAliasSources = policy.rosterNicknameAliases.keys.map(::normalizeAlias)
+            require(normalizedAliasSources.distinct().size == normalizedAliasSources.size) {
+                "League OCR roster alias sources must be unique after normalization"
+            }
         }
         val automaticCreateConfigured = enabledPolicies.any { it.createMode == LeagueImportAutomationMode.AUTOMATIC }
         val automaticFinalizeConfigured = enabledPolicies.any { it.finalizeMode == LeagueImportAutomationMode.AUTOMATIC }
@@ -67,4 +76,9 @@ class TelegramLeagueImportConfigurationValidator(
             }
         }
     }
+
+    private fun normalizeAlias(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
+        .lowercase(Locale.ROOT)
+        .trim()
+        .replace(Regex("\\s+"), " ")
 }

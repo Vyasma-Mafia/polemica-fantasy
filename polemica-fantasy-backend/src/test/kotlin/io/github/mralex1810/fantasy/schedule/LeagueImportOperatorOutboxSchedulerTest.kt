@@ -8,6 +8,7 @@ import io.github.mralex1810.fantasy.repository.LeagueImportRepository
 import io.github.mralex1810.fantasy.service.leagueimport.LeagueImportActionTokenCodec
 import io.github.mralex1810.fantasy.telegram.TelegramBotApiClient
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -21,6 +22,47 @@ import org.springframework.transaction.support.DefaultTransactionStatus
 import java.util.UUID
 
 class LeagueImportOperatorOutboxSchedulerTest {
+    @Test
+    fun `create preview explicitly renders caption substitution`() {
+        val row = LeagueImportOutboxRow(
+            id = 6,
+            eventKey = "preview:24",
+            itemId = 10,
+            actionId = UUID.randomUUID(),
+            eventType = "CREATE_PREVIEW",
+            payload = ObjectMapper().readTree(
+                """
+                {
+                  "draft": {
+                    "league": "ЗЛ", "seriesNumber": 24, "tournamentId": 13,
+                    "name": "ЗЛ. Серия 24", "namePrefix": "ЗЛ'26-2",
+                    "gameStartedOn": "2030-08-14", "startsAt": "2030-08-14T16:00:00Z",
+                    "teamDeadline": "2030-08-14T16:10:00Z", "expectedGameCount": 5,
+                    "sourceUrl": "https://t.me/polemica_closed_league/2247"
+                  },
+                  "tournamentName": "Закрытая лига. Сезон 2",
+                  "roster": {
+                    "status": "READY", "expectedCount": 10,
+                    "resolved": [
+                      {"ocrText":"Воробей (замена из подписи)","productionNickname":"Воробей","tournamentPlayerId":701}
+                    ],
+                    "substitutions": [
+                      {"outgoingNickname":"Монарх","incomingNickname":"Воробей"}
+                    ]
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val (text, button) = scheduler(mock(), mock()).render(row, "callback")
+
+        assertTrue(text.contains("Замены из подписи:"))
+        assertTrue(text.contains("Монарх → Воробей"))
+        assertTrue(text.contains("Итоговый состав:"))
+        assertTrue(button!!.contains("с составом"))
+    }
+
     @Test
     fun `delivers created outcome even though its action is already applied`() {
         val repository = mock<LeagueImportRepository>()

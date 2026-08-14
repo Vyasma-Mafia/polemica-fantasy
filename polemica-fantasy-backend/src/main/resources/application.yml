@@ -90,6 +90,9 @@ telegram:
         team-deadline-offset-minutes: 10
         expected-game-count: ${TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_GAME_COUNT:5}
         expected-roster-count: ${TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_ROSTER_COUNT:10}
+        roster-nickname-aliases:
+          "Градиент": "Gradient"
+          "Cristo I": "Cristo"
         create-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_CREATE_MODE:DISABLED}
         finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_FINALIZE_MODE:DISABLED}
 

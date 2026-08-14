@@ -44,6 +44,19 @@ class TelegramLeagueImportConfigurationValidatorTest {
         assertDoesNotThrow { validator(properties).validate() }
     }
 
+    @Test
+    fun `OCR alias sources must be nonblank and normalization-unique`() {
+        val properties = automaticProperties()
+        properties.policies.lp.rosterNicknameAliases = linkedMapOf(" Градиент " to "Gradient", "градиент" to "Another")
+        assertThrows(IllegalArgumentException::class.java) { validator(properties).validate() }
+
+        properties.policies.lp.rosterNicknameAliases = linkedMapOf("Градиент" to "")
+        assertThrows(IllegalArgumentException::class.java) { validator(properties).validate() }
+
+        properties.policies.lp.rosterNicknameAliases = linkedMapOf("Градиент" to "Gradient")
+        assertDoesNotThrow { validator(properties).validate() }
+    }
+
     private fun automaticProperties() = TelegramLeagueImportProperties(
         enabled = true,
         ingestEnabled = true,

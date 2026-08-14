@@ -44,6 +44,7 @@ data class TelegramLeagueImportProperties(
         var teamDeadlineOffsetMinutes: Long = 10,
         var expectedGameCount: Int = 5,
         var expectedRosterCount: Int = 10,
+        var rosterNicknameAliases: MutableMap<String, String> = linkedMapOf(),
         var createMode: LeagueImportAutomationMode = LeagueImportAutomationMode.DISABLED,
         var finalizeMode: LeagueImportAutomationMode = LeagueImportAutomationMode.DISABLED,
     )

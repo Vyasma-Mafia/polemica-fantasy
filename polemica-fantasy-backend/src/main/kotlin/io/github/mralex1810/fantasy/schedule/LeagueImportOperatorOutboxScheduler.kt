@@ -108,7 +108,7 @@ class LeagueImportOperatorOutboxScheduler(
         }
     }
 
-    private fun render(row: LeagueImportOutboxRow, callback: String?): Pair<String, String?> = when (row.eventType) {
+    internal fun render(row: LeagueImportOutboxRow, callback: String?): Pair<String, String?> = when (row.eventType) {
         "CREATE_PREVIEW", "CREATE_CONFIRM" -> {
             val draft = objectMapper.treeToValue(row.payload.path("draft"), LeagueAnnouncementDraft::class.java)
             val time = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm 'МСК'")
@@ -122,6 +122,14 @@ class LeagueImportOperatorOutboxScheduler(
             val rosterText = when {
                 rosterReady -> buildString {
                     append("Ростер: $rosterCount/${roster.path("expectedCount").asInt()} — все имена однозначно сопоставлены\n")
+                    val substitutions = roster.path("substitutions")
+                    if (substitutions.isArray && substitutions.size() > 0) {
+                        append("Замены из подписи:\n")
+                        substitutions.forEach { substitution ->
+                            append("• ${substitution.path("outgoingNickname").asText()} → ${substitution.path("incomingNickname").asText()}\n")
+                        }
+                        append("Итоговый состав:\n")
+                    }
                     roster.path("resolved").forEach { player ->
                         append("• ${player.path("ocrText").asText()} → ${player.path("productionNickname").asText()} (#${player.path("tournamentPlayerId").asLong()})\n")
                     }
@@ -156,6 +164,13 @@ class LeagueImportOperatorOutboxScheduler(
             val resolvedText = if (resolved.isArray && resolved.size() > 0) {
                 buildString {
                     append("Распознано и сопоставлено: ${resolved.size()}/${roster.path("expectedCount").asInt()}\n")
+                    val substitutions = roster.path("substitutions")
+                    if (substitutions.isArray && substitutions.size() > 0) {
+                        append("Разобранные замены:\n")
+                        substitutions.forEach { substitution ->
+                            append("• ${substitution.path("outgoingNickname").asText()} → ${substitution.path("incomingNickname").asText()}\n")
+                        }
+                    }
                     resolved.forEach { player ->
                         append("• ${player.path("ocrText").asText()} → ${player.path("productionNickname").asText()} (#${player.path("tournamentPlayerId").asLong()})\n")
                     }
