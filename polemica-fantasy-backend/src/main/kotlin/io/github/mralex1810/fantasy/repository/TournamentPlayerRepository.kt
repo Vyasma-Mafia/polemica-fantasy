@@ -19,6 +19,16 @@ interface TournamentPlayerRepository : JpaRepository<TournamentPlayer, Long> {
 
     fun findAllByTournament_IdOrderById(tournamentId: Long): List<TournamentPlayer>
 
+    @Query(
+        """
+        SELECT tp FROM TournamentPlayer tp
+        JOIN FETCH tp.fantasyPlayer fp
+        WHERE tp.tournament.id = :tournamentId
+        ORDER BY tp.id
+        """,
+    )
+    fun findAllByTournamentIdWithFantasyPlayer(@Param("tournamentId") tournamentId: Long): List<TournamentPlayer>
+
     fun countByTournament_Id(tournamentId: Long): Long
 
     fun countByTournament_IdAndExcludedFromPackPoolIsFalse(tournamentId: Long): Long

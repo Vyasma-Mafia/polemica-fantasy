@@ -28,6 +28,22 @@ class TelegramLeagueImportConfigurationValidatorTest {
         assertDoesNotThrow { validator(properties).validate() }
     }
 
+    @Test
+    fun `roster writes require both OCR processing and global production writes`() {
+        val properties = automaticProperties().also {
+            it.rosterWritesEnabled = true
+            it.ocrRosterEnabled = false
+        }
+        assertThrows(IllegalArgumentException::class.java) { validator(properties).validate() }
+
+        properties.ocrRosterEnabled = true
+        properties.productionWritesEnabled = false
+        assertThrows(IllegalArgumentException::class.java) { validator(properties).validate() }
+
+        properties.productionWritesEnabled = true
+        assertDoesNotThrow { validator(properties).validate() }
+    }
+
     private fun automaticProperties() = TelegramLeagueImportProperties(
         enabled = true,
         ingestEnabled = true,

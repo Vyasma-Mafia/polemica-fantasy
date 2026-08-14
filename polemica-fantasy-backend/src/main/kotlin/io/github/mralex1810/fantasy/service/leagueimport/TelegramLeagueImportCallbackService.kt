@@ -7,6 +7,7 @@ import io.github.mralex1810.fantasy.config.LeagueImportAutomationMode
 import io.github.mralex1810.fantasy.repository.LeagueImportActionRow
 import io.github.mralex1810.fantasy.repository.LeagueImportItemRow
 import io.github.mralex1810.fantasy.repository.LeagueImportRepository
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
 import io.github.mralex1810.fantasy.service.SeriesCompletionService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +25,7 @@ class TelegramLeagueImportCallbackService(
     private val objectMapper: ObjectMapper,
     private val completionService: SeriesCompletionService,
     private val resultProcessingService: LeagueImportResultProcessingService,
+    private val rosterResolver: LeagueImportRosterResolver,
 ) {
     @Transactional
     fun tryHandle(root: JsonNode): LeagueImportCallbackResult {
@@ -61,8 +63,8 @@ class TelegramLeagueImportCallbackService(
             repository.updateActionStatus(action.id, "EXPIRED")
             if (createReady != null) {
                 ingestService.offerAction(
-                    item.id, item.version, item.currentRevision, createReady, "CREATE_PREVIEW", null,
-                    properties.previewTtlSeconds,
+                    item.id, item.version, item.currentRevision, createReady.announcement, "CREATE_PREVIEW", null,
+                    properties.previewTtlSeconds, createReady.roster,
                 )
             } else {
                 resultProcessingService.offerFinalizeAction(
@@ -83,8 +85,8 @@ class TelegramLeagueImportCallbackService(
                     handled(queryId, "Действие уже обработано")
                 } else {
                     ingestService.offerAction(
-                        item.id, item.version, item.currentRevision, createReady!!, "CREATE_CONFIRM", actorId,
-                        properties.confirmationTtlSeconds,
+                        item.id, item.version, item.currentRevision, createReady!!.announcement, "CREATE_CONFIRM", actorId,
+                        properties.confirmationTtlSeconds, createReady.roster,
                     )
                     repository.updateItemState(item.id, "AWAITING_CONFIRMATION")
                     repository.audit(item.id, action.id, actorId, "PREVIEW_REQUESTED", "ACCEPTED")
@@ -92,8 +94,10 @@ class TelegramLeagueImportCallbackService(
                 }
             }
             "CREATE_CONFIRM" -> {
-                val mode = properties.policy(createReady!!.draft.league)?.createMode
-                if (!properties.productionWritesEnabled || mode != LeagueImportAutomationMode.MANUAL) {
+                val mode = properties.policy(createReady!!.announcement.draft.league)?.createMode
+                if (!properties.productionWritesEnabled ||
+                    (createReady.roster.draft.ready && !properties.rosterWritesEnabled) ||
+                    mode != LeagueImportAutomationMode.MANUAL) {
                     return handled(queryId, "Создание серий временно отключено")
                 }
                 if (!repository.recordCallback(action.id, "OFFERED", "CREATE_PENDING", updateId, queryId, actorId, actorUsername)) {
@@ -140,7 +144,7 @@ class TelegramLeagueImportCallbackService(
         }
     }
 
-    private fun freshReady(item: LeagueImportItemRow, action: LeagueImportActionRow): LeagueAnnouncementParseResult.Ready? {
+    private fun freshReady(item: LeagueImportItemRow, action: LeagueImportActionRow): LeagueImportCreateCandidate? {
         if (item.targetSeriesId != null || item.version != action.itemVersion || item.currentRevision != action.sourceRevision ||
             item.draftChecksum != action.draftChecksum || item.policyGeneration != properties.policyGeneration ||
             action.policyGeneration != properties.policyGeneration ||
@@ -154,7 +158,16 @@ class TelegramLeagueImportCallbackService(
         ) as? LeagueAnnouncementParseResult.Ready ?: return null
         if (parsed.checksum != action.draftChecksum) return null
         if (properties.policy(parsed.draft.league)?.createMode != LeagueImportAutomationMode.MANUAL) return null
-        return ingestService.validateProductionPolicy(parsed) as? LeagueAnnouncementParseResult.Ready
+        val checked = ingestService.validateProductionPolicy(parsed) as? LeagueAnnouncementParseResult.Ready ?: return null
+        val media = revision.mediaEvidence?.let {
+            runCatching { objectMapper.treeToValue(it, TelegramLeagueImportMediaEvidence::class.java) }.getOrNull()
+        }
+        val roster = rosterResolver.resolve(parsed.draft.league, parsed.draft.tournamentId, revision.evidenceHash, media)
+        val expectedRosterChecksum = roster.takeIf { it.draft.ready }?.checksum
+        if (action.rosterChecksum != expectedRosterChecksum) return null
+        if (expectedRosterChecksum != null && item.rosterChecksum != expectedRosterChecksum) return null
+        if (media != null && !roster.draft.ready) return null
+        return LeagueImportCreateCandidate(checked, roster)
     }
 
     private fun freshFinalize(item: LeagueImportItemRow, action: LeagueImportActionRow): Pair<LeagueResultDraft, String>? {
@@ -169,8 +182,13 @@ class TelegramLeagueImportCallbackService(
         if (properties.policy(draft.league)?.finalizeMode != LeagueImportAutomationMode.MANUAL) return null
         val completion = completionService.evaluate(item.targetSeriesId)
         if (!completion.ready || completion.checksum != action.draftChecksum) return null
-        return draft to completion.checksum!!
+        return draft to completion.checksum
     }
 
     private fun handled(queryId: String, answer: String) = LeagueImportCallbackResult(true, queryId, answer)
 }
+
+data class LeagueImportCreateCandidate(
+    val announcement: LeagueAnnouncementParseResult.Ready,
+    val roster: LeagueImportRosterResolution,
+)

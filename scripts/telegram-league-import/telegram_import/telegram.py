@@ -6,6 +6,7 @@ import ipaddress
 import json
 import os
 import signal
+import stat
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,8 +18,9 @@ from telethon.tl.types import PeerChannel
 
 from .classifier import CLASSIFIER_RULE_VERSION, classify, fingerprint
 from .backend import BackendIngestClient, retry_timestamp as backend_retry_timestamp
-from .config import DeliveryMode, Paths, backend_delivery_config, delivery_mode, normalize_phone, parse_api_id, read_metadata, require_routed_source, required_env
+from .config import DeliveryMode, OcrConfig, Paths, backend_delivery_config, delivery_mode, normalize_phone, ocr_config, parse_api_id, read_metadata, require_routed_source, required_env
 from .notifier import BotNotifier, render, retry_timestamp
+from .ocr import MediaMetadata, YandexVisionClient, inspect_media, terminal_ocr
 from .storage import Inbox, utcnow
 
 
@@ -131,6 +133,7 @@ def persist_message(
     watermark: int | None = None,
     classifier_replay: bool = False,
     mode: DeliveryMode = DeliveryMode.DIRECT,
+    ocr_enabled: bool = False,
 ) -> str:
     payload = message_payload(message)
     result = classify(str(payload["text"]))
@@ -148,8 +151,132 @@ def persist_message(
         watermark=watermark,
         backend_delivery=mode is DeliveryMode.BACKEND,
         force_backend_delivery=classifier_replay and mode is DeliveryMode.BACKEND,
+        ocr_enabled=ocr_enabled,
         **payload,
     )
+
+
+def prepare_ocr_spool(path: Path) -> None:
+    if path.exists() and path.is_symlink():
+        raise SystemExit("OCR spool directory must not be a symlink")
+    path.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(path, 0o700)
+    if stat.S_IMODE(path.stat().st_mode) & 0o077:
+        raise SystemExit("OCR spool directory must not be accessible by group/other")
+    # The worker holds the session-wide lock, so no other process can own these
+    # raw files. Every OCR attempt can safely redownload them after a crash.
+    for candidate in path.iterdir():
+        if candidate.is_file() and not candidate.is_symlink():
+            candidate.unlink()
+
+
+def media_evidence(task: object, metadata: MediaMetadata | None, ocr: object) -> dict[str, object]:
+    return {
+        "telegramMediaId": task["telegram_media_id"],
+        "groupedId": task["grouped_id"],
+        "mimeType": metadata.mime_type if metadata else None,
+        "byteSize": metadata.byte_size if metadata else None,
+        "width": metadata.width if metadata else None,
+        "height": metadata.height if metadata else None,
+        "sha256": metadata.sha256 if metadata else None,
+        "ocr": ocr.evidence(),
+    }
+
+
+async def drain_ocr_tasks(
+    client: TelegramClient,
+    entity: object,
+    inbox: Inbox,
+    vision: YandexVisionClient,
+    config: OcrConfig,
+    spool: Path,
+) -> None:
+    repeat_limit = 10
+    for _ in range(repeat_limit):
+        task = inbox.lease_ocr_task()
+        if task is None:
+            return
+        token = task["lease_token"]
+        raw_path = spool / f"ocr-{task['id']}-{token}.raw"
+        metadata = None
+        raw_is_durable = False
+        try:
+            fetched = await client.get_messages(entity, ids=int(task["message_id"]))
+            message = fetched[0] if isinstance(fetched, list) and fetched else fetched
+            if message is None:
+                inbox.supersede_ocr_task(task["id"], token, "source message is no longer readable")
+                continue
+            current = message_payload(message)
+            if (
+                current["source_version"] != task["source_version"]
+                or current["media_id"] != task["telegram_media_id"]
+                or current["grouped_id"] != task["grouped_id"]
+                or current["media_kind"] != task["media_kind"]
+            ):
+                inbox.supersede_ocr_task(task["id"], token, "source media changed")
+                continue
+            if task["grouped_id"] is not None:
+                outcome = terminal_ocr("UNSUPPORTED", config, "ALBUM_UNSUPPORTED")
+            elif task["media_kind"] != "MessageMediaPhoto":
+                outcome = terminal_ocr("UNSUPPORTED", config, "MEDIA_KIND_UNSUPPORTED")
+            else:
+                descriptor = os.open(raw_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                os.close(descriptor)
+                downloaded = await client.download_media(message, file=str(raw_path))
+                if not downloaded or not raw_path.exists():
+                    raise OSError("Telegram media download returned no file")
+                os.chmod(raw_path, 0o600)
+                try:
+                    metadata = inspect_media(raw_path, config)
+                except ValueError as exc:
+                    outcome = terminal_ocr("UNSUPPORTED", config, str(exc))
+                else:
+                    outcome = await vision.recognize(raw_path, metadata)
+            if outcome.retryable:
+                if int(task["attempts"]) < config.max_attempts:
+                    retry_at = backend_retry_timestamp(outcome.retry_after)
+                    raw_is_durable = inbox.retry_ocr_task(
+                        task["id"], token, retry_at, outcome.error_code or "PROVIDER_UNAVAILABLE"
+                    )
+                    continue
+                outcome = terminal_ocr("FAILED", config, "PROVIDER_RETRIES_EXHAUSTED")
+            latest_fetched = await client.get_messages(entity, ids=int(task["message_id"]))
+            latest_message = latest_fetched[0] if isinstance(latest_fetched, list) and latest_fetched else latest_fetched
+            if latest_message is None:
+                inbox.supersede_ocr_task(task["id"], token, "source message is no longer readable after OCR")
+                continue
+            latest = message_payload(latest_message)
+            if (
+                latest["source_version"] != task["source_version"]
+                or latest["media_id"] != task["telegram_media_id"]
+                or latest["grouped_id"] != task["grouped_id"]
+                or latest["media_kind"] != task["media_kind"]
+            ):
+                inbox.supersede_ocr_task(task["id"], token, "source media changed during OCR")
+                continue
+            evidence = media_evidence(task, metadata, outcome)
+            try:
+                committed = inbox.complete_ocr_task(task["id"], token, evidence)
+            except ValueError:
+                compact = terminal_ocr("FAILED", config, "EVIDENCE_TOO_LARGE")
+                committed = inbox.complete_ocr_task(task["id"], token, media_evidence(task, metadata, compact))
+            raw_is_durable = committed
+            if not committed:
+                continue
+        except (OSError, asyncio.TimeoutError) as exc:
+            if int(task["attempts"]) < config.max_attempts:
+                raw_is_durable = inbox.retry_ocr_task(
+                    task["id"], token, backend_retry_timestamp(min(300, 2 ** int(task["attempts"]))),
+                    type(exc).__name__,
+                )
+            else:
+                failed = terminal_ocr("FAILED", config, "MEDIA_DOWNLOAD_FAILED")
+                raw_is_durable = inbox.complete_ocr_task(
+                    task["id"], token, media_evidence(task, metadata, failed)
+                )
+        finally:
+            if raw_is_durable and raw_path.exists():
+                raw_path.unlink()
 
 
 async def drain_outbox(inbox: Inbox, notifier: BotNotifier) -> None:
@@ -173,7 +300,8 @@ async def drain_backend_outbox(inbox: Inbox, client: BackendIngestClient) -> Non
             break
 
 
-async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox: Inbox, notifier: BotNotifier, mode: DeliveryMode = DeliveryMode.DIRECT, backend_client: BackendIngestClient | None = None) -> None:
+async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox: Inbox, notifier: BotNotifier, mode: DeliveryMode = DeliveryMode.DIRECT, backend_client: BackendIngestClient | None = None, vision: YandexVisionClient | None = None, ocr: OcrConfig | None = None, ocr_spool: Path | None = None) -> None:
+    ocr_enabled = bool(ocr and ocr.enabled)
     watermark_raw = inbox.get_state("watermark")
     if watermark_raw is None:
         initial_high_raw = inbox.get_state("initial_high_watermark")
@@ -190,7 +318,7 @@ async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox:
         initial = max(1, int(os.getenv("TELEGRAM_IMPORT_INITIAL_BACKFILL", "100")))
         messages = [message async for message in client.iter_messages(entity, limit=initial, max_id=high_watermark+1)]
         for message in reversed(messages):
-            persist_message(inbox, peer_id, message, silent=True, mode=mode)
+            persist_message(inbox, peer_id, message, silent=True, mode=mode, ocr_enabled=ocr_enabled)
         with inbox.transaction() as db:
             inbox.set_state(db, "watermark", high_watermark)
             inbox.set_state(db, "bootstrap_status", "COMPLETE")
@@ -204,11 +332,11 @@ async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox:
         messages.append(upper_message)
     messages.sort(key=lambda message: int(message.id))
     for message in messages:
-        persist_message(inbox, peer_id, message, silent=False, watermark=int(message.id), mode=mode)
+        persist_message(inbox, peer_id, message, silent=False, watermark=int(message.id), mode=mode, ocr_enabled=ocr_enabled)
 
     rolling = max(1, int(os.getenv("TELEGRAM_IMPORT_EDIT_SCAN", "50")))
     async for message in client.iter_messages(entity, limit=rolling, max_id=upper+1):
-        persist_message(inbox, peer_id, message, silent=False, mode=mode)
+        persist_message(inbox, peer_id, message, silent=False, mode=mode, ocr_enabled=ocr_enabled)
 
     deep_page = max(1, int(os.getenv("TELEGRAM_IMPORT_DEEP_SCAN", "100")))
     cursor_raw = inbox.get_state("deep_scan_before_id")
@@ -218,7 +346,7 @@ async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox:
     deep_messages = await client.get_messages(entity, ids=saved_ids) if saved_ids else []
     for saved_id, message in sorted(zip(saved_ids, deep_messages), key=lambda item: item[0]):
         if message is not None:
-            persist_message(inbox, peer_id, message, silent=False, mode=mode)
+            persist_message(inbox, peer_id, message, silent=False, mode=mode, ocr_enabled=ocr_enabled)
         elif inbox.latest_classification(peer_id, saved_id) not in (None, "IGNORE"):
             observed = utcnow()
             inbox.persist(peer_id=peer_id, message_id=saved_id, source_version=observed, message_date=None, edit_date=observed, grouped_id=None, media_kind=None, media_id=None, text="", fingerprint=f"deleted:{peer_id}:{saved_id}", classification="IGNORE", league=None, reason="message no longer readable by numeric ID", silent=False, backend_delivery=mode is DeliveryMode.BACKEND)
@@ -230,6 +358,8 @@ async def poll_once(client: TelegramClient, entity: object, peer_id: int, inbox:
     if mode is DeliveryMode.DIRECT:
         await drain_outbox(inbox, notifier)
     elif backend_client is not None:
+        if vision is not None and ocr is not None and ocr_spool is not None:
+            await drain_ocr_tasks(client, entity, inbox, vision, ocr, ocr_spool)
         await drain_backend_outbox(inbox, backend_client)
 
 
@@ -252,8 +382,12 @@ async def reclassify_message(paths: Paths, notifier: BotNotifier, message_id: in
     require_routed_source()
     metadata = read_metadata(paths.metadata)
     mode = delivery_mode()
+    ocr = ocr_config(mode)
+    vision = YandexVisionClient(ocr) if ocr.enabled else None
     backend_client = BackendIngestClient(backend_delivery_config()) if mode is DeliveryMode.BACKEND else None
     with exclusive_lock(paths.lock):
+        if ocr.enabled:
+            prepare_ocr_spool(paths.ocr_spool)
         inbox = Inbox(paths.inbox)
         client = make_client(paths, "shadow-reclassify-1")
         try:
@@ -269,10 +403,13 @@ async def reclassify_message(paths: Paths, notifier: BotNotifier, message_id: in
                 silent=False,
                 classifier_replay=True,
                 mode=mode,
+                ocr_enabled=ocr.enabled,
             )
             if mode is DeliveryMode.DIRECT:
                 await drain_outbox(inbox, notifier)
             elif backend_client is not None:
+                if vision is not None:
+                    await drain_ocr_tasks(client, entity, inbox, vision, ocr, paths.ocr_spool)
                 await drain_backend_outbox(inbox, backend_client)
             latest = inbox.connection.execute(
                 "SELECT classification FROM messages WHERE channel_peer_id=? AND message_id=?",
@@ -298,6 +435,8 @@ async def reclassify_message(paths: Paths, notifier: BotNotifier, message_id: in
 async def run_worker(paths: Paths, notifier: BotNotifier, *, once: bool) -> None:
     require_routed_source()
     mode = delivery_mode()
+    ocr = ocr_config(mode)
+    vision = YandexVisionClient(ocr) if ocr.enabled else None
     backend_client = BackendIngestClient(backend_delivery_config()) if mode is DeliveryMode.BACKEND else None
     metadata = read_metadata(paths.metadata)
     stop = asyncio.Event()
@@ -308,6 +447,8 @@ async def run_worker(paths: Paths, notifier: BotNotifier, *, once: bool) -> None
         except NotImplementedError:
             pass
     with exclusive_lock(paths.lock):
+        if ocr.enabled:
+            prepare_ocr_spool(paths.ocr_spool)
         inbox = Inbox(paths.inbox)
         client = make_client(paths, "shadow-worker-1")
         backoff = 2
@@ -321,7 +462,7 @@ async def run_worker(paths: Paths, notifier: BotNotifier, *, once: bool) -> None
                 inbox.set_state(db, "pinned_account_user_id", getattr(me, "id", ""))
             while not stop.is_set():
                 try:
-                    await poll_once(client, entity, peer_id, inbox, notifier, mode, backend_client)
+                    await poll_once(client, entity, peer_id, inbox, notifier, mode, backend_client, vision, ocr, paths.ocr_spool)
                     backoff = 2
                     if once:
                         break

@@ -55,6 +55,7 @@ class Paths:
     metadata: Path
     lock: Path
     inbox: Path
+    ocr_spool: Path
 
 
 def paths() -> Paths:
@@ -69,7 +70,14 @@ def paths() -> Paths:
     name = os.getenv("TELEGRAM_IMPORT_SESSION_NAME", DEFAULT_SESSION_NAME).strip()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
         raise SystemExit("TELEGRAM_IMPORT_SESSION_NAME may contain only letters, digits, _ and -")
-    return Paths(session_dir, session_dir / name, session_dir / "authorized-channel.json", session_dir / ".session.lock", session_dir / "shadow-inbox.sqlite")
+    return Paths(
+        session_dir,
+        session_dir / name,
+        session_dir / "authorized-channel.json",
+        session_dir / ".session.lock",
+        session_dir / "shadow-inbox.sqlite",
+        session_dir / "ocr-spool",
+    )
 
 
 def read_metadata(path: Path) -> dict[str, object]:
@@ -142,6 +150,20 @@ class BackendDeliveryConfig:
     secret: str
 
 
+@dataclass(frozen=True)
+class OcrConfig:
+    enabled: bool
+    api_url: str | None = None
+    api_key: str | None = None
+    folder_id: str | None = None
+    model: str = "page"
+    language_codes: tuple[str, ...] = ("ru", "en")
+    timeout_seconds: int = 30
+    max_attempts: int = 8
+    max_media_bytes: int = 10 * 1024 * 1024
+    max_pixels: int = 20_000_000
+
+
 def delivery_mode() -> DeliveryMode:
     raw = required_env("TELEGRAM_IMPORT_DELIVERY_MODE")
     try:
@@ -166,4 +188,41 @@ def backend_delivery_config() -> BackendDeliveryConfig:
         url=url,
         key_id=required_env("TELEGRAM_IMPORT_BACKEND_INGEST_KEY_ID"),
         secret=required_env("TELEGRAM_IMPORT_BACKEND_INGEST_SECRET"),
+    )
+
+
+def ocr_config(mode: DeliveryMode) -> OcrConfig:
+    enabled_raw = os.getenv("TELEGRAM_IMPORT_OCR_ENABLED", "false").strip().casefold()
+    if enabled_raw not in {"true", "false"}:
+        raise SystemExit("TELEGRAM_IMPORT_OCR_ENABLED must be true or false")
+    if enabled_raw == "false":
+        return OcrConfig(enabled=False)
+    if mode is not DeliveryMode.BACKEND:
+        raise SystemExit("Telegram import OCR is supported only in BACKEND delivery mode")
+    api_url = os.getenv(
+        "TELEGRAM_IMPORT_OCR_API_URL",
+        "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText",
+    ).strip()
+    if api_url != "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText":
+        raise SystemExit("TELEGRAM_IMPORT_OCR_API_URL must be the exact Yandex Vision recognizeText endpoint")
+    try:
+        timeout = int(os.getenv("TELEGRAM_IMPORT_OCR_TIMEOUT_SECONDS", "30"))
+        attempts = int(os.getenv("TELEGRAM_IMPORT_OCR_MAX_ATTEMPTS", "8"))
+        max_bytes = int(os.getenv("TELEGRAM_IMPORT_OCR_MAX_MEDIA_BYTES", str(10 * 1024 * 1024)))
+        max_pixels = int(os.getenv("TELEGRAM_IMPORT_OCR_MAX_PIXELS", "20000000"))
+    except ValueError as exc:
+        raise SystemExit("Telegram import OCR numeric settings must be integers") from exc
+    if not 1 <= timeout <= 120 or not 1 <= attempts <= 20:
+        raise SystemExit("Telegram import OCR timeout/attempt settings are outside safe bounds")
+    if not 1 <= max_bytes <= 10 * 1024 * 1024 or not 1 <= max_pixels <= 20_000_000:
+        raise SystemExit("Telegram import OCR media limits exceed Yandex Vision limits")
+    return OcrConfig(
+        enabled=True,
+        api_url=api_url,
+        api_key=required_env("TELEGRAM_IMPORT_OCR_API_KEY"),
+        folder_id=required_env("TELEGRAM_IMPORT_OCR_FOLDER_ID"),
+        timeout_seconds=timeout,
+        max_attempts=attempts,
+        max_media_bytes=max_bytes,
+        max_pixels=max_pixels,
     )

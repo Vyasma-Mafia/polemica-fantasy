@@ -16,7 +16,8 @@ delivery has two explicit, fail-fast modes:
 - `DIRECT` preserves the legacy `[SHADOW][NO PRODUCTION WRITE]` bot alert;
 - `BACKEND` suppresses direct worker alerts and posts source identity, local
   revision, source version/timestamps, SHA-256 content hash, and exact raw text
-  to the backend. The existing Fantasy bot then owns admin-chat notifications.
+  to the backend. For a supported announcement photo, delivery waits for durable
+  OCR evidence. The existing Fantasy bot then owns admin-chat notifications.
 
 There is no fallback destination. A worker event is marked delivered only after
 a backend 2xx response. Network errors, 429 and 5xx are retried with the same
@@ -48,6 +49,50 @@ TELEGRAM_IMPORT_BACKEND_INGEST_URL=https://fantasy.maftourbot.ru/api/v1/internal
 TELEGRAM_IMPORT_BACKEND_INGEST_KEY_ID=tg-import-2026-08
 TELEGRAM_IMPORT_BACKEND_INGEST_SECRET=replace_with_random_secret
 ```
+
+Optional worker-owned Yandex Vision OCR is default-off and available only in
+`BACKEND` mode:
+
+```dotenv
+TELEGRAM_IMPORT_OCR_ENABLED=true
+TELEGRAM_IMPORT_OCR_API_KEY=replace_with_scoped_vision_key
+TELEGRAM_IMPORT_OCR_FOLDER_ID=replace_with_folder_id
+```
+
+The backend side is independently default-off:
+
+```dotenv
+TELEGRAM_LEAGUE_IMPORT_OCR_ROSTER_ENABLED=false
+TELEGRAM_LEAGUE_IMPORT_ROSTER_WRITES_ENABLED=false
+TELEGRAM_LEAGUE_IMPORT_LP_EXPECTED_ROSTER_COUNT=10
+TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_ROSTER_COUNT=10
+```
+
+Use a dedicated service account with only the `ai.vision.user` role and keep its
+API key only in the restricted worker env file; it is never logged. Provider-side data
+logging is explicitly disabled on every OCR request. The worker accepts exactly one
+non-album Telegram photo, at most 10 MiB / 20 megapixels, whose decoded format
+is JPEG or PNG. Albums and other media produce durable `UNSUPPORTED` evidence;
+provider/empty/retry-exhaustion failures produce durable `FAILED` evidence.
+There is no text-only fallback for a media announcement.
+
+The Yandex request uses `recognizeText`, model `page`, languages `ru,en`. Raw
+media is downloaded into a `0700` spool as a `0600` file. Its SHA-256, MIME,
+byte size, dimensions, Telegram media identity and bounded OCR result are
+committed to SQLite before the raw file is deleted. There is no raw photo
+retention after that durable task transition. A crashed/lost-lease file
+is never treated as evidence and is removed on the next single-worker startup;
+raw images are not retained in SQLite or sent to the backend.
+
+The delayed backend JSON retains `contentHash = SHA256(rawText)` and adds the
+top-level canonical `evidenceHash` plus `mediaEvidence` with OCR status,
+provider/model/languages/checksum/full text and at most 128 ordered lines with
+bounding boxes. The complete request is capped at 128 KiB. SQLite schema v3
+stores fenced OCR task attempts and terminal evidence, so an edit supersedes
+the old task and a stale lease cannot publish it. OCR deliveries use an event
+key bound to the canonical evidence hash: upgrading a previously delivered
+text-only revision therefore creates one new delivery, while exact evidence
+replay keeps its original delivery ID.
 
 Before switching to `BACKEND`, remove the legacy
 `TELEGRAM_IMPORT_OPERATOR_BOT_TOKEN`, chat/thread IDs and notification-enable
@@ -197,30 +242,43 @@ case-folded. Only `ЗЛ` and `ЛП` are supported:
   numbered `Игра N` block and winner structural marker;
 - everything else: `IGNORE`.
 
-`grouped_id` and media type are retained. Media download and OCR are deferred.
-An album whose meaningful text is spread across multiple messages can therefore
-remain ignored until album aggregation/OCR is implemented.
+`grouped_id`, media type and Telegram media identity are retained. With OCR
+disabled they remain text-only evidence. With OCR enabled, an announcement
+containing one photo follows the durable OCR pipeline described above. Any
+non-null `grouped_id` is deliberately blocked: album aggregation is not
+implemented and the worker never guesses which image represents the roster.
 
 ## Operations
 
 Staged backend rollout keeps every production write off until the preceding
 stage is observed:
 
-1. Enable backend feature + ingest only; leave backend operator notifications,
-   callbacks, result processing, production writes and all policy modes disabled. Switch the worker to `BACKEND` and inspect
-   persisted ingest/audit state.
-2. Set one league to `create-mode=MANUAL`, enable operator notifications and
-   callbacks, but keep production writes off. Reprocess one announcement: its
-   `Проверить создание` preview is safe to inspect, while any confirm/write is
-   terminally cancelled by the closed write gate.
-3. After the preview canary, enable production writes and explicitly reprocess
-   the announcement. Preview performs fresh source/tournament/deadline/duplicate
-   checks and sends `Создать без состава`, bound to the same human actor and
-   exact delivered chat/message. Success explicitly reports roster size 0.
-4. Enable result processing with `finalize-mode=MANUAL`. RESULT posts must link
+1. Deploy the additive migration and code with both OCR roster flags off.
+   Enable backend feature + ingest only; leave worker OCR off, callbacks,
+   result processing, production writes and all policy modes disabled. Switch
+   the worker to `BACKEND` and inspect persisted ingest/audit state.
+2. For one league only, set `create-mode=MANUAL`, enable backend operator
+   notifications, callbacks and OCR roster processing, then enable worker OCR
+   for one fresh single-photo announcement. Keep roster writes and global
+   production writes off. Reprocess that one announcement and verify the
+   durable `SUCCESS`, `FAILED`, or `UNSUPPORTED` evidence. A successful exact
+   match is shown in the safe `Проверить создание с составом` preview with the
+   OCR-to-tournament-player mapping. The closed write gate prevents the confirm
+   action from becoming a production write.
+3. Verify every expected player and tournament-player ID in that review. Any
+   missing, duplicate, ambiguous, confusable, commentator/substitution marker,
+   album, unsupported file, or provider failure stays `NEEDS_REVIEW`; it never
+   falls back to creating an empty roster.
+4. Enable roster writes and global production writes, then explicitly reprocess
+   a fresh announcement. The first button shows a fresh `N/N` preview and is bound to
+   the exact chat/message and human actor; the second creates the UPCOMING
+   series and assigns all verified players in one transaction. Success reports
+   the assigned roster count. Text-only announcements retain the existing
+   explicit empty-roster flow.
+5. Enable result processing with `finalize-mode=MANUAL`. RESULT posts must link
    through an ANNOUNCEMENT source and pass sync/score/readiness before the
    two-step same-actor finalize confirmation is offered.
-5. `AUTOMATIC` is a separate opt-in requiring a new policy generation and UTC
+6. `AUTOMATIC` is a separate opt-in requiring a new policy generation and UTC
    cutover timestamp. Modes may remain armed while global write/result gates are
    off. Auto-create waits at least 120 seconds after its pending alert is
    delivered; auto-finalize additionally waits 15 minutes and three identical
@@ -247,6 +305,10 @@ creation, so stale direct alerts cannot accumulate and replay after rollback.
 
 # Idempotently replay one stored post after a classifier-rule correction.
 # Stop the daemon first because replay acquires the Telethon session lock.
+# This is also the only operation that rearms terminal FAILED/UNSUPPORTED OCR
+# after an operator has repaired provider/configuration problems. If OCR was
+# already SUCCESS but backend delivery failed terminally, it requeues the saved
+# immutable evidence without a second billable provider call.
 ./scripts/telegram-league-import/run-shadow-command-on-vps.sh reclassify-message --message-id 2234
 ```
 

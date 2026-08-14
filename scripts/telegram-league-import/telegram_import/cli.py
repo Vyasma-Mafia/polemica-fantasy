@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 
-from .config import DeliveryMode, delivery_mode, notifier_config, paths, require_shadow_mode
+from .config import DeliveryMode, delivery_mode, notifier_config, ocr_config, paths, require_shadow_mode
 from .notifier import BotNotifier
 from .storage import Inbox
 from .telegram import authorize, reclassify_message, run_worker
@@ -29,6 +29,7 @@ def parser() -> argparse.ArgumentParser:
 
 def health() -> None:
     mode = delivery_mode()
+    ocr = ocr_config(mode)
     notifications_enabled = mode is DeliveryMode.DIRECT and notifier_config().enabled
     info = Inbox(paths().inbox)
     try:
@@ -45,9 +46,11 @@ def health() -> None:
     pending_stale = oldest is not None and oldest < now - timedelta(seconds=max_pending)
     oldest_backend = datetime.fromisoformat(data["oldestBackendPendingAt"]) if data["oldestBackendPendingAt"] else None
     backend_pending_stale = oldest_backend is not None and oldest_backend < now - timedelta(seconds=max_pending)
+    oldest_ocr = datetime.fromisoformat(data["oldestPendingOcrAt"]) if data["oldestPendingOcrAt"] else None
+    ocr_pending_stale = oldest_ocr is not None and oldest_ocr < now - timedelta(seconds=max_pending)
     backend_mode = mode is DeliveryMode.BACKEND
-    healthy = data["quickCheck"] == "ok" and data["schemaVersion"] == 2 and (not stale or allowance) and (not pending_stale or not notifications_enabled) and (data["failedOutbox"] == 0 or not notifications_enabled) and (not backend_pending_stale or not backend_mode) and (data["failedBackendOutbox"] == 0 or not backend_mode)
-    print(json.dumps({**data, "status": "ok" if healthy else "unhealthy", "floodWaitDegraded": allowance, "deliveryMode": mode.value, "notificationsEnabled": notifications_enabled}, sort_keys=True))
+    healthy = data["quickCheck"] == "ok" and data["schemaVersion"] == 3 and (not stale or allowance) and (not pending_stale or not notifications_enabled) and (data["failedOutbox"] == 0 or not notifications_enabled) and (not backend_pending_stale or not backend_mode) and (data["failedBackendOutbox"] == 0 or not backend_mode) and (not ocr_pending_stale or not ocr.enabled)
+    print(json.dumps({**data, "status": "ok" if healthy else "unhealthy", "floodWaitDegraded": allowance, "deliveryMode": mode.value, "notificationsEnabled": notifications_enabled, "ocrEnabled": ocr.enabled}, sort_keys=True))
     if not healthy:
         raise SystemExit(1)
 

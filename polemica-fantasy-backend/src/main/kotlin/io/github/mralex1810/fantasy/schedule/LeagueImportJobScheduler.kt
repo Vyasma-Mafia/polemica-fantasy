@@ -60,6 +60,7 @@ class LeagueImportJobScheduler(
                     !properties.enabled -> "league import disabled"
                     !properties.productionWritesEnabled -> "production writes disabled"
                     !properties.operatorNotificationsEnabled -> "operator notifications disabled"
+                    job.rosterChecksum != null && !properties.rosterWritesEnabled -> "OCR roster write gate disabled"
                     job.actorTelegramId != null && !properties.callbackEnabled -> "league import callbacks disabled"
                     item == null -> "import item missing"
                     job.policyGeneration != properties.policyGeneration || item.policyGeneration != properties.policyGeneration ->

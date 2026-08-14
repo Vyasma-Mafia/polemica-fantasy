@@ -10,8 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
+from .ocr import MAX_BACKEND_PAYLOAD_BYTES, evidence_hash
 
-SCHEMA_VERSION = 2
+
+SCHEMA_VERSION = 3
 
 
 def utcnow() -> str:
@@ -70,6 +72,19 @@ class Inbox:
                 self.connection.execute(
                     "CREATE TABLE backend_outbox(id INTEGER PRIMARY KEY AUTOINCREMENT,event_key TEXT NOT NULL UNIQUE,delivery_id TEXT NOT NULL UNIQUE,payload TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'PENDING',attempts INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,available_at TEXT NOT NULL,lease_until TEXT,delivered_at TEXT,last_error TEXT)"
                 )
+                self.connection.execute("PRAGMA user_version=2")
+                self.connection.execute("COMMIT")
+            except BaseException:
+                self.connection.execute("ROLLBACK")
+                raise
+            version = 2
+        if version == 2:
+            self.connection.execute("BEGIN EXCLUSIVE")
+            try:
+                self.connection.execute(
+                    "CREATE TABLE ocr_tasks(id INTEGER PRIMARY KEY AUTOINCREMENT,revision_id INTEGER NOT NULL UNIQUE,channel_peer_id INTEGER NOT NULL,message_id INTEGER NOT NULL,revision_no INTEGER NOT NULL,source_version TEXT NOT NULL,telegram_media_id TEXT,grouped_id INTEGER,media_kind TEXT,status TEXT NOT NULL DEFAULT 'PENDING',attempts INTEGER NOT NULL DEFAULT 0,available_at TEXT NOT NULL,lease_until TEXT,lease_token TEXT,completed_at TEXT,evidence_json TEXT,last_error TEXT,created_at TEXT NOT NULL,FOREIGN KEY(revision_id) REFERENCES revisions(id))"
+                )
+                self.connection.execute("CREATE INDEX ocr_tasks_work_idx ON ocr_tasks(status,available_at,id)")
                 self.connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
                 self.connection.execute("COMMIT")
             except BaseException:
@@ -133,18 +148,24 @@ class Inbox:
                 media_kind: str | None, media_id: str | None, text: str, fingerprint: str,
                 classification: str, league: str | None, reason: str, silent: bool,
                 watermark: int | None = None, backend_delivery: bool = False,
-                force_backend_delivery: bool = False) -> str:
+                force_backend_delivery: bool = False, ocr_enabled: bool = False) -> str:
         with self.transaction() as db:
             previous = db.execute("SELECT latest_revision,latest_source_version,classification FROM messages WHERE channel_peer_id=? AND message_id=?", (peer_id,message_id)).fetchone()
-            duplicate = db.execute("SELECT revision_no FROM revisions WHERE channel_peer_id=? AND message_id=? AND fingerprint=?", (peer_id,message_id,fingerprint)).fetchone()
+            duplicate = db.execute("SELECT id,revision_no FROM revisions WHERE channel_peer_id=? AND message_id=? AND fingerprint=?", (peer_id,message_id,fingerprint)).fetchone()
             if duplicate:
                 if (backend_delivery and force_backend_delivery and not silent and previous is not None
                         and duplicate["revision_no"] == previous["latest_revision"]
                         and classification in ("ANNOUNCEMENT", "RESULT")):
-                    self._enqueue_backend_delivery(
-                        db, peer_id, message_id, duplicate["revision_no"], source_version,
-                        message_date, edit_date, text, classification, league,
-                    )
+                    if ocr_enabled and classification == "ANNOUNCEMENT" and media_kind is not None:
+                        self._enqueue_ocr_task(
+                            db, duplicate["id"], peer_id, message_id, duplicate["revision_no"], source_version,
+                            media_id, grouped_id, media_kind, force_terminal_retry=True,
+                        )
+                    else:
+                        self._enqueue_backend_delivery(
+                            db, peer_id, message_id, duplicate["revision_no"], source_version,
+                            message_date, edit_date, text, classification, league,
+                        )
                 if previous is not None and source_version > previous["latest_source_version"]:
                     db.execute("UPDATE messages SET latest_source_version=?,observed_at=? WHERE channel_peer_id=? AND message_id=?", (source_version,utcnow(),peer_id,message_id))
                 if watermark is not None:
@@ -156,13 +177,22 @@ class Inbox:
             stale = previous is not None and source_version < previous["latest_source_version"]
             if previous is None:
                 db.execute("INSERT INTO messages(channel_peer_id,message_id,latest_revision,latest_source_version,classification,observed_at) VALUES(?,?,?,?,?,?)", (peer_id,message_id,0,"", "IGNORE",utcnow()))
-            db.execute("INSERT INTO revisions(channel_peer_id,message_id,revision_no,fingerprint,source_version,message_date,edit_date,grouped_id,media_kind,media_id,text,classification,league,reason,is_latest,observed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (peer_id,message_id,revision_no,fingerprint,source_version,message_date,edit_date,grouped_id,media_kind,media_id,text,classification,league,reason,0 if stale else 1,utcnow()))
+            cursor = db.execute("INSERT INTO revisions(channel_peer_id,message_id,revision_no,fingerprint,source_version,message_date,edit_date,grouped_id,media_kind,media_id,text,classification,league,reason,is_latest,observed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (peer_id,message_id,revision_no,fingerprint,source_version,message_date,edit_date,grouped_id,media_kind,media_id,text,classification,league,reason,0 if stale else 1,utcnow()))
+            revision_id = int(cursor.lastrowid)
             if stale:
                 if watermark is not None:
                     self.set_state(db, "watermark", watermark)
                 return "STALE"
             db.execute("UPDATE revisions SET is_latest=0 WHERE channel_peer_id=? AND message_id=? AND revision_no<>?", (peer_id,message_id,revision_no))
             db.execute("UPDATE messages SET latest_revision=?,latest_source_version=?,classification=?,observed_at=? WHERE channel_peer_id=? AND message_id=?", (revision_no,source_version,classification,utcnow(),peer_id,message_id))
+            db.execute(
+                "UPDATE ocr_tasks SET status='SUPERSEDED',lease_until=NULL,lease_token=NULL,last_error='source revision changed' WHERE channel_peer_id=? AND message_id=? AND revision_no<>? AND status IN ('PENDING','RUNNING','RETRY')",
+                (peer_id, message_id, revision_no),
+            )
+            db.execute(
+                "UPDATE backend_outbox SET status='SUPERSEDED',lease_until=NULL,last_error='source revision changed' WHERE event_key LIKE ? AND event_key<>? AND status='PENDING'",
+                (f"tg:{peer_id}:{message_id}:r%", f"tg:{peer_id}:{message_id}:r{revision_no}"),
+            )
             event_type = None
             if not silent:
                 delivered_before = db.execute("SELECT 1 FROM outbox WHERE channel_peer_id=? AND message_id=? AND status='DELIVERED' LIMIT 1", (peer_id,message_id)).fetchone() is not None
@@ -179,13 +209,42 @@ class Inbox:
                 created = utcnow()
                 db.execute("INSERT INTO outbox(event_key,channel_peer_id,message_id,revision_no,event_type,payload,created_at,available_at) VALUES(?,?,?,?,?,?,?,?)", (event_key,peer_id,message_id,revision_no,event_type,payload,created,created))
             if backend_delivery and not silent and (classification in ("ANNOUNCEMENT", "RESULT") or (previous and previous["classification"] in ("ANNOUNCEMENT", "RESULT"))):
-                self._enqueue_backend_delivery(
-                    db, peer_id, message_id, revision_no, source_version,
-                    message_date, edit_date, text, classification, league,
-                )
+                if ocr_enabled and classification == "ANNOUNCEMENT" and media_kind is not None:
+                    self._enqueue_ocr_task(
+                        db, revision_id, peer_id, message_id, revision_no, source_version,
+                        media_id, grouped_id, media_kind,
+                    )
+                else:
+                    self._enqueue_backend_delivery(
+                        db, peer_id, message_id, revision_no, source_version,
+                        message_date, edit_date, text, classification, league,
+                    )
             if watermark is not None:
                 self.set_state(db, "watermark", watermark)
             return event_type or "STORED"
+
+    def _enqueue_ocr_task(
+        self, db: sqlite3.Connection, revision_id: int, peer_id: int, message_id: int,
+        revision_no: int, source_version: str, media_id: str | None,
+        grouped_id: int | None, media_kind: str, force_terminal_retry: bool = False,
+    ) -> None:
+        db.execute(
+            "INSERT INTO ocr_tasks(revision_id,channel_peer_id,message_id,revision_no,source_version,telegram_media_id,grouped_id,media_kind,available_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(revision_id) DO UPDATE SET status=CASE WHEN ocr_tasks.status='SUCCESS' THEN 'SUCCESS' WHEN ?=1 AND ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN 'PENDING' WHEN ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN ocr_tasks.status ELSE 'PENDING' END,attempts=CASE WHEN ?=1 AND ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN 0 ELSE ocr_tasks.attempts END,available_at=excluded.available_at,lease_until=NULL,lease_token=NULL,completed_at=CASE WHEN ?=1 AND ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN NULL ELSE ocr_tasks.completed_at END,evidence_json=CASE WHEN ?=1 AND ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN NULL ELSE ocr_tasks.evidence_json END,last_error=CASE WHEN ?=1 AND ocr_tasks.status IN ('FAILED','UNSUPPORTED') THEN NULL ELSE ocr_tasks.last_error END",
+            (
+                revision_id,peer_id,message_id,revision_no,source_version,media_id,grouped_id,media_kind,utcnow(),utcnow(),
+                int(force_terminal_retry),int(force_terminal_retry),int(force_terminal_retry),
+                int(force_terminal_retry),int(force_terminal_retry),
+            ),
+        )
+        if force_terminal_retry:
+            completed = db.execute(
+                "SELECT t.*,r.message_date,r.edit_date,r.text,r.classification,r.league,r.is_latest "
+                "FROM ocr_tasks t JOIN revisions r ON r.id=t.revision_id "
+                "WHERE t.revision_id=? AND t.status='SUCCESS' AND t.evidence_json IS NOT NULL",
+                (revision_id,),
+            ).fetchone()
+            if completed:
+                self._enqueue_completed_ocr_evidence(db, completed, json.loads(completed["evidence_json"]))
 
     def _enqueue_backend_delivery(
         self, db: sqlite3.Connection, peer_id: int, message_id: int, revision_no: int,
@@ -195,7 +254,7 @@ class Inbox:
         backend_event_key = f"tg:{peer_id}:{message_id}:r{revision_no}"
         raw_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         posted_at = message_date or edit_date or utcnow()
-        backend_payload = json.dumps({
+        payload = {
             "sourceChannelPeerId": peer_id,
             "messageId": message_id,
             "revision": revision_no,
@@ -206,12 +265,116 @@ class Inbox:
             "rawText": text,
             "classification": classification,
             "league": league,
-        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        }
+        payload["evidenceHash"] = evidence_hash(raw_hash, None)
+        backend_payload = self._serialize_backend_payload(payload)
         created = utcnow()
         db.execute(
             "INSERT INTO backend_outbox(event_key,delivery_id,payload,created_at,available_at) VALUES(?,?,?,?,?) ON CONFLICT(event_key) DO NOTHING",
             (backend_event_key, str(uuid.uuid4()), backend_payload, created, created),
         )
+
+    def lease_ocr_task(self, seconds: int = 120) -> sqlite3.Row | None:
+        with self.transaction() as db:
+            now = utcnow()
+            row = db.execute(
+                "SELECT * FROM ocr_tasks WHERE (status IN ('PENDING','RETRY') AND available_at<=?) OR (status='RUNNING' AND lease_until<=?) ORDER BY id LIMIT 1",
+                (now, now),
+            ).fetchone()
+            if not row:
+                return None
+            lease = datetime.fromtimestamp(datetime.now(timezone.utc).timestamp()+seconds, timezone.utc).isoformat()
+            token = str(uuid.uuid4())
+            updated = db.execute(
+                "UPDATE ocr_tasks SET status='RUNNING',lease_until=?,lease_token=?,attempts=attempts+1 WHERE id=? AND ((status IN ('PENDING','RETRY') AND available_at<=?) OR (status='RUNNING' AND lease_until<=?))",
+                (lease, token, row["id"], now, now),
+            ).rowcount
+            if updated != 1:
+                return None
+            return db.execute("SELECT * FROM ocr_tasks WHERE id=?", (row["id"],)).fetchone()
+
+    def retry_ocr_task(self, task_id: int, lease_token: str, retry_at: str, error: str) -> bool:
+        with self.transaction() as db:
+            return db.execute(
+                "UPDATE ocr_tasks SET status='RETRY',available_at=?,lease_until=NULL,lease_token=NULL,last_error=? WHERE id=? AND status='RUNNING' AND lease_token=?",
+                (retry_at, error, task_id, lease_token),
+            ).rowcount == 1
+
+    def supersede_ocr_task(self, task_id: int, lease_token: str, reason: str) -> bool:
+        with self.transaction() as db:
+            return db.execute(
+                "UPDATE ocr_tasks SET status='SUPERSEDED',lease_until=NULL,lease_token=NULL,last_error=?,completed_at=? WHERE id=? AND status='RUNNING' AND lease_token=?",
+                (reason, utcnow(), task_id, lease_token),
+            ).rowcount == 1
+
+    def complete_ocr_task(self, task_id: int, lease_token: str, media_evidence: dict[str, object]) -> bool:
+        with self.transaction() as db:
+            task = db.execute(
+                "SELECT t.*,r.message_date,r.edit_date,r.text,r.classification,r.league,r.is_latest FROM ocr_tasks t JOIN revisions r ON r.id=t.revision_id WHERE t.id=?",
+                (task_id,),
+            ).fetchone()
+            if not task or task["status"] != "RUNNING" or task["lease_token"] != lease_token:
+                return False
+            latest = db.execute(
+                "SELECT latest_revision FROM messages WHERE channel_peer_id=? AND message_id=?",
+                (task["channel_peer_id"], task["message_id"]),
+            ).fetchone()
+            if not task["is_latest"] or not latest or latest[0] != task["revision_no"]:
+                db.execute(
+                    "UPDATE ocr_tasks SET status='SUPERSEDED',lease_until=NULL,lease_token=NULL,last_error='source revision changed',completed_at=? WHERE id=? AND lease_token=?",
+                    (utcnow(), task_id, lease_token),
+                )
+                return False
+            self._enqueue_completed_ocr_evidence(db, task, media_evidence)
+            ocr_status = str(media_evidence["ocr"]["status"])
+            updated = db.execute(
+                "UPDATE ocr_tasks SET status=?,lease_until=NULL,lease_token=NULL,evidence_json=?,completed_at=?,last_error=NULL WHERE id=? AND status='RUNNING' AND lease_token=?",
+                (ocr_status, json.dumps(media_evidence, ensure_ascii=False, sort_keys=True, separators=(",", ":")), utcnow(), task_id, lease_token),
+            ).rowcount
+            if updated != 1:
+                raise RuntimeError("OCR task lease was lost")
+            return True
+
+    def _enqueue_completed_ocr_evidence(
+        self, db: sqlite3.Connection, task: sqlite3.Row, media_evidence: dict[str, object],
+    ) -> None:
+        raw_hash = hashlib.sha256(task["text"].encode("utf-8")).hexdigest()
+        payload = {
+            "sourceChannelPeerId": task["channel_peer_id"],
+            "messageId": task["message_id"],
+            "revision": task["revision_no"],
+            "sourceVersion": task["source_version"],
+            "postedAt": task["message_date"] or task["edit_date"] or utcnow(),
+            "editedAt": task["edit_date"],
+            "contentHash": raw_hash,
+            "rawText": task["text"],
+            "classification": task["classification"],
+            "league": task["league"],
+            "mediaEvidence": media_evidence,
+            "evidenceHash": evidence_hash(raw_hash, media_evidence),
+        }
+        backend_payload = self._serialize_backend_payload(payload)
+        base_event_key = f"tg:{task['channel_peer_id']}:{task['message_id']}:r{task['revision_no']}"
+        event_key = f"{base_event_key}:e:{payload['evidenceHash']}"
+        created = utcnow()
+        db.execute(
+            "UPDATE backend_outbox SET status='SUPERSEDED',lease_until=NULL,last_error='stronger OCR evidence available' "
+            "WHERE (event_key=? OR event_key LIKE ?) AND event_key<>? AND status='PENDING'",
+            (base_event_key, f"{base_event_key}:e:%", event_key),
+        )
+        db.execute(
+            "INSERT INTO backend_outbox(event_key,delivery_id,payload,created_at,available_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(event_key) DO UPDATE SET payload=excluded.payload,"
+            "status=CASE WHEN backend_outbox.status='DELIVERED' THEN backend_outbox.status ELSE 'PENDING' END,"
+            "available_at=excluded.available_at,lease_until=NULL,last_error=NULL",
+            (event_key, str(uuid.uuid4()), backend_payload, created, created),
+        )
+
+    def _serialize_backend_payload(self, payload: dict[str, object]) -> str:
+        serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if len(serialized.encode("utf-8")) > MAX_BACKEND_PAYLOAD_BYTES:
+            raise ValueError("Backend OCR evidence payload exceeds 128 KiB")
+        return serialized
 
     def lease_outbox(self, seconds: int = 60) -> sqlite3.Row | None:
         with self.transaction() as db:
@@ -258,4 +421,6 @@ class Inbox:
         failed = self.connection.execute("SELECT COUNT(*) FROM outbox WHERE status='FAILED'").fetchone()[0]
         backend_pending = self.connection.execute("SELECT COUNT(*),MIN(created_at) FROM backend_outbox WHERE status='PENDING'").fetchone()
         backend_failed = self.connection.execute("SELECT COUNT(*) FROM backend_outbox WHERE status='FAILED'").fetchone()[0]
-        return {"quickCheck":check,"schemaVersion":version,"pendingOutbox":pending[0],"oldestPendingAt":pending[1],"failedOutbox":failed,"pendingBackendOutbox":backend_pending[0],"oldestBackendPendingAt":backend_pending[1],"failedBackendOutbox":backend_failed,"lastPollAt":self.get_state("last_poll_at"),"heartbeatAt":self.get_state("heartbeat_at"),"floodWaitUntil":self.get_state("flood_wait_until"),"watermark":self.get_state("watermark")}
+        ocr_pending = self.connection.execute("SELECT COUNT(*),MIN(created_at) FROM ocr_tasks WHERE status IN ('PENDING','RUNNING','RETRY')").fetchone()
+        ocr_failed = self.connection.execute("SELECT COUNT(*) FROM ocr_tasks WHERE status='FAILED'").fetchone()[0]
+        return {"quickCheck":check,"schemaVersion":version,"pendingOutbox":pending[0],"oldestPendingAt":pending[1],"failedOutbox":failed,"pendingBackendOutbox":backend_pending[0],"oldestBackendPendingAt":backend_pending[1],"failedBackendOutbox":backend_failed,"pendingOcrTasks":ocr_pending[0],"oldestPendingOcrAt":ocr_pending[1],"failedOcrTasks":ocr_failed,"lastPollAt":self.get_state("last_poll_at"),"heartbeatAt":self.get_state("heartbeat_at"),"floodWaitUntil":self.get_state("flood_wait_until"),"watermark":self.get_state("watermark")}

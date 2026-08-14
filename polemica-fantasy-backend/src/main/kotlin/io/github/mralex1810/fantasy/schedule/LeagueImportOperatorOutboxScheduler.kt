@@ -64,7 +64,8 @@ class LeagueImportOperatorOutboxScheduler(
                         listOf(
                             InlineKeyboardButton.Url(
                                 when (row.eventType) {
-                                    "CREATED" -> "Открыть серию и назначить игроков"
+                                    "CREATED" -> if (row.payload.path("rosterCount").asInt() > 0) "Открыть созданную серию" else
+                                        "Открыть серию и назначить игроков"
                                     "FINALIZED" -> "Открыть финализированную серию"
                                     else -> "Открыть серию для проверки"
                                 },
@@ -115,21 +116,67 @@ class LeagueImportOperatorOutboxScheduler(
             val deadline = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm 'МСК'")
                 .withZone(ZoneId.of("Europe/Moscow")).format(draft.teamDeadline)
             val prefix = if (row.eventType == "CREATE_CONFIRM") "[CONFIRM][PRODUCTION WRITE]" else "[READY][NO PRODUCTION WRITE YET]"
+            val roster = row.payload.path("roster")
+            val rosterReady = roster.path("status").asText() == "READY"
+            val rosterCount = roster.path("resolved").size()
+            val rosterText = when {
+                rosterReady -> buildString {
+                    append("Ростер: $rosterCount/${roster.path("expectedCount").asInt()} — все имена однозначно сопоставлены\n")
+                    roster.path("resolved").forEach { player ->
+                        append("• ${player.path("ocrText").asText()} → ${player.path("productionNickname").asText()} (#${player.path("tournamentPlayerId").asLong()})\n")
+                    }
+                }.trimEnd()
+                else -> "Ростер: 0 — в источнике нет поддерживаемого изображения состава"
+            }
             val label = callback?.let {
-                if (row.eventType == "CREATE_CONFIRM") "Создать без состава" else "Проверить создание"
+                when {
+                    row.eventType == "CREATE_CONFIRM" && rosterReady -> "Создать серию и назначить $rosterCount"
+                    row.eventType == "CREATE_CONFIRM" -> "Создать без состава"
+                    rosterReady -> "Проверить создание с составом"
+                    else -> "Проверить создание"
+                }
             }
             "$prefix\n${draft.name}\nНачало: $time\nДедлайн составов: $deadline\n" +
                 "Турнир: ${row.payload.path("tournamentName").asText("#${draft.tournamentId}")} (#${draft.tournamentId})\n" +
                 "Префикс игр: ${draft.namePrefix}\nДата игр: ${draft.gameStartedOn}\n" +
-                "Статус: UPCOMING\nРостер: 0 — состав нужно назначить в админке\nИсточник: ${draft.sourceUrl}" to label
+                "Статус: UPCOMING\n$rosterText\nИсточник: ${draft.sourceUrl}" to label
         }
         "CREATED" -> {
+            val rosterCount = row.payload.path("rosterCount").asInt()
+            val expected = row.payload.path("expectedRosterCount").asInt()
+            val rosterText = if (rosterCount > 0) "Состав проверен и назначен: $rosterCount/$expected" else
+                "Ростер: 0 — назначьте игроков в админке"
             "[PRODUCTION][SERIES_CREATED]\n${row.payload.path("name").asText()} (#${row.payload.path("seriesId").asLong()})\n" +
-                "Ростер: 0 — назначьте игроков в админке\nИсточник: ${row.payload.path("sourceUrl").asText()}" to null
+                "$rosterText\nИсточник: ${row.payload.path("sourceUrl").asText()}" to null
+        }
+        "ROSTER_REVIEW" -> {
+            val draft = objectMapper.treeToValue(row.payload.path("draft"), LeagueAnnouncementDraft::class.java)
+            val roster = row.payload.path("roster")
+            val resolved = roster.path("resolved")
+            val resolvedText = if (resolved.isArray && resolved.size() > 0) {
+                buildString {
+                    append("Распознано и сопоставлено: ${resolved.size()}/${roster.path("expectedCount").asInt()}\n")
+                    resolved.forEach { player ->
+                        append("• ${player.path("ocrText").asText()} → ${player.path("productionNickname").asText()} (#${player.path("tournamentPlayerId").asLong()})\n")
+                    }
+                }
+            } else {
+                ""
+            }
+            val issues = roster.path("issues").joinToString("\n") { "• ${it.asText()}" }
+                .ifBlank { "• ${row.payload.path("reason").asText("OCR roster needs review")}" }
+            "[REVIEW_REQUIRED][NO PRODUCTION WRITE]\n${draft.name}\n" +
+                "OCR/состав нельзя применить автоматически. Серия и ростер не изменены.\n" +
+                "$resolvedText$issues\nMedia SHA-256: ${roster.path("mediaSha256").asText("-")}\nИсточник: ${draft.sourceUrl}" to null
         }
         "AUTO_CREATE_PENDING" -> {
             "[AUTO][CREATE_PENDING][PRODUCTION WRITE SCHEDULED]\n" +
-                "${row.payload.path("league").asText()} · серия ${row.payload.path("seriesNumber").asLong()} будет создана без состава.\n" +
+                "${row.payload.path("league").asText()} · серия ${row.payload.path("seriesNumber").asLong()} будет создана" +
+                if (row.payload.path("rosterCount").asInt() > 0) {
+                    " с составом ${row.payload.path("rosterCount").asInt()}/${row.payload.path("expectedRosterCount").asInt()}.\n"
+                } else {
+                    " без состава.\n"
+                } +
                 "ETA: не ранее чем через ${row.payload.path("holdSeconds").asLong(MIN_AUTO_HOLD_SECONDS)} секунд после доставки этого уведомления.\n" +
                 "Режим: ${row.payload.path("mode").asText()} · generation: ${row.payload.path("policyGeneration").asText()}\n" +
                 "До этого времени операция будет отменена, если закрыть production writes или сменить mode/generation.\n" +

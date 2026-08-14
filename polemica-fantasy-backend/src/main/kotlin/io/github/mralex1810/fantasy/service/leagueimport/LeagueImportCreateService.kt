@@ -3,6 +3,9 @@ package io.github.mralex1810.fantasy.service.leagueimport
 import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.config.LeagueImportAutomationMode
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
@@ -21,6 +24,8 @@ class LeagueImportCreateService(
     private val parser: LeagueAnnouncementParser,
     private val tournamentRepository: TournamentRepository,
     private val seriesService: SeriesService,
+    private val rosterResolver: LeagueImportRosterResolver,
+    private val objectMapper: ObjectMapper,
 ) {
     @Transactional
     fun create(actionId: UUID) {
@@ -34,7 +39,9 @@ class LeagueImportCreateService(
             "Import item changed before create"
         }
         val revision = repository.currentRevision(item.id) ?: error("Current import revision not found")
-        check(revision.contentHash == item.currentContentHash) { "Import revision hash changed" }
+        check(revision.contentHash == item.currentContentHash && revision.evidenceHash == item.currentEvidenceHash) {
+            "Import revision evidence changed"
+        }
         val ready = parser.parse(
             revision.rawText,
             revision.postedAt,
@@ -42,13 +49,19 @@ class LeagueImportCreateService(
         ) as? LeagueAnnouncementParseResult.Ready ?: error("Announcement is no longer parseable")
         check(ready.checksum == action.draftChecksum && ready.checksum == item.draftChecksum) { "Announcement checksum changed" }
         val draft = ready.draft
-        val policy = properties.policy(draft.league) ?: error("League policy is disabled")
-        check(policy.createMode == LeagueImportAutomationMode.MANUAL) { "Manual series creation is disabled by policy" }
-
         val tournament = tournamentRepository.findByIdForUpdate(draft.tournamentId)
             ?: error("Configured tournament not found")
         check(tournament.status == TournamentStatus.ACTIVE) { "Configured tournament is not ACTIVE" }
         check(tournament.kind == TournamentKind.STANDALONE) { "Only STANDALONE tournaments are supported" }
+        val roster = resolveRoster(item, revision, draft)
+        val expectedRosterChecksum = roster.takeIf { it.draft.ready }?.checksum
+        check(action.rosterChecksum == expectedRosterChecksum &&
+            (expectedRosterChecksum == null || item.rosterChecksum == expectedRosterChecksum)) { "Roster checksum changed" }
+        check(revision.mediaEvidence == null || roster.draft.ready) { "Roster requires manual review" }
+        check(!roster.draft.ready || properties.rosterWritesEnabled) { "OCR roster production writes are disabled" }
+        val policy = properties.policy(draft.league) ?: error("League policy is disabled")
+        check(policy.createMode == LeagueImportAutomationMode.MANUAL) { "Manual series creation is disabled by policy" }
+
         check(draft.teamDeadline.isAfter(java.time.Instant.now())) { "Team deadline has passed" }
 
         val created = seriesService.createSeries(
@@ -64,12 +77,19 @@ class LeagueImportCreateService(
             ),
         )
         check(created.publicNumber == draft.seriesNumber) { "Created public number differs from announcement" }
+        if (roster.draft.ready) {
+            seriesService.assignPlayers(
+                created.id,
+                AssignSeriesPlayersRequest(roster.draft.resolved.map { it.tournamentPlayerId }),
+            )
+        }
         repository.insertSourceLink(item, created.id)
         repository.updateItemApplied(item.id, created.id)
         repository.updateActionStatus(action.id, "APPLIED")
         repository.audit(
             item.id, action.id, action.actorTelegramId, "SERIES_CREATED", "COMMITTED",
-            mapOf("seriesId" to created.id, "tournamentId" to draft.tournamentId, "publicNumber" to draft.seriesNumber),
+            mapOf("seriesId" to created.id, "tournamentId" to draft.tournamentId, "publicNumber" to draft.seriesNumber,
+                "rosterCount" to roster.draft.resolved.size),
         )
         repository.enqueueOutbox(
             eventKey = "league-import:${item.id}:series-created:${created.id}",
@@ -83,6 +103,8 @@ class LeagueImportCreateService(
                 "startsAt" to draft.startsAt,
                 "teamDeadline" to draft.teamDeadline,
                 "sourceUrl" to draft.sourceUrl,
+                "rosterCount" to roster.draft.resolved.size,
+                "expectedRosterCount" to roster.draft.expectedCount,
             ),
         )
     }
@@ -99,7 +121,9 @@ class LeagueImportCreateService(
             "Import item changed before automatic create"
         }
         val revision = repository.currentRevision(item.id) ?: error("Current import revision not found")
-        check(revision.contentHash == item.currentContentHash && revision.observedAt.plusSeconds(120) <= Instant.now()) {
+        check(revision.mediaEvidence == null) { "Automatic OCR roster creation requires MANUAL mode" }
+        check(revision.contentHash == item.currentContentHash && revision.evidenceHash == item.currentEvidenceHash &&
+            revision.observedAt.plusSeconds(120) <= Instant.now()) {
             "Automatic create stability window has not elapsed"
         }
         val cutover = properties.automationCutoverAt ?: error("Automation cutover is not configured")
@@ -110,16 +134,27 @@ class LeagueImportCreateService(
         ) as? LeagueAnnouncementParseResult.Ready ?: error("Announcement is no longer parseable")
         check(ready.checksum == job.evidenceChecksum && ready.checksum == item.draftChecksum) { "Announcement checksum changed" }
         val draft = ready.draft
+        val roster = resolveRoster(item, revision, draft)
+        val expectedRosterChecksum = roster.takeIf { it.draft.ready }?.checksum
+        check(job.rosterChecksum == expectedRosterChecksum &&
+            (expectedRosterChecksum == null || item.rosterChecksum == expectedRosterChecksum)) { "Roster checksum changed" }
         val policy = properties.policy(draft.league) ?: error("League policy is disabled")
         check(policy.createMode == LeagueImportAutomationMode.AUTOMATIC) { "Automatic creation is disabled by policy" }
         validateTournamentAndDeadline(draft)
 
         val created = createShell(draft)
+        if (roster.draft.ready) {
+            seriesService.assignPlayers(
+                created.id,
+                AssignSeriesPlayersRequest(roster.draft.resolved.map { it.tournamentPlayerId }),
+            )
+        }
         repository.insertSourceLink(item, created.id)
         repository.updateItemApplied(item.id, created.id)
         check(repository.finishJob(job.id, "APPLIED", expectedLeaseToken = leaseToken)) { "Import job lease was lost" }
-        repository.audit(item.id, null, null, "SERIES_AUTO_CREATED", "COMMITTED", mapOf("seriesId" to created.id))
-        enqueueCreated(item, created.id, draft)
+        repository.audit(item.id, null, null, "SERIES_AUTO_CREATED", "COMMITTED",
+            mapOf("seriesId" to created.id, "rosterCount" to roster.draft.resolved.size))
+        enqueueCreated(item, created.id, draft, roster.draft.resolved.size, roster.draft.expectedCount)
     }
 
     @Transactional
@@ -203,7 +238,13 @@ class LeagueImportCreateService(
         ),
     ).also { check(it.publicNumber == draft.seriesNumber) { "Created public number differs from announcement" } }
 
-    private fun enqueueCreated(item: io.github.mralex1810.fantasy.repository.LeagueImportItemRow, seriesId: Long, draft: LeagueAnnouncementDraft) {
+    private fun enqueueCreated(
+        item: io.github.mralex1810.fantasy.repository.LeagueImportItemRow,
+        seriesId: Long,
+        draft: LeagueAnnouncementDraft,
+        rosterCount: Int = 0,
+        expectedRosterCount: Int = 0,
+    ) {
         repository.enqueueOutbox(
             eventKey = "league-import:${item.id}:series-created:$seriesId",
             itemId = item.id,
@@ -216,8 +257,23 @@ class LeagueImportCreateService(
                 "startsAt" to draft.startsAt,
                 "teamDeadline" to draft.teamDeadline,
                 "sourceUrl" to draft.sourceUrl,
+                "rosterCount" to rosterCount,
+                "expectedRosterCount" to expectedRosterCount,
             ),
         )
+    }
+
+    private fun resolveRoster(
+        item: io.github.mralex1810.fantasy.repository.LeagueImportItemRow,
+        revision: io.github.mralex1810.fantasy.repository.LeagueImportRevisionRow,
+        draft: LeagueAnnouncementDraft,
+    ): LeagueImportRosterResolution {
+        val media = revision.mediaEvidence?.let {
+            objectMapper.treeToValue(it, TelegramLeagueImportMediaEvidence::class.java)
+        }
+        return rosterResolver.resolve(draft.league, draft.tournamentId, revision.evidenceHash, media).also {
+            check(it.draft.status == item.rosterStatus && it.checksum == item.rosterChecksum) { "Stored roster draft changed" }
+        }
     }
 
     private fun String.isNonRetryablePolicyFailure(): Boolean =

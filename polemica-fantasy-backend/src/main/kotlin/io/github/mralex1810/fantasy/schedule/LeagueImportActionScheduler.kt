@@ -42,11 +42,13 @@ class LeagueImportActionScheduler(
                         properties.resultProcessingEnabled
                     else -> false
                 }
+                val rosterSafe = preview || action.rosterChecksum == null || properties.rosterWritesEnabled
                 val reason = when {
                     !properties.enabled -> "league import disabled"
                     !properties.operatorNotificationsEnabled -> "operator notifications disabled"
                     !properties.callbackEnabled -> "league import callbacks disabled"
                     !modeSafe || !generationSafe -> "policy mode or generation changed"
+                    !rosterSafe -> "OCR roster write gate disabled"
                     !writeGatesSafe -> "production write gate disabled"
                     else -> null
                 }

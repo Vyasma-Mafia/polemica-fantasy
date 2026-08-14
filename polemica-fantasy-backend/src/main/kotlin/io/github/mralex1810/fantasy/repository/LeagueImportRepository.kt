@@ -18,6 +18,7 @@ data class LeagueImportItemRow(
     val currentRevision: Int,
     val currentSourceVersion: String,
     val currentContentHash: String,
+    val currentEvidenceHash: String,
     val classification: String,
     val leagueCode: String,
     val state: String,
@@ -31,6 +32,9 @@ data class LeagueImportItemRow(
     val readySince: Instant?,
     val lastStableObservationAt: Instant?,
     val policyGeneration: String?,
+    val rosterStatus: String,
+    val rosterDraftJson: JsonNode?,
+    val rosterChecksum: String?,
 )
 
 data class LeagueImportRevisionRow(
@@ -38,7 +42,9 @@ data class LeagueImportRevisionRow(
     val postedAt: Instant,
     val editedAt: Instant?,
     val contentHash: String,
+    val evidenceHash: String,
     val rawText: String,
+    val mediaEvidence: JsonNode?,
     val observedAt: Instant,
 )
 
@@ -59,6 +65,7 @@ data class LeagueImportJobRow(
     val availableAt: Instant?,
     val pendingNotificationOutboxId: Long?,
     val notificationDeliveredAt: Instant?,
+    val rosterChecksum: String?,
 )
 
 data class LeagueImportActionRow(
@@ -76,6 +83,7 @@ data class LeagueImportActionRow(
     val operatorChatId: Long,
     val operatorMessageId: Long?,
     val expiresAt: Instant,
+    val rosterChecksum: String?,
 )
 
 data class LeagueImportOutboxRow(
@@ -146,15 +154,16 @@ class LeagueImportRepository(
         contentHash: String,
         classification: String,
         league: String,
+        evidenceHash: String = contentHash,
     ): Long = jdbc.queryForObject(
         """
         INSERT INTO league_import_item(
             source_channel_id,source_message_id,current_revision,current_source_version,
-            current_content_hash,classification,league_code,state
-        ) VALUES(?,?,?,?,?,?,?,'BLOCKED') RETURNING id
+            current_content_hash,current_evidence_hash,classification,league_code,state
+        ) VALUES(?,?,?,?,?,?,?,?,'BLOCKED') RETURNING id
         """.trimIndent(),
         Long::class.java,
-        sourceChannelId, sourceMessageId, revision, sourceVersion, contentHash, classification, league,
+        sourceChannelId, sourceMessageId, revision, sourceVersion, contentHash, evidenceHash, classification, league,
     )!!
 
     fun insertRevision(
@@ -168,19 +177,21 @@ class LeagueImportRepository(
         contentHash: String,
         rawText: String,
         current: Boolean,
+        evidenceHash: String = contentHash,
+        mediaEvidence: Any? = null,
     ): Boolean = jdbc.update(
         """
         INSERT INTO league_import_revision(
             item_id,source_channel_id,source_message_id,revision,source_version,posted_at,edited_at,
-            content_hash,raw_text,is_current
-        ) VALUES(?,?,?,?,?,?,?,?,?,?)
-        ON CONFLICT (source_channel_id,source_message_id,revision,content_hash) DO UPDATE SET
+            content_hash,evidence_hash,raw_text,media_evidence,is_current
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?::jsonb,?)
+        ON CONFLICT (source_channel_id,source_message_id,revision,evidence_hash) DO UPDATE SET
             source_version=EXCLUDED.source_version,posted_at=EXCLUDED.posted_at,edited_at=EXCLUDED.edited_at,
-            raw_text=EXCLUDED.raw_text,is_current=EXCLUDED.is_current
+            raw_text=EXCLUDED.raw_text,media_evidence=EXCLUDED.media_evidence,is_current=EXCLUDED.is_current
         """.trimIndent(),
         itemId, sourceChannelId, sourceMessageId, revision, sourceVersion,
         OffsetDateTime.ofInstant(postedAt, ZoneOffset.UTC), editedAt?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) },
-        contentHash, rawText, current,
+        contentHash, evidenceHash, rawText, mediaEvidence?.let { objectMapper.writeValueAsString(it) }, current,
     ) == 1
 
     fun markRevisionsNotCurrent(itemId: Long) {
@@ -211,18 +222,26 @@ class LeagueImportRepository(
         checksum: String?,
         blockedReason: String?,
         policyGeneration: String? = null,
+        evidenceHash: String = contentHash,
     ): Long {
         jdbc.update(
             """
-            UPDATE league_import_item SET current_revision=?,current_source_version=?,current_content_hash=?,
+            UPDATE league_import_item SET current_revision=?,current_source_version=?,current_content_hash=?,current_evidence_hash=?,
                 classification=?,league_code=?,state=?,version=version+1,draft_json=?::jsonb,
                 draft_checksum=?,blocked_reason=?,policy_generation=COALESCE(?,policy_generation),updated_at=now()
             WHERE id=?
             """.trimIndent(),
-            revision, sourceVersion, contentHash, classification, league, state,
+            revision, sourceVersion, contentHash, evidenceHash, classification, league, state,
             draft?.let { objectMapper.writeValueAsString(it) }, checksum, blockedReason, policyGeneration, itemId,
         )
         return jdbc.queryForObject("SELECT version FROM league_import_item WHERE id=?", Long::class.java, itemId)!!
+    }
+
+    fun updateRosterDraft(itemId: Long, status: String, draft: Any?, checksum: String?) {
+        jdbc.update(
+            "UPDATE league_import_item SET roster_status=?,roster_draft_json=?::jsonb,roster_checksum=?,updated_at=now() WHERE id=?",
+            status, draft?.let { objectMapper.writeValueAsString(it) }, checksum, itemId,
+        )
     }
 
     fun invalidateUnusedActions(itemId: Long) {
@@ -288,16 +307,17 @@ class LeagueImportRepository(
         boundActorId: Long?,
         operatorChatId: Long,
         expiresAt: Instant,
+        rosterChecksum: String? = null,
     ) {
         jdbc.update(
             """
             INSERT INTO league_import_action(
                 id,item_id,item_version,source_revision,draft_checksum,policy_generation,action_type,status,token_hash,
-                bound_actor_telegram_id,operator_chat_id,expires_at
-            ) VALUES(?,?,?,?,?,?,?,'NOTIFY_PENDING',?,?,?,?)
+                bound_actor_telegram_id,operator_chat_id,expires_at,roster_checksum
+            ) VALUES(?,?,?,?,?,?,?,'NOTIFY_PENDING',?,?,?,?,?)
             """.trimIndent(),
             id, itemId, itemVersion, sourceRevision, checksum, policyGeneration, actionType, tokenHash,
-            boundActorId, operatorChatId, OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC),
+            boundActorId, operatorChatId, OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC), rosterChecksum,
         )
     }
 
@@ -649,19 +669,20 @@ class LeagueImportRepository(
         readinessChecksum: String? = null,
         availableAt: Instant? = Instant.now(),
         pendingNotificationOutboxId: Long? = null,
+        rosterChecksum: String? = null,
     ): UUID {
         val id = UUID.randomUUID()
         jdbc.update(
             """
             INSERT INTO league_import_job(
                 id,item_id,item_version,source_revision,evidence_checksum,policy_generation,operation,
-                target_series_id,actor_telegram_id,readiness_checksum,available_at,pending_notification_outbox_id
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                target_series_id,actor_telegram_id,readiness_checksum,available_at,pending_notification_outbox_id,roster_checksum
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT (item_id,item_version,source_revision,evidence_checksum,policy_generation,operation) DO NOTHING
             """.trimIndent(),
             id, itemId, itemVersion, sourceRevision, evidenceChecksum, policyGeneration, operation,
             targetSeriesId, actorTelegramId, readinessChecksum,
-            availableAt?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) }, pendingNotificationOutboxId,
+            availableAt?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) }, pendingNotificationOutboxId, rosterChecksum,
         )
         return jdbc.queryForObject(
             """
@@ -801,6 +822,7 @@ class LeagueImportRepository(
         id = rs.getLong("id"), sourceChannelId = rs.getLong("source_channel_id"),
         sourceMessageId = rs.getLong("source_message_id"), currentRevision = rs.getInt("current_revision"),
         currentSourceVersion = rs.getString("current_source_version"), currentContentHash = rs.getString("current_content_hash"),
+        currentEvidenceHash = rs.getString("current_evidence_hash"),
         classification = rs.getString("classification"), leagueCode = rs.getString("league_code"),
         state = rs.getString("state"), version = rs.getLong("version"),
         draftJson = rs.getString("draft_json")?.let(objectMapper::readTree), draftChecksum = rs.getString("draft_checksum"),
@@ -810,12 +832,16 @@ class LeagueImportRepository(
         readySince = rs.getObject("ready_since", OffsetDateTime::class.java)?.toInstant(),
         lastStableObservationAt = rs.getObject("last_stable_observation_at", OffsetDateTime::class.java)?.toInstant(),
         policyGeneration = rs.getString("policy_generation"),
+        rosterStatus = rs.getString("roster_status"),
+        rosterDraftJson = rs.getString("roster_draft_json")?.let(objectMapper::readTree),
+        rosterChecksum = rs.getString("roster_checksum"),
     )
 
     private fun revision(rs: ResultSet) = LeagueImportRevisionRow(
         revision = rs.getInt("revision"), postedAt = rs.getObject("posted_at", OffsetDateTime::class.java).toInstant(),
         editedAt = rs.getObject("edited_at", OffsetDateTime::class.java)?.toInstant(), contentHash = rs.getString("content_hash"),
-        rawText = rs.getString("raw_text"),
+        evidenceHash = rs.getString("evidence_hash"), rawText = rs.getString("raw_text"),
+        mediaEvidence = rs.getString("media_evidence")?.let(objectMapper::readTree),
         observedAt = rs.getObject("observed_at", OffsetDateTime::class.java).toInstant(),
     )
 
@@ -830,6 +856,7 @@ class LeagueImportRepository(
         availableAt = rs.getObject("available_at", OffsetDateTime::class.java)?.toInstant(),
         pendingNotificationOutboxId = rs.getLong("pending_notification_outbox_id").takeUnless { rs.wasNull() },
         notificationDeliveredAt = rs.getObject("notification_delivered_at", OffsetDateTime::class.java)?.toInstant(),
+        rosterChecksum = rs.getString("roster_checksum"),
     )
 
     private fun action(rs: ResultSet) = LeagueImportActionRow(
@@ -841,6 +868,7 @@ class LeagueImportRepository(
         actorTelegramId = rs.getLong("actor_telegram_id").takeUnless { rs.wasNull() }, operatorChatId = rs.getLong("operator_chat_id"),
         operatorMessageId = rs.getLong("operator_message_id").takeUnless { rs.wasNull() },
         expiresAt = rs.getObject("expires_at", OffsetDateTime::class.java).toInstant(),
+        rosterChecksum = rs.getString("roster_checksum"),
     )
 
     private fun outbox(rs: ResultSet) = LeagueImportOutboxRow(

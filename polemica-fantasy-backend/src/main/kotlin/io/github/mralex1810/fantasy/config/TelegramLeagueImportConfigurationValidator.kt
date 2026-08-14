@@ -44,6 +44,7 @@ class TelegramLeagueImportConfigurationValidator(
                 "Enabled Telegram league import policy is incomplete"
             }
             require(policy.expectedGameCount in 1..32) { "League expected game count must be between 1 and 32" }
+            require(policy.expectedRosterCount in 1..32) { "League expected roster count must be between 1 and 32" }
             require(policy.timezone == "Europe/Moscow") { "Telegram league import currently supports only Europe/Moscow" }
         }
         val automaticCreateConfigured = enabledPolicies.any { it.createMode == LeagueImportAutomationMode.AUTOMATIC }
@@ -58,6 +59,11 @@ class TelegramLeagueImportConfigurationValidator(
         if (properties.productionWritesEnabled) {
             require(properties.policyGeneration.isNotBlank() && properties.policyGeneration != "disabled") {
                 "A non-disabled policy generation is required for league import production writes"
+            }
+        }
+        if (properties.rosterWritesEnabled) {
+            require(properties.ocrRosterEnabled && properties.productionWritesEnabled) {
+                "Telegram OCR roster writes require OCR roster processing and production writes"
             }
         }
     }

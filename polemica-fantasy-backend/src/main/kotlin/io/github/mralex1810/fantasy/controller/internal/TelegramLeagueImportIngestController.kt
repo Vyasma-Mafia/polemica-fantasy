@@ -54,6 +54,6 @@ class TelegramLeagueImportIngestController(
     }
 
     companion object {
-        private const val MAX_BODY_BYTES = 24 * 1024
+        private const val MAX_BODY_BYTES = 128 * 1024
     }
 }

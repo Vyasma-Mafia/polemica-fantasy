@@ -4,6 +4,7 @@ import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.config.LeagueImportAutomationMode
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportEventRequest
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportEventResponse
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import io.github.mralex1810.fantasy.repository.LeagueImportRepository
@@ -29,6 +30,7 @@ class LeagueImportIngestService(
     private val tournamentRepository: TournamentRepository,
     private val seriesRepository: SeriesRepository,
     private val tokenCodec: LeagueImportActionTokenCodec,
+    private val rosterResolver: LeagueImportRosterResolver,
     transactionManager: PlatformTransactionManager,
 ) {
     private val cancellationTransaction = TransactionTemplate(transactionManager).apply {
@@ -44,6 +46,7 @@ class LeagueImportIngestService(
         require(request.rawText.toByteArray().size <= 16_384) { "raw text is too large" }
         require(request.contentHash.matches(Regex("[0-9a-f]{64}"))) { "invalid content hash" }
         require(sha256(request.rawText) == request.contentHash) { "content hash mismatch" }
+        val evidenceHash = validateEvidence(request)
 
         val deliveryFingerprint = deliveryFingerprint(request)
         val deliveryNew = repository.insertDelivery(keyId, deliveryId, requestTimestamp, deliveryFingerprint)
@@ -63,10 +66,11 @@ class LeagueImportIngestService(
             request.contentHash,
             "ANNOUNCEMENT",
             leagueHint(request.rawText),
+            evidenceHash,
         )
         repository.attachDelivery(deliveryId, itemId)
         val current = existing ?: repository.findItemById(itemId, lock = true)!!
-        if (existing != null && request.contentHash == current.currentContentHash) {
+        if (existing != null && evidenceHash == current.currentEvidenceHash) {
             repository.advanceCurrentSourceVersion(itemId, request.sourceVersion)
             return TelegramLeagueImportEventResponse(itemId, current.state, current.version, duplicate = true)
         }
@@ -74,6 +78,7 @@ class LeagueImportIngestService(
             repository.insertRevision(
                 itemId, request.sourceChannelPeerId, request.messageId, request.revision, request.sourceVersion,
                 request.postedAt, request.editedAt, request.contentHash, request.rawText, current = false,
+                evidenceHash = evidenceHash, mediaEvidence = request.mediaEvidence,
             )
             return TelegramLeagueImportEventResponse(itemId, current.state, current.version, duplicate = true)
         }
@@ -86,6 +91,7 @@ class LeagueImportIngestService(
         repository.insertRevision(
             itemId, request.sourceChannelPeerId, request.messageId, request.revision, request.sourceVersion,
             request.postedAt, request.editedAt, request.contentHash, request.rawText, current = true,
+            evidenceHash = evidenceHash, mediaEvidence = request.mediaEvidence,
         )
         val sourceUrl = "https://t.me/polemica_closed_league/${request.messageId}"
         val targetFinalized = current.targetSeriesId?.let { seriesRepository.findById(it).orElse(null)?.finalized } == true
@@ -94,6 +100,7 @@ class LeagueImportIngestService(
                 itemId, request.revision, request.sourceVersion, request.contentHash,
                 "IGNORE", current.leagueCode, "INCIDENT", null, null,
                 "source changed after series creation",
+                evidenceHash = evidenceHash,
             )
             repository.audit(itemId, null, null, "SOURCE_CHANGED_AFTER_APPLY", "INCIDENT", mapOf("seriesId" to current.targetSeriesId))
             repository.enqueueOutbox(
@@ -108,12 +115,13 @@ class LeagueImportIngestService(
             return TelegramLeagueImportEventResponse(itemId, "INCIDENT", version, duplicate = false)
         }
         if (RESULT_TAG.containsMatchIn(request.rawText.lowercase().replace('ё', 'е'))) {
-            return ingestResult(itemId, request, sourceUrl)
+            return ingestResult(itemId, request, sourceUrl, evidenceHash)
         }
         if (current.targetSeriesId != null && current.classification == "RESULT") {
             val version = repository.updateCurrentItem(
                 itemId, request.revision, request.sourceVersion, request.contentHash,
                 "IGNORE", current.leagueCode, "BLOCKED", null, null, "result source was retracted or no longer parseable",
+                evidenceHash = evidenceHash,
             )
             repository.enqueueOutbox(
                 "league-import:$itemId:v$version:RESULT_SHADOW", itemId, null, "RESULT_SHADOW",
@@ -127,7 +135,17 @@ class LeagueImportIngestService(
             is LeagueAnnouncementParseResult.Ready -> validateProductionPolicy(parsed)
         }
         val league = (checked as? LeagueAnnouncementParseResult.Ready)?.draft?.league ?: leagueHint(request.rawText)
-        val state = if (checked is LeagueAnnouncementParseResult.Ready) "READY_TO_PREVIEW" else "BLOCKED"
+        val roster = (checked as? LeagueAnnouncementParseResult.Ready)?.let {
+            rosterResolver.resolve(it.draft.league, it.draft.tournamentId, evidenceHash, request.mediaEvidence)
+        }
+        val rosterBlocksApply = request.mediaEvidence != null && (
+            !properties.ocrRosterEnabled || roster?.draft?.ready != true
+        )
+        val state = when {
+            rosterBlocksApply -> "NEEDS_REVIEW"
+            checked is LeagueAnnouncementParseResult.Ready -> "READY_TO_PREVIEW"
+            else -> "BLOCKED"
+        }
         val version = repository.updateCurrentItem(
             itemId, request.revision, request.sourceVersion, request.contentHash,
             if (checked is LeagueAnnouncementParseResult.Ready) "ANNOUNCEMENT" else "IGNORE",
@@ -136,12 +154,40 @@ class LeagueImportIngestService(
             (checked as? LeagueAnnouncementParseResult.Ready)?.checksum,
             (checked as? LeagueAnnouncementParseResult.Blocked)?.reason,
             if (checked is LeagueAnnouncementParseResult.Ready) properties.policyGeneration else null,
+            evidenceHash,
+        )
+        repository.updateRosterDraft(
+            itemId,
+            roster?.draft?.status ?: if (request.mediaEvidence == null) "NO_MEDIA" else "NEEDS_REVIEW",
+            roster?.draft,
+            roster?.checksum,
         )
         if (checked is LeagueAnnouncementParseResult.Ready) {
             val mode = properties.policy(checked.draft.league)?.createMode ?: LeagueImportAutomationMode.DISABLED
+            if (rosterBlocksApply) {
+                val rosterReason = when {
+                    !properties.ocrRosterEnabled -> "OCR roster processing is disabled"
+                    else -> roster!!.draft.issues.joinToString("; ")
+                }
+                repository.updateItemState(itemId, "NEEDS_REVIEW", rosterReason.take(512))
+                repository.enqueueOutbox(
+                    "league-import:$itemId:v$version:ROSTER_REVIEW", itemId, null, "ROSTER_REVIEW",
+                    mapOf("draft" to checked.draft, "roster" to roster!!.draft, "reason" to rosterReason),
+                )
+                return TelegramLeagueImportEventResponse(itemId, "NEEDS_REVIEW", version, duplicate = false)
+            }
+            if (request.mediaEvidence != null && mode == LeagueImportAutomationMode.AUTOMATIC) {
+                val reason = "OCR roster creation requires MANUAL mode"
+                repository.updateItemState(itemId, "NEEDS_REVIEW", reason)
+                repository.enqueueOutbox(
+                    "league-import:$itemId:v$version:ROSTER_REVIEW", itemId, null, "ROSTER_REVIEW",
+                    mapOf("draft" to checked.draft, "roster" to roster!!.draft, "reason" to reason),
+                )
+                return TelegramLeagueImportEventResponse(itemId, "NEEDS_REVIEW", version, duplicate = false)
+            }
             when (mode) {
                 LeagueImportAutomationMode.MANUAL -> {
-                    offerAction(itemId, version, request.revision, checked, "CREATE_PREVIEW", null, properties.previewTtlSeconds)
+                    offerAction(itemId, version, request.revision, checked, "CREATE_PREVIEW", null, properties.previewTtlSeconds, roster)
                     repository.updateItemState(itemId, "PREVIEW_PENDING")
                 }
                 LeagueImportAutomationMode.AUTOMATIC -> {
@@ -157,12 +203,15 @@ class LeagueImportIngestService(
                                 "holdSeconds" to AUTO_CREATE_HOLD_SECONDS,
                                 "mode" to mode.name,
                                 "policyGeneration" to properties.policyGeneration,
+                                "rosterCount" to (roster?.draft?.resolved?.size ?: 0),
+                                "expectedRosterCount" to (roster?.draft?.expectedCount ?: 0),
                             ),
                         )
                         repository.enqueueJob(
                             itemId, version, request.revision, checked.checksum, properties.policyGeneration,
                             "CREATE", null, availableAt = null,
                             pendingNotificationOutboxId = notificationOutboxId,
+                            rosterChecksum = roster?.takeIf { it.draft.ready }?.checksum,
                         )
                         repository.updateItemState(itemId, "CREATE_PENDING")
                     } else {
@@ -216,12 +265,14 @@ class LeagueImportIngestService(
         type: String,
         boundActorId: Long?,
         ttlSeconds: Long,
+        roster: LeagueImportRosterResolution? = null,
     ): UUID {
         val id = UUID.randomUUID()
         val callbackData = tokenCodec.encode(id)
         repository.createAction(
             id, itemId, version, revision, ready.checksum, properties.policyGeneration, type, tokenCodec.hash(callbackData),
             boundActorId, properties.operatorChatId, Instant.now().plusSeconds(ttlSeconds),
+            roster?.takeIf { it.draft.ready }?.checksum,
         )
         repository.enqueueOutbox(
             eventKey = "league-import:$itemId:v$version:$type:$id",
@@ -232,6 +283,7 @@ class LeagueImportIngestService(
                 "draft" to ready.draft,
                 "tournamentName" to (tournamentRepository.findById(ready.draft.tournamentId).orElse(null)?.name
                     ?: "#${ready.draft.tournamentId}"),
+                "roster" to roster?.draft,
             ),
         )
         return id
@@ -247,12 +299,14 @@ class LeagueImportIngestService(
         itemId: Long,
         request: TelegramLeagueImportEventRequest,
         sourceUrl: String,
+        evidenceHash: String,
     ): TelegramLeagueImportEventResponse {
         val parsed = resultParser.parse(request.rawText, sourceUrl)
         if (parsed is LeagueResultParseResult.Blocked) {
             val version = repository.updateCurrentItem(
                 itemId, request.revision, request.sourceVersion, request.contentHash,
                 "RESULT", leagueHint(request.rawText), "PARTIAL_RESULT", null, null, parsed.reason,
+                evidenceHash = evidenceHash,
             )
             repository.enqueueOutbox(
                 "league-import:$itemId:v$version:RESULT_SHADOW", itemId, null, "RESULT_SHADOW",
@@ -268,6 +322,7 @@ class LeagueImportIngestService(
             val version = repository.updateCurrentItem(
                 itemId, request.revision, request.sourceVersion, request.contentHash,
                 "RESULT", draft.league, "BLOCKED_MISMATCH", draft, parsed.checksum, reason,
+                evidenceHash = evidenceHash,
             )
             repository.enqueueOutbox(
                 "league-import:$itemId:v$version:RESULT_SHADOW", itemId, null, "RESULT_SHADOW",
@@ -279,6 +334,7 @@ class LeagueImportIngestService(
         val version = repository.updateCurrentItem(
             itemId, request.revision, request.sourceVersion, request.contentHash,
             "RESULT", draft.league, "WAITING_FOR_GAMES", draft, parsed.checksum, null, properties.policyGeneration,
+            evidenceHash,
         )
         repository.updateItemTargetSeries(itemId, seriesId)
         val linkedItem = repository.findItemById(itemId, lock = true)!!
@@ -321,6 +377,75 @@ class LeagueImportIngestService(
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
 
+    private fun validateEvidence(request: TelegramLeagueImportEventRequest): String {
+        val media = request.mediaEvidence
+        if (media == null) {
+            val canonical = canonicalEvidenceHash(request.contentHash, null)
+            require(request.evidenceHash == null || request.evidenceHash == request.contentHash || request.evidenceHash == canonical) {
+                "evidence hash mismatch"
+            }
+            return if (request.evidenceHash == canonical) canonical else request.contentHash
+        }
+        require(media.telegramMediaId.isNotBlank() && media.telegramMediaId.length <= 128) { "invalid Telegram media id" }
+        val ocr = media.ocr
+        require(ocr.status in setOf("SUCCESS", "FAILED", "UNSUPPORTED")) { "invalid OCR status" }
+        if (ocr.status == "SUCCESS") {
+            require(media.mimeType != null && media.mimeType.length <= 64 && media.byteSize in 1..10L * 1024 * 1024) {
+                "invalid media metadata"
+            }
+            require(media.width in 1..20_000 && media.height in 1..20_000) { "invalid media dimensions" }
+            require(media.sha256?.matches(Regex("[0-9a-f]{64}")) == true) { "invalid media hash" }
+        } else {
+            require(media.mimeType == null || media.mimeType.length <= 64) { "invalid media metadata" }
+            require(media.byteSize == null || media.byteSize in 1..10L * 1024 * 1024) { "invalid media metadata" }
+            require(media.width == null || media.width in 1..20_000) { "invalid media dimensions" }
+            require(media.height == null || media.height in 1..20_000) { "invalid media dimensions" }
+            require(media.sha256 == null || media.sha256.matches(Regex("[0-9a-f]{64}"))) { "invalid media hash" }
+        }
+        require(ocr.provider == "YANDEX_VISION" && ocr.model == "page") { "unsupported OCR provider or model" }
+        require(ocr.languageCodes == listOf("ru", "en")) { "unsupported OCR languages" }
+        require(ocr.lines.size <= 128 && ocr.fullText.toByteArray().size <= 64 * 1024) { "OCR evidence is too large" }
+        ocr.lines.forEach { line ->
+            require(line.text.length <= 256 && line.boundingBox.size <= 8) { "invalid OCR line" }
+            require(line.boundingBox.all { it.x >= 0 && it.y >= 0 }) { "invalid OCR coordinates" }
+        }
+        val ocrMaterial = buildList {
+            add("v1")
+            add(ocr.provider)
+            add(ocr.model)
+            add(ocr.languageCodes.joinToString(","))
+            add(ocr.fullText)
+            ocr.lines.forEach { line ->
+                add("${line.text}|${line.boundingBox.joinToString(";") { "${it.x},${it.y}" }}")
+            }
+        }.joinToString("\n")
+        require(ocr.checksum == sha256(ocrMaterial)) { "OCR checksum mismatch" }
+        val evidenceHash = canonicalEvidenceHash(request.contentHash, media)
+        require(request.evidenceHash == evidenceHash) { "evidence hash mismatch" }
+        return evidenceHash
+    }
+
+    private fun canonicalEvidenceHash(contentHash: String, media: TelegramLeagueImportMediaEvidence?): String {
+        val ocr = media?.ocr
+        val material = listOf(
+            "v1",
+            contentHash,
+            media?.telegramMediaId ?: "-",
+            media?.groupedId?.toString() ?: "-",
+            media?.mimeType ?: "-",
+            media?.byteSize?.toString() ?: "-",
+            media?.width?.toString() ?: "-",
+            media?.height?.toString() ?: "-",
+            media?.sha256 ?: "-",
+            ocr?.status ?: "NONE",
+            ocr?.provider ?: "-",
+            ocr?.model ?: "-",
+            ocr?.languageCodes?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: "-",
+            ocr?.checksum ?: "-",
+        ).joinToString("\n")
+        return sha256(material)
+    }
+
     private fun deliveryFingerprint(request: TelegramLeagueImportEventRequest): String = sha256(
         listOf(
             request.sourceChannelPeerId,
@@ -330,6 +455,9 @@ class LeagueImportIngestService(
             request.postedAt,
             request.editedAt,
             request.contentHash,
+            request.evidenceHash,
+            request.mediaEvidence?.sha256,
+            request.mediaEvidence?.ocr?.checksum,
             request.rawText,
             request.classification,
             request.league,

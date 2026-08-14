@@ -57,6 +57,8 @@ telegram:
     callback-enabled: ${TELEGRAM_LEAGUE_IMPORT_CALLBACK_ENABLED:false}
     result-processing-enabled: ${TELEGRAM_LEAGUE_IMPORT_RESULT_PROCESSING_ENABLED:false}
     production-writes-enabled: ${TELEGRAM_LEAGUE_IMPORT_PRODUCTION_WRITES_ENABLED:false}
+    ocr-roster-enabled: ${TELEGRAM_LEAGUE_IMPORT_OCR_ROSTER_ENABLED:false}
+    roster-writes-enabled: ${TELEGRAM_LEAGUE_IMPORT_ROSTER_WRITES_ENABLED:false}
     source-channel-peer-id: ${TELEGRAM_LEAGUE_IMPORT_SOURCE_CHANNEL_PEER_ID:0}
     operator-chat-id: ${TELEGRAM_LEAGUE_IMPORT_OPERATOR_CHAT_ID:0}
     ingest-key-id: ${TELEGRAM_LEAGUE_IMPORT_INGEST_KEY_ID:current}
@@ -76,6 +78,7 @@ telegram:
         timezone: Europe/Moscow
         team-deadline-offset-minutes: 10
         expected-game-count: ${TELEGRAM_LEAGUE_IMPORT_LP_EXPECTED_GAME_COUNT:5}
+        expected-roster-count: ${TELEGRAM_LEAGUE_IMPORT_LP_EXPECTED_ROSTER_COUNT:10}
         create-mode: ${TELEGRAM_LEAGUE_IMPORT_LP_CREATE_MODE:DISABLED}
         finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_LP_FINALIZE_MODE:DISABLED}
       zl:
@@ -86,6 +89,7 @@ telegram:
         timezone: Europe/Moscow
         team-deadline-offset-minutes: 10
         expected-game-count: ${TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_GAME_COUNT:5}
+        expected-roster-count: ${TELEGRAM_LEAGUE_IMPORT_ZL_EXPECTED_ROSTER_COUNT:10}
         create-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_CREATE_MODE:DISABLED}
         finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_FINALIZE_MODE:DISABLED}
 

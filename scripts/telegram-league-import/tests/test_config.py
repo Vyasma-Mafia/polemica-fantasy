@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from telegram_import.config import DeliveryMode, delivery_mode, notifier_config, require_shadow_mode
+from telegram_import.config import DeliveryMode, delivery_mode, notifier_config, ocr_config, require_shadow_mode
 
 
 class ConfigTest(unittest.TestCase):
@@ -66,6 +66,28 @@ class ConfigTest(unittest.TestCase):
         with patch.dict(os.environ, environment, clear=True):
             with self.assertRaises(SystemExit):
                 delivery_mode()
+
+    def test_ocr_is_default_off_and_backend_only(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(ocr_config(DeliveryMode.BACKEND).enabled)
+        with patch.dict(os.environ, {"TELEGRAM_IMPORT_OCR_ENABLED":"true"}, clear=True):
+            with self.assertRaises(SystemExit):
+                ocr_config(DeliveryMode.DIRECT)
+
+    def test_ocr_requires_scoped_credentials_and_exact_yandex_endpoint(self):
+        environment = {
+            "TELEGRAM_IMPORT_OCR_ENABLED":"true",
+            "TELEGRAM_IMPORT_OCR_API_KEY":"scoped-key",
+            "TELEGRAM_IMPORT_OCR_FOLDER_ID":"folder",
+        }
+        with patch.dict(os.environ, environment, clear=True):
+            config = ocr_config(DeliveryMode.BACKEND)
+            self.assertTrue(config.enabled)
+            self.assertEqual(config.model, "page")
+            self.assertEqual(config.language_codes, ("ru", "en"))
+        with patch.dict(os.environ, {**environment, "TELEGRAM_IMPORT_OCR_API_URL":"https://evil.test/collect"}, clear=True):
+            with self.assertRaises(SystemExit):
+                ocr_config(DeliveryMode.BACKEND)
 
 
 if __name__ == "__main__":

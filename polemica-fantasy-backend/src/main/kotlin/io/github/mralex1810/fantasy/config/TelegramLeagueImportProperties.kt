@@ -13,6 +13,8 @@ data class TelegramLeagueImportProperties(
     var callbackEnabled: Boolean = false,
     var resultProcessingEnabled: Boolean = false,
     var productionWritesEnabled: Boolean = false,
+    var ocrRosterEnabled: Boolean = false,
+    var rosterWritesEnabled: Boolean = false,
     var sourceChannelPeerId: Long = 0,
     var operatorChatId: Long = 0,
     var ingestKeyId: String = "current",
@@ -41,6 +43,7 @@ data class TelegramLeagueImportProperties(
         var timezone: String = "Europe/Moscow",
         var teamDeadlineOffsetMinutes: Long = 10,
         var expectedGameCount: Int = 5,
+        var expectedRosterCount: Int = 10,
         var createMode: LeagueImportAutomationMode = LeagueImportAutomationMode.DISABLED,
         var finalizeMode: LeagueImportAutomationMode = LeagueImportAutomationMode.DISABLED,
     )

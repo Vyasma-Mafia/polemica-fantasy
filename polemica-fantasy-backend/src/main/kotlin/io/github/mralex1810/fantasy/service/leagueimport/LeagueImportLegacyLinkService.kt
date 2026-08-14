@@ -91,6 +91,7 @@ class LeagueImportLegacyLinkService(
                 announcementItem.id, announcementItem.currentRevision, announcementItem.currentSourceVersion,
                 announcementItem.currentContentHash, "ANNOUNCEMENT", announcement.draft.league, "APPLIED",
                 announcement.draft, announcement.checksum, null, properties.policyGeneration,
+                announcementItem.currentEvidenceHash,
             )
             repository.updateItemTargetSeries(announcementItem.id, seriesId)
             normalizedAnnouncement = repository.findItemById(announcementItem.id, lock = true)!!
@@ -102,6 +103,7 @@ class LeagueImportLegacyLinkService(
                 resultItem.id, resultItem.currentRevision, resultItem.currentSourceVersion,
                 resultItem.currentContentHash, "RESULT", result.draft.league, "WAITING_FOR_GAMES",
                 result.draft, result.checksum, null, properties.policyGeneration,
+                resultItem.currentEvidenceHash,
             )
             repository.resetResultItemForReconcile(resultItem.id, seriesId)
             normalizedResult = repository.findItemById(resultItem.id, lock = true)!!

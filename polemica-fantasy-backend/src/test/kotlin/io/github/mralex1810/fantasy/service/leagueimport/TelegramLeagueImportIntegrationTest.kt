@@ -5,6 +5,9 @@ import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportEventRequest
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportOcrEvidence
+import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportOcrLine
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.entity.SeriesGame
 import io.github.mralex1810.fantasy.entity.Tournament
@@ -58,6 +61,8 @@ import java.util.concurrent.atomic.AtomicLong
         "telegram.league-import.operator-notifications-enabled=false",
         "telegram.league-import.callback-enabled=true",
         "telegram.league-import.production-writes-enabled=true",
+        "telegram.league-import.ocr-roster-enabled=true",
+        "telegram.league-import.roster-writes-enabled=true",
         "telegram.league-import.policy-generation=test-manual-v1",
         "telegram.league-import.source-channel-peer-id=-1001112223334",
         "telegram.league-import.operator-chat-id=-5166305654",
@@ -153,6 +158,46 @@ class TelegramLeagueImportIntegrationTest {
         assertEquals(1, intValue("SELECT current_revision FROM league_import_item WHERE id=?", itemId))
         assertEquals(3, count("league_import_revision", "item_id", itemId))
         assertEquals(sha256(resetWorkerEdit.rawText), stringValue("SELECT current_content_hash FROM league_import_item WHERE id=?", itemId))
+    }
+
+    @Test
+    fun `worker canonical evidence hashes are accepted for text and terminal OCR`() {
+        val text = announcement(40, "11 августа 2030")
+        val textHash = sha256(text)
+        assertEquals(
+            "26079a3500abe95d1f50f0e6b6ffd20727345a7c3e5b32dc6e284c34b11d31d3",
+            evidenceHash("a".repeat(64), null),
+        )
+        val textAccepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(messageSequence.incrementAndGet(), 1, text).copy(evidenceHash = evidenceHash(textHash, null)),
+        )
+        assertEquals("PREVIEW_PENDING", textAccepted.state)
+
+        val terminalChecksum = sha256("v1\nYANDEX_VISION\npage\nru,en\n")
+        val terminal = TelegramLeagueImportMediaEvidence(
+            telegramMediaId = "photo-terminal",
+            mimeType = null,
+            byteSize = null,
+            width = null,
+            height = null,
+            sha256 = null,
+            ocr = TelegramLeagueImportOcrEvidence(
+                status = "FAILED",
+                provider = "YANDEX_VISION",
+                model = "page",
+                languageCodes = listOf("ru", "en"),
+                checksum = terminalChecksum,
+                fullText = "",
+                lines = emptyList(),
+                errorCode = "DOWNLOAD_FAILED",
+            ),
+        )
+        val terminalAccepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(messageSequence.incrementAndGet(), 1, announcement(39, "11 августа 2030"), media = terminal),
+        )
+        assertEquals("NEEDS_REVIEW", terminalAccepted.state)
     }
 
     @Test
@@ -406,6 +451,202 @@ class TelegramLeagueImportIntegrationTest {
         assertEquals("BLOCKED", stringValue("SELECT event_type FROM league_import_operator_outbox WHERE item_id=?", duplicateItemId))
         assertTrue(stringValue("SELECT blocked_reason FROM league_import_item WHERE id=?", duplicateItemId).contains("already exists"))
         assertEquals(1, intValue("SELECT count(*) FROM series WHERE tournament_id=? AND public_number=34", tournament.id!!))
+    }
+
+    @Test
+    fun `OCR roster preview is evidence-bound and create commits all tournament players`() {
+        val tournamentPlayerIds = (1..10).map { index ->
+            val fantasyPlayerId = jdbc.queryForObject(
+                "INSERT INTO fantasy_player(polemica_user_id,nickname) VALUES(?,?) RETURNING id",
+                Long::class.java,
+                messageSequence.incrementAndGet(),
+                "OCR Player $index",
+            )!!
+            jdbc.queryForObject(
+                "INSERT INTO tournament_player(tournament_id,fantasy_player_id,excluded_from_pack_pool) VALUES(?,?,false) RETURNING id",
+                Long::class.java,
+                tournament.id!!,
+                fantasyPlayerId,
+            )!!
+        }
+        val messageId = messageSequence.incrementAndGet()
+        val text = announcement(54, "11 августа 2030")
+        val accepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(messageId, 1, text, media = mediaEvidence((1..10).map { "OCR Player $it" })),
+        )
+        val itemId = accepted.itemId!!
+        val item = importRepository.findItemById(itemId)!!
+        assertEquals("READY", item.rosterStatus)
+        assertEquals("PREVIEW_PENDING", item.state)
+        assertEquals(10, item.rosterDraftJson!!.path("resolved").size())
+
+        val previewId = actionId(itemId, "CREATE_PREVIEW")
+        assertEquals(item.rosterChecksum, importRepository.findAction(previewId)!!.rosterChecksum)
+        importRepository.markActionOffered(previewId, 8101)
+        callbackService.tryHandle(callback(801, "ocr-preview", tokenCodec.encode(previewId), 77, properties.operatorChatId, 8101))
+        val confirmId = actionId(itemId, "CREATE_CONFIRM")
+        importRepository.markActionOffered(confirmId, 8102)
+        callbackService.tryHandle(callback(802, "ocr-confirm", tokenCodec.encode(confirmId), 77, properties.operatorChatId, 8102))
+        jdbc.update("UPDATE league_import_action SET status='CREATING' WHERE id=? AND status='CREATE_PENDING'", confirmId)
+
+        createService.create(confirmId)
+
+        val seriesId = importRepository.findItemById(itemId)!!.targetSeriesId!!
+        assertEquals(10, intValue("SELECT count(*) FROM series_player WHERE series_id=?", seriesId))
+        val actualIds = jdbc.queryForList(
+            "SELECT tournament_player_id FROM series_player WHERE series_id=? ORDER BY tournament_player_id",
+            Long::class.java,
+            seriesId,
+        )
+        assertEquals(tournamentPlayerIds.sorted(), actualIds)
+        assertEquals(10, intValue(
+            "SELECT (payload->>'rosterCount')::int FROM league_import_operator_outbox WHERE action_id=? AND event_type='CREATED'",
+            confirmId,
+        ))
+    }
+
+    @Test
+    fun `incomplete OCR roster requires review and offers no production action`() {
+        (1..9).forEach { index ->
+            val fantasyPlayerId = jdbc.queryForObject(
+                "INSERT INTO fantasy_player(polemica_user_id,nickname) VALUES(?,?) RETURNING id",
+                Long::class.java,
+                messageSequence.incrementAndGet(),
+                "Partial OCR $index",
+            )!!
+            jdbc.update(
+                "INSERT INTO tournament_player(tournament_id,fantasy_player_id,excluded_from_pack_pool) VALUES(?,?,false)",
+                tournament.id!!,
+                fantasyPlayerId,
+            )
+        }
+        val accepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(
+                messageSequence.incrementAndGet(), 1, announcement(55, "11 августа 2030"),
+                media = mediaEvidence((1..9).map { "Partial OCR $it" }),
+            ),
+        )
+        val itemId = accepted.itemId!!
+
+        assertEquals("NEEDS_REVIEW", accepted.state)
+        assertEquals("NEEDS_REVIEW", importRepository.findItemById(itemId)!!.rosterStatus)
+        assertEquals(0, intValue("SELECT count(*) FROM league_import_action WHERE item_id=?", itemId))
+        assertEquals("ROSTER_REVIEW", stringValue("SELECT event_type FROM league_import_operator_outbox WHERE item_id=?", itemId))
+    }
+
+    @Test
+    fun `OCR roster preview is offered while production and roster writes are closed`() {
+        insertOcrTournamentPlayers("Preview only")
+        val previousProductionWrites = properties.productionWritesEnabled
+        val previousRosterWrites = properties.rosterWritesEnabled
+        try {
+            properties.productionWritesEnabled = false
+            properties.rosterWritesEnabled = false
+
+            val accepted = ingestService.ingest(
+                "test-current", UUID.randomUUID(), Instant.now(),
+                request(
+                    messageSequence.incrementAndGet(), 1, announcement(57, "11 августа 2030"),
+                    media = mediaEvidence((1..10).map { "Preview only $it" }),
+                ),
+            )
+            val itemId = accepted.itemId!!
+
+            assertEquals("PREVIEW_PENDING", accepted.state)
+            assertEquals("READY", importRepository.findItemById(itemId)!!.rosterStatus)
+            assertEquals(1, intValue("SELECT count(*) FROM league_import_action WHERE item_id=? AND action_type='CREATE_PREVIEW'", itemId))
+            assertEquals(0, intValue("SELECT count(*) FROM series WHERE tournament_id=? AND public_number=57", tournament.id!!))
+        } finally {
+            properties.productionWritesEnabled = previousProductionWrites
+            properties.rosterWritesEnabled = previousRosterWrites
+        }
+    }
+
+    @Test
+    fun `automatic mode never creates or schedules a media roster`() {
+        insertOcrTournamentPlayers("Automatic blocked")
+        val previousMode = properties.policies.lp.createMode
+        try {
+            properties.policies.lp.createMode = LeagueImportAutomationMode.AUTOMATIC
+
+            val accepted = ingestService.ingest(
+                "test-current", UUID.randomUUID(), Instant.now(),
+                request(
+                    messageSequence.incrementAndGet(), 1, announcement(58, "11 августа 2030"),
+                    media = mediaEvidence((1..10).map { "Automatic blocked $it" }),
+                ),
+            )
+            val itemId = accepted.itemId!!
+
+            assertEquals("NEEDS_REVIEW", accepted.state)
+            assertEquals(0, intValue("SELECT count(*) FROM league_import_action WHERE item_id=?", itemId))
+            assertEquals(0, intValue("SELECT count(*) FROM league_import_job WHERE item_id=?", itemId))
+            assertEquals("ROSTER_REVIEW", stringValue("SELECT event_type FROM league_import_operator_outbox WHERE item_id=?", itemId))
+        } finally {
+            properties.policies.lp.createMode = previousMode
+        }
+    }
+
+    @Test
+    fun `failure on the tenth roster insert rolls back series link audit and success outbox`() {
+        (1..10).forEach { index ->
+            val fantasyPlayerId = jdbc.queryForObject(
+                "INSERT INTO fantasy_player(polemica_user_id,nickname) VALUES(?,?) RETURNING id",
+                Long::class.java,
+                messageSequence.incrementAndGet(),
+                "Rollback OCR $index",
+            )!!
+            jdbc.update(
+                "INSERT INTO tournament_player(tournament_id,fantasy_player_id,excluded_from_pack_pool) VALUES(?,?,false)",
+                tournament.id!!,
+                fantasyPlayerId,
+            )
+        }
+        val accepted = ingestService.ingest(
+            "test-current", UUID.randomUUID(), Instant.now(),
+            request(
+                messageSequence.incrementAndGet(), 1, announcement(56, "11 августа 2030"),
+                media = mediaEvidence((1..10).map { "Rollback OCR $it" }),
+            ),
+        )
+        val itemId = accepted.itemId!!
+        val previewId = actionId(itemId, "CREATE_PREVIEW")
+        importRepository.markActionOffered(previewId, 8201)
+        callbackService.tryHandle(callback(811, "rollback-preview", tokenCodec.encode(previewId), 78, properties.operatorChatId, 8201))
+        val confirmId = actionId(itemId, "CREATE_CONFIRM")
+        importRepository.markActionOffered(confirmId, 8202)
+        callbackService.tryHandle(callback(812, "rollback-confirm", tokenCodec.encode(confirmId), 78, properties.operatorChatId, 8202))
+        jdbc.update("UPDATE league_import_action SET status='CREATING' WHERE id=? AND status='CREATE_PENDING'", confirmId)
+
+        jdbc.execute(
+            """
+            CREATE OR REPLACE FUNCTION test_fail_tenth_series_player() RETURNS trigger AS ${'$'}fn${'$'}
+            BEGIN
+              IF (SELECT count(*) FROM series_player WHERE series_id=NEW.series_id) >= 9 THEN
+                RAISE EXCEPTION 'intentional tenth roster insert failure';
+              END IF;
+              RETURN NEW;
+            END;
+            ${'$'}fn${'$'} LANGUAGE plpgsql
+            """.trimIndent(),
+        )
+        jdbc.execute(
+            "CREATE TRIGGER test_fail_tenth_series_player BEFORE INSERT ON series_player FOR EACH ROW EXECUTE FUNCTION test_fail_tenth_series_player()",
+        )
+        try {
+            assertThrows(Exception::class.java) { createService.create(confirmId) }
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS test_fail_tenth_series_player ON series_player")
+            jdbc.execute("DROP FUNCTION IF EXISTS test_fail_tenth_series_player()")
+        }
+
+        assertEquals(0, intValue("SELECT count(*) FROM series WHERE tournament_id=? AND public_number=56", tournament.id!!))
+        assertEquals(0, intValue("SELECT count(*) FROM series_external_post_link WHERE import_item_id=?", itemId))
+        assertEquals(0, intValue("SELECT count(*) FROM league_import_audit_event WHERE action_id=? AND event_type='SERIES_CREATED'", confirmId))
+        assertEquals(0, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE action_id=? AND event_type='CREATED'", confirmId))
+        assertEquals(null, importRepository.findItemById(itemId)!!.targetSeriesId)
     }
 
     @Test
@@ -702,17 +943,84 @@ class TelegramLeagueImportIntegrationTest {
         ).itemId!!
     }
 
-    private fun request(messageId: Long, revision: Int, text: String, editedAt: Instant? = null): TelegramLeagueImportEventRequest =
-        TelegramLeagueImportEventRequest(
+    private fun request(
+        messageId: Long,
+        revision: Int,
+        text: String,
+        editedAt: Instant? = null,
+        media: TelegramLeagueImportMediaEvidence? = null,
+    ): TelegramLeagueImportEventRequest {
+        val contentHash = sha256(text)
+        return TelegramLeagueImportEventRequest(
             sourceChannelPeerId = properties.sourceChannelPeerId,
             messageId = messageId,
             revision = revision,
             sourceVersion = "telethon-v1",
             postedAt = Instant.parse("2026-08-11T10:00:00Z"),
             editedAt = editedAt,
-            contentHash = sha256(text),
+            contentHash = contentHash,
+            evidenceHash = media?.let { evidenceHash(contentHash, it) },
             rawText = text,
+            mediaEvidence = media,
         )
+    }
+
+    private fun mediaEvidence(lines: List<String>): TelegramLeagueImportMediaEvidence {
+        val ocrLines = lines.map(::TelegramLeagueImportOcrLine)
+        val fullText = lines.joinToString("\n")
+        val ocrChecksum = sha256(
+            buildList {
+                add("v1")
+                add("YANDEX_VISION")
+                add("page")
+                add("ru,en")
+                add(fullText)
+                ocrLines.forEach { add("${it.text}|") }
+            }.joinToString("\n"),
+        )
+        return TelegramLeagueImportMediaEvidence(
+            telegramMediaId = "photo-${messageSequence.incrementAndGet()}",
+            mimeType = "image/jpeg",
+            byteSize = 120_000,
+            width = 1200,
+            height = 800,
+            sha256 = "a".repeat(64),
+            ocr = TelegramLeagueImportOcrEvidence(
+                status = "SUCCESS",
+                provider = "YANDEX_VISION",
+                model = "page",
+                languageCodes = listOf("ru", "en"),
+                checksum = ocrChecksum,
+                fullText = fullText,
+                lines = ocrLines,
+            ),
+        )
+    }
+
+    private fun insertOcrTournamentPlayers(prefix: String) {
+        (1..10).forEach { index ->
+            val fantasyPlayerId = jdbc.queryForObject(
+                "INSERT INTO fantasy_player(polemica_user_id,nickname) VALUES(?,?) RETURNING id",
+                Long::class.java,
+                messageSequence.incrementAndGet(),
+                "$prefix $index",
+            )!!
+            jdbc.update(
+                "INSERT INTO tournament_player(tournament_id,fantasy_player_id,excluded_from_pack_pool) VALUES(?,?,false)",
+                tournament.id!!,
+                fantasyPlayerId,
+            )
+        }
+    }
+
+    private fun evidenceHash(contentHash: String, media: TelegramLeagueImportMediaEvidence?): String = sha256(
+        listOf(
+            "v1", contentHash, media?.telegramMediaId ?: "-", media?.groupedId?.toString() ?: "-", media?.mimeType ?: "-",
+            media?.byteSize?.toString() ?: "-", media?.width?.toString() ?: "-", media?.height?.toString() ?: "-", media?.sha256 ?: "-",
+            media?.ocr?.status ?: "NONE", media?.ocr?.provider ?: "-", media?.ocr?.model ?: "-",
+            media?.ocr?.languageCodes?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: "-", media?.ocr?.checksum ?: "-",
+        ).joinToString("\n"),
+    )
 
     private fun announcement(number: Long, date: String) = """
         **Лига Претендентов: Серия $number.**
