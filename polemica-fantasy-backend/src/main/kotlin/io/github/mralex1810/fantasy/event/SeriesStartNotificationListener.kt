@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -30,10 +31,14 @@ class SeriesStartNotificationListener(
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async
     fun onSeriesBatchStarted(event: SeriesBatchStartedEvent) {
-        if (event.startedSeries.isEmpty()) {
+        val now = Instant.now()
+        val openSeries = event.startedSeries.filter { series ->
+            series.teamDeadline?.isAfter(now) != false
+        }
+        if (openSeries.isEmpty()) {
             return
         }
-        val tournamentIds = event.startedSeries.map { it.tournamentId }.toSet()
+        val tournamentIds = openSeries.map { it.tournamentId }.toSet()
         val recipients = telegramUserRepository.findAllEligibleForSeriesStart(tournamentIds)
         if (recipients.isEmpty()) {
             return
@@ -55,9 +60,9 @@ class SeriesStartNotificationListener(
             val userId = recipient.id ?: continue
             val tournamentSubscriptions = subscriptionsByUserId[userId]
             val relevantSeries = if (tournamentSubscriptions.isNullOrEmpty()) {
-                event.startedSeries
+                openSeries
             } else {
-                event.startedSeries.filter { it.tournamentId in tournamentSubscriptions }
+                openSeries.filter { it.tournamentId in tournamentSubscriptions }
             }
             if (relevantSeries.isEmpty()) {
                 continue
