@@ -252,6 +252,70 @@ class FantasyPlayerAliasMergeIntegrationTest {
     }
 
     @Test
+    fun `merge blocks replacement aliases in non-finalized series`() {
+        val target = resolverService.createWithPrimaryAlias(78_101L, "target active replacement")
+        val source = resolverService.createWithPrimaryAlias(78_102L, "source active replacement")
+        val tournament = tournamentRepository.save(Tournament(name = "Active Alias Replacement", status = TournamentStatus.ACTIVE))
+        val targetTp = tournamentPlayerRepository.save(TournamentPlayer(tournament = tournament, fantasyPlayer = target))
+        tournamentPlayerRepository.save(TournamentPlayer(tournament = tournament, fantasyPlayer = source))
+        val series = seriesRepository.save(
+            Series(
+                tournament = tournament,
+                name = "Active Alias Replacement Series",
+                namePrefix = "Active Alias Replacement",
+                status = SeriesStatus.UPCOMING,
+                startsAt = Instant.now(),
+                teamDeadline = Instant.now(),
+            ),
+        )
+        seriesPlayerRepository.save(
+            SeriesPlayer(series = series, tournamentPlayer = targetTp, replacementPolemicaUserId = source.polemicaUserId),
+        )
+
+        val preview = fantasyPlayerAdminService.mergePreview(target.id!!, source.id!!)
+
+        assertFalse(preview.canMerge)
+        assertTrue(preview.blockers.any { it.code == "REPLACEMENT_ALIAS_CONFLICTS" })
+    }
+
+    @Test
+    fun `merge allows replacement aliases in finalized series and preserves history`() {
+        val target = resolverService.createWithPrimaryAlias(78_201L, "target historical replacement")
+        val source = resolverService.createWithPrimaryAlias(78_202L, "source historical replacement")
+        val tournament = tournamentRepository.save(Tournament(name = "Historical Alias Replacement", status = TournamentStatus.FINISHED))
+        val targetTp = tournamentPlayerRepository.save(TournamentPlayer(tournament = tournament, fantasyPlayer = target))
+        tournamentPlayerRepository.save(TournamentPlayer(tournament = tournament, fantasyPlayer = source))
+        val series = seriesRepository.save(
+            Series(
+                tournament = tournament,
+                name = "Historical Alias Replacement Series",
+                namePrefix = "Historical Alias Replacement",
+                status = SeriesStatus.FINISHED,
+                startsAt = Instant.now(),
+                teamDeadline = Instant.now(),
+                finalized = true,
+            ),
+        )
+        seriesPlayerRepository.save(
+            SeriesPlayer(series = series, tournamentPlayer = targetTp, replacementPolemicaUserId = source.polemicaUserId),
+        )
+
+        val preview = fantasyPlayerAdminService.mergePreview(target.id!!, source.id!!)
+
+        assertTrue(preview.canMerge)
+        assertFalse(preview.blockers.any { it.code == "REPLACEMENT_ALIAS_CONFLICTS" })
+
+        fantasyPlayerAdminService.mergeConfirm(
+            target.id!!,
+            MergeFantasyPlayersRequest(sourceFantasyPlayerId = source.id!!, reason = "same historical player"),
+        )
+
+        val historicalRow = seriesPlayerRepository.findAllBySeries_Id(series.id!!).single()
+        assertEquals(source.polemicaUserId, historicalRow.replacementPolemicaUserId)
+        assertEquals(target.id, resolverService.requireByPolemicaUserId(source.polemicaUserId).id)
+    }
+
+    @Test
     fun `merge blocks duplicate tournament rows with different pack-pool exclusion flags`() {
         val target = resolverService.createWithPrimaryAlias(79_001L, "target pack pool")
         val source = resolverService.createWithPrimaryAlias(79_002L, "source pack pool")

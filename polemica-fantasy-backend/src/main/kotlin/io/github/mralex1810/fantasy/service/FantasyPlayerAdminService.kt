@@ -493,7 +493,9 @@ class FantasyPlayerAdminService(
             """
             SELECT COUNT(*)
             FROM series_player sp
-            WHERE sp.replacement_polemica_user_id IN ($placeholders)
+            JOIN series s ON s.id = sp.series_id
+            WHERE s.finalized = FALSE
+              AND sp.replacement_polemica_user_id IN ($placeholders)
               AND EXISTS (
                   SELECT 1
                   FROM series_player merged_sp
