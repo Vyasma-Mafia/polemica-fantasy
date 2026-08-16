@@ -53,7 +53,7 @@ class ProductEventService(
         val normalizedSubjectType = subjectType?.trim()?.takeIf { it.isNotEmpty() }?.take(64)
         val user = telegramUserRepository.findById(userId).orElse(null)
         if (user == null) {
-            log.debug("Skipping product event {} for missing userId={}", normalizedType, userId)
+            log.debug("Skipping product event {} for missing user", normalizedType)
             return
         }
         if (normalizedType in DEDUPED_ACHIEVEMENT_EVENT_TYPES &&

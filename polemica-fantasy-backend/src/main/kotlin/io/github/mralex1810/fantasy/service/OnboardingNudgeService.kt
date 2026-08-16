@@ -59,7 +59,7 @@ class OnboardingNudgeService(
                     onboardingService.markNudgeSent(candidate.userId, type)
                 }
             } catch (e: Exception) {
-                log.warn("Failed to send onboarding nudge {} to userId={}", type, candidate.userId, e)
+                log.warn("Failed to send onboarding nudge {}", type, e)
             }
         }
     }

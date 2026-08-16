@@ -1,0 +1,78 @@
+status:
+  enabled: true
+  host: localhost
+  port: 16241
+
+agent_log:
+  priority: NOTICE
+
+storages:
+  - name: polemica_prometheus_buffer
+    plugin: fs
+    config:
+      directory: /var/lib/yc/unified_agent/polemica_prometheus_buffer
+      max_partition_size: 250mb
+      max_segment_size: 25mb
+
+channels:
+  - name: polemica_remote_write
+    channel:
+      pipe:
+        - storage_ref:
+            name: polemica_prometheus_buffer
+      output:
+        plugin: metrics
+        id: polemica_msp_output
+        config:
+          url: https://monitoring.api.cloud.yandex.net/prometheus/workspaces/mon9v9q5apml8dnnchl7/api/v1/write
+          set_host_label: null
+          iam:
+            cloud_meta: {}
+
+routes:
+  - input:
+      id: polemica_backend_metrics
+      plugin: metrics_pull
+      config:
+        url: http://127.0.0.1:18081/actuator/prometheus
+        format:
+          prometheus: {}
+        poll_period: 60s
+        timeout: 10s
+        retry_count: 1
+        retry_delay: 2s
+        prometheus_config:
+          job_name: polemica-fantasy-backend
+    channel:
+      pipe:
+        - filter:
+            id: polemica_backend_allowlist
+            plugin: filter_metrics
+            config:
+              match: '{__name__="application_ready_time_seconds|application_started_time_seconds|process_uptime_seconds|process_cpu_usage|system_cpu_usage|disk_free_bytes|disk_total_bytes|jvm_memory_used_bytes|jvm_memory_max_bytes|jvm_threads_live_threads|jvm_gc_pause_seconds_count|jvm_gc_pause_seconds_sum|jvm_gc_pause_seconds_max|hikaricp_connections_active|hikaricp_connections_idle|hikaricp_connections_pending|hikaricp_connections_max|hikaricp_connections_timeout_total|http_server_requests_seconds_count|logback_events_total|fantasy_series_sync_duration_seconds_count|fantasy_series_sync_duration_seconds_sum|fantasy_series_sync_duration_seconds_max|fantasy_series_sync_games_total|fantasy_series_sync_empty_total|fantasy_scoring_duration_seconds_count|fantasy_scoring_duration_seconds_sum|fantasy_scoring_duration_seconds_max|fantasy_scoring_games_processed_total|fantasy_series_finalizations_total|fantasy_series_finalization_rewarded_users_total|fantasy_series_finalization_card_uses_decremented_total|fantasy_series_finalization_last_success_timestamp_seconds|fantasy_notification_deliveries_total|fantasy_scheduler_duration_seconds_count|fantasy_scheduler_duration_seconds_sum|fantasy_scheduler_duration_seconds_max|fantasy_scheduler_runs_total|fantasy_scheduler_items_total|fantasy_scheduler_last_completion_timestamp_seconds|fantasy_scheduler_last_success_timestamp_seconds|fantasy_active_series_count"}'
+      channel_ref:
+        name: polemica_remote_write
+
+  - input:
+      id: vyasma_linux_metrics
+      plugin: linux_metrics
+      config:
+        poll_period: 60s
+        resources:
+          cpu: basic
+          memory: basic
+          network: basic
+          storage: basic
+          io: basic
+          kernel: basic
+        prometheus_config:
+          job_name: vyasma-mafia-linux
+    channel:
+      pipe:
+        - filter:
+            id: vyasma_linux_allowlist
+            plugin: filter_metrics
+            config:
+              match: '{__name__="cpu_CpuCores|filesystem_FreeB|filesystem_SizeB|io_Disks_IOMillisec|io_Disks_ReadBytes|io_Disks_WriteBytes|memory_MemAvailable|memory_MemTotal|memory_SwapFree|memory_SwapTotal|proc_LoadAverage1min|proc_ProcsBlocked|proc_ProcsRunning|system_IdleTime|system_IoWaitTime|system_StealTime|system_SystemTime|system_UpTime|system_UserTime"}'
+      channel_ref:
+        name: polemica_remote_write

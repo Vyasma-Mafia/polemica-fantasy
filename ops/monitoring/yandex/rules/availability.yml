@@ -1,0 +1,46 @@
+groups:
+  - name: polemica-fantasy-availability
+    interval: 1m
+    rules:
+      - alert: FantasyMetricsMissing
+        expr: absent_over_time(process_uptime_seconds{job="polemica-fantasy-backend"}[5m]) == 1
+        for: 2m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: critical
+        annotations:
+          summary: Polemica Fantasy backend metrics are missing
+          description: No process uptime samples have reached Yandex Managed Prometheus for at least five minutes.
+          runbook: ops/monitoring/yandex/runbooks/metrics-missing.md
+
+      - alert: FantasyBackend5xxHigh
+        expr: |
+          (
+            sum(increase(http_server_requests_seconds_count{job="polemica-fantasy-backend",status=~"5.."}[5m]))
+            /
+            sum(increase(http_server_requests_seconds_count{job="polemica-fantasy-backend"}[5m]))
+          ) > 0.05
+          and
+          sum(increase(http_server_requests_seconds_count{job="polemica-fantasy-backend"}[5m])) >= 20
+        for: 5m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: warning
+        annotations:
+          summary: Polemica Fantasy backend has elevated 5xx rate
+          description: More than 5 percent of at least 20 backend requests failed with 5xx during the last five minutes.
+          runbook: ops/monitoring/yandex/runbooks/backend-5xx.md
+
+      - alert: FantasyDatabasePoolSaturated
+        expr: hikaricp_connections_pending{job="polemica-fantasy-backend"} > 0
+        for: 5m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: critical
+        annotations:
+          summary: Polemica Fantasy database pool is saturated
+          description: One or more requests have waited for a database connection for five minutes.
+          runbook: ops/monitoring/yandex/runbooks/database-pool.md

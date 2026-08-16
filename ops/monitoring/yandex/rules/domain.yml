@@ -1,0 +1,107 @@
+groups:
+  - name: polemica-fantasy-domain
+    interval: 1m
+    rules:
+      - alert: FantasyActiveSeriesSchedulerStale
+        expr: |
+          (
+            sum(fantasy_active_series_count{job="polemica-fantasy-backend",status=~"active|scoring"}) > 0
+            or
+            (
+              max(fantasy_scheduler_last_completion_timestamp_seconds{
+                job="polemica-fantasy-backend",
+                scheduler="active_series_sync"
+              })
+              >
+              max(fantasy_scheduler_last_success_timestamp_seconds{
+                job="polemica-fantasy-backend",
+                scheduler="active_series_sync"
+              })
+            )
+          )
+          and
+          (
+            (
+              max(fantasy_scheduler_last_success_timestamp_seconds{
+                job="polemica-fantasy-backend",
+                scheduler="active_series_sync"
+              }) > 0
+              and
+              (
+                time()
+                - max(fantasy_scheduler_last_success_timestamp_seconds{
+                    job="polemica-fantasy-backend",
+                    scheduler="active_series_sync"
+                  })
+              ) > 1200
+            )
+            or
+            (
+              max(fantasy_scheduler_last_success_timestamp_seconds{
+                job="polemica-fantasy-backend",
+                scheduler="active_series_sync"
+              }) == 0
+              and
+              max(process_uptime_seconds{job="polemica-fantasy-backend"}) > 1200
+            )
+          )
+        for: 5m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: critical
+        annotations:
+          summary: Polemica Fantasy active-series scheduler is stale
+          description: The active-series scheduler has relevant or failed work but has not completed a fully successful run for more than 20 minutes.
+          runbook: ops/monitoring/yandex/runbooks/scheduler-stale.md
+
+      - alert: FantasySyncOrScoringRepeatedErrors
+        expr: |
+          (
+            sum(increase(fantasy_series_sync_duration_seconds_count{
+              job="polemica-fantasy-backend",
+              result="error"
+            }[15m]))
+            +
+            sum(increase(fantasy_scoring_duration_seconds_count{
+              job="polemica-fantasy-backend",
+              result="error"
+            }[15m]))
+          ) >= 3
+        for: 5m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: warning
+        annotations:
+          summary: Polemica Fantasy sync or scoring repeatedly fails
+          description: At least three sync or scoring executions failed during the last 15 minutes.
+          runbook: ops/monitoring/yandex/runbooks/domain-operation-errors.md
+
+      - alert: FantasyNotificationDeliveryErrorRateHigh
+        expr: |
+          (
+            sum(increase(fantasy_notification_deliveries_total{
+              job="polemica-fantasy-backend",
+              outcome="error"
+            }[15m]))
+            /
+            sum(increase(fantasy_notification_deliveries_total{
+              job="polemica-fantasy-backend",
+              outcome=~"sent|error"
+            }[15m]))
+          ) > 0.20
+          and
+          sum(increase(fantasy_notification_deliveries_total{
+            job="polemica-fantasy-backend",
+            outcome=~"sent|error"
+          }[15m])) >= 10
+        for: 5m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: warning
+        annotations:
+          summary: Polemica Fantasy notification delivery error rate is high
+          description: More than 20 percent of at least 10 attempted Telegram deliveries failed during the last 15 minutes.
+          runbook: ops/monitoring/yandex/runbooks/notification-errors.md

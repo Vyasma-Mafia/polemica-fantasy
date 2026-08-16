@@ -63,7 +63,7 @@ class MarketplaceWatchScheduler(
                 )
                 marketplaceWatchPendingRepository.deleteAllByTelegramUser_Id(userId)
             } catch (e: Exception) {
-                log.error("Failed to flush marketplace watch notifications for userId={}", userId, e)
+                log.error("Failed to flush marketplace watch notifications", e)
             }
         }
     }

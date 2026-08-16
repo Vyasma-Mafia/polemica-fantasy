@@ -1,0 +1,15 @@
+groups:
+  - name: polemica-fantasy-notification-test
+    interval: 1m
+    rules:
+      - alert: PolemicaFantasyNotificationTest
+        expr: vector(1) == 1
+        for: 1m
+        labels:
+          service: polemica-fantasy
+          environment: production
+          severity: critical
+          synthetic: "true"
+        annotations:
+          summary: Synthetic Polemica Fantasy notification test
+          description: This alert is expected during alert-channel acceptance testing and must be removed immediately afterwards.

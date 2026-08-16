@@ -58,7 +58,7 @@ class PerkStatisticsService(
                 }
             } catch (e: Exception) {
                 profileFetchFailures++
-                log.warn("getProfileGames failed for polemicaUserId={}: {}", userId, e.message)
+                log.warn("getProfileGames failed for one player: {}", e.message)
             }
         }
 

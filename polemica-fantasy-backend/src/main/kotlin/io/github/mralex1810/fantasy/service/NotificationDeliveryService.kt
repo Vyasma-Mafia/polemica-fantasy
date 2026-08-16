@@ -2,6 +2,8 @@ package io.github.mralex1810.fantasy.service
 
 import io.github.mralex1810.fantasy.config.TelegramProperties
 import io.github.mralex1810.fantasy.entity.NotificationCategory
+import io.github.mralex1810.fantasy.observability.FantasyMetrics
+import io.github.mralex1810.fantasy.observability.FantasyMetrics.NotificationOutcome
 import io.github.mralex1810.fantasy.repository.NotificationPreferenceRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.telegram.InlineKeyboardMarkup
@@ -18,6 +20,7 @@ class NotificationDeliveryService(
     private val telegramProperties: TelegramProperties,
     private val telegramUserRepository: TelegramUserRepository,
     private val notificationPreferenceRepository: NotificationPreferenceRepository,
+    private val fantasyMetrics: FantasyMetrics,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -52,6 +55,11 @@ class NotificationDeliveryService(
                 telegramProperties.notifications.enabled,
                 token.isBlank(),
             )
+            fantasyMetrics.recordNotificationDeliveries(
+                category = category,
+                outcome = NotificationOutcome.GLOBALLY_DISABLED,
+                count = recipients.size,
+            )
             return DeliveryReport()
         }
 
@@ -63,73 +71,105 @@ class NotificationDeliveryService(
             if (index > 0) {
                 sleepQuietly(BATCH_DELAY_MS)
             }
-            val user = telegramUserRepository.findByTelegramId(chatId)
-            if (user == null) {
-                failed++
-                continue
-            }
-            val userId = user.id ?: run {
-                failed++
-                continue
-            }
-            if (user.botBlocked) {
-                skippedBlocked++
-                continue
-            }
-            if (!isCategoryEnabledForUser(userId, category)) {
-                skippedPreference++
-                continue
-            }
-
-            val text = textProvider(chatId)
-            val sendResult = telegramBotApiClient.sendMessageSafe(
-                botToken = token,
-                chatId = chatId,
-                text = text,
-                parseMode = parseMode,
-                replyMarkup = replyMarkup,
-            )
-            when (sendResult) {
-                is TelegramSendResult.Success -> sent++
-                is TelegramSendResult.BotBlocked -> {
-                    if (!user.botBlocked) {
-                        user.botBlocked = true
-                        telegramUserRepository.save(user)
-                    }
-                    skippedBlocked++
-                    log.info("Marked user chatId={} as bot_blocked (desc={})", chatId, sendResult.description)
+            try {
+                val user = telegramUserRepository.findByTelegramId(chatId)
+                if (user == null) {
+                    failed++
+                    fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                    continue
                 }
-                is TelegramSendResult.RateLimited -> {
-                    sleepQuietly(sendResult.retryAfterSeconds * 1000L)
-                    val retryResult = telegramBotApiClient.sendMessageSafe(
-                        botToken = token,
-                        chatId = chatId,
-                        text = text,
-                        parseMode = parseMode,
-                        replyMarkup = replyMarkup,
-                    )
-                    if (retryResult is TelegramSendResult.Success) {
+                val userId = user.id ?: run {
+                    failed++
+                    fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                    continue
+                }
+                if (user.botBlocked) {
+                    skippedBlocked++
+                    fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.BOT_BLOCKED)
+                    continue
+                }
+                if (!isCategoryEnabledForUser(userId, category)) {
+                    skippedPreference++
+                    fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.PREFERENCE_DISABLED)
+                    continue
+                }
+
+                val text = textProvider(chatId)
+                val sendResult = telegramBotApiClient.sendMessageSafe(
+                    botToken = token,
+                    chatId = chatId,
+                    text = text,
+                    parseMode = parseMode,
+                    replyMarkup = replyMarkup,
+                )
+                when (sendResult) {
+                    is TelegramSendResult.Success -> {
                         sent++
-                    } else {
-                        if (retryResult is TelegramSendResult.BotBlocked && !user.botBlocked) {
+                        fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.SENT)
+                    }
+                    is TelegramSendResult.BotBlocked -> {
+                        if (!user.botBlocked) {
                             user.botBlocked = true
                             telegramUserRepository.save(user)
-                            skippedBlocked++
-                        } else {
-                            failed++
                         }
-                        log.warn("Notification retry failed for chatId={} result={}", chatId, retryResult)
+                        skippedBlocked++
+                        fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.BOT_BLOCKED)
+                        log.info(
+                            "Marked notification recipient as unreachable category={} (stored as bot_blocked, desc={})",
+                            category,
+                            sendResult.description,
+                        )
+                    }
+                    is TelegramSendResult.RateLimited -> {
+                        sleepQuietly(sendResult.retryAfterSeconds * 1000L)
+                        val retryResult = telegramBotApiClient.sendMessageSafe(
+                            botToken = token,
+                            chatId = chatId,
+                            text = text,
+                            parseMode = parseMode,
+                            replyMarkup = replyMarkup,
+                        )
+                        when (retryResult) {
+                            is TelegramSendResult.Success -> {
+                                sent++
+                                fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.SENT)
+                            }
+                            is TelegramSendResult.BotBlocked -> {
+                                if (!user.botBlocked) {
+                                    user.botBlocked = true
+                                    telegramUserRepository.save(user)
+                                }
+                                skippedBlocked++
+                                fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.BOT_BLOCKED)
+                            }
+                            else -> {
+                                failed++
+                                fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                            }
+                        }
+                        if (retryResult !is TelegramSendResult.Success) {
+                            log.warn(
+                                "Notification retry failed for category={} resultType={}",
+                                category,
+                                retryResult.javaClass.simpleName,
+                            )
+                        }
+                    }
+                    is TelegramSendResult.OtherError -> {
+                        failed++
+                        fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                        log.warn(
+                            "Telegram error category={} code={} description={}",
+                            category,
+                            sendResult.code,
+                            sendResult.description,
+                        )
                     }
                 }
-                is TelegramSendResult.OtherError -> {
-                    failed++
-                    log.warn(
-                        "Telegram error chatId={} code={} description={}",
-                        chatId,
-                        sendResult.code,
-                        sendResult.description,
-                    )
-                }
+            } catch (e: Exception) {
+                failed++
+                fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                log.warn("Notification preparation or delivery failed for category={}", category, e)
             }
         }
         return DeliveryReport(

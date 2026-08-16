@@ -1,0 +1,69 @@
+service:
+  flush: 5
+  daemon: off
+  log_level: info
+  storage.path: /var/lib/fluent-bit/storage
+  storage.sync: normal
+  storage.checksum: on
+  storage.backlog.mem_limit: 5M
+
+parsers:
+  - name: spring_logstash
+    format: json
+    time_key: '@timestamp'
+    time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
+    time_keep: on
+
+pipeline:
+  inputs:
+    - name: tail
+      tag: polemica.backend
+      path: /var/log/polemica-fantasy/backend.json
+      parser: spring_logstash
+      db: /var/lib/fluent-bit/polemica-fantasy.db
+      read_from_head: false
+      refresh_interval: 5
+      rotate_wait: 30
+      skip_long_lines: on
+      buffer_chunk_size: 64K
+      buffer_max_size: 256K
+      mem_buf_limit: 10M
+      storage.type: filesystem
+      processors:
+        logs:
+          - name: opentelemetry_envelope
+          - name: content_modifier
+            context: otel_resource_attributes
+            action: upsert
+            key: service.name
+            value: polemica-fantasy-backend
+          - name: content_modifier
+            context: otel_resource_attributes
+            action: upsert
+            key: cluster
+            value: production
+          - name: content_modifier
+            context: otel_resource_attributes
+            action: upsert
+            key: host
+            value: vyasma-mafia
+
+  outputs:
+    - name: opentelemetry
+      match: polemica.backend
+      host: ingest.monium.yandex.cloud
+      port: 443
+      logs_uri: /otlp/v1/logs
+      logs_body_key: message
+      logs_body_key_attributes: false
+      logs_severity_text_message_key: level
+      header: Authorization Api-Key ${MONIUM_LOGS_API_KEY}
+      header: x-monium-project folder__b1gdldjru7jl4ljql7ij
+      header: x-monium-cluster production
+      header: x-monium-service polemica-fantasy-backend
+      compress: gzip
+      tls: on
+      tls.verify: on
+      storage.total_limit_size: 100M
+      retry_limit: no_limits
+      workers: 2

@@ -1,0 +1,228 @@
+{
+  "folderId": "b1gdldjru7jl4ljql7ij",
+  "name": "polemica-fantasy-production",
+  "description": "Production domain, runtime, and host signals for Polemica Fantasy from Managed Prometheus.",
+  "title": "Polemica Fantasy — Production",
+  "labels": {
+    "environment": "production",
+    "service": "polemica-fantasy"
+  },
+  "widgets": [
+    {
+      "position": {"x": "0", "y": "0", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfuptime",
+        "title": "Backend uptime",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "process_uptime_seconds{job=\"polemica-fantasy-backend\"}",
+            "textMode": true,
+            "name": "uptime"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_LINE",
+          "interpolate": "INTERPOLATE_LINEAR",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "18", "y": "0", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfhttp5x",
+        "title": "HTTP request rate and 5xx percentage",
+        "displayLegend": true,
+        "targets": [
+          {
+            "prometheusTarget": {
+              "dataSourceId": "msp",
+              "workspaceId": "mon9v9q5apml8dnnchl7",
+              "query": "sum(rate(http_server_requests_seconds_count{job=\"polemica-fantasy-backend\"}[5m]))",
+              "textMode": true,
+              "name": "requests_per_second"
+            }
+          },
+          {
+            "prometheusTarget": {
+              "dataSourceId": "msp",
+              "workspaceId": "mon9v9q5apml8dnnchl7",
+              "query": "100 * sum(rate(http_server_requests_seconds_count{job=\"polemica-fantasy-backend\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"polemica-fantasy-backend\"}[5m])), 0.001)",
+              "textMode": true,
+              "name": "5xx_percent"
+            }
+          }
+        ],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_LINE",
+          "interpolate": "INTERPOLATE_LINEAR",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "0", "y": "8", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfactive",
+        "title": "Active series",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "fantasy_active_series_count{job=\"polemica-fantasy-backend\"}",
+            "textMode": true,
+            "name": "active_series"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_LINE",
+          "interpolate": "INTERPOLATE_LEFT",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "18", "y": "8", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfsched",
+        "title": "Scheduler successful-run age",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "time() - fantasy_scheduler_last_success_timestamp_seconds{job=\"polemica-fantasy-backend\"}",
+            "textMode": true,
+            "name": "success_age_seconds"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_LINE",
+          "interpolate": "INTERPOLATE_LINEAR",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "0", "y": "16", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfsync",
+        "title": "Series sync executions (1h)",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "sum by (result, kind) (increase(fantasy_series_sync_duration_seconds_count{job=\"polemica-fantasy-backend\"}[1h]))",
+            "textMode": true,
+            "name": "sync"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_COLUMN",
+          "interpolate": "INTERPOLATE_LEFT",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "18", "y": "16", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfscore",
+        "title": "Scoring executions (1h)",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "sum by (result) (increase(fantasy_scoring_duration_seconds_count{job=\"polemica-fantasy-backend\"}[1h]))",
+            "textMode": true,
+            "name": "scoring"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_COLUMN",
+          "interpolate": "INTERPOLATE_LEFT",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "0", "y": "24", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pfnotify",
+        "title": "Notification outcomes (1h)",
+        "displayLegend": true,
+        "targets": [{
+          "prometheusTarget": {
+            "dataSourceId": "msp",
+            "workspaceId": "mon9v9q5apml8dnnchl7",
+            "query": "sum by (category, outcome) (increase(fantasy_notification_deliveries_total{job=\"polemica-fantasy-backend\"}[1h]))",
+            "textMode": true,
+            "name": "notifications"
+          }
+        }],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_COLUMN",
+          "interpolate": "INTERPOLATE_LEFT",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    },
+    {
+      "position": {"x": "18", "y": "24", "w": "18", "h": "8"},
+      "multiSourceChart": {
+        "id": "pffinal",
+        "title": "Finalization effects (24h)",
+        "displayLegend": true,
+        "targets": [
+          {
+            "prometheusTarget": {
+              "dataSourceId": "msp",
+              "workspaceId": "mon9v9q5apml8dnnchl7",
+              "query": "increase(fantasy_series_finalizations_total{job=\"polemica-fantasy-backend\"}[24h])",
+              "textMode": true,
+              "name": "finalizations"
+            }
+          },
+          {
+            "prometheusTarget": {
+              "dataSourceId": "msp",
+              "workspaceId": "mon9v9q5apml8dnnchl7",
+              "query": "increase(fantasy_series_finalization_rewarded_users_total{job=\"polemica-fantasy-backend\"}[24h])",
+              "textMode": true,
+              "name": "rewarded_users"
+            }
+          },
+          {
+            "prometheusTarget": {
+              "dataSourceId": "msp",
+              "workspaceId": "mon9v9q5apml8dnnchl7",
+              "query": "increase(fantasy_series_finalization_card_uses_decremented_total{job=\"polemica-fantasy-backend\"}[24h])",
+              "textMode": true,
+              "name": "card_uses_decremented"
+            }
+          }
+        ],
+        "dataSources": [{"prometheusDataSource": {"id": "msp", "step": "60000"}}],
+        "visualizationSettings": {
+          "type": "VISUALIZATION_TYPE_COLUMN",
+          "interpolate": "INTERPOLATE_LEFT",
+          "colorSchemeSettings": {"automatic": {}}
+        }
+      }
+    }
+  ],
+  "parametrization": {}
+}

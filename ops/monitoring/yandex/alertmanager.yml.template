@@ -1,0 +1,31 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: warning-receiver
+  group_by:
+    - alertname
+    - service
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: critical-receiver
+      matchers:
+        - severity="critical"
+    - receiver: warning-receiver
+      matchers:
+        - severity="warning"
+
+receivers:
+  - name: warning-receiver
+    yandex_monitoring_configs:
+      - channel_names:
+          - __WARNING_TELEGRAM_CHANNEL__
+        send_resolved: true
+  - name: critical-receiver
+    yandex_monitoring_configs:
+      - channel_names:
+          - __CRITICAL_TELEGRAM_CHANNEL__
+          - __CRITICAL_EMAIL_CHANNEL__
+        send_resolved: true

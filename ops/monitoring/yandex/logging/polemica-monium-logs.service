@@ -1,0 +1,21 @@
+[Unit]
+Description=Polemica Fantasy logs to Monium
+Documentation=https://yandex.cloud/en/docs/monium/logs/write/fluent-bit
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/polemica-fantasy/monium-logs.env
+ExecStart=/opt/fluent-bit/bin/fluent-bit --config=/etc/fluent-bit/polemica-fantasy.yaml
+Restart=always
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/log/polemica-fantasy
+ReadWritePaths=/var/lib/fluent-bit
+
+[Install]
+WantedBy=multi-user.target

@@ -67,7 +67,7 @@ class PeriodicRatingAchievementProgressEventListener(
             runCatching {
                 achievementProgressService.recomputeEnabledForUser(internalUserId, CONDITIONS)
             }.onFailure { error ->
-                log.error("Failed to recompute periodic rating achievements for user {}", internalUserId, error)
+                log.error("Failed to recompute periodic rating achievements for one recipient", error)
             }
         }
     }

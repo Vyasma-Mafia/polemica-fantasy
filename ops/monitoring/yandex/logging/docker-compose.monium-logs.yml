@@ -1,0 +1,15 @@
+# Production rollout override. The same settings also live in
+# docker-compose.prod.yml so normal deployments keep structured logging after
+# these repository changes reach master.
+services:
+  fantasy-backend:
+    environment:
+      LOGGING_FILE_NAME: /var/log/polemica-fantasy/backend.json
+      LOGGING_STRUCTURED_FORMAT_FILE: logstash
+      LOGGING_STRUCTURED_JSON_STACKTRACE_MAX_LENGTH: 16384
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE: 10MB
+      LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP: 100MB
+      LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY: 7
+      LOGGING_LEVEL_COM_GITHUB_MAFIA_VYASMA_POLEMICA_LIBRARY: WARN
+    volumes:
+      - /var/log/polemica-fantasy:/var/log/polemica-fantasy

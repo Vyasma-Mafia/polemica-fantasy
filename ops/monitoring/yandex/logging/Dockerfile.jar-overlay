@@ -1,0 +1,4 @@
+# Build a lightweight runtime overlay without running Gradle on the shared VM.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+COPY app.jar /app/app.jar
