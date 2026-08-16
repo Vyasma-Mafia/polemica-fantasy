@@ -4,7 +4,71 @@
 - [x] Admin readiness/finalization допускает готовые `UPCOMING`/`ACTIVE`/`SCORING` серии без snapshot-hash в UI; backend повторно проверяет readiness под lock, а Telegram automation сохраняет `SCORING` + checksum fence.
 - [x] Ложные timeout после committed finalization устранены: массовый achievement recompute для `SERIES_FINALIZED` выполняется best-effort async по пользователям, admin перепроверяет неоднозначный HTTP outcome, tracked Nginx fallback поднят до 300 секунд.
 
+## Production Telegram webhook relay (август 2026)
+- [x] Создан DNS `tg-hook.maftourbot.ru -> 91.108.240.119`; на VPS2 установлен Nginx и выпущен Let's Encrypt сертификат с успешным renewal dry-run.
+- [x] HTTPS ingress принимает только exact `POST /api/v1/telegram/webhook` из официальных Telegram CIDR, сохраняет secret header, не логирует body/secret и возвращает upstream non-2xx/`502` без маскировки.
+- [x] Внутренний тракт `VPS2 wg2 -> VPS1 wg0 -> Fantasy wg-tg` ограничен адресами `10.20.0.2 -> 10.10.0.4:18082`, а listener Fantasy Nginx доступен только через WireGuard и проксирует на loopback backend `127.0.0.1:18080`.
+- [x] Webhook переключён с `drop_pending_updates=false`; реальный Telegram update получил `200`, pending queue стала `0`, `last_error` очищен. Synthetic import callback записан и обработан один раз, pending/leased inbox rows = `0`.
+- [x] Rollback установлен на Fantasy VPS: `sudo /usr/local/sbin/polemica-webhook-rollback`.
+
+## Telegram league import automation (август 2026)
+- [x] Automatic writes имеют delivery barrier: pending operator notification должна быть успешно доставлена, после чего начинается новый 120-секундный hold; Bot API outage блокирует lease/write.
+- [x] Global-off/mode/generation sweeps terminally отменяют jobs/actions, очищают lease token и supersede pending alerts; source edit выполняет job cancellation после commit без обратного lock order.
+- [x] Sync/scoring сохраняют selector fingerprints, а completion требует совпадения текущего tournament/series/roster/alias selector с обоими checkpoints.
+- [x] Admin API/UI поддерживает `expectedGameCount`, запрещает ручной выбор `FINISHED` и блокирует `SCORING` без ожидаемого числа игр.
+- [x] Admin finalization выполняется через readiness preview и обязательный checksum-bound confirm; stale readiness отклоняется backend под lock.
+- [x] `AUTO_CREATE_PENDING` / `AUTO_FINALIZE_PENDING` уведомляют операторский чат об ETA, mode и policy generation; финализация имеет отдельный cancel hold не менее 120 секунд.
+- [x] Automatic-конфиг fail-fast требует ingest + production writes + operator notifications, а automatic finalize также result processing; stale manual actions привязаны к generation и отменяются при mode/generation change.
+- [x] Production rollout manual-flow выполнен коммитом `cec1abe`: Flyway V76, backend OCR roster mapping и worker OCR включены, roster write разрешён только после same-actor preview/confirm; backend/worker healthy, старый backlog не переигрывался.
+- [x] Real-corpus OCR hardening: golden `2243` подтверждает 10/10 ЛП; golden `2247` разбирает caption replacement `Монарх → Воробей`, explicit OCR aliases `Градиент → Gradient` / `Cristo I → Cristo` и атомарно создаёт итоговый состав без исходящего игрока. Неизвестные/неоднозначные формулировки блокируются.
+
 ## Что реализовано
+
+### Discovery: Скаутская лаборатория и импорт анонса (август 2026)
+- [x] Создан отдельный brief `docs/features/IDEAS-SCOUTING-LAB-AND-ANNOUNCEMENT-IMPORT.md` с продуктовым сценарием, mobile UX, MVP, API/data sketches, производительностью, метриками, рисками и этапами развития обеих идей.
+- [x] Лаборатория явно не дублирует scoring replay: она до дедлайна сравнивает доступные пользователю карты и предлагает объяснимые допустимые составы по историческим данным; перед реализацией требуется coverage/selection-bias audit.
+- [x] Импорт уточнён под allowlisted `@polemica_closed_league`: read-only Telethon worker под user session принимает/polls и классифицирует `ANNOUNCEMENT`/`RESULT`, Yandex Vision OCR + schema-constrained extraction извлекают факты анонса, backend разрешает tournament/aliases/kind-specific fields, а result post запускает Polemica sync/reconciliation/scoring и readiness preview. Telegram не является scoring source of truth.
+- [x] Зафиксирована automation ladder: shadow ingest -> reviewed announcement apply -> result assistant с human finalize -> guarded auto-create/auto-finalize только после lifecycle hardening и shadow evidence.
+- [x] Lifecycle hardening: финализация берёт pessimistic row lock `series`; `updateSeries -> FINISHED` начинает с того же lock; sync/rescore отклоняются для finalized series до внешнего HTTP и повторно проверяют состояние под lock перед записью, включая пустой sync.
+- [x] Telethon auth bootstrap развёрнут и проверен на production: dedicated account/session читает allowlisted `@polemica_closed_league`, identity metadata сохранена, session directory/file permissions `0700/0600`, one-shot container завершён.
+- [x] Fail-closed VPN guard установлен: отдельная external network `172.24.0.0/28`, весь её egress через table 201, независимый nftables forward hook блокирует любой выход не через `wg-tg`, systemd применяет его до Docker и timer восстанавливает правила.
+- [x] Production shadow channel-ingest запущен отдельным daemon service: bounded crash-safe polling/backfill, immutable revisions, rolling/deep edit reconciliation, conservative ЗЛ/ЛП classifier, durable SQLite inbox/outbox и healthcheck. Первый backfill: 100 сообщений, 22 `RESULT`, 78 `IGNORE`; repeated canary idempotent, notifications выключены, production series/finalized counts неизменны.
+- [x] Operator notifications включены в существующий приватный админский чат через Fantasy bot: explicit `notify-test` доставлен, worker healthy с `notificationsEnabled=true`, 2 накопившихся shadow-candidate события доставлены, pending/failed outbox = 0. Bot token хранится только в restricted VPS env; reuse существующего production bot принят как осознанный blast-radius компромисс.
+- [x] Announcement classifier rule v2 поддерживает русские текстовые даты (`11 августа`) и numeric dates; добавлен targeted idempotent replay одного Telegram message без массовой переотправки истории. Пропущенный ЛП series 34 post `2234` успешно пере-классифицирован и доставлен как один shadow candidate.
+- [ ] Следующий этап — подтвердить mapping сезонов ЗЛ/ЛП, deadline/expected-game policies, OCR/media retention и reviewed apply contract; actual CREATED/FINALIZED notifications реализовать в backend только `AFTER_COMMIT`.
+
+### Backend: подавление недоступных onboarding-чатов (август 2026)
+- [x] По production-логам подтверждена причина `onboarding_tips; error`: Telegram отвечал `400 Bad Request: chat not found` для 55 уникальных чатов, а scheduler повторял те же попытки каждый час (476 ошибок за 7 запусков, 68 за запуск).
+- [x] Только точный ответ `chat not found` переведён в существующий permanent-recipient suppression flow с `bot_blocked`; новый вход пользователя в TMA по-прежнему снимает флаг и разрешает повторную доставку.
+- [x] Другие Telegram `400` остаются delivery errors; в delivery-логи добавлена категория уведомления. Targeted `TelegramBotApiClientTest` и `NotificationDeliveryServiceTest` проходят.
+- [x] Backend выпущен вместе с observability rollout; первый production batch пометил недоступных адресатов через `bot_blocked`, не прерывая доставку остальным. Новые cloud-логи не содержат chat/user IDs.
+
+### Production observability: Yandex Managed Prometheus (август 2026)
+- [x] Repository rule `FantasyActiveSeriesSchedulerStale` hardened against cold-start repository failures via `completion > success` with the existing 20-minute grace period; fatal-path scheduler regression added.
+- [ ] Upload the updated tracked `ops/monitoring/yandex/rules/domain.yml` to MSP and confirm the rule evaluates without parser/runtime errors.
+- [x] Создан отдельный MSP workspace `mon9v9q5apml8dnnchl7`; attached service account `logger-robot` получил folder role `monitoring.editor`, без замены service account и без статического ключа на VM.
+- [x] На `vyasma-mafia` установлен pinned Unified Agent `26.07.11`: Actuator и status остаются loopback-only, конфигурация проходит `check-config`, systemd unit enabled/active, Remote Write работает без ошибок и потерь.
+- [x] Backend экспортирует low-cardinality `fantasy_*` метрики sync/scoring/finalization/notifications/schedulers через единый facade; finalization считается синхронным `AFTER_COMMIT` listener, notification — по конечному outcome после retry.
+- [x] Кардинальность ограничена exact allowlist-фильтрами без `fantasy_*` wildcard: live 36 domain + 127 application + 33 Linux series; фиксированный worst case domain contract = 135, общий hard gate = 450. Сетевые интерфейсы, HTTP client URLs и другие высококардинальные метрики не отправляются.
+- [x] Загружены и проверены PromQL rules `FantasyMetricsMissing`, `FantasyBackend5xxHigh`, `FantasyDatabasePoolSaturated`; critical -> Cloud Push + email, warning -> Cloud Push. Синтетический firing/resolved тест успешно доставлен и удалён.
+- [x] Загружены domain rules `FantasyActiveSeriesSchedulerStale`, `FantasySyncOrScoringRepeatedErrors`, `FantasyNotificationDeliveryErrorRateHigh`; MSP API подтверждает `OK` без evaluation error.
+- [x] Через официальный DashboardService gRPC API создан `Polemica Fantasy — Production` (`polemica-fantasy-production`, id `fbec6eh0cj6qn8u95p6r`) с 8 MSP widgets; все PromQL запросы проходят parser, target-level `step: "auto"` удалён как невалидный Remote API duration, UI показывает реальные графики всех 8 widgets без alert errors.
+- [x] Production backend развёрнут lightweight overlay из локально собранного JAR; старый image сохранён как `rollback-domain-metrics-20260805`, server checkout остался чистым кроме существующего `achievement-report.json`.
+- [ ] Telegram notification channel — после активации Yandex Cloud notification bot получателем.
+
+### Production observability: direct Monium Logs (август 2026)
+- [x] `logger-robot` получил folder role `monium.logs.writer`; отдельный API key `ajeo1kns6trm1ga75luu` ограничен scope `yc.monium.logs.write` и хранится только в `/etc/polemica-fantasy/monium-logs.env` как `root:root 0600`.
+- [x] Backend пишет Logstash JSON в `/var/log/polemica-fantasy/backend.json` с rotation 10 MB/file, 100 MB total и history 7 days; Docker console cap `10m x 3` сохранён.
+- [x] Dedicated `polemica-monium-logs.service` на pinned/tested Fluent Bit `5.1.0` отправляет OTLP/HTTP напрямую в project `folder__b1gdldjru7jl4ljql7ij`, cluster `production`, service `polemica-fantasy-backend`; filesystem queue ограничена 100 MB. Legacy generic `fluent-bit.service`/`yc-logging` config не используются и остались disabled/untouched.
+- [x] Cloud-log guardrails: явные Telegram/internal user IDs удалены из сообщений; Telegram transport exceptions больше не сохраняют cause с token-bearing URI; `com.github.mafia.vyasma.polemica.library` понижен до WARN, потому что INFO auth refresh раскрывал configured username.
+- [x] End-to-end acceptance в Monium Logs подтверждает свежий startup и ещё 49 post-fix records; среди них 0 email patterns, 0 explicit user/chat ID patterns и 0 bot-token patterns. Backend `UP`, forwarder/Unified Agent active, auth/TLS/retry errors отсутствуют.
+- [x] Backend развёрнут lightweight JAR overlay `f4e2f23c8412...`; предыдущий image сохранён как `rollback-pre-monium-20260806`, server git checkout не менялся. Targeted Telegram secret-leak test, Kotlin compilation, Spring JSON smoke, Compose validation и Fluent Bit `--dry-run` прошли.
+- [!] Первый acceptance-query до WARN override успел отправить одну запись с Polemica login email; дальнейшая отправка закрыта, но уже принятая запись остаётся в Monium до истечения retention.
+
+### Production infra: восстановление Telegram Bot API egress (июль 2026)
+- [x] Подтверждено внешнее ограничение маршрута Yandex Cloud → Telegram: DNS корректен, локальный firewall не блокирует, обычный HTTPS работает, но новые TCP-соединения к Telegram массово терялись до TLS.
+- [x] На production fantasy VPS настроен отдельный WireGuard `wg-tg` к существующей двухузловой цепочке с зарубежным egress `91.108.240.119`; через table `201` направляются только официальные Telegram IPv4 CIDR для Docker-сети приложения.
+- [x] Конфигурация переживает restart `wg-quick@wg-tg`, включена в autostart; root Bot API probes и авторизованный `getMe` проходят, остальной backend egress остаётся прямым через `51.250.18.236`.
 
 ### Backend + Admin: сверка результатов игроков серии (июль 2026)
 - [x] Добавлен admin endpoint `GET /api/v1/admin/series/{id}/results`: фактические участники берутся из `series_game.game_data_cache`, а текущие базовые очки — со строгим разбором публичной Polemica match-page по позиции за столом; fantasy-перки, rarity modifiers и неполный `fantasy_team_card_game_score` не используются.
@@ -80,6 +144,7 @@
 - [x] Flyway **V64** добавляет `fantasy_player_alias` как source of truth для Polemica id и `fantasy_player_merge_audit`; `fantasy_player.polemica_user_id` остаётся cached primary alias.
 - [x] Backend получил resolver Polemica id -> `fantasy_player`, admin add-alias и merge preview/confirm под `/api/v1/admin/fantasy-players`.
 - [x] Merge переносит прямые FK на target (`tournament_player`/`series_player` с dedupe, `card_pack_player`, watches, favorite badge, card merge audit, `card_template`) и блокирует pending JSON/config references, replacement alias conflicts и active-team duplicate-player conflicts.
+- [x] Исторические replacement alias references в finalized series больше не блокируют merge и сохраняются без переписывания; тот же конфликт в нефинализированной серии остаётся blocker.
 - [x] Add player by Polemica id, STANDALONE sync, scoring, perk statistics и series replacement validation учитывают все aliases; scoring сначала ищет aliases основного игрока, затем replacement fallback.
 - [x] Admin Players показывает aliases, добавляет alias и выполняет merge через preview modal с blockers/warnings и обязательной причиной.
 
@@ -785,6 +850,27 @@
 - [ ] Отдельный `getPlayerGames` / фильтрация на сервере — сейчас используется пагинация `getProfileGames` из артефакта 1.8.2
 
 ## Известные проблемы
+- **2026-08-14 — Telegram OCR roster production canary:** worker schema
+  v3 и backend V76 добавляют evidence-bound Yandex OCR и exact tournament-roster
+  matching. Happy path создаёт серию сразу с полным составом после same-actor
+  preview/confirm; incomplete/ambiguous/album/provider failure остаётся
+  `NEEDS_REVIEW` без кнопки записи; media create доступен только в `MANUAL`, не
+  в `AUTOMATIC`. Scoped Yandex Vision key проверен реальным HTTPS smoke через
+  VPN worker; V76 и OCR/roster flags включены в production при `MANUAL` mode.
+  Реальные `2243`/`2247` проверены Yandex Vision и закреплены golden fixtures;
+  `2247` покрывает подпись с заменой и production roster mappings. Следующий
+  свежий single-photo announcement остаётся operational canary полного
+  Telegram delivery → preview → human confirm пути.
+- **2026-08-11 — Telegram guarded create/result slice (local, not deployed):**
+  добавлены HMAC ingest и durable review workflow в admin chat с кнопками
+  `Проверить создание` → `Создать без состава`; exact chat + exact message +
+  same-actor confirm, атомарные source/audit/outcome записи и ссылка на ручное
+  назначение roster. Worker остаётся SHADOW/VPN-only, BACKEND mode не хранит Bot
+  API credentials и не доставляет silent bootstrap. RESULT post теперь exact
+  links к ANNOUNCEMENT series и проходит durable sync/score/readiness pipeline;
+  manual/automatic create/finalize выбираются per-policy, но global write/result
+  gates и все modes default-off. OCR/media, roster automation, non-STANDALONE и
+  correction/reopen остаются TODO.
 - Детекторы перков зависят от полноты модели `PolemicaGame` (голосования, кики, лучший ход); при расхождениях с Полемикой уточнять по реальным логам API
 - В `UserApiIntegrationTest` по-прежнему падает legacy-сценарий `POST fantasy team rejects more than one LEGENDARY per team()` (`expected 400, actual 200`) — не относится к complaints-функционалу и требует отдельного решения по актуальному правилу лимита legendary в лигах
 

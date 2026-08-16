@@ -8,3 +8,4 @@ scripts/telegram-support-export/config.yml
 scripts/telegram-support-export/*.session
 .local-dev-logs/
 .superpowers/
+tmp/imagegen/
