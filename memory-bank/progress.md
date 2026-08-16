@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-08-16 — STANDALONE sync снова additive:** ранее найденные игры не удаляются при изменении префикса, даты или ростера; явное ручное удаление остается доступно. Competition sync сохраняет snapshot-семантику диапазона.
+
 ## Admin series finalization (август 2026)
 - [x] Admin readiness/finalization допускает готовые `UPCOMING`/`ACTIVE`/`SCORING` серии без snapshot-hash в UI; backend повторно проверяет readiness под lock, а Telegram automation сохраняет `SCORING` + checksum fence.
 - [x] Ложные timeout после committed finalization устранены: массовый achievement recompute для `SERIES_FINALIZED` выполняется best-effort async по пользователям, admin перепроверяет неоднозначный HTTP outcome, tracked Nginx fallback поднят до 300 секунд.

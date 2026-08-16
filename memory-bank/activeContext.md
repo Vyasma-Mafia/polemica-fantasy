@@ -1,5 +1,7 @@
 # Active Context
 
+- **2026-08-16 (backend / additive STANDALONE game membership):** `DefaultGameSyncService` снова сохраняет уже привязанные к `STANDALONE`-серии игры при последующих изменениях `namePrefix`, `gameStartedOn` или ростера. Новый selector используется только для добавления/обновления совпавших игр; ошибочную старую привязку можно удалить вручную через admin API. Для `POLEMICA_COMPETITION` диапазон по-прежнему является authoritative snapshot и удаляет игры вне актуальной выборки.
+
 ## Changelog
 - **2026-08-16 (observability config hardening, not yet uploaded to MSP):** tracked `FantasyActiveSeriesSchedulerStale` now also recognizes `completion > success`, so a cold-start repository failure cannot be hidden by the initial zero active-series gauges. The rule retains the 20-minute grace period through `process_uptime_seconds`, and the scheduler test covers the fatal repository path. Monium logging docs were aligned with Fluent Bit `5.1.0` and the notification runbook now states that missing recipients count as delivery errors.
 - **2026-08-16 (backend / fantasy player merge):** `REPLACEMENT_ALIAS_CONFLICTS` теперь учитывает только нефинализированные серии: историческая замена на alias объединяемого профиля в finalized series сохраняется для аудита и больше не блокирует merge. Активные/незавершённые серии по-прежнему блокируются; добавлены integration-сценарии для обеих веток.

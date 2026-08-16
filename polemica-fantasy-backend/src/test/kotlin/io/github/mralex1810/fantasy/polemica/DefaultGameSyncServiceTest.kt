@@ -162,12 +162,26 @@ class DefaultGameSyncServiceTest {
     }
 
     @Test
-    fun `successful selector sync removes games no longer returned`() {
+    fun `standalone sync retains games no longer matched after selector change`() {
         val series = standaloneSeries()
-        val stale = SeriesGame(series = series, polemicaGameId = 99L).apply { id = 909L }
         `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
         `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
         `when`(seriesPlayerRepository.findAllBySeries_Id(1L)).thenReturn(emptyList())
+
+        service().syncGames(1L)
+
+        verify(fantasyTeamCardGameScoreRepository, never()).deleteAllBySeriesGameId(anyLong())
+        verify(seriesGameRepository, never()).deleteAll(anyNotNull())
+        verify(seriesGameRepository, never()).flush()
+    }
+
+    @Test
+    fun `competition sync removes games outside authoritative range`() {
+        val series = competitionSeries()
+        val stale = SeriesGame(series = series, polemicaGameId = 99L).apply { id = 909L }
+        `when`(seriesRepository.findById(1L)).thenReturn(Optional.of(series))
+        `when`(seriesRepository.findByIdForUpdate(1L)).thenReturn(series)
+        `when`(integration.listCompetitionGameReferences(42L)).thenReturn(emptyList())
         `when`(seriesGameRepository.findAllBySeries_Id(1L)).thenReturn(listOf(stale))
 
         service().syncGames(1L)
@@ -198,6 +212,16 @@ class DefaultGameSyncServiceTest {
             tournament = Tournament(kind = TournamentKind.STANDALONE),
             namePrefix = "Alias Cup",
             finalized = finalized,
+        ).apply { id = 1L }
+
+    private fun competitionSeries() =
+        Series(
+            tournament = Tournament(
+                kind = TournamentKind.POLEMICA_COMPETITION,
+                polemicaCompetitionId = 42L,
+            ),
+            gameNumFrom = 1,
+            gameNumTo = 5,
         ).apply { id = 1L }
 
     private fun seriesPlayer(fantasyPlayerId: Long, polemicaUserId: Long) =

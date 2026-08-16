@@ -178,15 +178,20 @@ class DefaultGameSyncService(
         if (selectorFingerprintService.fingerprint(seriesId) != selectorChecksum) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Series game selector changed while syncing")
         }
-        val preparedIds = prepared.mapTo(hashSetOf()) { it.polemicaGameId }
-        val staleGames = seriesGameRepository.findAllBySeries_Id(seriesId)
-            .filter { it.polemicaGameId !in preparedIds }
-        staleGames.forEach { stale ->
-            stale.id?.let(fantasyTeamCardGameScoreRepository::deleteAllBySeriesGameId)
-        }
-        if (staleGames.isNotEmpty()) {
-            seriesGameRepository.deleteAll(staleGames)
-            seriesGameRepository.flush()
+        // STANDALONE selection is additive: once a game has matched the series, later prefix/date/roster
+        // edits must not detach it. Operators can still remove an incorrectly attached game explicitly.
+        // Competition ranges remain snapshot-based because their numbered range is authoritative.
+        if (series.tournament?.kind == TournamentKind.POLEMICA_COMPETITION) {
+            val preparedIds = prepared.mapTo(hashSetOf()) { it.polemicaGameId }
+            val staleGames = seriesGameRepository.findAllBySeries_Id(seriesId)
+                .filter { it.polemicaGameId !in preparedIds }
+            staleGames.forEach { stale ->
+                stale.id?.let(fantasyTeamCardGameScoreRepository::deleteAllBySeriesGameId)
+            }
+            if (staleGames.isNotEmpty()) {
+                seriesGameRepository.deleteAll(staleGames)
+                seriesGameRepository.flush()
+            }
         }
         var created = 0
         var updated = 0
