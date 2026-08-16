@@ -139,7 +139,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
     @Query(
         value =
             """
-            SELECT DISTINCT tu.telegram_id
+            SELECT tu.telegram_id
             FROM telegram_user tu
             WHERE tu.bot_blocked = FALSE
               AND NOT EXISTS (

@@ -834,6 +834,43 @@ class AdminApiIntegrationTest {
     }
 
     @Test
+    @Order(181)
+    fun `deadline reminder recipient query executes on PostgreSQL`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Reminder Recipient Query Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        val seriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Reminder Recipient Query Round","namePrefix":"RRQ","status":"UPCOMING",
+                    "startsAt":"2099-09-01T12:00:00Z","teamDeadline":"2099-09-01T13:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val seriesId = Regex("\"id\"\\s*:\\s*(\\d+)").find(seriesJson)!!.groupValues[1].toLong()
+
+        val eligibleTelegramId = 777_181L
+        telegramUserRepository.save(TelegramUser(telegramId = eligibleTelegramId))
+
+        val recipients = telegramUserRepository.findDeadlineReminderRecipients(seriesId, tournamentId)
+
+        assertTrue(eligibleTelegramId in recipients)
+    }
+
+    @Test
     @Order(19)
     fun `series admin can remove selected player listings from marketplace`() {
         val auth = basicAuth("admin", "test-admin-secret")
