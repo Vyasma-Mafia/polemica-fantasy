@@ -3,7 +3,6 @@ import type {
   AssignSeriesPlayersRequest,
   BatchStartSeriesRequest,
   CreateSeriesRequest,
-  FinalizeSeriesRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
 import type {
@@ -101,9 +100,8 @@ export function getSeriesCompletionPreview(id: number) {
   return apiJson<SeriesCompletionPreviewDto>(`/v1/admin/series/${id}/completion-preview`)
 }
 
-export function finalizeSeries(id: number, body: FinalizeSeriesRequest) {
+export function finalizeSeries(id: number) {
   return apiJson<SeriesFinalizationResultDto>(`/v1/admin/series/${id}/finalize`, {
     method: 'POST',
-    body: JSON.stringify(body),
   })
 }

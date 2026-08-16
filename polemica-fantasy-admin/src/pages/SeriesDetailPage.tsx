@@ -33,6 +33,7 @@ import {
 } from '../api/series'
 import type { UpdateSeriesRequest } from '../api/seriesRequests'
 import type { AdminSeriesGameDto, SeriesStatus, TournamentKind } from '../api/types'
+import { ApiError } from '../api/client'
 import { SeriesResultsDrawer } from '../components/SeriesResultsDrawer'
 
 export function SeriesDetailPage() {
@@ -183,7 +184,7 @@ export function SeriesDetailPage() {
   })
 
   const finalizeMut = useMutation({
-    mutationFn: (readinessChecksum: string) => finalizeSeries(seriesId, { readinessChecksum }),
+    mutationFn: () => finalizeSeries(seriesId),
     onSuccess: (res) => {
       message.success(
         `Finalized: rewards ${res.rewardsDistributed}, cards updated ${res.cardsDecremented}`,
@@ -194,33 +195,76 @@ export function SeriesDetailPage() {
       })
       void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
     },
-    onError: (e: Error) => message.error(e.message),
+    onError: async (e: Error) => {
+      const reconcileKey = `series-finalization-${seriesId}`
+      const reconcile = async () => {
+        try {
+          const latest = await getSeries(seriesId)
+          qc.setQueryData(['admin', 'series', seriesId], latest)
+          return latest.finalized
+        } catch {
+          return false
+        }
+      }
+
+      if (await reconcile()) {
+        message.success('Series finalized; the response was delayed')
+        invalidateSeriesGameState()
+        void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+        return
+      }
+      if (e instanceof ApiError && e.status < 500) {
+        message.error(e.message)
+        return
+      }
+
+      message.loading({
+        key: reconcileKey,
+        content: 'The response was delayed. Checking finalization status…',
+        duration: 0,
+      })
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 5_000))
+        if (await reconcile()) {
+          message.success({
+            key: reconcileKey,
+            content: 'Series finalized; the response was delayed',
+          })
+          invalidateSeriesGameState()
+          void qc.invalidateQueries({ queryKey: ['admin', 'tournaments'] })
+          return
+        }
+      }
+      message.warning({
+        key: reconcileKey,
+        content: 'Finalization result is still unknown. Refresh the series before retrying.',
+        duration: 0,
+      })
+    },
   })
 
   const completionPreviewMut = useMutation({
     mutationFn: () => getSeriesCompletionPreview(seriesId),
     onSuccess: (preview) => {
-      if (!preview.ready || !preview.readinessChecksum) {
+      if (!preview.ready) {
         message.error(`Series is not ready to finalize: ${preview.reason ?? 'unknown reason'}`)
         return
       }
-      const checksum = preview.readinessChecksum
       Modal.confirm({
-        title: 'Finalize series with this verified snapshot?',
+        title: 'Finalize series?',
         content: (
           <Space direction="vertical">
             <Typography.Text>
               Card uses will be decremented and leaderboard rewards paid. This cannot be undone.
             </Typography.Text>
-            <Typography.Text code>Readiness: {checksum.slice(0, 12)}…</Typography.Text>
             <Typography.Text type="secondary">
-              If games, scores, roster, cards, rewards, or Telegram result evidence change, the backend will reject this confirmation.
+              The backend will verify games, scores, roster, cards, rewards, and Telegram result evidence immediately before finalizing.
             </Typography.Text>
           </Space>
         ),
-        okText: 'Finalize verified snapshot',
+        okText: 'Finalize series',
         okButtonProps: { danger: true },
-        onOk: () => finalizeMut.mutateAsync(checksum),
+        onOk: () => finalizeMut.mutateAsync(),
       })
     },
     onError: (e: Error) => message.error(e.message),
@@ -714,7 +758,7 @@ export function SeriesDetailPage() {
           onClick={() => completionPreviewMut.mutate()}
           loading={completionPreviewMut.isPending || finalizeMut.isPending}
         >
-          Finalize series
+          {finalizeMut.isPending ? 'Finalizing…' : 'Finalize series'}
         </Button>
       </Space>
       <SeriesResultsDrawer

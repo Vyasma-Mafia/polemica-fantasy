@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
-import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.time.LocalDate
@@ -109,9 +108,8 @@ data class AddSeriesGameRequest(
 )
 
 data class FinalizeSeriesRequest(
-    @field:NotBlank
-    @field:Pattern(regexp = "[0-9a-f]{64}")
-    val readinessChecksum: String,
+    /** Rolling-deploy compatibility for older admin bundles. Ignored by the backend. */
+    val readinessChecksum: String? = null,
 )
 
 data class LinkLegacySeriesSourcesRequest(

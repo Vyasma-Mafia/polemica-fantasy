@@ -5,8 +5,6 @@ import io.github.mralex1810.fantasy.event.AchievementProgressEventType
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
@@ -15,11 +13,33 @@ class AchievementProgressEventListener(
     private val achievementProgressService: AchievementProgressService,
 ) {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun onAchievementProgress(event: AchievementProgressEvent) {
-        if (event.type == AchievementProgressEventType.PERIODIC_RATING_FINALIZED) return
+        if (
+            event.type == AchievementProgressEventType.PERIODIC_RATING_FINALIZED ||
+            event.type == AchievementProgressEventType.SERIES_FINALIZED
+        ) return
         event.internalTelegramUserIds.forEach { internalUserId ->
             achievementProgressService.recomputeEnabledForUser(internalUserId)
+        }
+    }
+}
+
+@Component
+class SeriesFinalizationAchievementProgressEventListener(
+    private val achievementProgressService: AchievementProgressService,
+) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onSeriesFinalized(event: AchievementProgressEvent) {
+        if (event.type != AchievementProgressEventType.SERIES_FINALIZED) return
+        event.internalTelegramUserIds.forEach { internalUserId ->
+            runCatching {
+                achievementProgressService.recomputeEnabledForUser(internalUserId)
+            }.onFailure { error ->
+                log.error("Failed to recompute series finalization achievements for one recipient", error)
+            }
         }
     }
 }

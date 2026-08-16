@@ -354,7 +354,6 @@ export interface SeriesDto {
 
 export interface SeriesCompletionPreviewDto {
   ready: boolean
-  readinessChecksum: string | null
   reason: string | null
 }
 

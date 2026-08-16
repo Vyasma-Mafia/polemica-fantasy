@@ -35,12 +35,29 @@ class SeriesFinalizationService(
 
     @Transactional
     fun finalizeSeries(seriesId: Long, expectedReadinessChecksum: String? = null): SeriesFinalizationResultDto {
+        return finalizeSeries(seriesId, expectedReadinessChecksum, adminInitiated = false)
+    }
+
+    @Transactional
+    fun finalizeFromAdmin(seriesId: Long): SeriesFinalizationResultDto {
+        return finalizeSeries(seriesId, expectedReadinessChecksum = null, adminInitiated = true)
+    }
+
+    private fun finalizeSeries(
+        seriesId: Long,
+        expectedReadinessChecksum: String?,
+        adminInitiated: Boolean,
+    ): SeriesFinalizationResultDto {
         val series = seriesRepository.findByIdForUpdate(seriesId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $seriesId not found")
         if (series.finalized) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Series already finalized")
         }
-        val completion = seriesCompletionService.evaluateForFinalization(seriesId)
+        val completion = if (adminInitiated) {
+            seriesCompletionService.evaluateForAdminFinalization(seriesId)
+        } else {
+            seriesCompletionService.evaluateForFinalization(seriesId)
+        }
         if (!completion.ready) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Series is not ready to finalize: ${completion.reason}")
         }

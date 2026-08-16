@@ -110,7 +110,7 @@ class SeriesAdminController(
 
     @GetMapping("/series/{id}/completion-preview")
     fun getCompletionPreview(@PathVariable id: Long): SeriesCompletionPreviewDto =
-        seriesCompletionService.evaluate(id).let {
+        seriesCompletionService.evaluateForAdmin(id).let {
             SeriesCompletionPreviewDto(
                 ready = it.ready,
                 readinessChecksum = it.checksum,
@@ -118,12 +118,13 @@ class SeriesAdminController(
             )
         }
 
+    @Suppress("UNUSED_PARAMETER")
     @PostMapping("/series/{id}/finalize")
     fun finalizeSeries(
         @PathVariable id: Long,
-        @Valid @RequestBody body: FinalizeSeriesRequest,
+        @RequestBody(required = false) legacyBody: FinalizeSeriesRequest? = null,
     ): SeriesFinalizationResultDto =
-        seriesFinalizationService.finalizeSeries(id, body.readinessChecksum)
+        seriesFinalizationService.finalizeFromAdmin(id)
 
     @PostMapping("/series/{id}/telegram-sources/legacy-link")
     fun linkLegacyTelegramSources(

@@ -26,7 +26,7 @@ data class SeriesCompletion(
     val ready: Boolean get() = status == SeriesCompletionStatus.READY
 }
 
-/** One conservative readiness gate shared by admin and Telegram finalization. */
+/** Conservative readiness gates for admin and Telegram finalization. */
 @Service
 class SeriesCompletionService(
     private val seriesRepository: SeriesRepository,
@@ -38,16 +38,31 @@ class SeriesCompletionService(
     private val economyFingerprintService: SeriesEconomyFingerprintService,
     private val selectorFingerprintService: SeriesGameSelectorFingerprintService,
 ) {
-    fun evaluate(seriesId: Long): SeriesCompletion = evaluate(seriesId, lockEvidence = false)
+    fun evaluate(seriesId: Long): SeriesCompletion =
+        evaluate(seriesId, lockEvidence = false, requireScoringStatus = true)
+
+    fun evaluateForAdmin(seriesId: Long): SeriesCompletion =
+        evaluate(seriesId, lockEvidence = false, requireScoringStatus = false)
 
     /** Caller must already hold the series row lock; this fences concurrent RESULT edits. */
-    fun evaluateForFinalization(seriesId: Long): SeriesCompletion = evaluate(seriesId, lockEvidence = true)
+    fun evaluateForFinalization(seriesId: Long): SeriesCompletion =
+        evaluate(seriesId, lockEvidence = true, requireScoringStatus = true)
 
-    private fun evaluate(seriesId: Long, lockEvidence: Boolean): SeriesCompletion {
+    /** Admin finalization keeps every readiness guard except the workflow status requirement. */
+    fun evaluateForAdminFinalization(seriesId: Long): SeriesCompletion =
+        evaluate(seriesId, lockEvidence = true, requireScoringStatus = false)
+
+    private fun evaluate(
+        seriesId: Long,
+        lockEvidence: Boolean,
+        requireScoringStatus: Boolean,
+    ): SeriesCompletion {
         val series = seriesRepository.findByIdWithTournament(seriesId)
             ?: return notReady("series does not exist")
         if (series.finalized || series.status == SeriesStatus.FINISHED) return notReady("series is already finalized")
-        if (series.status != SeriesStatus.SCORING) return notReady("series status must be SCORING")
+        if (requireScoringStatus && series.status != SeriesStatus.SCORING) {
+            return notReady("series status must be SCORING")
+        }
         val expected = series.expectedGameCount ?: return notReady("expected game count is not configured")
         val telegramManaged = leagueImportRepository.hasSourceLinks(seriesId)
         if (telegramManaged && series.tournament?.kind != TournamentKind.STANDALONE) {

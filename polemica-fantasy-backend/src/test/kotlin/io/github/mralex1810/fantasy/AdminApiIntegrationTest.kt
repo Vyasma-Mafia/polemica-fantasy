@@ -428,12 +428,11 @@ class AdminApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.ready").value(false))
             .andExpect(jsonPath("$.readinessChecksum").doesNotExist())
+            .andExpect(jsonPath("$.reason").value("expected game count is not configured"))
 
         mockMvc.perform(
             post("/api/v1/admin/series/$seriesId/finalize")
                 .header("Authorization", auth)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"readinessChecksum":"${"0".repeat(64)}"}"""),
         )
             .andExpect(status().isConflict)
     }

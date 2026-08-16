@@ -28,6 +28,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.`when`
 import org.springframework.context.ApplicationEventPublisher
@@ -81,6 +82,30 @@ class SeriesFinalizationServiceTest {
             service.finalizeSeries(1L)
         }
         assertEquals(409, ex.statusCode.value())
+    }
+
+    @Test
+    fun `admin finalization uses readiness without the scoring status gate`() {
+        val s = Series(
+            tournament = Tournament(name = "Admin tournament"),
+            status = SeriesStatus.ACTIVE,
+            finalized = false,
+            name = "Admin series",
+        ).apply { id = 2L }
+        `when`(seriesRepository.findByIdForUpdate(2L)).thenReturn(s)
+        `when`(seriesCompletionService.evaluateForAdminFinalization(2L)).thenReturn(
+            SeriesCompletion(SeriesCompletionStatus.READY, "b".repeat(64)),
+        )
+        `when`(fantasyTeamRepository.findAllWithCardsForScoring(2L)).thenReturn(emptyList())
+
+        val result = service.finalizeFromAdmin(2L)
+
+        assertEquals(0, result.rewardsDistributed)
+        assertEquals(0, result.cardsDecremented)
+        assertEquals(true, s.finalized)
+        assertEquals(SeriesStatus.FINISHED, s.status)
+        verify(seriesCompletionService).evaluateForAdminFinalization(2L)
+        verify(seriesCompletionService, never()).evaluateForFinalization(2L)
     }
 
     @Test

@@ -122,6 +122,7 @@ data class SeriesDto(
 
 data class SeriesCompletionPreviewDto(
     val ready: Boolean,
+    /** Deprecated rolling-deploy compatibility for older admin bundles; new clients ignore it. */
     val readinessChecksum: String?,
     val reason: String?,
 )

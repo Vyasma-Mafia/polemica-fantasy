@@ -1,5 +1,9 @@
 # Progress
 
+## Admin series finalization (август 2026)
+- [x] Admin readiness/finalization допускает готовые `UPCOMING`/`ACTIVE`/`SCORING` серии без snapshot-hash в UI; backend повторно проверяет readiness под lock, а Telegram automation сохраняет `SCORING` + checksum fence.
+- [x] Ложные timeout после committed finalization устранены: массовый achievement recompute для `SERIES_FINALIZED` выполняется best-effort async по пользователям, admin перепроверяет неоднозначный HTTP outcome, tracked Nginx fallback поднят до 300 секунд.
+
 ## Что реализовано
 
 ### Backend + Admin: сверка результатов игроков серии (июль 2026)

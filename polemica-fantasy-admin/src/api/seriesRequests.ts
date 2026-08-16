@@ -33,10 +33,6 @@ export interface UpdateSeriesRequest {
   streamLinks?: StreamLinkRequest[] | null
 }
 
-export interface FinalizeSeriesRequest {
-  readinessChecksum: string
-}
-
 export interface AssignSeriesPlayersRequest {
   tournamentPlayerIds: number[]
   replacementPolemicaUserIds?: Record<number, number | null>
