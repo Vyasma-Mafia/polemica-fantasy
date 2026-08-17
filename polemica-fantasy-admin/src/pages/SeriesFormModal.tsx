@@ -1,7 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, DatePicker, Form, Input, InputNumber, Select, Space } from 'antd'
 import dayjs from 'dayjs'
-import type { CreateSeriesRequest } from '../api/seriesRequests'
+import { MAX_EXPECTED_GAME_COUNT, type CreateSeriesRequest } from '../api/seriesRequests'
 import type { SeriesStatus, TournamentKind } from '../api/types'
 
 interface Values {
@@ -144,7 +144,7 @@ export function SeriesFormModal({
               : Promise.reject(new Error('Required before SCORING')),
         })]}
       >
-        <InputNumber min={1} max={32} precision={0} style={{ width: '100%' }} />
+        <InputNumber min={1} max={MAX_EXPECTED_GAME_COUNT} precision={0} style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item label="Series stream links">
         <Form.List name="streamLinks">

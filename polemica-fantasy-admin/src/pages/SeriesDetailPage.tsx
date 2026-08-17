@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { TableProps } from 'antd'
+import { MAX_EXPECTED_GAME_COUNT } from '../api/seriesRequests'
 import { getTournament } from '../api/tournaments'
 import {
   addSeriesGame,
@@ -495,7 +496,7 @@ export function SeriesDetailPage() {
                 : Promise.reject(new Error('Required before SCORING')),
           })]}
         >
-          <InputNumber min={1} max={32} precision={0} style={{ width: '100%' }} />
+          <InputNumber min={1} max={MAX_EXPECTED_GAME_COUNT} precision={0} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item label="Series stream links">
           <Form.List name="streamLinks">

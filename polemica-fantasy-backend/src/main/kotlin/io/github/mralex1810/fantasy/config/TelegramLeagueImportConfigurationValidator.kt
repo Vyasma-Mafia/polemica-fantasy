@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.config
 
+import io.github.mralex1810.fantasy.entity.MAX_EXPECTED_GAME_COUNT
 import jakarta.annotation.PostConstruct
 import org.springframework.stereotype.Component
 import java.text.Normalizer
@@ -45,7 +46,9 @@ class TelegramLeagueImportConfigurationValidator(
             require(policy.tournamentId > 0 && policy.namePrefix.isNotBlank() && policy.nameTemplate.contains("%d")) {
                 "Enabled Telegram league import policy is incomplete"
             }
-            require(policy.expectedGameCount in 1..32) { "League expected game count must be between 1 and 32" }
+            require(policy.expectedGameCount in 1..MAX_EXPECTED_GAME_COUNT) {
+                "League expected game count must be between 1 and $MAX_EXPECTED_GAME_COUNT"
+            }
             require(policy.expectedRosterCount in 1..32) { "League expected roster count must be between 1 and 32" }
             require(policy.timezone == "Europe/Moscow") { "Telegram league import currently supports only Europe/Moscow" }
             require(policy.rosterNicknameAliases.all { it.key.isNotBlank() && it.value.isNotBlank() }) {

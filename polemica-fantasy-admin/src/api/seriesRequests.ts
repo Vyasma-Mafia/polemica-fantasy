@@ -1,5 +1,7 @@
 import type { SeriesStatus } from './types'
 
+export const MAX_EXPECTED_GAME_COUNT = 1000
+
 export interface StreamLinkRequest {
   label?: string | null
   url: string

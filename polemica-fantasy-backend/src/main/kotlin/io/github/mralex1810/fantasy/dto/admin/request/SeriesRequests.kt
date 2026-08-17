@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.dto.admin.request
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonSetter
 import io.github.mralex1810.fantasy.dto.StreamLinkRequest
+import io.github.mralex1810.fantasy.entity.MAX_EXPECTED_GAME_COUNT
 import io.github.mralex1810.fantasy.entity.SeriesStatus
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
@@ -29,7 +30,7 @@ data class CreateSeriesRequest(
     val startsAt: Instant,
     @field:NotNull
     val teamDeadline: Instant,
-    @field:Min(1) @field:Max(32)
+    @field:Min(1) @field:Max(MAX_EXPECTED_GAME_COUNT.toLong())
     val expectedGameCount: Int? = null,
     @field:Valid
     val streamLinks: List<StreamLinkRequest> = emptyList(),
@@ -67,7 +68,7 @@ class UpdateSeriesRequest {
 
     var teamDeadline: Instant? = null
 
-    @field:Min(1) @field:Max(32)
+    @field:Min(1) @field:Max(MAX_EXPECTED_GAME_COUNT.toLong())
     var expectedGameCount: Int? = null
         @JsonSetter("expectedGameCount")
         set(value) {

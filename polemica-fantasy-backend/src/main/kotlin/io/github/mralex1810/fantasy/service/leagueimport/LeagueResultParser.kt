@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service.leagueimport
 
 import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
+import io.github.mralex1810.fantasy.entity.MAX_EXPECTED_GAME_COUNT
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
 
@@ -39,7 +40,7 @@ class LeagueResultParser(
         if (tags.size != 1) return LeagueResultParseResult.Blocked("expected exactly one supported result hashtag")
         val league = if (tags.single() == "лп") "ЛП" else "ЗЛ"
         val policy = properties.policy(league) ?: return LeagueResultParseResult.Blocked("league policy is disabled")
-        if (policy.tournamentId <= 0 || policy.expectedGameCount !in 1..32) {
+        if (policy.tournamentId <= 0 || policy.expectedGameCount !in 1..MAX_EXPECTED_GAME_COUNT) {
             return LeagueResultParseResult.Blocked("league result policy is incomplete")
         }
 

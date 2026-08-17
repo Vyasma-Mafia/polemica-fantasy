@@ -1,6 +1,7 @@
 package io.github.mralex1810.fantasy.service.leagueimport
 
 import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
+import io.github.mralex1810.fantasy.entity.MAX_EXPECTED_GAME_COUNT
 import org.springframework.stereotype.Component
 import java.security.MessageDigest
 import java.time.Instant
@@ -48,8 +49,10 @@ class LeagueAnnouncementParser(
         if (policy.timezone != MOSCOW_ZONE.id) {
             return LeagueAnnouncementParseResult.Blocked("only Europe/Moscow policy is supported")
         }
-        if (policy.expectedGameCount !in 1..32) {
-            return LeagueAnnouncementParseResult.Blocked("expected game count must be between 1 and 32")
+        if (policy.expectedGameCount !in 1..MAX_EXPECTED_GAME_COUNT) {
+            return LeagueAnnouncementParseResult.Blocked(
+                "expected game count must be between 1 and $MAX_EXPECTED_GAME_COUNT",
+            )
         }
 
         val seriesNumbers = SERIES_NUMBER.findAll(normalized).mapNotNull { it.groupValues[1].toLongOrNull() }.distinct().toList()

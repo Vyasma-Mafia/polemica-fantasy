@@ -15,6 +15,8 @@ import jakarta.persistence.Table
 import java.time.Instant
 import java.time.LocalDate
 
+const val MAX_EXPECTED_GAME_COUNT = 1_000
+
 @Entity
 @Table(name = "series")
 class Series(

@@ -57,6 +57,16 @@ class TelegramLeagueImportConfigurationValidatorTest {
         assertDoesNotThrow { validator(properties).validate() }
     }
 
+    @Test
+    fun `expected game count accepts one thousand but rejects larger values`() {
+        val properties = automaticProperties()
+        properties.policies.lp.expectedGameCount = 1_000
+        assertDoesNotThrow { validator(properties).validate() }
+
+        properties.policies.lp.expectedGameCount = 1_001
+        assertThrows(IllegalArgumentException::class.java) { validator(properties).validate() }
+    }
+
     private fun automaticProperties() = TelegramLeagueImportProperties(
         enabled = true,
         ingestEnabled = true,
