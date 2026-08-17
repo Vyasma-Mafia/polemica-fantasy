@@ -174,6 +174,7 @@ class LeagueImportResultProcessingService(
                 "sourceUrl" to draft.sourceUrl,
                 "rewardsDistributed" to finalization.rewardsDistributed,
                 "cardsDecremented" to finalization.cardsDecremented,
+                "operatorMessageId" to (job.operatorMessageId ?: repository.findLatestDeliveredMessageId(item.id)),
             ),
         )
     }
@@ -201,7 +202,11 @@ class LeagueImportResultProcessingService(
                 repository.updateItemState(it.id, "FAILED", reason)
                 repository.enqueueOutbox(
                     "league-import:${it.id}:${job.operation.lowercase()}-failed:$jobId", it.id, null, "FINALIZE_FAILED",
-                    mapOf("reason" to reason.take(256), "sourceUrl" to "https://t.me/polemica_closed_league/${it.sourceMessageId}"),
+                    mapOf(
+                        "reason" to reason.take(256),
+                        "sourceUrl" to "https://t.me/polemica_closed_league/${it.sourceMessageId}",
+                        "operatorMessageId" to job.operatorMessageId,
+                    ),
                 )
             }
         } else {
@@ -219,12 +224,15 @@ class LeagueImportResultProcessingService(
         actionType: String,
         boundActorId: Long?,
         ttlSeconds: Long,
+        operatorMessageId: Long? = null,
     ) {
         val id = UUID.randomUUID()
         val callbackData = tokenCodec.encode(id)
+        val targetMessageId = operatorMessageId ?: repository.findLatestDeliveredMessageId(itemId)
         repository.createAction(
             id, itemId, version, revision, checksum, properties.policyGeneration, actionType, tokenCodec.hash(callbackData),
             boundActorId, properties.operatorChatId, Instant.now().plusSeconds(ttlSeconds),
+            operatorMessageId = targetMessageId,
         )
         repository.enqueueOutbox(
             "league-import:$itemId:v$version:$actionType:$id", itemId, id, actionType,

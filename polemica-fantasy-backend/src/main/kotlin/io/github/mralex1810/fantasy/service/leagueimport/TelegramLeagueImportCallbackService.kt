@@ -7,7 +7,9 @@ import io.github.mralex1810.fantasy.config.LeagueImportAutomationMode
 import io.github.mralex1810.fantasy.repository.LeagueImportActionRow
 import io.github.mralex1810.fantasy.repository.LeagueImportItemRow
 import io.github.mralex1810.fantasy.repository.LeagueImportRepository
+import io.github.mralex1810.fantasy.repository.SeriesRepository
 import io.github.mralex1810.fantasy.dto.internal.TelegramLeagueImportMediaEvidence
+import io.github.mralex1810.fantasy.entity.SeriesStatus
 import io.github.mralex1810.fantasy.service.SeriesCompletionService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -26,6 +28,8 @@ class TelegramLeagueImportCallbackService(
     private val completionService: SeriesCompletionService,
     private val resultProcessingService: LeagueImportResultProcessingService,
     private val rosterResolver: LeagueImportRosterResolver,
+    private val createService: LeagueImportCreateService,
+    private val seriesRepository: SeriesRepository,
 ) {
     @Transactional
     fun tryHandle(root: JsonNode): LeagueImportCallbackResult {
@@ -55,7 +59,8 @@ class TelegramLeagueImportCallbackService(
         val item = repository.findItemById(action.itemId, lock = true) ?: return handled(queryId, "Кандидат не найден")
         val createReady = if (action.actionType.startsWith("CREATE_")) freshReady(item, action) else null
         val finalizeReady = if (action.actionType.startsWith("FINALIZE_")) freshFinalize(item, action) else null
-        if (createReady == null && finalizeReady == null) {
+        val activateReady = action.actionType == "ACTIVATE" && freshActivate(item, action)
+        if (createReady == null && finalizeReady == null && !activateReady) {
             repository.updateActionStatus(action.id, "STALE")
             return handled(queryId, "Кандидат изменился или больше не готов")
         }
@@ -65,15 +70,23 @@ class TelegramLeagueImportCallbackService(
                 ingestService.offerAction(
                     item.id, item.version, item.currentRevision, createReady.announcement, "CREATE_PREVIEW", null,
                     properties.previewTtlSeconds, createReady.roster,
+                    action.operatorMessageId,
+                )
+            } else if (finalizeReady != null) {
+                resultProcessingService.offerFinalizeAction(
+                    item.id, item.version, item.currentRevision, finalizeReady.second, finalizeReady.first,
+                    "FINALIZE_PREVIEW", null, properties.previewTtlSeconds, action.operatorMessageId,
                 )
             } else {
-                resultProcessingService.offerFinalizeAction(
-                    item.id, item.version, item.currentRevision, finalizeReady!!.second, finalizeReady.first,
-                    "FINALIZE_PREVIEW", null, properties.previewTtlSeconds,
+                createService.offerActivation(
+                    item,
+                    item.targetSeriesId!!,
+                    action.operatorMessageId,
+                    action.boundActorTelegramId,
                 )
             }
-            repository.updateItemState(item.id, "PREVIEW_PENDING")
-            return handled(queryId, "Срок кнопки истёк — отправляю новую проверку")
+            if (!activateReady) repository.updateItemState(item.id, "PREVIEW_PENDING")
+            return handled(queryId, "Срок кнопки истёк — обновляю сообщение")
         }
         val updateId = root.path("update_id").takeIf { it.isIntegralNumber }?.asLong()
             ?: return handled(queryId, "Telegram update не содержит идентификатор")
@@ -87,6 +100,7 @@ class TelegramLeagueImportCallbackService(
                     ingestService.offerAction(
                         item.id, item.version, item.currentRevision, createReady!!.announcement, "CREATE_CONFIRM", actorId,
                         properties.confirmationTtlSeconds, createReady.roster,
+                        action.operatorMessageId,
                     )
                     repository.updateItemState(item.id, "AWAITING_CONFIRMATION")
                     repository.audit(item.id, action.id, actorId, "PREVIEW_REQUESTED", "ACCEPTED")
@@ -116,6 +130,7 @@ class TelegramLeagueImportCallbackService(
                     resultProcessingService.offerFinalizeAction(
                         item.id, item.version, item.currentRevision, readinessChecksum, draft,
                         "FINALIZE_CONFIRM", actorId, properties.confirmationTtlSeconds,
+                        action.operatorMessageId,
                     )
                     repository.updateItemState(item.id, "AWAITING_CONFIRMATION")
                     repository.audit(item.id, action.id, actorId, "FINALIZE_PREVIEW_REQUESTED", "ACCEPTED")
@@ -134,10 +149,23 @@ class TelegramLeagueImportCallbackService(
                     repository.enqueueJob(
                         item.id, item.version, item.currentRevision, item.draftChecksum!!, properties.policyGeneration,
                         "FINALIZE", item.targetSeriesId, actorId, readinessChecksum,
+                        operatorMessageId = action.operatorMessageId,
                     )
                     repository.updateItemState(item.id, "FINALIZE_PENDING")
                     repository.audit(item.id, action.id, actorId, "FINALIZE_CONFIRMED", "QUEUED")
                     handled(queryId, "Финализация поставлена в очередь")
+                }
+            }
+            "ACTIVATE" -> {
+                if (!properties.productionWritesEnabled ||
+                    properties.policy(item.leagueCode)?.createMode == LeagueImportAutomationMode.DISABLED) {
+                    return handled(queryId, "Перевод серии в ACTIVE временно отключён")
+                }
+                if (!repository.recordCallback(action.id, "OFFERED", "CALLBACK_RECEIVED", updateId, queryId, actorId, actorUsername)) {
+                    handled(queryId, "Действие уже обработано")
+                } else {
+                    createService.activate(action.id)
+                    handled(queryId, "Серия переведена в ACTIVE")
                 }
             }
             else -> handled(queryId, "Неподдерживаемое действие")
@@ -186,6 +214,15 @@ class TelegramLeagueImportCallbackService(
         val completion = completionService.evaluate(item.targetSeriesId)
         if (!completion.ready || completion.checksum != action.draftChecksum) return null
         return draft to completion.checksum
+    }
+
+    private fun freshActivate(item: LeagueImportItemRow, action: LeagueImportActionRow): Boolean {
+        if (item.state != "APPLIED" || item.targetSeriesId == null || item.version != action.itemVersion ||
+            item.currentRevision != action.sourceRevision || item.draftChecksum != action.draftChecksum ||
+            item.policyGeneration != properties.policyGeneration || action.policyGeneration != properties.policyGeneration ||
+            properties.policy(item.leagueCode)?.createMode == LeagueImportAutomationMode.DISABLED) return false
+        val series = seriesRepository.findById(item.targetSeriesId).orElse(null) ?: return false
+        return !series.finalized && series.status == SeriesStatus.UPCOMING
     }
 
     private fun handled(queryId: String, answer: String) = LeagueImportCallbackResult(true, queryId, answer)

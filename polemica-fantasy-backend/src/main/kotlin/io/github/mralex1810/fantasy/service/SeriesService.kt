@@ -218,6 +218,17 @@ class SeriesService(
         return result.toDto(assignment.tournamentPlayerIds, assignment.replacementPolemicaUserIds, counts.first, counts.second)
     }
 
+    /** Strict lifecycle transition used by operator automation. */
+    @Transactional
+    fun activateUpcomingSeries(id: Long): SeriesDto {
+        val series = seriesRepository.findByIdForUpdate(id)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Series $id not found")
+        if (series.finalized || series.status != SeriesStatus.UPCOMING) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "Series $id is not UPCOMING")
+        }
+        return updateSeries(id, UpdateSeriesRequest().also { it.status = SeriesStatus.ACTIVE })
+    }
+
     @Transactional
     fun batchStartSeries(seriesIds: List<Long>): BatchStartSeriesResponse {
         val started = mutableListOf<StartedSeriesEntry>()

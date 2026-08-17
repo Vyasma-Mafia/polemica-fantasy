@@ -30,6 +30,8 @@ class LeagueImportActionScheduler(
                 val policy = item?.let { properties.policy(it.leagueCode) }
                 val modeSafe = when {
                     action.actionType.startsWith("CREATE_") -> policy?.createMode == LeagueImportAutomationMode.MANUAL
+                    action.actionType == "ACTIVATE" -> policy?.createMode != null &&
+                        policy.createMode != LeagueImportAutomationMode.DISABLED
                     action.actionType.startsWith("FINALIZE_") -> policy?.finalizeMode == LeagueImportAutomationMode.MANUAL
                     else -> false
                 }
@@ -38,6 +40,7 @@ class LeagueImportActionScheduler(
                 val preview = action.actionType.endsWith("PREVIEW")
                 val writeGatesSafe = preview || when {
                     action.actionType.startsWith("CREATE_") -> properties.productionWritesEnabled
+                    action.actionType == "ACTIVATE" -> properties.productionWritesEnabled
                     action.actionType.startsWith("FINALIZE_") -> properties.productionWritesEnabled &&
                         properties.resultProcessingEnabled
                     else -> false

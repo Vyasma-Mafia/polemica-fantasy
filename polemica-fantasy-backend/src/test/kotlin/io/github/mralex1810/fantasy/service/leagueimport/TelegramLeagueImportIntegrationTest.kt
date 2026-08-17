@@ -217,13 +217,14 @@ class TelegramLeagueImportIntegrationTest {
         assertEquals("CALLBACK_RECEIVED", importRepository.findAction(previewId)!!.status)
         val confirmId = actionId(itemId, "CREATE_CONFIRM")
         assertEquals(42L, importRepository.findAction(confirmId)!!.boundActorTelegramId)
-        importRepository.markActionOffered(confirmId, 7003)
+        assertEquals(7001L, importRepository.findAction(confirmId)!!.operatorMessageId)
+        importRepository.markActionOffered(confirmId, 7001)
         val confirmToken = tokenCodec.encode(confirmId)
 
-        callbackService.tryHandle(callback(104, "confirm-wrong-actor", confirmToken, 43, properties.operatorChatId, 7003))
+        callbackService.tryHandle(callback(104, "confirm-wrong-actor", confirmToken, 43, properties.operatorChatId, 7001))
         assertEquals("OFFERED", importRepository.findAction(confirmId)!!.status)
 
-        callbackService.tryHandle(callback(105, "confirm-ok", confirmToken, 42, properties.operatorChatId, 7003))
+        callbackService.tryHandle(callback(105, "confirm-ok", confirmToken, 42, properties.operatorChatId, 7001))
         val confirmed = importRepository.findAction(confirmId)!!
         assertEquals("CREATE_PENDING", confirmed.status)
         assertEquals(42L, confirmed.actorTelegramId)
@@ -239,6 +240,11 @@ class TelegramLeagueImportIntegrationTest {
         )
         assertEquals("EXPIRED", importRepository.findAction(expiringActionId)!!.status)
         assertEquals(2, intValue("SELECT count(*) FROM league_import_action WHERE item_id=? AND action_type='CREATE_PREVIEW'", expiringItemId))
+        assertEquals(7004L, jdbc.queryForObject(
+            "SELECT operator_message_id FROM league_import_action WHERE item_id=? AND action_type='CREATE_PREVIEW' ORDER BY created_at DESC LIMIT 1",
+            Long::class.java,
+            expiringItemId,
+        ))
         assertEquals(1, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE item_id=? AND event_type='CREATE_PREVIEW' AND status='PENDING'", expiringItemId))
     }
 
@@ -407,8 +413,9 @@ class TelegramLeagueImportIntegrationTest {
         importRepository.markActionOffered(previewId, 7101)
         callbackService.tryHandle(callback(201, "preview-create", tokenCodec.encode(previewId), 51, properties.operatorChatId, 7101))
         val confirmId = actionId(itemId, "CREATE_CONFIRM")
-        importRepository.markActionOffered(confirmId, 7102)
-        callbackService.tryHandle(callback(202, "confirm-create", tokenCodec.encode(confirmId), 51, properties.operatorChatId, 7102))
+        assertEquals(7101L, importRepository.findAction(confirmId)!!.operatorMessageId)
+        importRepository.markActionOffered(confirmId, 7101)
+        callbackService.tryHandle(callback(202, "confirm-create", tokenCodec.encode(confirmId), 51, properties.operatorChatId, 7101))
         val claimed = TransactionTemplate(transactionManager).execute { importRepository.claimNextCreateAction() }
         assertEquals(confirmId, claimed)
 
@@ -423,9 +430,22 @@ class TelegramLeagueImportIntegrationTest {
         assertEquals(0, intValue("SELECT count(*) FROM series_player WHERE series_id=?", seriesId))
         assertEquals(1, intValue("SELECT count(*) FROM series_external_post_link WHERE series_id=? AND import_item_id=?", seriesId, itemId))
         assertEquals(1, intValue("SELECT count(*) FROM league_import_audit_event WHERE action_id=? AND event_type='SERIES_CREATED' AND outcome='COMMITTED'", confirmId))
-        assertEquals(1, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE action_id=? AND event_type='CREATED' AND status='PENDING'", confirmId))
+        assertEquals(1, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE item_id=? AND event_type='CREATED' AND status='PENDING'", itemId))
         assertEquals("APPLIED", importRepository.findAction(confirmId)!!.status)
         assertEquals("APPLIED", importRepository.findItemById(itemId)!!.state)
+
+        val activateId = actionId(itemId, "ACTIVATE")
+        val activateAction = importRepository.findAction(activateId)!!
+        assertEquals(51L, activateAction.boundActorTelegramId)
+        assertEquals(7101L, activateAction.operatorMessageId)
+        importRepository.markActionOffered(activateId, 7101)
+        callbackService.tryHandle(
+            callback(203, "activate", tokenCodec.encode(activateId), 51, properties.operatorChatId, 7101),
+        )
+        assertEquals(SeriesStatus.ACTIVE, seriesRepository.findById(seriesId).orElseThrow().status)
+        assertEquals("APPLIED", importRepository.findAction(activateId)!!.status)
+        assertEquals(1, intValue("SELECT count(*) FROM league_import_audit_event WHERE action_id=? AND event_type='SERIES_ACTIVATED'", activateId))
+        assertEquals(1, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE action_id=? AND event_type='ACTIVATED'", activateId))
 
         seriesService.createSeries(
             tournament.id!!,
@@ -501,8 +521,8 @@ class TelegramLeagueImportIntegrationTest {
         )
         assertEquals(tournamentPlayerIds.sorted(), actualIds)
         assertEquals(10, intValue(
-            "SELECT (payload->>'rosterCount')::int FROM league_import_operator_outbox WHERE action_id=? AND event_type='CREATED'",
-            confirmId,
+            "SELECT (payload->>'rosterCount')::int FROM league_import_operator_outbox WHERE item_id=? AND event_type='CREATED'",
+            itemId,
         ))
     }
 
@@ -956,14 +976,16 @@ class TelegramLeagueImportIntegrationTest {
                 callback(403, "finalize-preview", tokenCodec.encode(finalizePreviewId), 72, properties.operatorChatId, 8201),
             )
             val finalizeConfirmId = actionId(resultItemId, "FINALIZE_CONFIRM")
-            importRepository.markActionOffered(finalizeConfirmId, 8202)
+            assertEquals(8201L, importRepository.findAction(finalizeConfirmId)!!.operatorMessageId)
+            importRepository.markActionOffered(finalizeConfirmId, 8201)
             callbackService.tryHandle(
-                callback(404, "finalize-wrong-actor", tokenCodec.encode(finalizeConfirmId), 73, properties.operatorChatId, 8202),
+                callback(404, "finalize-wrong-actor", tokenCodec.encode(finalizeConfirmId), 73, properties.operatorChatId, 8201),
             )
             assertEquals("OFFERED", importRepository.findAction(finalizeConfirmId)!!.status)
             callbackService.tryHandle(
-                callback(405, "finalize-confirm", tokenCodec.encode(finalizeConfirmId), 72, properties.operatorChatId, 8202),
+                callback(405, "finalize-confirm", tokenCodec.encode(finalizeConfirmId), 72, properties.operatorChatId, 8201),
             )
+            assertEquals(8201L, longValue("SELECT operator_message_id FROM league_import_job WHERE item_id=? AND operation='FINALIZE'", resultItemId))
             jdbc.update("UPDATE league_import_job SET status='APPLIED',completed_at=now() WHERE item_id=? AND operation='RECONCILE'", resultItemId)
             val finalizeJob = TransactionTemplate(transactionManager).execute { importRepository.leaseJob() }!!
             assertEquals("FINALIZE", finalizeJob.operation)
@@ -973,6 +995,10 @@ class TelegramLeagueImportIntegrationTest {
             assertEquals("FINALIZED", importRepository.findItemById(resultItemId)!!.state)
             assertEquals(1, intValue("SELECT count(*) FROM league_import_audit_event WHERE item_id=? AND event_type='SERIES_FINALIZED' AND outcome='COMMITTED'", resultItemId))
             assertEquals(1, intValue("SELECT count(*) FROM league_import_operator_outbox WHERE item_id=? AND event_type='FINALIZED'", resultItemId))
+            assertEquals(8201L, longValue(
+                "SELECT (payload->>'operatorMessageId')::bigint FROM league_import_operator_outbox WHERE item_id=? AND event_type='FINALIZED'",
+                resultItemId,
+            ))
             val corrected = result(number).replaceFirst("Победа: Мафия", "Победа: Мирные")
             val correction = ingestService.ingest(
                 "test-current", UUID.randomUUID(), Instant.now(),

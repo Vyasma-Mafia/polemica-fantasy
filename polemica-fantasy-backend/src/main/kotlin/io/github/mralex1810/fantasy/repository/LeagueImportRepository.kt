@@ -66,6 +66,7 @@ data class LeagueImportJobRow(
     val pendingNotificationOutboxId: Long?,
     val notificationDeliveredAt: Instant?,
     val rosterChecksum: String?,
+    val operatorMessageId: Long?,
 )
 
 data class LeagueImportActionRow(
@@ -308,16 +309,18 @@ class LeagueImportRepository(
         operatorChatId: Long,
         expiresAt: Instant,
         rosterChecksum: String? = null,
+        operatorMessageId: Long? = null,
     ) {
         jdbc.update(
             """
             INSERT INTO league_import_action(
                 id,item_id,item_version,source_revision,draft_checksum,policy_generation,action_type,status,token_hash,
-                bound_actor_telegram_id,operator_chat_id,expires_at,roster_checksum
-            ) VALUES(?,?,?,?,?,?,?,'NOTIFY_PENDING',?,?,?,?,?)
+                bound_actor_telegram_id,operator_chat_id,expires_at,roster_checksum,operator_message_id
+            ) VALUES(?,?,?,?,?,?,?,'NOTIFY_PENDING',?,?,?,?,?,?)
             """.trimIndent(),
             id, itemId, itemVersion, sourceRevision, checksum, policyGeneration, actionType, tokenHash,
             boundActorId, operatorChatId, OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC), rosterChecksum,
+            operatorMessageId,
         )
     }
 
@@ -474,6 +477,16 @@ class LeagueImportRepository(
             )
         }
     }
+
+    fun findLatestDeliveredMessageId(itemId: Long): Long? = jdbc.query(
+        """
+        SELECT telegram_message_id FROM league_import_operator_outbox
+        WHERE item_id=? AND status='DELIVERED' AND telegram_message_id IS NOT NULL
+        ORDER BY delivered_at DESC,id DESC LIMIT 1
+        """.trimIndent(),
+        { rs, _ -> rs.getLong(1) },
+        itemId,
+    ).firstOrNull()
 
     fun releaseJobsAfterNotificationDelivery(outboxId: Long, holdSeconds: Long): Int = jdbc.update(
         """
@@ -670,19 +683,22 @@ class LeagueImportRepository(
         availableAt: Instant? = Instant.now(),
         pendingNotificationOutboxId: Long? = null,
         rosterChecksum: String? = null,
+        operatorMessageId: Long? = null,
     ): UUID {
         val id = UUID.randomUUID()
         jdbc.update(
             """
             INSERT INTO league_import_job(
                 id,item_id,item_version,source_revision,evidence_checksum,policy_generation,operation,
-                target_series_id,actor_telegram_id,readiness_checksum,available_at,pending_notification_outbox_id,roster_checksum
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                target_series_id,actor_telegram_id,readiness_checksum,available_at,pending_notification_outbox_id,
+                roster_checksum,operator_message_id
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT (item_id,item_version,source_revision,evidence_checksum,policy_generation,operation) DO NOTHING
             """.trimIndent(),
             id, itemId, itemVersion, sourceRevision, evidenceChecksum, policyGeneration, operation,
             targetSeriesId, actorTelegramId, readinessChecksum,
             availableAt?.let { OffsetDateTime.ofInstant(it, ZoneOffset.UTC) }, pendingNotificationOutboxId, rosterChecksum,
+            operatorMessageId,
         )
         return jdbc.queryForObject(
             """
@@ -857,6 +873,7 @@ class LeagueImportRepository(
         pendingNotificationOutboxId = rs.getLong("pending_notification_outbox_id").takeUnless { rs.wasNull() },
         notificationDeliveredAt = rs.getObject("notification_delivered_at", OffsetDateTime::class.java)?.toInstant(),
         rosterChecksum = rs.getString("roster_checksum"),
+        operatorMessageId = rs.getLong("operator_message_id").takeUnless { rs.wasNull() },
     )
 
     private fun action(rs: ResultSet) = LeagueImportActionRow(

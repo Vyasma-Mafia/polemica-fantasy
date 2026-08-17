@@ -10,6 +10,7 @@ import io.github.mralex1810.fantasy.service.leagueimport.LeagueImportActionToken
 import io.github.mralex1810.fantasy.telegram.InlineKeyboardButton
 import io.github.mralex1810.fantasy.telegram.InlineKeyboardMarkup
 import io.github.mralex1810.fantasy.telegram.TelegramBotApiClient
+import io.github.mralex1810.fantasy.telegram.TelegramMessageNotEditableException
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -45,43 +46,46 @@ class LeagueImportOperatorOutboxScheduler(
     private fun deliver(row: LeagueImportOutboxRow) {
         try {
             val isActionOffer = row.eventType == "CREATE_PREVIEW" || row.eventType == "CREATE_CONFIRM" ||
-                row.eventType == "FINALIZE_PREVIEW" || row.eventType == "FINALIZE_CONFIRM"
-            val action = if (isActionOffer) row.actionId?.let(repository::findAction) else null
-            if (isActionOffer && (action == null || action.status != "NOTIFY_PENDING")) {
+                row.eventType == "FINALIZE_PREVIEW" || row.eventType == "FINALIZE_CONFIRM" ||
+                (row.eventType == "CREATED" && row.actionId != null)
+            val action = row.actionId?.let(repository::findAction)
+            val offerableAction = action?.takeIf { it.status == "NOTIFY_PENDING" }
+            if (isActionOffer && row.eventType != "CREATED" && offerableAction == null) {
                 transaction.executeWithoutResult {
                     repository.supersedeOutbox(row.id)
                 }
                 return
             }
-            val callback = action?.takeIf { properties.callbackEnabled }?.let { tokenCodec.encode(it.id) }
+            val callback = offerableAction?.takeIf { properties.callbackEnabled }?.let { tokenCodec.encode(it.id) }
             val (text, button) = render(row, callback)
-            val replyMarkup = when {
-                button != null -> InlineKeyboardMarkup(
-                    listOf(listOf(InlineKeyboardButton.Callback(button, callback!!))),
-                )
-                row.eventType == "CREATED" || row.eventType == "FINALIZED" || row.eventType == "INCIDENT" -> InlineKeyboardMarkup(
-                    listOf(
-                        listOf(
-                            InlineKeyboardButton.Url(
-                                when (row.eventType) {
-                                    "CREATED" -> if (row.payload.path("rosterCount").asInt() > 0) "Открыть созданную серию" else
-                                        "Открыть серию и назначить игроков"
-                                    "FINALIZED" -> "Открыть финализированную серию"
-                                    else -> "Открыть серию для проверки"
-                                },
-                                "${properties.adminBaseUrl.trimEnd('/')}/series/${row.payload.path("seriesId").asLong()}",
-                            ),
-                        ),
-                    ),
-                )
-                else -> null
+            val replyMarkup = replyMarkup(row, callback, button)
+            val targetMessageId = action?.operatorMessageId
+                ?: row.payload.path("operatorMessageId").takeIf { it.isIntegralNumber }?.asLong()
+            val messageId = if (targetMessageId == null) {
+                telegramBotApiClient.sendMessage(
+                    telegramProperties.token,
+                    properties.operatorChatId,
+                    text,
+                    replyMarkup = replyMarkup,
+                ).toLong()
+            } else {
+                try {
+                    telegramBotApiClient.editMessageText(
+                        telegramProperties.token,
+                        properties.operatorChatId,
+                        targetMessageId,
+                        text,
+                        replyMarkup = replyMarkup ?: InlineKeyboardMarkup(emptyList()),
+                    ).toLong()
+                } catch (_: TelegramMessageNotEditableException) {
+                    telegramBotApiClient.sendMessage(
+                        telegramProperties.token,
+                        properties.operatorChatId,
+                        text,
+                        replyMarkup = replyMarkup,
+                    ).toLong()
+                }
             }
-            val messageId = telegramBotApiClient.sendMessage(
-                telegramProperties.token,
-                properties.operatorChatId,
-                text,
-                replyMarkup = replyMarkup,
-            ).toLong()
             transaction.executeWithoutResult {
                 repository.finishOutbox(row.id, delivered = true, messageId = messageId)
                 if (row.eventType == "AUTO_CREATE_PENDING" || row.eventType == "AUTO_FINALIZE_PENDING") {
@@ -89,17 +93,23 @@ class LeagueImportOperatorOutboxScheduler(
                         .coerceAtLeast(MIN_AUTO_HOLD_SECONDS)
                     repository.releaseJobsAfterNotificationDelivery(row.id, holdSeconds)
                 }
-                if (action != null) {
-                    val ttl = if (action.actionType.endsWith("CONFIRM")) properties.confirmationTtlSeconds else properties.previewTtlSeconds
-                    repository.markActionOffered(action.id, messageId, java.time.Instant.now().plusSeconds(ttl))
-                    repository.updateItemState(
-                        action.itemId,
-                        when {
-                            action.actionType.endsWith("CONFIRM") -> "AWAITING_CONFIRMATION"
-                            action.actionType.startsWith("FINALIZE_") -> "READY_TO_FINALIZE"
-                            else -> "READY_TO_PREVIEW"
-                        },
-                    )
+                if (isActionOffer && offerableAction != null) {
+                    val ttl = if (offerableAction.actionType.endsWith("CONFIRM") || offerableAction.actionType == "ACTIVATE") {
+                        properties.confirmationTtlSeconds
+                    } else {
+                        properties.previewTtlSeconds
+                    }
+                    repository.markActionOffered(offerableAction.id, messageId, java.time.Instant.now().plusSeconds(ttl))
+                    if (offerableAction.actionType != "ACTIVATE") {
+                        repository.updateItemState(
+                            offerableAction.itemId,
+                            when {
+                                offerableAction.actionType.endsWith("CONFIRM") -> "AWAITING_CONFIRMATION"
+                                offerableAction.actionType.startsWith("FINALIZE_") -> "READY_TO_FINALIZE"
+                                else -> "READY_TO_PREVIEW"
+                            },
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -155,7 +165,12 @@ class LeagueImportOperatorOutboxScheduler(
             val rosterText = if (rosterCount > 0) "Состав проверен и назначен: $rosterCount/$expected" else
                 "Ростер: 0 — назначьте игроков в админке"
             "[PRODUCTION][SERIES_CREATED]\n${row.payload.path("name").asText()} (#${row.payload.path("seriesId").asLong()})\n" +
-                "$rosterText\nИсточник: ${row.payload.path("sourceUrl").asText()}" to null
+                "$rosterText\nСтатус: UPCOMING\nИсточник: ${row.payload.path("sourceUrl").asText()}" to
+                callback?.let { "Перевести в ACTIVE" }
+        }
+        "ACTIVATED" -> {
+            "[PRODUCTION][SERIES_ACTIVE]\n${row.payload.path("name").asText()} (#${row.payload.path("seriesId").asLong()})\n" +
+                "Статус: ACTIVE\nИсточник: ${row.payload.path("sourceUrl").asText()}" to null
         }
         "ROSTER_REVIEW" -> {
             val draft = objectMapper.treeToValue(row.payload.path("draft"), LeagueAnnouncementDraft::class.java)
@@ -264,5 +279,28 @@ class LeagueImportOperatorOutboxScheduler(
 
     private companion object {
         const val MIN_AUTO_HOLD_SECONDS = 120L
+    }
+
+    private fun replyMarkup(row: LeagueImportOutboxRow, callback: String?, button: String?): InlineKeyboardMarkup? {
+        val rows = mutableListOf<List<InlineKeyboardButton>>()
+        if (button != null && callback != null) {
+            rows += listOf(InlineKeyboardButton.Callback(button, callback))
+        }
+        if (row.eventType in setOf("CREATED", "ACTIVATED", "FINALIZED", "INCIDENT")) {
+            val label = when (row.eventType) {
+                "CREATED" -> if (row.payload.path("rosterCount").asInt() > 0) "Открыть созданную серию" else
+                    "Открыть серию и назначить игроков"
+                "ACTIVATED" -> "Открыть активную серию"
+                "FINALIZED" -> "Открыть финализированную серию"
+                else -> "Открыть серию для проверки"
+            }
+            rows += listOf(
+                InlineKeyboardButton.Url(
+                    label,
+                    "${properties.adminBaseUrl.trimEnd('/')}/series/${row.payload.path("seriesId").asLong()}",
+                ),
+            )
+        }
+        return rows.takeIf { it.isNotEmpty() }?.let(::InlineKeyboardMarkup)
     }
 }

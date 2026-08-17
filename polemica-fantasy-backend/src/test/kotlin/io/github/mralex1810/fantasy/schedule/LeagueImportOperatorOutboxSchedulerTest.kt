@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mralex1810.fantasy.config.TelegramLeagueImportProperties
 import io.github.mralex1810.fantasy.config.TelegramProperties
 import io.github.mralex1810.fantasy.repository.LeagueImportOutboxRow
+import io.github.mralex1810.fantasy.repository.LeagueImportActionRow
 import io.github.mralex1810.fantasy.repository.LeagueImportRepository
 import io.github.mralex1810.fantasy.service.leagueimport.LeagueImportActionTokenCodec
 import io.github.mralex1810.fantasy.telegram.TelegramBotApiClient
@@ -20,6 +21,7 @@ import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.support.AbstractPlatformTransactionManager
 import org.springframework.transaction.support.DefaultTransactionStatus
 import java.util.UUID
+import java.time.Instant
 
 class LeagueImportOperatorOutboxSchedulerTest {
     @Test
@@ -64,14 +66,14 @@ class LeagueImportOperatorOutboxSchedulerTest {
     }
 
     @Test
-    fun `delivers created outcome even though its action is already applied`() {
+    fun `automatic created outcome is sent as a new message`() {
         val repository = mock<LeagueImportRepository>()
         val telegramClient = mock<TelegramBotApiClient>()
         val row = LeagueImportOutboxRow(
             id = 7,
             eventKey = "created:42",
             itemId = 11,
-            actionId = UUID.randomUUID(),
+            actionId = null,
             eventType = "CREATED",
             payload = ObjectMapper().readTree(
                 """{"seriesId":42,"name":"ЛП. Серия 35","sourceUrl":"https://t.me/polemica_closed_league/1"}""",
@@ -102,6 +104,70 @@ class LeagueImportOperatorOutboxSchedulerTest {
             eq("test-token"), eq(-5166305654), any(), eq(null), eq(null), any(),
         )
         verify(repository).finishOutbox(7, delivered = true, messageId = 123)
+    }
+
+    @Test
+    fun `manual created outcome edits creation message and offers activation`() {
+        val repository = mock<LeagueImportRepository>()
+        val telegramClient = mock<TelegramBotApiClient>()
+        val tokenCodec = mock<LeagueImportActionTokenCodec>()
+        val actionId = UUID.randomUUID()
+        val row = LeagueImportOutboxRow(
+            id = 10,
+            eventKey = "created:43",
+            itemId = 14,
+            actionId = actionId,
+            eventType = "CREATED",
+            payload = ObjectMapper().readTree(
+                """{"seriesId":43,"name":"ЛП. Серия 36","rosterCount":10,"sourceUrl":"https://t.me/polemica_closed_league/2"}""",
+            ),
+        )
+        whenever(repository.leaseOutbox()).thenReturn(row, null)
+        whenever(repository.findAction(actionId)).thenReturn(
+            LeagueImportActionRow(
+                id = actionId,
+                itemId = 14,
+                itemVersion = 2,
+                sourceRevision = 1,
+                draftChecksum = "a".repeat(64),
+                policyGeneration = "g1",
+                actionType = "ACTIVATE",
+                status = "NOTIFY_PENDING",
+                tokenHash = "b".repeat(64),
+                boundActorTelegramId = 42,
+                actorTelegramId = null,
+                operatorChatId = -5166305654,
+                operatorMessageId = 125,
+                expiresAt = Instant.now().plusSeconds(60),
+                rosterChecksum = null,
+            ),
+        )
+        whenever(tokenCodec.encode(actionId)).thenReturn("callback")
+        whenever(
+            telegramClient.editMessageText(
+                eq("test-token"), eq(-5166305654), eq(125), any(), any(),
+            ),
+        ).thenReturn(125)
+
+        LeagueImportOperatorOutboxScheduler(
+            properties = TelegramLeagueImportProperties(
+                enabled = true,
+                operatorNotificationsEnabled = true,
+                operatorChatId = -5166305654,
+            ),
+            telegramProperties = TelegramProperties(token = "test-token"),
+            repository = repository,
+            objectMapper = ObjectMapper().findAndRegisterModules(),
+            tokenCodec = tokenCodec,
+            telegramBotApiClient = telegramClient,
+            transactionManager = StubTransactionManager(),
+        ).deliver()
+
+        verify(telegramClient).editMessageText(eq("test-token"), eq(-5166305654), eq(125), any(), any())
+        verify(telegramClient, never()).sendMessage(any(), any(), any(), any(), any(), any())
+        verify(repository).finishOutbox(10, delivered = true, messageId = 125)
+        verify(repository).markActionOffered(eq(actionId), eq(125), any())
+        verify(repository, never()).updateItemState(any(), any(), any())
     }
 
     @Test

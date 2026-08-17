@@ -1,5 +1,6 @@
 # Progress
 
+- [x] **2026-08-17 — Telegram LP/ZL creation без спама:** preview, confirm, created и active редактируют одно операторское сообщение; после создания доступны `Перевести в ACTIVE` и ссылка на admin. Activation — отдельное signed same-actor действие со строгим locked `UPCOMING -> ACTIVE`; финализация использует отдельное RESULT-сообщение и редактирует его внутри собственного flow. Добавлена Flyway V77 и unit/regression coverage; Testcontainers integration suite скомпилирован, но 17 сценариев skipped без Docker.
 - [x] **2026-08-16 — STANDALONE sync снова additive:** ранее найденные игры не удаляются при изменении префикса, даты или ростера; явное ручное удаление остается доступно. Competition sync сохраняет snapshot-семантику диапазона.
 
 ## Admin series finalization (август 2026)

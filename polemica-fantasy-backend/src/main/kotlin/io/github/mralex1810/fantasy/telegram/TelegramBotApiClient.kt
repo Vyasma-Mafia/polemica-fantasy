@@ -44,6 +44,38 @@ class TelegramBotApiClient(
             ?: throw IllegalStateException("Telegram API sendMessage returned no message id")
     }
 
+    /**
+     * Replaces an operator message in place and returns its Telegram message id.
+     */
+    fun editMessageText(
+        botToken: String,
+        chatId: Long,
+        messageId: Long,
+        text: String,
+        replyMarkup: InlineKeyboardMarkup? = null,
+    ): Int {
+        val body = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("message_id", messageId)
+            put("text", text)
+            if (replyMarkup != null) {
+                put("reply_markup", replyMarkup.toMap())
+            }
+        }
+        val tree = apiPostAllowErrors(botToken, "editMessageText", body)
+        if (!tree.path("ok").asBoolean()) {
+            val description = tree.path("description").asText("")
+            if (description.contains("message is not modified", ignoreCase = true)) return messageId.toInt()
+            if (description.contains("message to edit not found", ignoreCase = true) ||
+                description.contains("message can't be edited", ignoreCase = true)) {
+                throw TelegramMessageNotEditableException(description)
+            }
+        }
+        requireTelegramOk(tree, "editMessageText")
+        return tree.path("result").path("message_id").asInt().takeIf { it > 0 }
+            ?: throw IllegalStateException("Telegram API editMessageText returned no message id")
+    }
+
     fun sendMessageSafe(
         botToken: String,
         chatId: Long,
@@ -221,3 +253,5 @@ class TelegramBotApiClient(
         const val PARSE_MODE_MARKDOWN_V2 = "MarkdownV2"
     }
 }
+
+class TelegramMessageNotEditableException(message: String) : IllegalStateException(message)

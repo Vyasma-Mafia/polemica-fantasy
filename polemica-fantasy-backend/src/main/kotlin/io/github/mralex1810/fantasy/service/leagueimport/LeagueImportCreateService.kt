@@ -26,6 +26,7 @@ class LeagueImportCreateService(
     private val seriesService: SeriesService,
     private val rosterResolver: LeagueImportRosterResolver,
     private val objectMapper: ObjectMapper,
+    private val tokenCodec: LeagueImportActionTokenCodec,
 ) {
     @Transactional
     fun create(actionId: UUID) {
@@ -91,21 +92,11 @@ class LeagueImportCreateService(
             mapOf("seriesId" to created.id, "tournamentId" to draft.tournamentId, "publicNumber" to draft.seriesNumber,
                 "rosterCount" to roster.draft.resolved.size),
         )
-        repository.enqueueOutbox(
-            eventKey = "league-import:${item.id}:series-created:${created.id}",
-            itemId = item.id,
-            actionId = action.id,
-            eventType = "CREATED",
-            payload = mapOf(
-                "seriesId" to created.id,
-                "tournamentId" to draft.tournamentId,
-                "name" to draft.name,
-                "startsAt" to draft.startsAt,
-                "teamDeadline" to draft.teamDeadline,
-                "sourceUrl" to draft.sourceUrl,
-                "rosterCount" to roster.draft.resolved.size,
-                "expectedRosterCount" to roster.draft.expectedCount,
-            ),
+        offerActivation(
+            repository.findItemById(item.id, lock = true)!!,
+            created.id,
+            action.operatorMessageId,
+            action.actorTelegramId,
         )
     }
 
@@ -154,7 +145,48 @@ class LeagueImportCreateService(
         check(repository.finishJob(job.id, "APPLIED", expectedLeaseToken = leaseToken)) { "Import job lease was lost" }
         repository.audit(item.id, null, null, "SERIES_AUTO_CREATED", "COMMITTED",
             mapOf("seriesId" to created.id, "rosterCount" to roster.draft.resolved.size))
-        enqueueCreated(item, created.id, draft, roster.draft.resolved.size, roster.draft.expectedCount)
+        offerActivation(repository.findItemById(item.id, lock = true)!!, created.id, null, null)
+    }
+
+    @Transactional
+    fun activate(actionId: UUID) {
+        check(properties.enabled && properties.productionWritesEnabled && properties.callbackEnabled) {
+            "Telegram league import activation writes are disabled"
+        }
+        val action = repository.findAction(actionId, lock = true) ?: error("Import action not found")
+        check(action.actionType == "ACTIVATE" && action.status == "CALLBACK_RECEIVED") {
+            "Import activation action is not claimable"
+        }
+        check(action.policyGeneration == properties.policyGeneration) { "Import policy generation changed" }
+        val item = repository.findItemById(action.itemId, lock = true) ?: error("Import item not found")
+        check(item.state == "APPLIED" && item.targetSeriesId != null && item.version == action.itemVersion &&
+            item.currentRevision == action.sourceRevision && item.draftChecksum == action.draftChecksum &&
+            item.policyGeneration == properties.policyGeneration) { "Import item changed before activation" }
+        check(properties.policy(item.leagueCode)?.createMode != LeagueImportAutomationMode.DISABLED) {
+            "Series activation is disabled by policy"
+        }
+
+        val series = seriesService.activateUpcomingSeries(item.targetSeriesId)
+        repository.updateActionStatus(action.id, "APPLIED")
+        repository.audit(
+            item.id,
+            action.id,
+            action.actorTelegramId,
+            "SERIES_ACTIVATED",
+            "COMMITTED",
+            mapOf("seriesId" to series.id),
+        )
+        repository.enqueueOutbox(
+            eventKey = "league-import:${item.id}:series-activated:${series.id}",
+            itemId = item.id,
+            actionId = action.id,
+            eventType = "ACTIVATED",
+            payload = mapOf(
+                "seriesId" to series.id,
+                "name" to series.name,
+                "sourceUrl" to "https://t.me/polemica_closed_league/${item.sourceMessageId}",
+            ),
+        )
     }
 
     @Transactional
@@ -238,17 +270,38 @@ class LeagueImportCreateService(
         ),
     ).also { check(it.publicNumber == draft.seriesNumber) { "Created public number differs from announcement" } }
 
-    private fun enqueueCreated(
+    @Transactional
+    fun offerActivation(
         item: io.github.mralex1810.fantasy.repository.LeagueImportItemRow,
         seriesId: Long,
-        draft: LeagueAnnouncementDraft,
-        rosterCount: Int = 0,
-        expectedRosterCount: Int = 0,
-    ) {
-        repository.enqueueOutbox(
-            eventKey = "league-import:${item.id}:series-created:$seriesId",
+        operatorMessageId: Long?,
+        boundActorId: Long?,
+    ): UUID {
+        val draft = item.draftJson?.let { objectMapper.treeToValue(it, LeagueAnnouncementDraft::class.java) }
+            ?: error("Announcement draft is missing")
+        val rosterCount = item.rosterDraftJson?.path("resolved")?.size() ?: 0
+        val expectedRosterCount = item.rosterDraftJson?.path("expectedCount")?.asInt() ?: 0
+        val id = UUID.randomUUID()
+        val callbackData = tokenCodec.encode(id)
+        val targetMessageId = operatorMessageId ?: repository.findLatestDeliveredMessageId(item.id)
+        repository.createAction(
+            id = id,
             itemId = item.id,
-            actionId = null,
+            itemVersion = item.version,
+            sourceRevision = item.currentRevision,
+            checksum = item.draftChecksum ?: error("Announcement checksum is missing"),
+            policyGeneration = properties.policyGeneration,
+            actionType = "ACTIVATE",
+            tokenHash = tokenCodec.hash(callbackData),
+            boundActorId = boundActorId,
+            operatorChatId = properties.operatorChatId,
+            expiresAt = Instant.now().plusSeconds(properties.confirmationTtlSeconds),
+            operatorMessageId = targetMessageId,
+        )
+        repository.enqueueOutbox(
+            eventKey = "league-import:${item.id}:series-created:$seriesId:activate:$id",
+            itemId = item.id,
+            actionId = id,
             eventType = "CREATED",
             payload = mapOf(
                 "seriesId" to seriesId,
@@ -261,6 +314,7 @@ class LeagueImportCreateService(
                 "expectedRosterCount" to expectedRosterCount,
             ),
         )
+        return id
     }
 
     private fun resolveRoster(

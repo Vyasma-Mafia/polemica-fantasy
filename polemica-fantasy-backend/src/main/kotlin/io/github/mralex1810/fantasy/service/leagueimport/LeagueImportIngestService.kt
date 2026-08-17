@@ -269,13 +269,16 @@ class LeagueImportIngestService(
         boundActorId: Long?,
         ttlSeconds: Long,
         roster: LeagueImportRosterResolution? = null,
+        operatorMessageId: Long? = null,
     ): UUID {
         val id = UUID.randomUUID()
         val callbackData = tokenCodec.encode(id)
+        val targetMessageId = operatorMessageId ?: repository.findLatestDeliveredMessageId(itemId)
         repository.createAction(
             id, itemId, version, revision, ready.checksum, properties.policyGeneration, type, tokenCodec.hash(callbackData),
             boundActorId, properties.operatorChatId, Instant.now().plusSeconds(ttlSeconds),
             roster?.takeIf { it.draft.ready }?.checksum,
+            targetMessageId,
         )
         repository.enqueueOutbox(
             eventKey = "league-import:$itemId:v$version:$type:$id",

@@ -12,11 +12,43 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
+import org.springframework.test.web.client.match.MockRestRequestMatchers.content
+import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.ResourceAccessException
 
 class TelegramBotApiClientTest {
+
+    @Test
+    fun `edit message text replaces text and keyboard in place`() {
+        val builder = RestClient.builder()
+        val server = MockRestServiceServer.bindTo(builder).build()
+        server.expect(requestTo("https://api.telegram.org/bottoken/editMessageText"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json(
+                    """{"chat_id":123,"message_id":456,"text":"updated","reply_markup":{"inline_keyboard":[]}}""",
+                ),
+            )
+            .andRespond(withSuccess("""{"ok":true,"result":{"message_id":456}}""", MediaType.APPLICATION_JSON))
+        val client = TelegramBotApiClient(builder.build(), ObjectMapper())
+
+        assertEquals(456, client.editMessageText("token", 123, 456, "updated", InlineKeyboardMarkup(emptyList())))
+        server.verify()
+    }
+
+    @Test
+    fun `message not modified is idempotent edit success`() {
+        val fixture = fixture(
+            status = HttpStatus.BAD_REQUEST,
+            responseBody = """{"ok":false,"error_code":400,"description":"Bad Request: message is not modified"}""",
+            methodName = "editMessageText",
+        )
+
+        assertEquals(456, fixture.client.editMessageText("token", 123, 456, "updated"))
+        fixture.server.verify()
+    }
 
     @Test
     fun `chat not found is classified as permanently unavailable recipient`() {
@@ -81,10 +113,10 @@ class TelegramBotApiClientTest {
         server.verify()
     }
 
-    private fun fixture(status: HttpStatus, responseBody: String): Fixture {
+    private fun fixture(status: HttpStatus, responseBody: String, methodName: String = "sendMessage"): Fixture {
         val builder = RestClient.builder()
         val server = MockRestServiceServer.bindTo(builder).build()
-        server.expect(requestTo("https://api.telegram.org/bottoken/sendMessage"))
+        server.expect(requestTo("https://api.telegram.org/bottoken/$methodName"))
             .andExpect(method(HttpMethod.POST))
             .andRespond(
                 withStatus(status)

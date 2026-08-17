@@ -1,5 +1,6 @@
 # Active Context
 
+- **2026-08-17 (backend / Telegram LP-ZL operator flow):** Ручное создание серии теперь использует одно редактируемое сообщение оператора для `CREATE_PREVIEW -> CREATE_CONFIRM -> CREATED -> ACTIVE`; Bot API `editMessageText` повторяется через durable outbox, `message is not modified` считается идемпотентным успехом, а удалённое/нередактируемое сообщение заменяется один раз. После создания появляется отдельное signed-действие `Перевести в ACTIVE`, привязанное к тому же оператору и message id; backend разрешает только locked `UPCOMING -> ACTIVE` и сохраняет стандартный `SeriesBatchStartedEvent`. `RESULT`/финализация остаётся отдельным Telegram-сообщением, которое также редактируется внутри своего preview/confirm/final outcome flow.
 - **2026-08-16 (backend / additive STANDALONE game membership):** `DefaultGameSyncService` снова сохраняет уже привязанные к `STANDALONE`-серии игры при последующих изменениях `namePrefix`, `gameStartedOn` или ростера. Новый selector используется только для добавления/обновления совпавших игр; ошибочную старую привязку можно удалить вручную через admin API. Для `POLEMICA_COMPETITION` диапазон по-прежнему является authoritative snapshot и удаляет игры вне актуальной выборки.
 
 ## Changelog
