@@ -50,6 +50,7 @@ export function TournamentsPage() {
       status?: TournamentStatus | null
       kind?: TournamentKind | null
       polemicaCompetitionId?: number | null
+      defaultExpectedGameCount?: number | null
       streamLinks?: { label?: string | null; url: string }[] | null
     }) => updateTournament(id, body),
     onSuccess: () => {
@@ -142,6 +143,11 @@ export function TournamentsPage() {
             render: (s: string) => <Tag>{s}</Tag>,
           },
           {
+            title: 'Default games',
+            dataIndex: 'defaultExpectedGameCount',
+            render: (count: number | null) => count ?? '—',
+          },
+          {
             title: 'Active series',
             key: 'activeSeries',
             render: (_: unknown, row) => {
@@ -197,6 +203,7 @@ export function TournamentsPage() {
                 v.kind === 'POLEMICA_COMPETITION'
                   ? v.polemicaCompetitionId ?? null
                   : null,
+              defaultExpectedGameCount: v.defaultExpectedGameCount ?? null,
               streamLinks: v.streamLinks ?? [],
             })
           }
@@ -219,6 +226,7 @@ export function TournamentsPage() {
               status: editing.status,
               kind: editing.kind,
               polemicaCompetitionId: editing.polemicaCompetitionId ?? undefined,
+              defaultExpectedGameCount: editing.defaultExpectedGameCount,
               streamLinks: editing.streamLinks ?? [],
             }}
             onSubmit={(v) =>
@@ -232,6 +240,7 @@ export function TournamentsPage() {
                   v.kind === 'POLEMICA_COMPETITION'
                     ? v.polemicaCompetitionId ?? null
                     : null,
+                defaultExpectedGameCount: v.defaultExpectedGameCount ?? null,
                 streamLinks: v.streamLinks ?? [],
               })
             }

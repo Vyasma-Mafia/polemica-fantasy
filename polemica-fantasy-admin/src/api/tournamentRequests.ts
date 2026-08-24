@@ -11,6 +11,7 @@ export interface CreateTournamentRequest {
   status: TournamentStatus
   kind?: TournamentKind | null
   polemicaCompetitionId?: number | null
+  defaultExpectedGameCount?: number | null
   streamLinks?: StreamLinkRequest[]
 }
 
@@ -20,6 +21,7 @@ export interface UpdateTournamentRequest {
   status?: TournamentStatus | null
   kind?: TournamentKind | null
   polemicaCompetitionId?: number | null
+  defaultExpectedGameCount?: number | null
   streamLinks?: StreamLinkRequest[] | null
 }
 

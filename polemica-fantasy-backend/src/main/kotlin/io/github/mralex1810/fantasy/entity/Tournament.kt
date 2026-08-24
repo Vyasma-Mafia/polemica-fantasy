@@ -35,6 +35,9 @@ class Tournament(
     @Column(name = "polemica_competition_id")
     var polemicaCompetitionId: Long? = null,
 
+    @Column(name = "default_expected_game_count")
+    var defaultExpectedGameCount: Int? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 

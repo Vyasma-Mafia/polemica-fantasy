@@ -97,6 +97,139 @@ class AdminApiIntegrationTest {
     }
 
     @Test
+    @Order(27)
+    fun `tournament expected game default is inherited overridden updated and cleared`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """{"name":"Default Games Tournament","status":"DRAFT","defaultExpectedGameCount":5}""",
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.defaultExpectedGameCount").value(5))
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            get("/api/v1/admin/tournaments/$tournamentId").header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.defaultExpectedGameCount").value(5))
+
+        val inheritedSeriesJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Defaulted 101","namePrefix":"DG101","status":"SCORING",
+                    "startsAt":"2030-06-01T12:00:00Z","teamDeadline":"2030-06-01T11:00:00Z",
+                    "expectedGameCount":null}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.expectedGameCount").value(5))
+            .andReturn().response.contentAsString
+        val inheritedSeriesId = Regex("\"id\"\\s*:\\s*(\\d+)")
+            .find(inheritedSeriesJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Override 102","namePrefix":"DG102","status":"UPCOMING",
+                    "startsAt":"2030-06-02T12:00:00Z","teamDeadline":"2030-06-02T11:00:00Z",
+                    "expectedGameCount":7}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.expectedGameCount").value(7))
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Default Games Tournament Renamed"}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.defaultExpectedGameCount").value(5))
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"defaultExpectedGameCount":1000}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.defaultExpectedGameCount").value(1000))
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"defaultExpectedGameCount":0}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"defaultExpectedGameCount":1001}"""),
+        )
+            .andExpect(status().isBadRequest)
+
+        mockMvc.perform(
+            get("/api/v1/admin/series/$inheritedSeriesId").header("Authorization", auth),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.expectedGameCount").value(5))
+
+        mockMvc.perform(
+            put("/api/v1/admin/tournaments/$tournamentId")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"defaultExpectedGameCount":null}"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.defaultExpectedGameCount").value(nullValue()))
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"No Default 103","namePrefix":"DG103","status":"UPCOMING",
+                    "startsAt":"2030-06-03T12:00:00Z","teamDeadline":"2030-06-03T11:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.expectedGameCount").value(nullValue()))
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/series")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Scoring Without Default 104","namePrefix":"DG104","status":"SCORING",
+                    "startsAt":"2030-06-04T12:00:00Z","teamDeadline":"2030-06-04T11:00:00Z"}
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+    }
+
+    @Test
     @Order(1001)
     fun `admin me endpoint returns roles`() {
         val adminAuth = basicAuth("admin", "test-admin-secret")

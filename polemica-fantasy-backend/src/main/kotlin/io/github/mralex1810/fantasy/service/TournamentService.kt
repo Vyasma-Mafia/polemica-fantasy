@@ -52,6 +52,7 @@ class TournamentService(
                 status = request.status,
                 kind = kind,
                 polemicaCompetitionId = if (kind == TournamentKind.STANDALONE) null else compId,
+                defaultExpectedGameCount = request.defaultExpectedGameCount,
             ),
         )
         streamLinkService.replaceTournamentLinks(t, request.streamLinks)
@@ -79,6 +80,9 @@ class TournamentService(
         request.name?.let { t.name = it.trim() }
         request.description?.let { t.description = it.trim().takeIf { s -> s.isNotEmpty() } }
         request.status?.let { t.status = it }
+        if (request.defaultExpectedGameCountSpecified) {
+            t.defaultExpectedGameCount = request.defaultExpectedGameCount
+        }
         if (!hasSeries) {
             if (request.kind != null) {
                 t.kind = request.kind
@@ -160,6 +164,7 @@ class TournamentService(
             status = t.status,
             kind = t.kind,
             polemicaCompetitionId = t.polemicaCompetitionId,
+            defaultExpectedGameCount = t.defaultExpectedGameCount,
             createdAt = t.createdAt,
             streamLinks = streamLinkService.linksForTournament(id),
             players = players,
@@ -248,6 +253,7 @@ class TournamentService(
         status = status,
         kind = kind,
         polemicaCompetitionId = polemicaCompetitionId,
+        defaultExpectedGameCount = defaultExpectedGameCount,
         createdAt = createdAt,
         streamLinks = streamLinks,
         activeSeries = activeSeries,

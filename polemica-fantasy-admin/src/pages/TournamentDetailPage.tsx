@@ -420,6 +420,7 @@ export function TournamentDetailPage() {
       >
         <SeriesFormModal
           tournamentKind={t?.kind ?? 'STANDALONE'}
+          defaultExpectedGameCount={t?.defaultExpectedGameCount}
           loading={createSeriesMut.isPending}
           onSubmit={(body) =>
             createSeriesMut.mutate({ tournamentId, body })

@@ -264,6 +264,7 @@ export interface TournamentDto {
   status: TournamentStatus
   kind: TournamentKind
   polemicaCompetitionId: number | null
+  defaultExpectedGameCount: number | null
   createdAt: string
   streamLinks: StreamLinkDto[]
   /** Non-finished series; set on list tournaments. Omitted on single-tournament responses. */

@@ -1,6 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Form, Input, InputNumber, Select, Space } from 'antd'
 import { useEffect } from 'react'
+import { MAX_EXPECTED_GAME_COUNT } from '../api/seriesRequests'
 import type { TournamentKind, TournamentStatus } from '../api/types'
 
 interface Values {
@@ -9,6 +10,7 @@ interface Values {
   status: TournamentStatus
   kind: TournamentKind
   polemicaCompetitionId?: number | null
+  defaultExpectedGameCount?: number | null
   streamLinks: { label?: string | null; url: string }[]
 }
 
@@ -34,6 +36,7 @@ export function TournamentFormModal({
       status: initial?.status ?? 'DRAFT',
       kind: initial?.kind ?? 'STANDALONE',
       polemicaCompetitionId: initial?.polemicaCompetitionId ?? undefined,
+      defaultExpectedGameCount: initial?.defaultExpectedGameCount ?? null,
       streamLinks: initial?.streamLinks ?? [],
     })
   }, [initial, form])
@@ -48,6 +51,7 @@ export function TournamentFormModal({
         status: initial?.status ?? 'DRAFT',
         kind: initial?.kind ?? 'STANDALONE',
         polemicaCompetitionId: initial?.polemicaCompetitionId ?? undefined,
+        defaultExpectedGameCount: initial?.defaultExpectedGameCount ?? null,
         streamLinks: initial?.streamLinks ?? [],
       }}
       onFinish={(v) => onSubmit(v)}
@@ -101,6 +105,19 @@ export function TournamentFormModal({
           />
         </Form.Item>
       )}
+      <Form.Item
+        name="defaultExpectedGameCount"
+        label="Default expected game count"
+        extra="Optional. New series inherit this value unless they specify another count. Existing series are not changed."
+      >
+        <InputNumber
+          min={1}
+          max={MAX_EXPECTED_GAME_COUNT}
+          precision={0}
+          style={{ width: '100%' }}
+          placeholder="No tournament default"
+        />
+      </Form.Item>
       <Form.Item label="Tournament stream links">
         <Form.List name="streamLinks">
           {(fields, { add, remove }) => (

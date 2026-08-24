@@ -87,11 +87,12 @@ class SeriesService(
         if (request.status == SeriesStatus.FINISHED) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "A series cannot be created directly as FINISHED")
         }
-        if (request.status == SeriesStatus.SCORING && request.expectedGameCount == null) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "expectedGameCount is required before SCORING")
-        }
         val tournament = tournamentRepository.findByIdForUpdate(tournamentId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Tournament $tournamentId not found")
+        val expectedGameCount = request.expectedGameCount ?: tournament.defaultExpectedGameCount
+        if (request.status == SeriesStatus.SCORING && expectedGameCount == null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "expectedGameCount is required before SCORING")
+        }
         val validated = validatedSeriesFields(tournament.kind, request)
         val name = request.name.trim()
         val publicNumber = derivePublicNumber(name)
@@ -114,7 +115,7 @@ class SeriesService(
                 status = request.status,
                 startsAt = request.startsAt,
                 teamDeadline = request.teamDeadline,
-                expectedGameCount = request.expectedGameCount,
+                expectedGameCount = expectedGameCount,
             ),
         )
         streamLinkService.replaceSeriesLinks(s, request.streamLinks)

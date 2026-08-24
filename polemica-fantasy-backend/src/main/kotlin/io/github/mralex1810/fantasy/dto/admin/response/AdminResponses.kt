@@ -24,6 +24,7 @@ data class TournamentDto(
     val status: TournamentStatus,
     val kind: TournamentKind,
     val polemicaCompetitionId: Long?,
+    val defaultExpectedGameCount: Int?,
     val createdAt: Instant,
     val streamLinks: List<StreamLinkDto> = emptyList(),
     /** Populated on list tournaments; empty on create/update responses. */
@@ -37,6 +38,7 @@ data class TournamentDetailDto(
     val status: TournamentStatus,
     val kind: TournamentKind,
     val polemicaCompetitionId: Long?,
+    val defaultExpectedGameCount: Int?,
     val createdAt: Instant,
     val streamLinks: List<StreamLinkDto> = emptyList(),
     val players: List<TournamentPlayerDto>,

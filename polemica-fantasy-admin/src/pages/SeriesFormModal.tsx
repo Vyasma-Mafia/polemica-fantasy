@@ -20,10 +20,12 @@ interface Values {
 
 export function SeriesFormModal({
   tournamentKind,
+  defaultExpectedGameCount,
   onSubmit,
   loading,
 }: {
   tournamentKind: TournamentKind
+  defaultExpectedGameCount?: number | null
   onSubmit: (body: CreateSeriesRequest) => void
   loading?: boolean
 }) {
@@ -42,7 +44,7 @@ export function SeriesFormModal({
         status: 'UPCOMING',
         startsAt: dayjs(),
         teamDeadline: dayjs().hour(19).minute(10).second(0).millisecond(0),
-        expectedGameCount: null,
+        expectedGameCount: defaultExpectedGameCount ?? null,
         streamLinks: [],
       }}
       onFinish={(v) => {
@@ -137,9 +139,16 @@ export function SeriesFormModal({
       <Form.Item
         name="expectedGameCount"
         label="Expected game count"
+        extra={
+          defaultExpectedGameCount == null
+            ? 'No tournament default is configured.'
+            : `Tournament default: ${defaultExpectedGameCount}. Clear the field to use it automatically.`
+        }
         rules={[({ getFieldValue }) => ({
           validator: (_, value) =>
-            getFieldValue('status') !== 'SCORING' || value != null
+            getFieldValue('status') !== 'SCORING' ||
+            value != null ||
+            defaultExpectedGameCount != null
               ? Promise.resolve()
               : Promise.reject(new Error('Required before SCORING')),
         })]}

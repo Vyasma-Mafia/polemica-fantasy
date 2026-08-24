@@ -1,9 +1,14 @@
 package io.github.mralex1810.fantasy.dto.admin.request
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonSetter
 import io.github.mralex1810.fantasy.dto.StreamLinkRequest
+import io.github.mralex1810.fantasy.entity.MAX_EXPECTED_GAME_COUNT
 import io.github.mralex1810.fantasy.entity.TournamentKind
 import io.github.mralex1810.fantasy.entity.TournamentStatus
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
@@ -18,6 +23,8 @@ data class CreateTournamentRequest(
     /** Defaults to STANDALONE when omitted in JSON. */
     val kind: TournamentKind? = null,
     val polemicaCompetitionId: Long? = null,
+    @field:Min(1) @field:Max(MAX_EXPECTED_GAME_COUNT.toLong())
+    val defaultExpectedGameCount: Int? = null,
     @field:Valid
     val streamLinks: List<StreamLinkRequest> = emptyList(),
 )
@@ -32,7 +39,19 @@ data class UpdateTournamentRequest(
     val polemicaCompetitionId: Long? = null,
     @field:Valid
     val streamLinks: List<StreamLinkRequest>? = null,
-)
+) {
+    @field:Min(1) @field:Max(MAX_EXPECTED_GAME_COUNT.toLong())
+    var defaultExpectedGameCount: Int? = null
+        @JsonSetter("defaultExpectedGameCount")
+        set(value) {
+            field = value
+            defaultExpectedGameCountSpecified = true
+        }
+
+    @get:JsonIgnore
+    var defaultExpectedGameCountSpecified: Boolean = false
+        private set
+}
 
 data class AddTournamentPlayerRequest(
     val fantasyPlayerId: Long? = null,
