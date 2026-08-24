@@ -24,6 +24,7 @@ import {
   addSeriesGame,
   assignSeriesPlayers,
   calculateScores,
+  createResultMafiaOverride,
   deleteSeriesGame,
   finalizeSeries,
   getSeriesCompletionPreview,
@@ -56,12 +57,18 @@ export function SeriesDetailPage() {
     streamLinks: { label?: string | null; url: string }[]
   }>()
   const [addGameForm] = Form.useForm<{ polemicaGameId: number }>()
+  const [resultOverrideForm] = Form.useForm<{
+    gameNumber: number
+    correctedMafiaLine: string
+    reason: string
+  }>()
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([])
   const [replacementPolemicaUserIds, setReplacementPolemicaUserIds] = useState<
     Record<number, number | null>
   >({})
   const [replacementModalOpen, setReplacementModalOpen] = useState(false)
   const [resultsDrawerOpen, setResultsDrawerOpen] = useState(false)
+  const [resultOverrideModalOpen, setResultOverrideModalOpen] = useState(false)
 
   const q = useQuery({
     queryKey: ['admin', 'series', seriesId],
@@ -180,6 +187,17 @@ export function SeriesDetailPage() {
     onSuccess: () => {
       message.success('Game deleted from scoring')
       invalidateSeriesGameState()
+    },
+    onError: (e: Error) => message.error(e.message),
+  })
+
+  const resultOverrideMut = useMutation({
+    mutationFn: (body: { gameNumber: number; correctedMafiaLine: string; reason: string }) =>
+      createResultMafiaOverride(seriesId, body),
+    onSuccess: (override) => {
+      message.success(`Telegram result corrected for game ${override.gameNumber}`)
+      setResultOverrideModalOpen(false)
+      resultOverrideForm.resetFields()
     },
     onError: (e: Error) => message.error(e.message),
   })
@@ -754,6 +772,12 @@ export function SeriesDetailPage() {
           Calculate scores
         </Button>
         <Button
+          disabled={!!q.data?.finalized}
+          onClick={() => setResultOverrideModalOpen(true)}
+        >
+          Correct Telegram result
+        </Button>
+        <Button
           danger
           disabled={!!q.data?.finalized}
           onClick={() => completionPreviewMut.mutate()}
@@ -762,6 +786,46 @@ export function SeriesDetailPage() {
           {finalizeMut.isPending ? 'Finalizing…' : 'Finalize series'}
         </Button>
       </Space>
+      <Modal
+        title="Correct Telegram mafia line"
+        open={resultOverrideModalOpen}
+        okText="Save audited correction"
+        confirmLoading={resultOverrideMut.isPending}
+        onCancel={() => setResultOverrideModalOpen(false)}
+        onOk={() => resultOverrideForm.submit()}
+      >
+        <Typography.Paragraph type="secondary">
+          The original Telegram revision remains unchanged. The correction is accepted only when
+          it exactly matches the current Polemica roles and is stored with the admin actor and reason.
+        </Typography.Paragraph>
+        <Form
+          form={resultOverrideForm}
+          layout="vertical"
+          onFinish={(values) => resultOverrideMut.mutate(values)}
+        >
+          <Form.Item
+            name="gameNumber"
+            label="Game number"
+            rules={[{ required: true }]}
+          >
+            <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="correctedMafiaLine"
+            label="Correct mafia line"
+            rules={[{ required: true, whitespace: true, max: 512 }]}
+          >
+            <Input placeholder="Player 1, Player 2, Player 3" />
+          </Form.Item>
+          <Form.Item
+            name="reason"
+            label="Reason"
+            rules={[{ required: true, whitespace: true, min: 5, max: 512 }]}
+          >
+            <Input.TextArea rows={3} placeholder="Source post cannot be edited; duplicate nickname corrected from Polemica roles" />
+          </Form.Item>
+        </Form>
+      </Modal>
       <SeriesResultsDrawer
         seriesId={seriesId}
         open={resultsDrawerOpen}

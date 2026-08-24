@@ -96,6 +96,7 @@ class TelegramLeagueImportIntegrationTest {
     @Autowired private lateinit var selectorFingerprintService: SeriesGameSelectorFingerprintService
     @Autowired private lateinit var resultProcessingService: LeagueImportResultProcessingService
     @Autowired private lateinit var legacyLinkService: LeagueImportLegacyLinkService
+    @Autowired private lateinit var resultMafiaOverrideService: LeagueResultMafiaOverrideService
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var objectMapper: ObjectMapper
     @Autowired private lateinit var transactionManager: PlatformTransactionManager
@@ -885,7 +886,12 @@ class TelegramLeagueImportIntegrationTest {
         properties.resultProcessingEnabled = true
         properties.policies.lp.finalizeMode = LeagueImportAutomationMode.MANUAL
         try {
-            val text = result(number)
+            val text = result(number).replace(
+                """Игра 2
+        Мафия: Alpha, Houston, TX, Gamma""",
+                """Игра 2
+        Мафия: Alpha, Houston, TX, Alpha""",
+            )
             val resultMessageId = messageSequence.incrementAndGet()
             val resultItemId = ingestService.ingest(
                 "test-current", UUID.randomUUID(), Instant.now(), request(resultMessageId, 1, text),
@@ -942,6 +948,25 @@ class TelegramLeagueImportIntegrationTest {
                 it.lastScoredSelectorChecksum = selectorChecksum
                 seriesRepository.saveAndFlush(it)
             }
+            val blockedCompletion = completionService.evaluate(seriesId)
+            assertFalse(blockedCompletion.ready)
+            assertEquals("mafia set mismatch or unresolved alias for game 2", blockedCompletion.reason)
+            val override = resultMafiaOverrideService.create(
+                seriesId = seriesId,
+                gameNumber = 2,
+                correctedMafiaLine = "Gamma, Alpha, Houston, TX",
+                reason = "Source post cannot be edited; duplicate nickname corrected from Polemica roles",
+                adminActor = "integration-admin",
+            )
+            assertEquals("Alpha, Houston, TX, Alpha", override.originalMafiaLine)
+            assertEquals("Gamma, Alpha, Houston, TX", override.correctedMafiaLine)
+            assertEquals(
+                1,
+                intValue(
+                    "SELECT count(*) FROM league_import_audit_event WHERE item_id=? AND event_type='RESULT_MAFIA_OVERRIDDEN' AND outcome='COMMITTED'",
+                    resultItemId,
+                ),
+            )
             val completion = completionService.evaluate(seriesId)
             assertTrue(completion.ready, completion.reason)
             seriesService.assignPlayers(seriesId, AssignSeriesPlayersRequest(emptyList()))

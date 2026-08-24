@@ -47,3 +47,9 @@ export interface BatchStartSeriesRequest {
 export interface AddSeriesGameRequest {
   polemicaGameId: number
 }
+
+export interface CreateResultMafiaOverrideRequest {
+  gameNumber: number
+  correctedMafiaLine: string
+  reason: string
+}

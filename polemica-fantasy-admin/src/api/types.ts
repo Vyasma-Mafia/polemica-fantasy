@@ -357,6 +357,18 @@ export interface SeriesCompletionPreviewDto {
   reason: string | null
 }
 
+export interface ResultMafiaOverrideDto {
+  id: number
+  seriesId: number
+  importItemId: number
+  gameNumber: number
+  originalMafiaLine: string
+  correctedMafiaLine: string
+  reason: string
+  adminActor: string
+  createdAt: string
+}
+
 export interface AdminSeriesGameDto {
   id: number
   polemicaGameId: number

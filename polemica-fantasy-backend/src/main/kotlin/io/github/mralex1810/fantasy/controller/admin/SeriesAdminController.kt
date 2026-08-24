@@ -4,6 +4,7 @@ import io.github.mralex1810.fantasy.dto.admin.request.AssignSeriesPlayersRequest
 import io.github.mralex1810.fantasy.dto.admin.request.AddSeriesGameRequest
 import io.github.mralex1810.fantasy.dto.admin.request.BatchStartSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.CreateSeriesRequest
+import io.github.mralex1810.fantasy.dto.admin.request.CreateResultMafiaOverrideRequest
 import io.github.mralex1810.fantasy.dto.admin.request.FinalizeSeriesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.LinkLegacySeriesSourcesRequest
 import io.github.mralex1810.fantasy.dto.admin.request.UpdateSeriesRequest
@@ -13,6 +14,7 @@ import io.github.mralex1810.fantasy.dto.admin.response.BatchStartSeriesResponse
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesCompletionPreviewDto
 import io.github.mralex1810.fantasy.dto.admin.response.LegacySeriesSourcesLinkDto
+import io.github.mralex1810.fantasy.dto.admin.response.ResultMafiaOverrideDto
 import io.github.mralex1810.fantasy.dto.admin.response.SeriesPlayerMarketplaceUnlistResultDto
 import io.github.mralex1810.fantasy.dto.user.response.SeriesFinalizationResultDto
 import io.github.mralex1810.fantasy.service.SeriesFinalizationService
@@ -20,6 +22,7 @@ import io.github.mralex1810.fantasy.service.SeriesCompletionService
 import io.github.mralex1810.fantasy.service.SeriesService
 import io.github.mralex1810.fantasy.service.SeriesResultsService
 import io.github.mralex1810.fantasy.service.leagueimport.LeagueImportLegacyLinkService
+import io.github.mralex1810.fantasy.service.leagueimport.LeagueResultMafiaOverrideService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.security.core.Authentication
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -38,6 +42,7 @@ class SeriesAdminController(
     private val seriesCompletionService: SeriesCompletionService,
     private val seriesResultsService: SeriesResultsService,
     private val leagueImportLegacyLinkService: LeagueImportLegacyLinkService,
+    private val leagueResultMafiaOverrideService: LeagueResultMafiaOverrideService,
 ) {
 
     @GetMapping("/tournaments/{tournamentId}/series")
@@ -132,4 +137,17 @@ class SeriesAdminController(
         @Valid @RequestBody body: LinkLegacySeriesSourcesRequest,
     ): LegacySeriesSourcesLinkDto =
         leagueImportLegacyLinkService.link(id, body.announcementMessageId, body.resultMessageId)
+
+    @PostMapping("/series/{id}/telegram-result/mafia-override")
+    fun createResultMafiaOverride(
+        @PathVariable id: Long,
+        @Valid @RequestBody body: CreateResultMafiaOverrideRequest,
+        authentication: Authentication,
+    ): ResultMafiaOverrideDto = leagueResultMafiaOverrideService.create(
+        seriesId = id,
+        gameNumber = body.gameNumber,
+        correctedMafiaLine = body.correctedMafiaLine,
+        reason = body.reason,
+        adminActor = authentication.name,
+    )
 }

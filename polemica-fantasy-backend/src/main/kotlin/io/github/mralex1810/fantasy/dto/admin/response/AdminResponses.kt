@@ -135,6 +135,18 @@ data class LegacySeriesSourcesLinkDto(
     val idempotent: Boolean,
 )
 
+data class ResultMafiaOverrideDto(
+    val id: Long,
+    val seriesId: Long,
+    val importItemId: Long,
+    val gameNumber: Int,
+    val originalMafiaLine: String,
+    val correctedMafiaLine: String,
+    val reason: String,
+    val adminActor: String,
+    val createdAt: Instant,
+)
+
 data class AdminSeriesGameDto(
     val id: Long,
     val polemicaGameId: Long,

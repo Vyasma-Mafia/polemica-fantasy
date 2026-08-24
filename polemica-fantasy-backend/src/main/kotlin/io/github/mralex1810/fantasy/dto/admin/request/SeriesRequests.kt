@@ -119,3 +119,12 @@ data class LinkLegacySeriesSourcesRequest(
     @field:Min(1)
     val resultMessageId: Long,
 )
+
+data class CreateResultMafiaOverrideRequest(
+    @field:Min(1)
+    val gameNumber: Int,
+    @field:Size(min = 1, max = 512)
+    val correctedMafiaLine: String,
+    @field:Size(min = 5, max = 512)
+    val reason: String,
+)

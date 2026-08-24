@@ -88,6 +88,9 @@ class SeriesCompletionService(
                 runCatching { objectMapper.treeToValue(it, LeagueResultDraft::class.java) }.getOrNull()
             } ?: return notReady("RESULT source draft is invalid")
         }
+        val mafiaOverrides = resultItem?.let { item ->
+            leagueImportRepository.findResultMafiaOverrides(item.id).associateBy { it.gameNumber }
+        }.orEmpty()
         if (resultDraft != null) {
             if (resultDraft.tournamentId != series.tournament?.id || resultDraft.seriesNumber != series.publicNumber) {
                 return notReady("RESULT source does not match series identity")
@@ -131,7 +134,8 @@ class SeriesCompletionService(
                 val blackNames = game.parsedGame.players.orEmpty()
                     .filter { it.role == Role.DON || it.role == Role.MAFIA }
                     .mapNotNull { it.player?.username?.takeIf(String::isNotBlank) ?: it.username.takeIf(String::isNotBlank) }
-                if (blackNames.size != 3 || !matchesMafiaLine(announcedGame.mafiaLine, blackNames)) {
+                val mafiaLine = mafiaOverrides[game.number]?.correctedMafiaLine ?: announcedGame.mafiaLine
+                if (blackNames.size != 3 || !SeriesResultIdentityMatcher.matchesMafiaLine(mafiaLine, blackNames)) {
                     return notReady("mafia set mismatch or unresolved alias for game ${game.number}")
                 }
                 val sheriffNames = game.parsedGame.players.orEmpty()
@@ -163,6 +167,9 @@ class SeriesCompletionService(
                     add(properties.policyGeneration)
                     add(it.version.toString())
                     add(it.currentRevision.toString())
+                    mafiaOverrides.values.sortedBy { override -> override.gameNumber }.forEach { override ->
+                        add("mafiaOverride=${override.id}:${override.gameNumber}:${override.correctedMafiaLine}")
+                    }
                     add(it.draftChecksum.orEmpty())
                 }
                 evaluated.forEach {
@@ -182,22 +189,6 @@ class SeriesCompletionService(
     }
 
     private fun notReady(reason: String) = SeriesCompletion(SeriesCompletionStatus.NOT_READY, reason = reason)
-
-    private fun matchesMafiaLine(line: String, actualNames: List<String>): Boolean {
-        val expected = normalizeIdentity(line)
-        return permutations(actualNames).any { normalizeIdentity(it.joinToString(", ")) == expected }
-    }
-
-    private fun permutations(values: List<String>): Sequence<List<String>> = sequence {
-        if (values.size <= 1) {
-            yield(values)
-        } else {
-            values.indices.forEach { index ->
-                val head = values[index]
-                permutations(values.filterIndexed { i, _ -> i != index }).forEach { yield(listOf(head) + it) }
-            }
-        }
-    }
 
     private fun normalizeIdentity(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
         .lowercase()
@@ -224,5 +215,29 @@ class SeriesCompletionService(
 
     private companion object {
         val SHA256 = Regex("[0-9a-f]{64}")
+    }
+}
+
+internal object SeriesResultIdentityMatcher {
+    fun matchesMafiaLine(line: String, actualNames: List<String>): Boolean {
+        val expected = normalizeIdentity(line)
+        return permutations(actualNames).any { normalizeIdentity(it.joinToString(", ")) == expected }
+    }
+
+    fun normalizeIdentity(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
+        .lowercase()
+        .replace('ё', 'е')
+        .replace('с', 'c')
+        .filter { it.isLetterOrDigit() }
+
+    private fun permutations(values: List<String>): Sequence<List<String>> = sequence {
+        if (values.size <= 1) {
+            yield(values)
+        } else {
+            values.indices.forEach { index ->
+                val head = values[index]
+                permutations(values.filterIndexed { i, _ -> i != index }).forEach { yield(listOf(head) + it) }
+            }
+        }
     }
 }

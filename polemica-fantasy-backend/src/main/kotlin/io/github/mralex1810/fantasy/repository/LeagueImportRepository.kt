@@ -69,6 +69,18 @@ data class LeagueImportJobRow(
     val operatorMessageId: Long?,
 )
 
+data class LeagueImportResultMafiaOverrideRow(
+    val id: Long,
+    val seriesId: Long,
+    val importItemId: Long,
+    val gameNumber: Int,
+    val originalMafiaLine: String,
+    val correctedMafiaLine: String,
+    val reason: String,
+    val adminActor: String,
+    val createdAt: Instant,
+)
+
 data class LeagueImportActionRow(
     val id: UUID,
     val itemId: Long,
@@ -668,6 +680,48 @@ class LeagueImportRepository(
         """.trimIndent(),
         { rs, _ -> item(rs) }, seriesId,
     )
+    }
+
+    fun findResultMafiaOverrides(importItemId: Long): List<LeagueImportResultMafiaOverrideRow> = jdbc.query(
+        """
+        SELECT * FROM league_import_result_mafia_override
+        WHERE import_item_id=? ORDER BY game_number,id
+        """.trimIndent(),
+        { rs, _ ->
+            LeagueImportResultMafiaOverrideRow(
+                id = rs.getLong("id"),
+                seriesId = rs.getLong("series_id"),
+                importItemId = rs.getLong("import_item_id"),
+                gameNumber = rs.getInt("game_number"),
+                originalMafiaLine = rs.getString("original_mafia_line"),
+                correctedMafiaLine = rs.getString("corrected_mafia_line"),
+                reason = rs.getString("reason"),
+                adminActor = rs.getString("admin_actor"),
+                createdAt = rs.getObject("created_at", OffsetDateTime::class.java).toInstant(),
+            )
+        },
+        importItemId,
+    )
+
+    fun insertResultMafiaOverride(
+        seriesId: Long,
+        importItemId: Long,
+        gameNumber: Int,
+        originalMafiaLine: String,
+        correctedMafiaLine: String,
+        reason: String,
+        adminActor: String,
+    ): LeagueImportResultMafiaOverrideRow {
+        val id = jdbc.queryForObject(
+            """
+            INSERT INTO league_import_result_mafia_override(
+                series_id,import_item_id,game_number,original_mafia_line,corrected_mafia_line,reason,admin_actor
+            ) VALUES(?,?,?,?,?,?,?) RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+            seriesId, importItemId, gameNumber, originalMafiaLine, correctedMafiaLine, reason, adminActor,
+        )!!
+        return findResultMafiaOverrides(importItemId).first { it.id == id }
     }
 
     fun enqueueJob(

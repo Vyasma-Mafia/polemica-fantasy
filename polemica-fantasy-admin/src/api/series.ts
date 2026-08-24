@@ -3,6 +3,7 @@ import type {
   AssignSeriesPlayersRequest,
   BatchStartSeriesRequest,
   CreateSeriesRequest,
+  CreateResultMafiaOverrideRequest,
   UpdateSeriesRequest,
 } from './seriesRequests'
 import type {
@@ -11,6 +12,7 @@ import type {
   SeriesDto,
   SeriesCompletionPreviewDto,
   SeriesFinalizationResultDto,
+  ResultMafiaOverrideDto,
   SeriesPlayerMarketplaceUnlistResultDto,
   SeriesResultsDto,
 } from './types'
@@ -22,6 +24,7 @@ export type {
   UpdateSeriesRequest,
   AssignSeriesPlayersRequest,
   BatchStartSeriesRequest,
+  CreateResultMafiaOverrideRequest,
 } from './seriesRequests'
 
 export function listSeriesByTournament(tournamentId: number) {
@@ -104,4 +107,11 @@ export function finalizeSeries(id: number) {
   return apiJson<SeriesFinalizationResultDto>(`/v1/admin/series/${id}/finalize`, {
     method: 'POST',
   })
+}
+
+export function createResultMafiaOverride(id: number, body: CreateResultMafiaOverrideRequest) {
+  return apiJson<ResultMafiaOverrideDto>(
+    `/v1/admin/series/${id}/telegram-result/mafia-override`,
+    { method: 'POST', body: JSON.stringify(body) },
+  )
 }
