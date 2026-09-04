@@ -36,6 +36,7 @@ def test_timer_and_runner_are_inert_by_default() -> None:
     assert "OnCalendar=hourly" in timer
     assert "[Install]" in timer and "WantedBy=timers.target" in timer
     assert "WRITE_ENABLED=" not in runner
+    assert "CODEX_BINARY=/home/codex/.local/bin/codex" in runner
     assert "POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock" in runner
     assert "ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run" in runner
     assert "POLEMICA_AGENT_DATABASE" not in runner

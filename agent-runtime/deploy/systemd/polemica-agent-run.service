@@ -8,7 +8,7 @@ Type=oneshot
 User=codex
 Group=codex
 EnvironmentFile=/etc/polemica-ai-agent/runner.env
-Environment=POLEMICA_AGENT_RUNTIME_ROOT=/var/lib/polemica-ai-agent-runner POLEMICA_AGENT_RUN_TIMEOUT_SECONDS=3300 POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock
+Environment=CODEX_BINARY=/home/codex/.local/bin/codex POLEMICA_AGENT_RUNTIME_ROOT=/var/lib/polemica-ai-agent-runner POLEMICA_AGENT_RUN_TIMEOUT_SECONDS=3300 POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock
 ExecStartPre=/opt/polemica-ai-agent/deploy/preflight.sh --runtime
 ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run
 TimeoutStartSec=3400

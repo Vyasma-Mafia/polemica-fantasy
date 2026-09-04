@@ -495,7 +495,11 @@ def test_real_mcp_server_concurrent_duplicate_write_uses_worker_threads_safely(t
     server = build_server(
         "fantasy",
         FantasyRegistryAdapter(build_tool_registry(service)),
-        policy=ToolPolicy(write_enabled=True, authorizer=AllowWrites()),
+        policy=ToolPolicy(
+            write_enabled=True,
+            authorizer=AllowWrites(),
+            allowed_write_tools=frozenset({"fantasy_create_team"}),
+        ),
     )
     arguments = {
         "run_id": "run",

@@ -1,9 +1,10 @@
 #!/bin/sh
 set -eu
 
-command -v codex >/dev/null
-codex exec --help 2>&1 | grep -q -- '--ignore-user-config'
-codex exec --help 2>&1 | grep -q -- '--sandbox'
+codex_binary=${CODEX_BINARY:-codex}
+command -v "$codex_binary" >/dev/null
+"$codex_binary" exec --help 2>&1 | grep -q -- '--ignore-user-config'
+"$codex_binary" exec --help 2>&1 | grep -q -- '--sandbox'
 
 if [ "${1:-}" = "--runtime" ]; then
   command -v timedatectl >/dev/null

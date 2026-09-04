@@ -328,7 +328,7 @@ Implemented on 2026-09-04:
 
 Verification completed:
 
-- 93 runtime tests passed on Python 3.10;
+- 96 runtime tests passed on Python 3.10;
 - backend focused unit tests and Kotlin compilation passed;
 - Bearer/idempotency integration and concurrent duplicate-purchase tests passed against PostgreSQL 16 via Testcontainers on the runtime VM;
 - negative-capability, fixture-health, compile, preflight, and disabled-install checks passed locally/remotely;

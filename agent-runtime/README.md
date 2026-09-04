@@ -25,6 +25,7 @@ or admin API capabilities.
   never repeats the upstream write.
 - A request payload mismatch for an existing operation is rejected.
 - Any unresolved economic `SENT`/`UNKNOWN` intent blocks another economic write.
+- Fantasy writes require both the global write gate and an explicit staged tool allowlist.
 - Decisions can reference only sealed snapshots created by the same run.
 - The hourly runner lock requires an absolute path and a timeout below one hour.
 - Runner configuration defaults to a 3300-second hard timeout and rejects relative
@@ -54,6 +55,9 @@ Additional deployment checks:
 production paths and dedicated broker user. It installs code, empty root-owned
 environment files, units, and the local SQLite schema, but deliberately leaves
 all services and the hourly timer inactive and disabled.
+
+The exact account, credential, environment, staged canary, and timer sequence is
+documented in [`deploy/ACTIVATION.md`](deploy/ACTIVATION.md).
 
 Persistent runtime state must live outside the repository, for example:
 

@@ -5,9 +5,9 @@
 - [x] Согласованы design и implementation plan скрытого AI-managed пользователя с обычной экономикой, marketplace, полной исторической Polemica-аналитикой, persistent memory и почасовым расписанием.
 - [x] Backend V83: opaque Bearer credentials с hash/expiry/revoke/audit, internal agent marker без публичного DTO, TMA manual-login guard, Telegram recipient suppression и pack-purchase `Idempotency-Key` replay для INSTANT/CHOOSE.
 - [x] Agent runtime: закрытые Fantasy/Research/Memory MCP tools, trusted immutable Research snapshots, sealed-decision ACT authorization, single-attempt durable intents/reconciliation, SQLite WAL/blob memory, prompt/version audit, flock и fail-closed runner.
-- [x] Проверки: Python 3.10 runtime `94 passed`; backend focused compile/unit green; изолированный remote Testcontainers прогон Bearer + pack idempotency/concurrency на PostgreSQL 16 green с Docker API 1.44.
+- [x] Проверки: Python 3.10 runtime `96 passed`; backend focused compile/unit green; изолированный remote Testcontainers прогон Bearer + pack idempotency/concurrency на PostgreSQL 16 green с Docker API 1.44.
 - [x] На `codex@51.250.97.185` установлен только disabled no-secret runtime в `/home/codex/.local/share/polemica-agent-runtime`; MCP services/timer/cron отсутствуют, production run/write не выполнялся.
-- [x] Commit `c4d2533` отправлен в public `master` с README-разделом про Fantasy/Research/Memory MCP и запустил штатные production workflows.
+- [x] Commits `c4d2533`/`4910104` отправлены в public `master`; production workflow success, VPS SHA совпадает, backend healthy, Flyway V83 физически подтверждён, credentials count = 0.
 - [x] Подготовлен root-only `install-system-disabled.sh`: dedicated broker user, `/opt` runtime, root-owned empty env files, SQLite migration и activation-ready systemd units без start/enable/credentials.
 - [ ] Runtime system install blocked: root SSH запрещён, `codex` sudo требует интерактивный пароль; безопасная broker/runner изоляция не заменяется user-service компромиссом.
 - [ ] Activation gate: production account/credential, read-only Polemica credential, model/reasoning, expert cohort/stop rule/retention/alerts, live contract smoke и staged read-only→team→economy→marketplace enablement.

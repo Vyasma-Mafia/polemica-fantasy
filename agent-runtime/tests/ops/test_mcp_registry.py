@@ -6,7 +6,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from polemica_agent.fantasy_mcp.registry import build_tool_registry
 from polemica_agent.mcp_runtime.fantasy_adapter import FantasyRegistryAdapter
-from polemica_agent.mcp_runtime.cli import _handler
+from polemica_agent.mcp_runtime.cli import _fantasy_write_allowlist, _handler
+from polemica_agent.mcp_runtime.config import MCPConfigError
 from polemica_agent.mcp_runtime.registry import (
     FANTASY_WRITE_TOOLS, MCP_SERVERS, RegistryError, ToolPolicy, WriteDenied, build_server,
 )
@@ -51,6 +52,28 @@ def test_fantasy_write_is_disabled_even_if_handler_exists() -> None:
     server = build_server("fantasy", handler_for(MCP_SERVERS["fantasy"]), policy=ToolPolicy())
     with pytest.raises(ToolError, match="disabled"):
         anyio.run(server.call_tool, name, {"value": 2})
+
+
+def test_write_rollout_allowlist_denies_unlisted_tool() -> None:
+    class AllowWrites:
+        def authorize_write(self, _name, _arguments): return None
+
+    allowed, denied = FANTASY_WRITE_TOOLS[:2]
+    policy = ToolPolicy(
+        write_enabled=True,
+        authorizer=AllowWrites(),
+        allowed_write_tools=frozenset({allowed}),
+    )
+    server = build_server("fantasy", handler_for(MCP_SERVERS["fantasy"]), policy=policy)
+    assert anyio.run(server.call_tool, allowed, {"value": 2}).content[0].text
+    with pytest.raises(ToolError, match="outside the active rollout stage"):
+        anyio.run(server.call_tool, denied, {"value": 2})
+
+
+def test_write_rollout_allowlist_rejects_unknown_name(monkeypatch) -> None:
+    monkeypatch.setenv("FANTASY_WRITE_ALLOWLIST", "fantasy_create_team,arbitrary_http")
+    with pytest.raises(MCPConfigError, match="unknown Fantasy write tool"):
+        _fantasy_write_allowlist()
 
 
 def test_official_sdk_adapts_exact_fantasy_domain_registry() -> None:

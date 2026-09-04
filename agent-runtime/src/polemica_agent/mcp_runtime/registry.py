@@ -26,10 +26,13 @@ class WriteAuthorizer(Protocol):
 class ToolPolicy:
     write_enabled: bool = False
     authorizer: WriteAuthorizer | None = None
+    allowed_write_tools: frozenset[str] = frozenset()
 
     def guard(self, name: str, arguments: Mapping[str, Any]) -> None:
         if not self.write_enabled:
             raise WriteDenied(f"write tool {name} is disabled")
+        if name not in self.allowed_write_tools:
+            raise WriteDenied(f"write tool {name} is outside the active rollout stage")
         if self.authorizer is None:
             raise WriteDenied("write authorization adapter is required")
         try:

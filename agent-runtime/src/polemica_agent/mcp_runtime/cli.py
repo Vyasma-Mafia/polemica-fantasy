@@ -7,7 +7,7 @@ from typing import Any
 
 from .config import MCPConfigError, ServerBinding, required_https_origin
 from .memory_tools import MemoryTools
-from .registry import ToolPolicy, WriteAuthorizer, build_server
+from .registry import FANTASY_WRITE_TOOLS, ToolPolicy, WriteAuthorizer, build_server
 
 
 def _required(name: str) -> str:
@@ -62,6 +62,15 @@ def _handler(kind: str) -> tuple[Any, Any | None, WriteAuthorizer | None]:
     raise MCPConfigError("unknown server kind")
 
 
+def _fantasy_write_allowlist() -> frozenset[str]:
+    raw = os.environ.get("FANTASY_WRITE_ALLOWLIST", "")
+    names = frozenset(name.strip() for name in raw.split(",") if name.strip())
+    unknown = names.difference(FANTASY_WRITE_TOOLS)
+    if unknown:
+        raise MCPConfigError(f"unknown Fantasy write tool in allowlist: {sorted(unknown)}")
+    return names
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run a fixed Polemica MCP server")
     parser.add_argument("kind", choices=("fantasy", "research", "memory"))
@@ -71,7 +80,11 @@ def main(argv: list[str] | None = None) -> int:
     write_enabled = os.environ.get("WRITE_ENABLED", "false").lower() == "true"
     server = build_server(
         args.kind, handler,
-        policy=ToolPolicy(write_enabled=write_enabled, authorizer=authorizer),
+        policy=ToolPolicy(
+            write_enabled=write_enabled,
+            authorizer=authorizer,
+            allowed_write_tools=_fantasy_write_allowlist() if args.kind == "fantasy" else frozenset(),
+        ),
     )
     try:
         server.run(
