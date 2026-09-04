@@ -1,5 +1,5 @@
 [Unit]
-Description=Polemica AI hourly Codex run (WRITE_ENABLED=false by default)
+Description=Polemica AI hourly Codex run
 Requires=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
 After=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
 
@@ -8,7 +8,7 @@ Type=oneshot
 User=codex
 Group=codex
 EnvironmentFile=/etc/polemica-ai-agent/runner.env
-Environment=WRITE_ENABLED=false POLEMICA_AGENT_RUNTIME_ROOT=/var/lib/polemica-ai-agent-runner POLEMICA_AGENT_RUN_TIMEOUT_SECONDS=3300 POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock
+Environment=POLEMICA_AGENT_RUNTIME_ROOT=/var/lib/polemica-ai-agent-runner POLEMICA_AGENT_RUN_TIMEOUT_SECONDS=3300 POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock
 ExecStartPre=/opt/polemica-ai-agent/deploy/preflight.sh --runtime
 ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run
 TimeoutStartSec=3400
@@ -36,4 +36,4 @@ SystemCallArchitectures=native
 UMask=0077
 InaccessiblePaths=/root/.ssh /home/codex/.ssh /proc/kcore /proc/keys /proc/timer_list
 
-# Intentionally no [Install]: activation is a separate production gate.
+# The timer owns activation; this oneshot is not enabled directly.

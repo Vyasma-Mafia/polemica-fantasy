@@ -34,13 +34,26 @@ def test_timer_and_runner_are_inert_by_default() -> None:
     timer = (SYSTEMD / "polemica-agent-run.timer").read_text()
     runner = (SYSTEMD / "polemica-agent-run.service").read_text()
     assert "OnCalendar=hourly" in timer
-    assert "[Install]" not in timer
-    assert "WRITE_ENABLED=false" in runner
+    assert "[Install]" in timer and "WantedBy=timers.target" in timer
+    assert "WRITE_ENABLED=" not in runner
     assert "POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock" in runner
     assert "ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run" in runner
     assert "POLEMICA_AGENT_DATABASE" not in runner
     assert "ReadWritePaths=/var/lib/polemica-ai-agent-runner" in runner
     assert "3300" in runner
+
+
+def test_system_installer_is_root_only_and_leaves_units_disabled() -> None:
+    installer = ROOT / "deploy" / "install-system-disabled.sh"
+    source = installer.read_text()
+    assert '"$(id -u)" -ne 0' in source
+    assert "systemctl daemon-reload" in source
+    assert "systemctl enable" not in source
+    assert "systemctl start" not in source
+    assert "systemctl restart" not in source
+    assert "FANTASY_BEARER_TOKEN" not in source
+    assert "POLEMICA_PASSWORD" not in source
+    subprocess.run(["sh", "-n", str(installer)], check=True)
 
 
 def test_installer_only_stages_files(tmp_path: Path) -> None:

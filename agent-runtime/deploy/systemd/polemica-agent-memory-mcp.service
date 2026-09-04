@@ -1,5 +1,5 @@
 [Unit]
-Description=Polemica AI Memory MCP (disabled staging artifact)
+Description=Polemica AI Memory MCP
 Requires=polemica-agent-migrate.service
 After=polemica-agent-migrate.service
 

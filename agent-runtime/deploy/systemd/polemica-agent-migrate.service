@@ -1,5 +1,5 @@
 [Unit]
-Description=Polemica AI broker schema migration (disabled staging artifact)
+Description=Polemica AI broker schema migration
 
 [Service]
 Type=oneshot

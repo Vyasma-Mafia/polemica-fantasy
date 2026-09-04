@@ -1,5 +1,5 @@
 [Unit]
-Description=Polemica AI Research MCP (disabled staging artifact)
+Description=Polemica AI Research MCP
 Requires=polemica-agent-migrate.service
 After=network-online.target polemica-agent-migrate.service
 Wants=network-online.target

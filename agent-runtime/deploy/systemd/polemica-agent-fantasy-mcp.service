@@ -1,5 +1,5 @@
 [Unit]
-Description=Polemica AI Fantasy MCP (disabled staging artifact)
+Description=Polemica AI Fantasy MCP
 Requires=polemica-agent-migrate.service
 After=network-online.target polemica-agent-migrate.service
 Wants=network-online.target
@@ -9,7 +9,7 @@ Type=simple
 User=polemica-agent-broker
 Group=polemica-agent-broker
 EnvironmentFile=/etc/polemica-ai-agent/fantasy-mcp.env
-Environment=WRITE_ENABLED=false MCP_BIND_HOST=127.0.0.1 MCP_BIND_PORT=8811 POLEMICA_AGENT_DATABASE=/var/lib/polemica-ai-agent/agent.sqlite3
+Environment=MCP_BIND_HOST=127.0.0.1 MCP_BIND_PORT=8811 POLEMICA_AGENT_DATABASE=/var/lib/polemica-ai-agent/agent.sqlite3
 ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-mcp fantasy
 Restart=on-failure
 RestartSec=10

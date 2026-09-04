@@ -49,6 +49,12 @@ Additional deployment checks:
 ./deploy/healthcheck-fixture.sh
 ```
 
+`deploy/install-disabled.sh` creates an unprivileged staging copy only.
+`deploy/install-system-disabled.sh` is the reviewed root-only installer for the
+production paths and dedicated broker user. It installs code, empty root-owned
+environment files, units, and the local SQLite schema, but deliberately leaves
+all services and the hourly timer inactive and disabled.
+
 Persistent runtime state must live outside the repository, for example:
 
 ```text

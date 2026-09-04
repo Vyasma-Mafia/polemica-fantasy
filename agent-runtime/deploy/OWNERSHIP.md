@@ -15,6 +15,7 @@ The runner uses the existing `codex` Unix user, its isolated
 not have filesystem access to broker state or EnvironmentFiles. Codex receives no upstream secret.
 The systemd units hide `.ssh`, restrict `/proc`, protect the host filesystem, and keep writes off.
 
-Creating the broker user/directories, installing root-owned `0600` EnvironmentFiles, placing code,
-starting MCP services, setting `WRITE_ENABLED=true`, starting a manual run, and enabling the timer
-are all outside the staging installer and require the separate production activation review.
+`install-system-disabled.sh` may create the broker user/directories, install code and units, create
+empty root-owned `0600` EnvironmentFiles, and migrate the local SQLite schema. It never inserts
+credentials, starts services, sets `WRITE_ENABLED=true`, starts a manual run, or enables the timer.
+Those activation steps require the separate production activation review.
