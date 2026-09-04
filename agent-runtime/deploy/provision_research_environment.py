@@ -55,7 +55,11 @@ def _validate_polemica(username: str, password: str, opener=urllib.request.urlop
         value = json.loads(raw)
     except json.JSONDecodeError as exc:
         raise ProvisionError("Polemica login response is invalid") from exc
-    if not isinstance(value, dict) or not isinstance(value.get("token"), str) or not value["token"]:
+    if (
+        not isinstance(value, dict)
+        or not isinstance(value.get("access_token"), str)
+        or not value["access_token"]
+    ):
         raise ProvisionError("Polemica login did not return a token")
 
 

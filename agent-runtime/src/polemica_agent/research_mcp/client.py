@@ -185,9 +185,9 @@ class HttpPolemicaClient:
                 body={"username": self.config.username, "password": self.config.password},
                 token=None,
             )
-            if not isinstance(value, dict) or not isinstance(value.get("token"), str):
+            if not isinstance(value, dict) or not isinstance(value.get("access_token"), str):
                 raise UpstreamError("login")
-            self._token = value["token"]
+            self._token = value["access_token"]
             return self._token
 
     def _request(

@@ -26,6 +26,22 @@ class RecordingClient(HttpPolemicaClient):
 
 
 class ClientContractTest(unittest.TestCase):
+    def test_login_uses_access_token_contract(self) -> None:
+        class LoginClient(HttpPolemicaClient):
+            def _request(self, method, base, path, query, *, operation, token, body=None):
+                self.assertion = (method, path, body, token)
+                return {"access_token": "real-contract-token"}
+
+        client = LoginClient(
+            HttpClientConfig("https://api.example", username="reader", password="secret"),
+            gate=RequestGate(min_interval_seconds=0),
+        )
+        self.assertEqual("real-contract-token", client._auth_token())
+        self.assertEqual(
+            ("POST", "/v1/auth/login", {"username": "reader", "password": "secret"}, None),
+            client.assertion,
+        )
+
     def test_typed_methods_construct_only_known_get_paths(self) -> None:
         client = RecordingClient()
         client.get_match(7, 2)

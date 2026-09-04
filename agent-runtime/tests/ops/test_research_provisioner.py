@@ -18,7 +18,7 @@ SPEC.loader.exec_module(module)
 class Response:
     def __enter__(self): return self
     def __exit__(self, *_args): return None
-    def read(self, _limit): return json.dumps({"token": "temporary-upstream-token"}).encode()
+    def read(self, _limit): return json.dumps({"access_token": "temporary-upstream-token"}).encode()
 
 
 def test_validation_uses_fixed_https_login_without_leaking_credentials() -> None:
