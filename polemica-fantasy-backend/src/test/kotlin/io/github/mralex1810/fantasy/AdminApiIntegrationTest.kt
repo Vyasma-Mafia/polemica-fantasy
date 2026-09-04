@@ -230,6 +230,62 @@ class AdminApiIntegrationTest {
     }
 
     @Test
+    @Order(28)
+    fun `blocked Polemica player cannot be imported into a tournament by id or alias`() {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Import Policy Cup","status":"DRAFT"}"""),
+        )
+            .andExpect(status().isOk)
+            .andReturn().response.contentAsString
+        val tournamentId = Regex("\"id\"\\s*:\\s*(\\d+)").find(tournamentJson)!!.groupValues[1].toLong()
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"polemicaUserId":41582,"nickname":"Blocked player"}"""),
+        )
+            .andExpect(status().isConflict)
+
+        val aliasedFantasyPlayerId = jdbcTemplate.queryForObject(
+            """
+            INSERT INTO fantasy_player (polemica_user_id, nickname)
+            VALUES (991582, 'Aliased blocked player')
+            RETURNING id
+            """.trimIndent(),
+            Long::class.java,
+        )!!
+        jdbcTemplate.update(
+            """
+            INSERT INTO fantasy_player_alias (fantasy_player_id, polemica_user_id, primary_alias)
+            VALUES (?, 41582, false)
+            """.trimIndent(),
+            aliasedFantasyPlayerId,
+        )
+
+        mockMvc.perform(
+            post("/api/v1/admin/tournaments/$tournamentId/players")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"fantasyPlayerId":$aliasedFantasyPlayerId}"""),
+        )
+            .andExpect(status().isConflict)
+
+        assertEquals(
+            0,
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM tournament_player WHERE tournament_id = ?",
+                Int::class.java,
+                tournamentId,
+            ),
+        )
+    }
+
+    @Test
     @Order(1001)
     fun `admin me endpoint returns roles`() {
         val adminAuth = basicAuth("admin", "test-admin-secret")

@@ -153,6 +153,7 @@ class Inbox:
             previous = db.execute("SELECT latest_revision,latest_source_version,classification FROM messages WHERE channel_peer_id=? AND message_id=?", (peer_id,message_id)).fetchone()
             duplicate = db.execute("SELECT id,revision_no FROM revisions WHERE channel_peer_id=? AND message_id=? AND fingerprint=?", (peer_id,message_id,fingerprint)).fetchone()
             if duplicate:
+                source_advanced = previous is not None and source_version > previous["latest_source_version"]
                 if (backend_delivery and force_backend_delivery and not silent and previous is not None
                         and duplicate["revision_no"] == previous["latest_revision"]
                         and classification in ("ANNOUNCEMENT", "RESULT")):
@@ -166,7 +167,13 @@ class Inbox:
                             db, peer_id, message_id, duplicate["revision_no"], source_version,
                             message_date, edit_date, text, classification, league,
                         )
-                if previous is not None and source_version > previous["latest_source_version"]:
+                elif (backend_delivery and not silent and source_advanced and previous is not None
+                        and duplicate["revision_no"] == previous["latest_revision"]
+                        and ocr_enabled and classification == "ANNOUNCEMENT" and media_kind is not None):
+                    self._requeue_superseded_ocr_task(
+                        db, duplicate["id"], source_version, media_id, grouped_id, media_kind,
+                    )
+                if source_advanced:
                     db.execute("UPDATE messages SET latest_source_version=?,observed_at=? WHERE channel_peer_id=? AND message_id=?", (source_version,utcnow(),peer_id,message_id))
                 if watermark is not None:
                     self.set_state(db, "watermark", watermark)
@@ -222,6 +229,18 @@ class Inbox:
             if watermark is not None:
                 self.set_state(db, "watermark", watermark)
             return event_type or "STORED"
+
+    def _requeue_superseded_ocr_task(
+        self, db: sqlite3.Connection, revision_id: int, source_version: str,
+        media_id: str | None, grouped_id: int | None, media_kind: str,
+    ) -> None:
+        db.execute(
+            "UPDATE ocr_tasks SET source_version=?,telegram_media_id=?,grouped_id=?,media_kind=?,"
+            "status='PENDING',attempts=0,available_at=?,lease_until=NULL,lease_token=NULL,"
+            "completed_at=NULL,evidence_json=NULL,last_error=NULL "
+            "WHERE revision_id=? AND status='SUPERSEDED' AND last_error LIKE 'source media changed%'",
+            (source_version, media_id, grouped_id, media_kind, utcnow(), revision_id),
+        )
 
     def _enqueue_ocr_task(
         self, db: sqlite3.Connection, revision_id: int, peer_id: int, message_id: int,

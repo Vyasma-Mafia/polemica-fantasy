@@ -70,7 +70,10 @@ class LeagueImportIngestService(
         )
         repository.attachDelivery(deliveryId, itemId)
         val current = existing ?: repository.findItemById(itemId, lock = true)!!
-        if (existing != null && evidenceHash == current.currentEvidenceHash) {
+        val needsRosterResolverRefresh = current.targetSeriesId == null &&
+            current.classification == "ANNOUNCEMENT" &&
+            current.rosterDraftJson?.path("resolverVersion")?.asText() != LeagueImportRosterDraft.RESOLVER_VERSION
+        if (existing != null && evidenceHash == current.currentEvidenceHash && !needsRosterResolverRefresh) {
             repository.advanceCurrentSourceVersion(itemId, request.sourceVersion)
             return TelegramLeagueImportEventResponse(itemId, current.state, current.version, duplicate = true)
         }

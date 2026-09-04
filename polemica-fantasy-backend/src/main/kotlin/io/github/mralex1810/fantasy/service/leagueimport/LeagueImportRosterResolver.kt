@@ -36,7 +36,7 @@ data class LeagueImportRosterDraft(
     val ready: Boolean get() = status == "READY"
 
     companion object {
-        const val RESOLVER_VERSION = "exact-tournament-nickname-v2-caption-substitutions"
+        const val RESOLVER_VERSION = "exact-tournament-nickname-v4-doc-punctuation-alias-binding"
     }
 }
 

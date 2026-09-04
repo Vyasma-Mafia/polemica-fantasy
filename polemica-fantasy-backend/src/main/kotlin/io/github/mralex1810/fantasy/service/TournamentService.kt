@@ -34,6 +34,7 @@ class TournamentService(
     private val seriesRepository: SeriesRepository,
     private val imageStorageService: ImageStorageService,
     private val fantasyPlayerResolverService: FantasyPlayerResolverService,
+    private val fantasyPlayerImportPolicyService: FantasyPlayerImportPolicyService,
     private val streamLinkService: StreamLinkService,
 ) {
 
@@ -174,7 +175,9 @@ class TournamentService(
     @Transactional
     fun addPlayer(tournamentId: Long, request: AddTournamentPlayerRequest): TournamentPlayerDto {
         val tournament = tournamentRepository.findById(tournamentId).orElseThrow { notFound("Tournament", tournamentId) }
+        request.polemicaUserId?.let { fantasyPlayerImportPolicyService.requireImportAllowed(it) }
         val fp = resolveTournamentPlayerRequest(request)
+        fantasyPlayerImportPolicyService.requireImportAllowed(fp)
         if (tournamentPlayerRepository.existsByTournament_IdAndFantasyPlayer_Id(tournamentId, fp.id!!)) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Player with this polemica_user_id already in tournament")
         }

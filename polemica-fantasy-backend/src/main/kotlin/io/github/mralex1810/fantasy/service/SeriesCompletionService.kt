@@ -190,13 +190,7 @@ class SeriesCompletionService(
 
     private fun notReady(reason: String) = SeriesCompletion(SeriesCompletionStatus.NOT_READY, reason = reason)
 
-    private fun normalizeIdentity(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
-        .lowercase()
-        .replace('ё', 'е')
-        // Polemica usernames can mix the visually identical Latin C and Cyrillic С.
-        // Canonicalize only this observed confusable; punctuation/emoji are removed below.
-        .replace('с', 'c')
-        .filter { it.isLetterOrDigit() }
+    private fun normalizeIdentity(value: String): String = SeriesResultIdentityMatcher.normalizeIdentity(value)
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
 
@@ -224,11 +218,17 @@ internal object SeriesResultIdentityMatcher {
         return permutations(actualNames).any { normalizeIdentity(it.joinToString(", ")) == expected }
     }
 
-    fun normalizeIdentity(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFKC)
-        .lowercase()
-        .replace('ё', 'е')
-        .replace('с', 'c')
-        .filter { it.isLetterOrDigit() }
+    fun normalizeIdentity(value: String): String {
+        val normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+            .lowercase()
+            .replace('ё', 'е')
+            // Polemica usernames can mix the visually identical Latin C and Cyrillic С.
+            .replace('с', 'c')
+            .filter { it.isLetterOrDigit() }
+        return KNOWN_ALIASES.fold(normalized) { value, (alias, canonical) ->
+            value.replace(alias, canonical)
+        }
+    }
 
     private fun permutations(values: List<String>): Sequence<List<String>> = sequence {
         if (values.size <= 1) {
@@ -240,4 +240,9 @@ internal object SeriesResultIdentityMatcher {
             }
         }
     }
+
+    private val KNOWN_ALIASES = listOf(
+        "фокc" to "fox",
+        "оlof" to "olof",
+    )
 }

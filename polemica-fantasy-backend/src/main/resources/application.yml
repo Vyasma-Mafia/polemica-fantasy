@@ -93,6 +93,7 @@ telegram:
         roster-nickname-aliases:
           "Градиент": "Gradient"
           "Cristo I": "Cristo"
+          "[Doc.]": "Doc"
         create-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_CREATE_MODE:DISABLED}
         finalize-mode: ${TELEGRAM_LEAGUE_IMPORT_ZL_FINALIZE_MODE:DISABLED}
 

@@ -162,6 +162,38 @@ class TelegramLeagueImportIntegrationTest {
     }
 
     @Test
+    fun `same evidence refreshes unapplied announcement when roster resolver version changes`() {
+        val messageId = messageSequence.incrementAndGet()
+        val source = request(messageId, 1, announcement(44, "11 августа 2030"))
+        val accepted = ingestService.ingest("test-current", UUID.randomUUID(), Instant.now(), source)
+        val itemId = accepted.itemId!!
+        val firstAction = actionId(itemId, "CREATE_PREVIEW")
+        val firstVersion = accepted.version!!
+        jdbc.update(
+            "UPDATE league_import_item SET roster_draft_json=jsonb_set(roster_draft_json,'{resolverVersion}',to_jsonb(?::text)) WHERE id=?",
+            "obsolete-resolver", itemId,
+        )
+
+        val refreshed = ingestService.ingest("test-current", UUID.randomUUID(), Instant.now(), source)
+
+        assertFalse(refreshed.duplicate)
+        assertEquals(firstVersion + 1, refreshed.version)
+        assertEquals("STALE", importRepository.findAction(firstAction)!!.status)
+        assertEquals(1, count("league_import_revision", "item_id", itemId))
+        assertEquals(
+            LeagueImportRosterDraft.RESOLVER_VERSION,
+            stringValue("SELECT roster_draft_json->>'resolverVersion' FROM league_import_item WHERE id=?", itemId),
+        )
+        assertEquals(1, intValue("SELECT count(*) FROM league_import_action WHERE item_id=? AND status='NOTIFY_PENDING'", itemId))
+    }
+
+    @Test
+    fun `application configuration preserves punctuation in OCR alias source`() {
+        assertEquals("Doc", properties.policies.zl.rosterNicknameAliases["Doc."])
+        assertFalse(properties.policies.zl.rosterNicknameAliases.containsKey("Doc"))
+    }
+
+    @Test
     fun `worker canonical evidence hashes are accepted for text and terminal OCR`() {
         val text = announcement(40, "11 августа 2030")
         val textHash = sha256(text)

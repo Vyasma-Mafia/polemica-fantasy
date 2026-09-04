@@ -208,6 +208,50 @@ class StorageTest(unittest.TestCase):
         ).fetchone()
         self.assertEqual(tuple(reset), ("PENDING", 0, None, None, None))
 
+    def test_newer_semantic_duplicate_requeues_source_changed_ocr(self):
+        common = dict(
+            peer_id=-10042, message_id=84,
+            message_date="2026-08-07T00:00:00+00:00", edit_date=None,
+            grouped_id=None, media_kind="MessageMediaPhoto", media_id="9014",
+            text="#анонс_зл 08.08 20:00", fingerprint="photo-source-version",
+            classification="ANNOUNCEMENT", league="ЗЛ", reason="test", silent=False,
+            backend_delivery=True, ocr_enabled=True,
+        )
+        self.inbox.persist(source_version="2026-08-07T00:00:00+00:00", **common)
+        task = self.inbox.lease_ocr_task()
+        self.assertTrue(self.inbox.supersede_ocr_task(task["id"], task["lease_token"], "source media changed"))
+
+        self.assertEqual(
+            self.inbox.persist(source_version="2026-08-07T00:01:00+00:00", **common),
+            "DUPLICATE",
+        )
+
+        requeued = self.inbox.connection.execute(
+            "SELECT source_version,status,attempts,completed_at,last_error FROM ocr_tasks"
+        ).fetchone()
+        self.assertEqual(
+            tuple(requeued),
+            ("2026-08-07T00:01:00+00:00", "PENDING", 0, None, None),
+        )
+
+    def test_same_version_duplicate_does_not_loop_source_changed_ocr(self):
+        common = dict(
+            peer_id=-10042, message_id=85,
+            source_version="2026-08-07T00:00:00+00:00",
+            message_date="2026-08-07T00:00:00+00:00", edit_date=None,
+            grouped_id=None, media_kind="MessageMediaPhoto", media_id="9015",
+            text="#анонс_зл 08.08 20:00", fingerprint="photo-same-version",
+            classification="ANNOUNCEMENT", league="ЗЛ", reason="test", silent=False,
+            backend_delivery=True, ocr_enabled=True,
+        )
+        self.inbox.persist(**common)
+        task = self.inbox.lease_ocr_task()
+        self.assertTrue(self.inbox.supersede_ocr_task(task["id"], task["lease_token"], "source media changed"))
+
+        self.assertEqual(self.inbox.persist(**common), "DUPLICATE")
+        terminal = self.inbox.connection.execute("SELECT status,last_error FROM ocr_tasks").fetchone()
+        self.assertEqual(tuple(terminal), ("SUPERSEDED", "source media changed"))
+
     def test_explicit_reclassify_requeues_saved_success_after_terminal_backend_failure(self):
         common = dict(
             peer_id=-10042, message_id=83, source_version="2026-08-07T00:00:00+00:00",

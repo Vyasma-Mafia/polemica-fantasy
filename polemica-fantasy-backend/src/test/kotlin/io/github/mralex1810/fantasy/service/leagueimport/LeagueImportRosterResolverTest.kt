@@ -30,6 +30,7 @@ class LeagueImportRosterResolverTest {
             rosterNicknameAliases = linkedMapOf(
                 "Градиент" to "Gradient",
                 "Cristo I" to "Cristo",
+                "Doc." to "Doc",
             ),
         )
     }
@@ -129,6 +130,20 @@ class LeagueImportRosterResolverTest {
         assertEquals("Воробей", result.draft.substitutions.single().incomingNickname)
         assertTrue(result.draft.resolved.any { it.ocrText == "Градиент" && it.productionNickname == "Gradient" })
         assertTrue(result.draft.resolved.any { it.ocrText == "Cristo I" && it.productionNickname == "Cristo" })
+    }
+
+    @Test
+    fun `configured punctuation alias resolves exact tournament player`() {
+        val players = (1L..9L).map { player(it, "Player $it") } + player(10, "Doc")
+        whenever(repository.findAllByTournamentIdWithFantasyPlayer(13)).thenReturn(players)
+
+        val result = resolver.resolve(
+            "ЗЛ", 13, "6".repeat(64),
+            media((1L..9L).map { "Player $it" } + "Doc."),
+        )
+
+        assertTrue(result.draft.ready, result.draft.issues.joinToString("; "))
+        assertTrue(result.draft.resolved.any { it.ocrText == "Doc." && it.productionNickname == "Doc" })
     }
 
     @Test

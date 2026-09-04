@@ -284,6 +284,177 @@
   }
 }
 
+/* --- Special card skin: Polemica Grand Slam 2026 --- */
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__frame,
+.pf-team-card--skin-polemica_grand_slam_2026,
+.pf-mini-card--skin-polemica_grand_slam_2026,
+.pf-fantasy-card--skin-polemica_grand_slam_2026,
+.pf-modal__img-frame--skin-polemica_grand_slam_2026,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-inner,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-frame {
+  border-color: transparent;
+  border-style: solid;
+  border-width: 2px;
+  background:
+    linear-gradient(var(--pf-bg-elevated), var(--pf-bg-elevated)) padding-box,
+    conic-gradient(
+        from 205deg,
+        #dff8ff,
+        #22d3ee,
+        #0868ff,
+        #7dd3fc,
+        #1d4ed8,
+        #e0f2fe,
+        #22d3ee
+      )
+      border-box;
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.22),
+    0 0 24px rgba(34, 211, 238, 0.46),
+    0 0 48px rgba(37, 99, 235, 0.22),
+    inset 0 0 22px rgba(125, 211, 252, 0.14);
+  animation: pf-skin-grand-slam-glow 3.2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__frame::after,
+.pf-team-card--skin-polemica_grand_slam_2026 .pf-team-card__media::after,
+.pf-fantasy-card--skin-polemica_grand_slam_2026::after,
+.pf-modal__img-frame--skin-polemica_grand_slam_2026::after,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-inner::after,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-frame::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.24;
+  background: linear-gradient(
+    128deg,
+    transparent 30%,
+    rgba(224, 242, 254, 0.68) 48%,
+    rgba(34, 211, 238, 0.28) 53%,
+    transparent 70%
+  );
+  animation: pf-skin-grand-slam-sweep 4.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__cap::before,
+.pf-team-card--skin-polemica_grand_slam_2026 .pf-team-card__cap::before,
+.pf-fantasy-card--skin-polemica_grand_slam_2026 .pf-fantasy-card__cap::before,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-cap::before,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-cap::before {
+  content: 'GRAND SLAM';
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #e0f2fe;
+  background: rgba(3, 37, 76, 0.88);
+  border: 1px solid rgba(34, 211, 238, 0.78);
+  box-shadow:
+    0 0 10px rgba(34, 211, 238, 0.34),
+    inset 0 0 8px rgba(8, 104, 255, 0.2);
+}
+
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__name,
+.pf-team-card--skin-polemica_grand_slam_2026 .pf-team-card__name,
+.pf-fantasy-card--skin-polemica_grand_slam_2026 .pf-fantasy-card__name,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-name,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-name {
+  background: linear-gradient(90deg, #f0f9ff 0%, #7dd3fc 48%, #e0f2fe 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pf-skin-grand-slam-name 3.4s ease-in-out infinite;
+  will-change: background-position;
+}
+
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip,
+.pf-team-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip,
+.pf-fantasy-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-card-perk-chip,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip,
+.pf-transaction-detail__card.pf-collection-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip {
+  border-color: rgba(56, 189, 248, 0.72);
+  background: rgba(3, 37, 76, 0.88);
+  box-shadow:
+    0 0 10px rgba(34, 211, 238, 0.22),
+    inset 0 0 10px rgba(8, 104, 255, 0.12);
+}
+
+.pf-collection-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip__bonus,
+.pf-team-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip__bonus,
+.pf-fantasy-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip__bonus,
+.pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-card-perk-chip__bonus,
+.pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-card-perk-chip__bonus {
+  color: #67e8f9;
+}
+
+@keyframes pf-skin-grand-slam-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(34, 211, 238, 0.22),
+      0 0 20px rgba(34, 211, 238, 0.4),
+      0 0 42px rgba(37, 99, 235, 0.18),
+      inset 0 0 20px rgba(125, 211, 252, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(125, 211, 252, 0.32),
+      0 0 30px rgba(34, 211, 238, 0.58),
+      0 0 58px rgba(37, 99, 235, 0.28),
+      inset 0 0 28px rgba(125, 211, 252, 0.18);
+  }
+}
+
+@keyframes pf-skin-grand-slam-sweep {
+  0%,
+  24% {
+    transform: translateX(-34%) rotate(12deg);
+  }
+  76%,
+  100% {
+    transform: translateX(34%) rotate(12deg);
+  }
+}
+
+@keyframes pf-skin-grand-slam-name {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__frame,
+  .pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__frame::after,
+  .pf-collection-card--skin-polemica_grand_slam_2026 .pf-collection-card__name,
+  .pf-team-card--skin-polemica_grand_slam_2026,
+  .pf-team-card--skin-polemica_grand_slam_2026 .pf-team-card__media::after,
+  .pf-fantasy-card--skin-polemica_grand_slam_2026,
+  .pf-fantasy-card--skin-polemica_grand_slam_2026::after,
+  .pf-modal__img-frame--skin-polemica_grand_slam_2026,
+  .pf-modal__img-frame--skin-polemica_grand_slam_2026::after,
+  .pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-inner,
+  .pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-inner::after,
+  .pf-pack-open__card-wrap--skin-polemica_grand_slam_2026 .pf-pack-open__card-name,
+  .pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-frame,
+  .pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-frame::after,
+  .pf-pack-open__summary-card--skin-polemica_grand_slam_2026 .pf-pack-open__summary-card-name {
+    animation: none;
+  }
+}
+
 /* --- Achievement card skins --- */
 .pf-collection-card--skin-budget_edition,
 .pf-team-card--skin-budget_edition,

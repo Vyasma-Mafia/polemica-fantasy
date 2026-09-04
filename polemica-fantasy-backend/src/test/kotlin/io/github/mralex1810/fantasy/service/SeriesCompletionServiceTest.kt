@@ -10,6 +10,7 @@ import io.github.mralex1810.fantasy.repository.SeriesGameRepository
 import io.github.mralex1810.fantasy.repository.SeriesRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
@@ -29,6 +30,24 @@ class SeriesCompletionServiceTest {
     @Mock private lateinit var selectorFingerprintService: SeriesGameSelectorFingerprintService
 
     @InjectMocks private lateinit var service: SeriesCompletionService
+
+    @Test
+    fun `result identity matcher recognizes known cross-script aliases`() {
+        assertEquals(
+            SeriesResultIdentityMatcher.normalizeIdentity("fox"),
+            SeriesResultIdentityMatcher.normalizeIdentity("фокс"),
+        )
+        assertEquals(
+            SeriesResultIdentityMatcher.normalizeIdentity("olof"),
+            SeriesResultIdentityMatcher.normalizeIdentity("ОloF"),
+        )
+        assertTrue(
+            SeriesResultIdentityMatcher.matchesMafiaLine(
+                "фокс, тише-тише, cristo",
+                listOf("Тише-Тише", "Cristo", "fox"),
+            ),
+        )
+    }
 
     @Test
     fun `admin readiness bypasses scoring status while Telegram readiness remains strict`() {

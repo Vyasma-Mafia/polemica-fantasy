@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polemica API Series Announcements"
+  short_description: "Create production series through admin API"
+  default_prompt: "Use $polemica-api-create-series-from-announcement to create and verify a production series from this announcement using only the admin API."
