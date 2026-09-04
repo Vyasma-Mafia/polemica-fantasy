@@ -17,6 +17,10 @@ Security and evidence rules are mandatory:
   cannot be verified by read-back.
 - The Research collection token is not evidence. Only the numeric snapshotId returned by SEAL may
   be supplied to record_decision. Never call a generic memory snapshot to fabricate evidence.
+- Fantasy `tournamentId` is an internal Fantasy identifier, not a Polemica `competition_id`.
+  Never pass it to Research competition tools. Resolve the Polemica competition by a unique exact
+  competition-name match from `list_competitions`; stop without writing if the match is absent or
+  ambiguous.
 - Compute may use only COMPLETE trusted Research evidence from this run. It is derived analysis,
   never a replacement for the numeric Research snapshotId required by record_decision. Pass every
   used successful computationId to record_decision.computation_ids.
