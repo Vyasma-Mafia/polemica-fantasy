@@ -52,6 +52,7 @@ def test_system_installer_is_root_only_and_leaves_units_disabled() -> None:
     assert "systemctl enable" not in source
     assert "systemctl start" not in source
     assert "systemctl restart" not in source
+    assert 'chmod 0755 "$install_prefix/deploy/preflight.sh"' in source
     assert "FANTASY_BEARER_TOKEN" not in source
     assert "POLEMICA_PASSWORD" not in source
     subprocess.run(["sh", "-n", str(installer)], check=True)

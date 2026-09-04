@@ -55,6 +55,7 @@ UV_PROJECT_ENVIRONMENT="$install_prefix/venv" "$uv_binary" sync \
   --project "$install_prefix" --frozen --no-dev --python /usr/bin/python3
 chown -R root:root "$install_prefix"
 find "$install_prefix" -type d -exec chmod 0755 {} +
+chmod 0755 "$install_prefix/deploy/preflight.sh"
 
 install -d -m 0700 -o "$broker_user" -g "$broker_user" "$broker_state"
 install -d -m 0700 -o "$broker_user" -g "$broker_user" "$broker_state/blobs" "$broker_state/research-cache"

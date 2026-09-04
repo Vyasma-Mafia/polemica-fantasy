@@ -12,6 +12,7 @@
 - [x] Исправлена первая activation-ошибка `226/NAMESPACE`: optional-path syntax в `InaccessiblePaths` сохраняет hardening и допускает отсутствующий `/root/.ssh`; 106 runtime tests green.
 - [x] Runtime system install выполнен через интерактивный sudo с dedicated broker/runner ownership; credential env остаются root-only.
 - [x] Live read-only MCP gate: exact registries healthy, Fantasy profile read, Memory zero open intents, Research 1200 competitions sealed with zero errors; write call fail-closed; production DB confirms no economy/team mutation.
+- [x] Исправлен обнаруженный до запуска Codex `203/EXEC`: installer явно выдаёт `0755` только runtime preflight entrypoint; root-owned credential env не меняются.
 - [ ] Manual read-only Codex runner canary и проверка его audit/logs.
 - [ ] Activation gate: production account/credential, read-only Polemica credential, model/reasoning, expert cohort/stop rule/retention/alerts, live contract smoke и staged read-only→team→economy→marketplace enablement.
 
