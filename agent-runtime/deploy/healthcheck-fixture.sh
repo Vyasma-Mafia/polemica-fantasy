@@ -13,7 +13,7 @@ fi
 PYTHONPATH="$root/src" "$runtime_python" - <<'PY'
 from polemica_agent.mcp_runtime.registry import MCP_SERVERS
 from polemica_agent.runner.settings import RuntimeSettings
-assert set(MCP_SERVERS) == {"fantasy", "research", "memory"}
+assert set(MCP_SERVERS) == {"fantasy", "research", "compute", "memory"}
 assert all(MCP_SERVERS.values())
 print("fixture registry health ok")
 PY

@@ -12,6 +12,7 @@ if [ "${1:-}" = "--runtime" ]; then
   test "${WRITE_ENABLED:-false}" = "false" || test "${POLEMICA_PRODUCTION_ACTIVATION_APPROVED:-false}" = "true"
   test -n "${FANTASY_MCP_URL:-}"
   test -n "${RESEARCH_MCP_URL:-}"
+  test -n "${COMPUTE_MCP_URL:-}"
   test -n "${MEMORY_MCP_URL:-}"
   case "${POLEMICA_AGENT_RUN_LOCK:-}" in /*) ;; *) exit 1 ;; esac
 fi

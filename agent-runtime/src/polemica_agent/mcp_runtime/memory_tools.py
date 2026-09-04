@@ -65,13 +65,14 @@ class MemoryTools:
     def record_decision(
         self, run_id: str, decision_type: str, subject_type: str, subject_id: str,
         snapshot_ids: Sequence[int], alternatives: Any, choice: Any, rationale: str,
-        strategy_version: str | None = None,
+        strategy_version: str | None = None, computation_ids: Sequence[str] = (),
     ) -> int:
         assert_trusted_research_snapshots(self.service.store, run_id, snapshot_ids)
         return self.service.record_decision(
             run_id=run_id, decision_type=decision_type, subject_type=subject_type,
             subject_id=subject_id, snapshot_ids=snapshot_ids, alternatives=alternatives,
             choice=choice, rationale=rationale, strategy_version=strategy_version,
+            computation_ids=computation_ids,
         )
 
     def record_outcome(self, decision_id: int, payload: Any, score: float | None = None) -> int:

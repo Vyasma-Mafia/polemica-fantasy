@@ -21,6 +21,8 @@ broker_state=/var/lib/polemica-ai-agent
 runner_state=/var/lib/polemica-ai-agent-runner
 config_dir=/etc/polemica-ai-agent
 broker_user=polemica-agent-broker
+compute_user=polemica-agent-compute
+compute_group=polemica-agent-compute
 uv_binary=${UV_BINARY:-/home/codex/.local/bin/uv}
 
 test ! -L "$install_prefix"
@@ -28,8 +30,10 @@ test -x "$uv_binary"
 command -v rsync >/dev/null
 command -v systemctl >/dev/null
 command -v runuser >/dev/null
+command -v usermod >/dev/null
 
 for unit in polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service \
+  polemica-agent-compute-worker.service polemica-agent-compute-mcp.service \
   polemica-agent-memory-mcp.service polemica-agent-run.timer; do
   if systemctl is-active --quiet "$unit" || systemctl is-enabled --quiet "$unit"; then
     printf '%s\n' "$unit must be inactive and disabled before installation" >&2
@@ -44,6 +48,14 @@ if ! id "$broker_user" >/dev/null 2>&1; then
   useradd --system --gid "$broker_user" --home-dir /nonexistent \
     --shell /usr/sbin/nologin "$broker_user"
 fi
+if ! getent group "$compute_group" >/dev/null; then
+  groupadd --system "$compute_group"
+fi
+if ! id "$compute_user" >/dev/null 2>&1; then
+  useradd --system --gid "$compute_group" --home-dir /nonexistent \
+    --shell /usr/sbin/nologin "$compute_user"
+fi
+usermod -a -G "$compute_group" "$broker_user"
 
 install -d -m 0755 -o root -g root "$install_prefix"
 rsync -a --delete \
@@ -66,7 +78,7 @@ if [ ! -e "$runner_state/codex-home/auth.json" ]; then
 fi
 install -d -m 0700 -o root -g root "$config_dir"
 
-for env_file in fantasy-mcp.env research-mcp.env memory-mcp.env runner.env; do
+for env_file in fantasy-mcp.env research-mcp.env compute-mcp.env memory-mcp.env runner.env; do
   if [ ! -e "$config_dir/$env_file" ]; then
     install -m 0600 -o root -g root /dev/null "$config_dir/$env_file"
   fi
@@ -81,6 +93,7 @@ runuser -u "$broker_user" -- env \
   "$install_prefix/venv/bin/polemica-agent-migrate"
 
 for unit in polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service \
+  polemica-agent-compute-worker.service polemica-agent-compute-mcp.service \
   polemica-agent-memory-mcp.service polemica-agent-run.timer; do
   if systemctl is-active --quiet "$unit" || systemctl is-enabled --quiet "$unit"; then
     printf '%s\n' "$unit unexpectedly became active or enabled" >&2

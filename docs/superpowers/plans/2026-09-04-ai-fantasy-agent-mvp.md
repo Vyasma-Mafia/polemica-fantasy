@@ -36,13 +36,16 @@ hourly launcher
   -> codex exec --ignore-user-config
        -> Fantasy MCP (loopback)
        -> Research MCP (loopback)
+       -> Compute MCP gateway (loopback) -> isolated networkless worker (AF_UNIX)
        -> Memory MCP (loopback)
 
-one hardened MCP broker Unix user owns all three logical MCP processes,
-their upstream secrets, and the shared durable SQLite/evidence store
+one hardened MCP broker Unix user owns the four logical MCP gateways,
+their scoped upstream secrets, and the shared durable SQLite/evidence store;
+a separate compute Unix user owns only the fixed-operation worker
 
 Fantasy MCP -> https://fantasy.maftourbot.ru/api/v1/**
 Research MCP -> Polemica read endpoints only
+Compute worker -> normalized numeric same-run sealed evidence only
 ```
 
 The Codex run receives only typed tools. It does not receive upstream secrets in its prompt, environment, tool output, or memory. A single isolated broker account is used because Fantasy intents, Research evidence, and Memory decisions must share one atomic journal; Codex remains a separate account without access to the broker state or env files. The runtime uses a dedicated directory and does not use the dirty checkout at `/home/codex/work/polemica-fantasy`. Global Codex configuration is ignored so the already configured Telegram MCP/plugin is not loaded. ChatGPT login remains supplied by the host Codex installation.
@@ -320,7 +323,8 @@ provision test user -> Bearer profile -> discover series -> seal research snapsh
 Implemented on 2026-09-04:
 
 - backend Bearer credentials for automated users, admin provisioning/revocation, auth audit, rate limiting, TMA-login exclusion, notification exclusion, and `buy_pack` idempotency;
-- separate typed Fantasy, Research, and Memory MCP services with fixed capability registries;
+- separate typed Fantasy, Research, Compute, and Memory MCP services with fixed capability registries;
+- a broker-audited Compute gateway plus a separate networkless worker for bounded descriptive statistics, correlations, and seeded Monte Carlo over same-run sealed Research evidence;
 - durable sealed research evidence, decision lineage, operation journal, reconciliation, and persistent ACT authorization;
 - hourly Codex runner with ignored user configuration, required MCPs, read-only sandbox, scrubbed environment, and fail-closed write controls;
 - hardened systemd deployment assets and operator runbooks;
@@ -328,10 +332,10 @@ Implemented on 2026-09-04:
 
 Verification completed:
 
-- 106 runtime tests passed on Python 3.10;
+- 158 runtime tests passed on Python 3.10 after the Compute slice;
 - backend focused unit tests and Kotlin compilation passed;
 - Bearer/idempotency integration and concurrent duplicate-purchase tests passed against PostgreSQL 16 via Testcontainers on the runtime VM;
 - negative-capability, fixture-health, compile, preflight, and disabled-install checks passed locally/remotely;
 - independent backend and runtime reviews found no remaining P0/P1 issues after correction waves.
 
-Activation remains intentionally blocked on private delivery of the currently uncommitted implementation, backend deployment/migration, creation of the real agent identity and credentials, privileged installation of the broker system user and system units, operator policy choices, and an explicit production go-live decision.
+The original runtime and credentials are installed, but the Compute slice remains intentionally inactive until its reviewed commit is staged and the privileged disabled installer is rerun. Writes and the hourly timer remain off pending a clean manual read-only canary and later explicit activation gates.

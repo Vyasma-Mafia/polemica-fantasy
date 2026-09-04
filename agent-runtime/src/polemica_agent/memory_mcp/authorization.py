@@ -6,6 +6,7 @@ from typing import Any, Callable, Mapping
 
 from polemica_agent.common.canonical import payload_hash
 from polemica_agent.common.storage import AuditStore, FailClosedError
+from polemica_agent.memory_mcp.evidence import assert_decision_computation_lineage
 from .sql_read import fetchall, fetchone
 
 
@@ -91,6 +92,7 @@ class PersistentActAuthorizer:
             for row in evidence
         ):
             raise FailClosedError("ACT requires complete trusted evidence sealed before decision")
+        assert_decision_computation_lineage(self.store, run_id, decision_id)
         choice = self.store.load_blob(decision["choice_hash"], decision["choice_path"])
         _assert_choice_binding(choice, tool_name, arguments)
 

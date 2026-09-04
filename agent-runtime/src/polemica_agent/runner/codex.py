@@ -42,7 +42,7 @@ def build_command(
         "--config", 'web_search="disabled"',
         "--config", 'history.persistence="none"',
     ]
-    for kind in ("fantasy", "research", "memory"):
+    for kind in ("fantasy", "research", "compute", "memory"):
         url = mcp_urls[kind]
         tools = ",".join(f'"{name}"' for name in CODEX_MCP_TOOLS[kind])
         command.extend(("--config", f'mcp_servers.{kind}.url="{url}"'))

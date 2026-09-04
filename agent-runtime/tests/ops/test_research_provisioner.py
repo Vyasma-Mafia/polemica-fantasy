@@ -63,3 +63,10 @@ def test_script_does_not_print_secret_values() -> None:
     text = SCRIPT.read_text()
     assert "print(password" not in text
     assert "print(username" not in text
+
+
+def test_runner_environment_includes_compute_and_new_strategy_version() -> None:
+    text = SCRIPT.read_text()
+    assert '"COMPUTE_MCP_URL=http://127.0.0.1:8814/mcp\\n"' in text
+    assert '"POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1\\n"' in text
+    assert "POLEMICA_AGENT_STRATEGY_VERSION=hourly-v1" not in text

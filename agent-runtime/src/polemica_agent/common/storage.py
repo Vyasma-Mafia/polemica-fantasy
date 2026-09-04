@@ -246,6 +246,21 @@ class AuditStore:
                 ).fetchone()
                 if decision is None:
                     raise FailClosedError(f"Run {run_id} cannot succeed without a decision")
+                unlinked_computation = db.execute(
+                    """
+                    SELECT 1
+                    FROM computations c
+                    LEFT JOIN decision_computations dc ON dc.computation_id=c.id
+                    LEFT JOIN decisions d ON d.id=dc.decision_id AND d.run_id=c.run_id
+                    WHERE c.run_id=? AND c.state='SUCCEEDED' AND d.id IS NULL
+                    LIMIT 1
+                    """,
+                    (run_id,),
+                ).fetchone()
+                if unlinked_computation is not None:
+                    raise FailClosedError(
+                        f"Run {run_id} cannot succeed with an unlinked computation"
+                    )
             updated = db.execute(
                 """
                 UPDATE runs SET finished_at=?, status=?, summary_hash=?, summary_path=?
@@ -397,9 +412,12 @@ class AuditStore:
         choice: Any,
         rationale: str,
         strategy_version: str | None = None,
+        computation_ids: Sequence[str] = (),
     ) -> int:
         if not snapshot_ids:
             raise ValueError("A decision must reference at least one sealed snapshot")
+        if len(set(computation_ids)) != len(computation_ids):
+            raise ValueError("computation_ids must be unique")
         alternatives_hash, alternatives_path = self.store_blob(redact(alternatives))
         choice_hash, choice_path = self.store_blob(redact(choice))
         with self.transaction() as db:
@@ -420,6 +438,42 @@ class AuditStore:
                 raise FailClosedError("Decision references an absent snapshot")
             if any(row["run_id"] != run_id or row["sealed_at"] is None for row in rows):
                 raise FailClosedError("Decision snapshots must be sealed by the same run")
+            if computation_ids:
+                computation_placeholders = ",".join("?" for _ in computation_ids)
+                computations = db.execute(
+                    f"""
+                    SELECT c.*, st.trust_kind, s.completeness AS snapshot_completeness,
+                           s.sealed_at AS snapshot_sealed_at, rc.state AS collection_state,
+                           rc.completeness AS collection_completeness,
+                           rc.run_id AS collection_run_id, rc.evidence_snapshot_id
+                    FROM computations c
+                    JOIN snapshots s ON s.id=c.source_snapshot_id
+                    JOIN snapshot_trust st ON st.snapshot_id=s.id
+                    JOIN research_collections rc ON rc.collection_id=st.collection_id
+                    WHERE c.id IN ({computation_placeholders})
+                    """,
+                    tuple(computation_ids),
+                ).fetchall()
+                if len(computations) != len(computation_ids):
+                    raise FailClosedError("Decision references an absent computation")
+                if any(
+                    row["run_id"] != run_id
+                    or row["state"] != "SUCCEEDED"
+                    or row["source_snapshot_id"] not in snapshot_ids
+                    or row["result_hash"] is None
+                    or row["verification_hash"] is None
+                    or row["trust_kind"] != "TRUSTED_RESEARCH"
+                    or row["snapshot_completeness"] != "COMPLETE"
+                    or row["snapshot_sealed_at"] is None
+                    or row["collection_state"] != "SEALED"
+                    or row["collection_completeness"] != "COMPLETE"
+                    or row["collection_run_id"] != run_id
+                    or row["evidence_snapshot_id"] != row["source_snapshot_id"]
+                    for row in computations
+                ):
+                    raise FailClosedError(
+                        "Decision computations must be successful same-run results of its trusted snapshots"
+                    )
             decision_as_of = max(row["as_of"] for row in rows)
             cursor = db.execute(
                 """
@@ -449,6 +503,11 @@ class AuditStore:
                 "INSERT INTO decision_snapshots(decision_id, snapshot_id) VALUES (?, ?)",
                 [(decision_id, snapshot_id) for snapshot_id in snapshot_ids],
             )
+            if computation_ids:
+                db.executemany(
+                    "INSERT INTO decision_computations(decision_id, computation_id) VALUES (?, ?)",
+                    [(decision_id, computation_id) for computation_id in computation_ids],
+                )
         return decision_id
 
     def plan_intent(
@@ -532,6 +591,31 @@ class AuditStore:
             raise FailClosedError("Operation decision must belong to the same run")
         if row["snapshot_count"] < 1 or row["invalid_snapshot_count"]:
             raise FailClosedError("Operation decision must reference sealed snapshots from the same run")
+        invalid_computation = db.execute(
+            """
+            SELECT 1
+            FROM decision_computations dc
+            JOIN computations c ON c.id=dc.computation_id
+            LEFT JOIN decision_snapshots ds
+              ON ds.decision_id=dc.decision_id AND ds.snapshot_id=c.source_snapshot_id
+            LEFT JOIN snapshots s ON s.id=c.source_snapshot_id
+            LEFT JOIN snapshot_trust st ON st.snapshot_id=s.id
+            LEFT JOIN research_collections rc ON rc.collection_id=st.collection_id
+            WHERE dc.decision_id=? AND (
+              ds.snapshot_id IS NULL OR c.run_id<>? OR c.state<>'SUCCEEDED' OR c.result_hash IS NULL OR
+              c.verification_hash IS NULL OR s.run_id<>? OR s.completeness<>'COMPLETE' OR
+              s.sealed_at IS NULL OR st.trust_kind IS NULL OR
+              st.trust_kind<>'TRUSTED_RESEARCH' OR rc.state IS NULL OR rc.state<>'SEALED' OR
+              rc.completeness<>'COMPLETE' OR rc.run_id<>? OR
+              rc.evidence_snapshot_id IS NULL OR
+              rc.evidence_snapshot_id<>c.source_snapshot_id OR rc.sealed_at IS NULL
+            )
+            LIMIT 1
+            """,
+            (decision_id, run_id, run_id, run_id),
+        ).fetchone()
+        if invalid_computation is not None:
+            raise FailClosedError("Operation decision has invalid computation lineage")
 
     def mark_intent_sent(self, operation_id: str) -> sqlite3.Row:
         with self.transaction() as db:

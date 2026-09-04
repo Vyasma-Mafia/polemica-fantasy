@@ -16,6 +16,7 @@ dependencies = [
 polemica-agent-run = "polemica_agent.runner.cli:main"
 polemica-agent-mcp = "polemica_agent.mcp_runtime.cli:main"
 polemica-agent-migrate = "polemica_agent.mcp_runtime.migrate:main"
+polemica-agent-compute-worker = "polemica_agent.compute_mcp.worker:main"
 
 [project.optional-dependencies]
 dev = [

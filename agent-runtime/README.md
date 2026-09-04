@@ -4,10 +4,12 @@ This directory contains the transport-neutral runtime foundation for the hidden
 Polemica Fantasy Codex user. It is Python 3.10 compatible and uses the official
 Python MCP SDK through the pinned dependency set in `uv.lock`.
 
-It exposes three independent, loopback-only MCP servers:
+It exposes four independent, loopback-only MCP servers:
 
 - `fantasy`: a fixed typed projection of the ordinary Fantasy user API;
 - `research`: read-only Polemica collection and derived statistics;
+- `compute`: a bounded JSON operation gateway backed by an isolated, networkless
+  worker over `/run/polemica-agent-compute/worker.sock`;
 - `memory`: sealed evidence, decisions, operation intents, outcomes, and strategy notes.
 
 The Codex process receives only these allowlisted tools. It does not receive the
@@ -27,6 +29,7 @@ or admin API capabilities.
 - Any unresolved economic `SENT`/`UNKNOWN` intent blocks another economic write.
 - Fantasy writes require both the global write gate and an explicit staged tool allowlist.
 - Decisions can reference only sealed snapshots created by the same run.
+- Compute crash recovery is performed only while holding the gateway's exclusive process lease.
 - The hourly runner lock requires an absolute path and a timeout below one hour.
 - Runner configuration defaults to a 3300-second hard timeout and rejects relative
   state/lock paths or any timeout of one hour or longer.
@@ -53,8 +56,9 @@ Additional deployment checks:
 `deploy/install-disabled.sh` creates an unprivileged staging copy only.
 `deploy/install-system-disabled.sh` is the reviewed root-only installer for the
 production paths and dedicated broker user. It installs code, empty root-owned
-environment files, units, and the local SQLite schema, but deliberately leaves
-all services and the hourly timer inactive and disabled.
+environment files, units, the separate `polemica-agent-compute` worker identity,
+and the local SQLite schema, but deliberately leaves all services and the hourly
+timer inactive and disabled.
 
 The exact account, credential, environment, staged canary, and timer sequence is
 documented in [`deploy/ACTIVATION.md`](deploy/ACTIVATION.md).
@@ -70,3 +74,10 @@ Never place Fantasy/Polemica credentials in this database, tool payloads, prompt
 or Codex output. Upstream credentials belong only to root-owned environment files
 read by the dedicated MCP broker services. See `deploy/OWNERSHIP.md` for the
 production ownership and isolation contract.
+
+The Compute gateway runs under the broker identity so it can journal executions,
+but its empty environment contains no upstream credential. The operation engine
+runs as `polemica-agent-compute`, has no broker state or home access, and accepts
+work only through its AF_UNIX socket. Both Compute units are inert until the
+reviewed activation procedure starts the gateway, which in turn requires the
+worker.

@@ -1,0 +1,46 @@
+[Unit]
+Description=Polemica AI Compute MCP gateway
+Requires=polemica-agent-migrate.service polemica-agent-compute-worker.service
+After=polemica-agent-migrate.service polemica-agent-compute-worker.service
+
+[Service]
+Type=simple
+User=polemica-agent-broker
+Group=polemica-agent-broker
+SupplementaryGroups=polemica-agent-compute
+EnvironmentFile=/etc/polemica-ai-agent/compute-mcp.env
+Environment=MCP_BIND_HOST=127.0.0.1 MCP_BIND_PORT=8814 POLEMICA_AGENT_DATABASE=/var/lib/polemica-ai-agent/agent.sqlite3 POLEMICA_RESEARCH_CACHE=/var/lib/polemica-ai-agent/research-cache POLEMICA_COMPUTE_WORKER_SOCKET=/run/polemica-agent-compute/worker.sock
+ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-mcp compute
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/polemica-ai-agent
+ReadOnlyPaths=/var/lib/polemica-ai-agent/research-cache
+ReadOnlyPaths=/run/polemica-agent-compute
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0077
+InaccessiblePaths=-/root/.ssh -/home/codex/.ssh -/proc/kcore -/proc/keys -/proc/timer_list
+
+[Install]
+WantedBy=multi-user.target

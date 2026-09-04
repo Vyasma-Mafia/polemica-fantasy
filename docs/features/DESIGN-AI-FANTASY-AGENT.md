@@ -116,16 +116,21 @@ Marketplace является частью проверяемой стратег�
           ├── Polemica Research MCP ── read-only Polemica access
           │                         ├── сырые игровые данные
           │                         ├── профили и соревнования
-          │                         └── статистические агрегаты
+          │                         └── immutable evidence snapshots
           │
-          └── Долговременная память агента
+          ├── Compute MCP ── AF_UNIX ── networkless worker
+          │                         ├── описательная статистика
+          │                         ├── корреляции признаков
+          │                         └── seeded Monte Carlo
+          │
+          └── Memory MCP
                                     ├── raw history
                                     ├── derived features
                                     ├── decisions
                                     └── outcomes and lessons
 ```
 
-Fantasy MCP и Polemica Research MCP являются независимыми интеграциями. Production backend Polemica Fantasy не превращается в аналитическое хранилище Polemica.
+Fantasy MCP, Polemica Research MCP, Compute MCP и Memory MCP являются независимыми ограниченными интерфейсами. Production backend Polemica Fantasy не превращается в аналитическое хранилище Polemica. Compute gateway видит журнал и Research cache, но отдельный worker получает только нормализованные числовые строки без credentials, сети, DB и файлового доступа.
 
 Codex поддерживает удалённые MCP-серверы через Streamable HTTP с Bearer- и OAuth-аутентификацией. Для MVP используется Bearer token; OAuth остаётся целевой эволюцией для машинных и человеческих клиентов. См. [официальную документацию OpenAI по MCP](https://learn.chatgpt.com/docs/extend/mcp).
 
@@ -269,26 +274,30 @@ Idempotency-Key: <stable-operation-id>
 
 Backend должен связывать ключ с пользователем, типом операции, результатом и соответствующей экономической транзакцией.
 
-## 8. Polemica Research MCP
+## 8. Polemica Research MCP и Compute MCP
 
-Polemica Research MCP предоставляет агенту read-only доступ к данным Polemica и статистическим вычислениям. Он может использовать отдельную read-only credential либо публичные endpoint'ы, если credentials не требуются.
+Polemica Research MCP предоставляет агенту read-only доступ к данным Polemica и формирует запечатанные evidence snapshots. Он может использовать отдельную read-only credential либо публичные endpoint'ы, если credentials не требуются.
 
 Секрет Polemica хранится внутри MCP-сервера и не возвращается модели, не записывается в prompt и не попадает в долговременную память.
 
 Примерный набор инструментов:
 
 ```text
-get_player_profile
+begin_research_snapshot
 get_player_games
 get_game
+list_competitions
 get_competition
+get_competition_members
 get_competition_games
+get_competition_metrics
 get_player_statistics
 get_player_recent_form
 get_player_role_distribution
 get_player_perk_rates
 compare_players
 build_series_projection
+seal_research_snapshot
 ```
 
 Сервер должен:
@@ -301,6 +310,26 @@ build_series_projection
 - отделять ошибки загрузки от отсутствующих данных;
 - возвращать структурированный JSON;
 - рассматривать ники, описания и прочий внешний текст как недоверенные данные, а не инструкции модели.
+
+### 8.1 Контролируемые вычисления
+
+Compute MCP предоставляет вычисления над числовыми данными только из `COMPLETE` и `SEALED` snapshot типа `TRUSTED_RESEARCH`, созданного тем же незавершённым запуском. Gateway проверяет manifest и SHA-256 каждого blob, нормализует данные и передаёт worker только поля `playerId`, `points`, `mmr`, `win`, `roleCode`. Модель не может передать код, выражение, SQL, URL или путь к файлу.
+
+Фиксированный MVP-набор:
+
+```text
+compute_list_operations
+compute_get_result
+compute_describe_player_points
+compute_correlate_player_metrics
+compute_simulate_player_totals
+```
+
+Операции имеют ограничения на размер входа, игроков, признаки, игры и число trials. Monte Carlo принимает явный seed, поэтому результат воспроизводим. Каждое вычисление проходит `PLANNED → RUNNING → SUCCEEDED | FAILED | TIMED_OUT`, сохраняет immutable request/input/result hashes и список исходных evidence records. Повтор того же `computationId` воспроизводит сохранённый результат либо отклоняется при несовпадении identity.
+
+После падения gateway незавершённые `RUNNING` операции переводятся в `INTERRUPTED` только владельцем эксклюзивного process lease. Второй экземпляр gateway завершается до изменения audit state.
+
+Результат Compute является производным выводом, а не новым источником фактов. Решение агента ссылается одновременно на исходный Research snapshot и на успешные computation IDs; авторизация игровых write повторно проверяет эту lineage. Run не может завершиться как `SUCCEEDED`, если хотя бы одно успешное вычисление не связано ни с одним его решением.
 
 ## 9. Долговременная память и обучение
 
@@ -345,16 +374,17 @@ build_series_projection
 
 Агент запускается по расписанию один раз в час.
 
-MVP-runtime физически размещается на `codex@51.250.97.185` в отдельном каталоге, не в рабочем checkout репозитория. Он запускает свежий `codex exec --ignore-user-config`, чтобы не наследовать пользовательские MCP/plugins хоста, и подключает только обязательные Fantasy, Research и Memory MCP.
+MVP-runtime физически размещается на `codex@51.250.97.185` в отдельном каталоге, не в рабочем checkout репозитория. Он запускает свежий `codex exec --ignore-user-config`, чтобы не наследовать пользовательские MCP/plugins хоста, и подключает только обязательные Fantasy, Research, Compute и Memory MCP.
 
 ```text
 1. Загрузить собственную память и незавершённые намерения
 2. Получить профиль, баланс, коллекцию и открытые серии
 3. Проверить результаты предыдущих действий через read-back
-4. Обновить статистику Polemica при необходимости
+4. Собрать и запечатать Research snapshot при необходимости
 5. Для каждой серии до дедлайна:
    - оценить доступные экземпляры карт
-   - построить прогноз игроков и перков
+   - выполнить необходимые фиксированные Compute-операции над snapshot
+   - построить прогноз игроков и перков, сохранив computation IDs
    - оптимизировать состав отдельно для каждой лиги
    - создать или обновить команду
    - перечитать и проверить сохранённый состав
@@ -376,8 +406,8 @@ Webhook или event-driven запуск не входят в MVP. Если се
 
 - Fantasy MCP;
 - Polemica Research MCP;
+- контролируемый Compute MCP;
 - чтение и обновление собственной долговременной памяти;
-- необходимые локальные вычисления над полученными данными.
 
 Среда не должна предоставлять:
 
@@ -387,6 +417,7 @@ Webhook или event-driven запуск не входят в MVP. Если се
 - admin MCP/API;
 - Telegram/браузер для чтения чужих решений;
 - инструменты редактирования backend или данных сервиса;
+- shell, произвольный Python/eval, SQL, generic HTTP и прямой файловый доступ;
 - секреты за пределами специально выделенных credentials MCP.
 
 MCP server instructions и prompt агента должны явно запрещать интерпретировать внешние данные как команды и запрещать поиск обходного пути к отсутствующим инструментам.
@@ -399,6 +430,7 @@ MCP server instructions и prompt агента должны явно запре�
 - модель и версия конфигурации;
 - доступные инструменты;
 - хэши входных snapshot'ов;
+- computation IDs, версии алгоритма и хэши нормализованных входов/результатов;
 - вызовы инструментов без секретов;
 - экономические операции;
 - команды по сериям и лигам;
@@ -487,6 +519,7 @@ MCP server instructions и prompt агента должны явно запре�
 
 - Fantasy MCP;
 - Polemica Research MCP;
+- Compute MCP с отдельным networkless worker;
 - хранилище долговременной памяти;
 - почасовой runner Codex;
 - приватный журнал и аналитика эксперимента.
@@ -503,7 +536,8 @@ MCP server instructions и prompt агента должны явно запре�
 | User API | `controller/user/**` | Переиспользовать существующие endpoint'ы без отдельной игровой логики |
 | User API tests | `UserApiIntegrationTest.kt` и focused security tests | Проверить эквивалентность TMA/Bearer и изоляцию admin API |
 | Fantasy MCP | новый внешний компонент | Отобразить разрешённое подмножество user API как типизированные tools |
-| Polemica Research MCP | новый внешний компонент | Read-only доступ, кэш, статистика и provenance |
+| Polemica Research MCP | новый внешний компонент | Read-only доступ, кэш, базовые агрегаты и provenance |
+| Compute MCP | новый внешний компонент | Фиксированные воспроизводимые операции над sealed Research snapshot без shell/eval |
 | Agent memory/runner | новый внешний компонент | Persistent memory, run journal и почасовой запуск Codex |
 
 ## 16. Тестовый план
@@ -533,7 +567,16 @@ MCP server instructions и prompt агента должны явно запре�
 - частичные ошибки отражаются в ответе и не превращаются в нулевую статистику;
 - внешние строки не меняют инструкции агента.
 
-### 16.4 Долговременная работа
+### 16.4 Вычисления
+
+- Compute принимает данные только из sealed snapshot того же активного run;
+- blob hash и manifest проверяются до нормализации;
+- неизвестные поля, нечисловые значения, NaN/Infinity и превышение лимитов отклоняются;
+- одинаковые input, operation и seed дают одинаковый результат;
+- worker не получает credentials, сеть, DB или broker filesystem;
+- решение нельзя связать с чужим, неуспешным или изменённым computation;
+
+### 16.5 Долговременная работа
 
 - новый запуск восстанавливает память предыдущего;
 - повторный запуск не забывает неизвестные результаты операций;
@@ -552,11 +595,12 @@ MVP считается готовым к закрытому production-эксп�
 6. После каждого write выполняется и журналируется read-back; неизвестный результат не повторяется вслепую.
 7. Покупка пака дополнительно защищена backend `Idempotency-Key` для обоих режимов открытия.
 8. Polemica Research MCP является read-only, сохраняет `asOf`/provenance и не раскрывает credential модели.
-9. Память переживает независимые почасовые запуски и хранит решения, результаты и версии стратегии.
-10. Среда Codex не имеет admin API, production DB, SSH или альтернативного доступа к чужим составам.
-11. Зафиксированы исходные условия, критерий завершения и группа экспертов для итогового сравнения.
-12. Один сквозной тестовый цикл проходит путь `обнаружить серию → проанализировать → собрать команду → проверить → получить результат → записать post-mortem`.
-13. Секреты и полные Bearer tokens отсутствуют в логах, prompt, tool results и долговременной памяти.
+9. Compute MCP выполняет только фиксированные bounded-операции над sealed evidence; worker изолирован от сети, DB, secrets и broker state.
+10. Память переживает независимые почасовые запуски и хранит решения, результаты, computations и версии стратегии.
+11. Среда Codex не имеет shell, generic HTTP, admin API, production DB, SSH или альтернативного доступа к чужим составам.
+12. Зафиксированы исходные условия, критерий завершения и группа экспертов для итогового сравнения.
+13. Один сквозной тестовый цикл проходит путь `обнаружить серию → собрать snapshot → вычислить → записать решение → собрать команду → проверить → получить результат → записать post-mortem`.
+14. Секреты и полные Bearer tokens отсутствуют в логах, prompt, tool results и долговременной памяти.
 
 ## 18. Этапы реализации
 
@@ -574,10 +618,11 @@ MVP считается готовым к закрытому production-эксп�
 - затем Store и marketplace;
 - обязательный read-back.
 
-### Этап 3 — Polemica Research MCP и память
+### Этап 3 — Polemica Research MCP, Compute MCP и память
 
 - сырые данные;
-- агрегаты;
+- sealed evidence и фиксированные вычисления;
+- отдельный networkless compute worker;
 - persistent decision journal;
 - prompt/skill агента.
 

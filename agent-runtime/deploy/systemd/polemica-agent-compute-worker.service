@@ -1,0 +1,44 @@
+[Unit]
+Description=Polemica AI isolated compute worker
+
+[Service]
+Type=simple
+User=polemica-agent-compute
+Group=polemica-agent-compute
+RuntimeDirectory=polemica-agent-compute
+RuntimeDirectoryMode=0750
+ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-compute-worker --socket /run/polemica-agent-compute/worker.sock
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateNetwork=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+MemoryMax=256M
+MemorySwapMax=0
+CPUQuota=100%
+TasksMax=4
+LimitNOFILE=64
+UMask=0007
+InaccessiblePaths=-/var/lib/polemica-ai-agent -/var/lib/polemica-ai-agent-runner -/root/.ssh -/home/codex/.ssh -/proc/kcore -/proc/keys -/proc/timer_list
+
+# No [Install]. The disabled Compute gateway starts this worker only after explicit activation.

@@ -8,7 +8,9 @@ from polemica_agent.common.operations import DeterministicUpstreamError
 from polemica_agent.fantasy_mcp.client import FantasyApiError
 from polemica_agent.fantasy_mcp.registry import build_tool_registry
 from polemica_agent.mcp_runtime.fantasy_adapter import FantasyRegistryAdapter
-from polemica_agent.mcp_runtime.cli import _fantasy_write_allowlist, _handler
+from polemica_agent.mcp_runtime.cli import (
+    _acquire_compute_gateway_lock, _fantasy_write_allowlist, _handler,
+)
 from polemica_agent.mcp_runtime.config import MCPConfigError
 from polemica_agent.mcp_runtime.registry import (
     FANTASY_WRITE_TOOLS, MCP_SERVERS, RegistryError, ToolPolicy, WriteDenied, build_server,
@@ -36,6 +38,7 @@ def test_registry_has_only_named_domain_tools() -> None:
     all_names = {name for names in MCP_SERVERS.values() for name in names}
     assert all_names
     assert not ({"shell", "http", "request", "sql", "filesystem"} & all_names)
+    assert set(MCP_SERVERS) == {"fantasy", "research", "compute", "memory"}
 
 
 def test_missing_required_handler_fails_startup() -> None:
@@ -165,3 +168,23 @@ def test_production_factories_use_persistent_broker_adapters(tmp_path, monkeypat
     assert journal is research.service.snapshots.journal
     assert no_authorizer is None
     journal.close()
+
+    monkeypatch.setenv("POLEMICA_COMPUTE_WORKER_SOCKET", "/tmp/polemica-worker.sock")
+    compute, compute_service, no_authorizer = _handler("compute")
+    assert compute.service is compute_service
+    assert compute.service.research_cache == tmp_path / "cache"
+    assert no_authorizer is None
+    compute_service.close()
+
+
+def test_compute_gateway_lock_has_single_owner(tmp_path) -> None:
+    database = (tmp_path / "state" / "agent.sqlite3").resolve()
+    database.parent.mkdir(parents=True)
+    first = _acquire_compute_gateway_lock(database)
+    try:
+        with pytest.raises(MCPConfigError, match="another compute gateway"):
+            _acquire_compute_gateway_lock(database)
+    finally:
+        first.close()
+    second = _acquire_compute_gateway_lock(database)
+    second.close()

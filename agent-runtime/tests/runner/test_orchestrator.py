@@ -19,6 +19,7 @@ def settings(tmp_path: Path) -> RuntimeSettings:
         mcp_urls={
             "fantasy": "http://127.0.0.1:8811/mcp",
             "research": "http://127.0.0.1:8812/mcp",
+            "compute": "http://127.0.0.1:8814/mcp",
             "memory": "http://127.0.0.1:8813/mcp",
         }, codex_binary="codex",
     )

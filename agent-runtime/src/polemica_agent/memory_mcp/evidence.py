@@ -192,14 +192,52 @@ def assert_trusted_research_snapshots(store: AuditStore, run_id: str, snapshot_i
     rows = fetchall(
         store.database_path,
         f"""
-        SELECT s.id, s.run_id, s.sealed_at, st.trust_kind
-        FROM snapshots s JOIN snapshot_trust st ON st.snapshot_id=s.id
+        SELECT s.id, s.run_id, s.sealed_at, s.completeness, st.trust_kind,
+               rc.run_id AS collection_run_id, rc.state AS collection_state,
+               rc.completeness AS collection_completeness, rc.evidence_snapshot_id,
+               rc.sealed_at AS collection_sealed_at
+        FROM snapshots s
+        JOIN snapshot_trust st ON st.snapshot_id=s.id
+        LEFT JOIN research_collections rc ON rc.collection_id=st.collection_id
         WHERE s.id IN ({placeholders})
         """,
         tuple(snapshot_ids),
     )
     if len(rows) != len(set(snapshot_ids)) or any(
         row["run_id"] != run_id or row["sealed_at"] is None or
-        row["trust_kind"] != "TRUSTED_RESEARCH" for row in rows
+        row["completeness"] != "COMPLETE" or row["trust_kind"] != "TRUSTED_RESEARCH" or
+        row["collection_run_id"] != run_id or row["collection_state"] != "SEALED" or
+        row["collection_completeness"] != "COMPLETE" or
+        row["evidence_snapshot_id"] != row["id"] or row["collection_sealed_at"] is None
+        for row in rows
     ):
         raise FailClosedError("decision references untrusted, unsealed, or cross-run evidence")
+
+
+def assert_decision_computation_lineage(store: AuditStore, run_id: str, decision_id: int) -> None:
+    invalid = fetchone(
+        store.database_path,
+        """
+        SELECT 1
+        FROM decision_computations dc
+        JOIN computations c ON c.id=dc.computation_id
+        LEFT JOIN decision_snapshots ds
+          ON ds.decision_id=dc.decision_id AND ds.snapshot_id=c.source_snapshot_id
+        LEFT JOIN snapshots s ON s.id=c.source_snapshot_id
+        LEFT JOIN snapshot_trust st ON st.snapshot_id=s.id
+        LEFT JOIN research_collections rc ON rc.collection_id=st.collection_id
+        WHERE dc.decision_id=? AND (
+          ds.snapshot_id IS NULL OR c.run_id<>? OR c.state<>'SUCCEEDED' OR c.result_hash IS NULL OR
+          c.verification_hash IS NULL OR s.run_id<>? OR s.completeness<>'COMPLETE' OR
+          s.sealed_at IS NULL OR st.trust_kind IS NULL OR
+          st.trust_kind<>'TRUSTED_RESEARCH' OR rc.state IS NULL OR rc.state<>'SEALED' OR
+          rc.completeness<>'COMPLETE' OR rc.run_id<>? OR
+          rc.evidence_snapshot_id IS NULL OR
+          rc.evidence_snapshot_id<>c.source_snapshot_id OR rc.sealed_at IS NULL
+        )
+        LIMIT 1
+        """,
+        (decision_id, run_id, run_id, run_id),
+    )
+    if invalid is not None:
+        raise FailClosedError("decision references invalid computation lineage")

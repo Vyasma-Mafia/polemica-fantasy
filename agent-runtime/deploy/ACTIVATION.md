@@ -13,9 +13,12 @@ sudo /home/codex/.local/share/polemica-agent-runtime/deploy/install-system-disab
   /home/codex/.local/share/polemica-agent-runtime
 ```
 
-The installer creates `polemica-agent-broker`, `/opt/polemica-ai-agent`, state
+The installer creates `polemica-agent-broker`, the isolated
+`polemica-agent-compute` worker identity and group, `/opt/polemica-ai-agent`, state
 directories, empty root-owned environment files, and installed systemd units. It
-migrates the local SQLite schema but does not start or enable anything.
+migrates the local SQLite schema but does not start or enable anything. The
+Compute socket directory is ephemeral and is created only when its worker unit is
+explicitly started.
 
 ## 2. Prepare the visible Fantasy user
 
@@ -61,7 +64,7 @@ sudo /opt/polemica-ai-agent/deploy/provision_research_environment.py
 The helper writes `research-mcp.env` and the non-writing `runner.env` atomically
 without printing the password. The effective files are:
 
-The four files under `/etc/polemica-ai-agent` remain mode `0600`, owner `root`:
+The five files under `/etc/polemica-ai-agent` remain mode `0600`, owner `root`:
 
 ```text
 # fantasy-mcp.env
@@ -79,18 +82,24 @@ POLEMICA_PASSWORD=<read-only password>
 # memory-mcp.env
 # intentionally empty
 
+# compute-mcp.env
+# intentionally empty; the gateway receives no upstream credential
+
 # runner.env
 FANTASY_MCP_URL=http://127.0.0.1:8811/mcp
 RESEARCH_MCP_URL=http://127.0.0.1:8812/mcp
+COMPUTE_MCP_URL=http://127.0.0.1:8814/mcp
 MEMORY_MCP_URL=http://127.0.0.1:8813/mcp
 WRITE_ENABLED=false
 POLEMICA_AGENT_MODEL=gpt-5.6-sol
-POLEMICA_AGENT_STRATEGY_VERSION=hourly-v1
+POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1
 ```
 
 ## 5. Activate in stages
 
-1. Start the three MCP services and verify loopback health/tool registries.
+1. Start the Compute worker, then the four MCP services, and verify loopback
+   health/tool registries. The Compute gateway requires its worker and connects
+   only through `/run/polemica-agent-compute/worker.sock`.
 2. Run one manual Codex turn with both write flags false.
 3. Verify the run journal, sealed evidence, logs, and absence of secrets.
 4. For the team-only canary, set `WRITE_ENABLED=true` and

@@ -51,6 +51,13 @@ RESEARCH_TOOLS = (
     "compare_players", "build_series_projection",
 )
 
+COMPUTE_TOOLS = (
+    "compute_list_operations", "compute_get_result",
+    "compute_describe_player_points", "compute_correlate_player_metrics",
+    "compute_simulate_player_totals",
+)
+COMPUTE_READ_TOOLS = ("compute_list_operations", "compute_get_result")
+
 MEMORY_TOOLS = (
     "start_run", "finish_run", "get_open_intents", "get_relevant_memory", "record_decision",
     "record_outcome", "store_raw_payload", "store_derived_features", "record_intervention",
@@ -83,6 +90,7 @@ FANTASY_WRITE_TOOLS = (
 MCP_SERVERS = {
     "fantasy": FANTASY_READ_TOOLS + FANTASY_WRITE_TOOLS,
     "research": RESEARCH_TOOLS,
+    "compute": COMPUTE_TOOLS,
     "memory": MEMORY_TOOLS,
 }
 
@@ -124,11 +132,14 @@ def build_server(
             raise RegistryError(f"required {kind} handler is absent: {name}")
         if kind == "fantasy" and name in FANTASY_WRITE_TOOLS:
             method = _guarded(method, name, write_policy)
-        is_read = kind == "research" or name in FANTASY_READ_TOOLS or name in MEMORY_READ_TOOLS
+        is_read = (
+            kind == "research" or name in FANTASY_READ_TOOLS
+            or name in MEMORY_READ_TOOLS or name in COMPUTE_READ_TOOLS
+        )
         annotations = ToolAnnotations(
             readOnlyHint=is_read,
             destructiveHint=(kind == "fantasy" and name in FANTASY_WRITE_TOOLS),
-            idempotentHint=(name == "fantasy_buy_pack"),
+            idempotentHint=(name == "fantasy_buy_pack" or kind == "compute"),
             openWorldHint=(kind == "fantasy" and name in FANTASY_WRITE_TOOLS),
         )
         server.tool(name=name, annotations=annotations)(method)

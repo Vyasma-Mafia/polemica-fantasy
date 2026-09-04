@@ -1,7 +1,7 @@
 [Unit]
 Description=Polemica AI hourly Codex run
-Requires=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
-After=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
+Requires=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-compute-mcp.service polemica-agent-memory-mcp.service
+After=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-compute-mcp.service polemica-agent-memory-mcp.service
 
 [Service]
 Type=oneshot

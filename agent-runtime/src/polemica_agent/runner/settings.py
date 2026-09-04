@@ -32,12 +32,15 @@ class RuntimeSettings:
             lock_path=Path(os.environ.get("POLEMICA_AGENT_RUN_LOCK", str(root / "run.lock"))),
             prompt_dir=Path(os.environ.get("POLEMICA_AGENT_PROMPT_DIR", "/opt/polemica-ai-agent/prompts")),
             model=os.environ.get("POLEMICA_AGENT_MODEL", "gpt-5.6-sol"),
-            strategy_version=os.environ.get("POLEMICA_AGENT_STRATEGY_VERSION", "hourly-v1"),
+            strategy_version=os.environ.get(
+                "POLEMICA_AGENT_STRATEGY_VERSION", "hourly-compute-v1"
+            ),
             timeout_seconds=int(os.environ.get("POLEMICA_AGENT_RUN_TIMEOUT_SECONDS", "3300")),
             write_enabled=os.environ.get("WRITE_ENABLED", "false").lower() == "true",
             mcp_urls={
                 "fantasy": os.environ.get("FANTASY_MCP_URL", "http://127.0.0.1:8811/mcp"),
                 "research": os.environ.get("RESEARCH_MCP_URL", "http://127.0.0.1:8812/mcp"),
+                "compute": os.environ.get("COMPUTE_MCP_URL", "http://127.0.0.1:8814/mcp"),
                 "memory": os.environ.get("MEMORY_MCP_URL", "http://127.0.0.1:8813/mcp"),
             },
             codex_binary=os.environ.get("CODEX_BINARY", "codex"),
@@ -57,8 +60,8 @@ class RuntimeSettings:
             or any(not (char.isalnum() or char in "._-") for char in self.strategy_version)
         ):
             raise SettingsError("strategy version must be 1..128 safe identifier characters")
-        if set(self.mcp_urls) != {"fantasy", "research", "memory"}:
-            raise SettingsError("all three MCP servers are required")
+        if set(self.mcp_urls) != {"fantasy", "research", "compute", "memory"}:
+            raise SettingsError("all four MCP servers are required")
         for url in self.mcp_urls.values():
             parsed = urlparse(url)
             if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "::1", "localhost"}:

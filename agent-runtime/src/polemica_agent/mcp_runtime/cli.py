@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
+import stat
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from .config import MCPConfigError, ServerBinding, required_https_origin
 from .memory_tools import MemoryTools
@@ -59,6 +61,18 @@ def _handler(kind: str) -> tuple[Any, Any | None, WriteAuthorizer | None]:
             ),
         )
         return FantasyRegistryAdapter(registry), store, authorizer
+    if kind == "compute":
+        from polemica_agent.common.storage import AuditStore
+        from polemica_agent.compute_mcp.client import ComputeWorkerClient
+        from polemica_agent.compute_mcp.service import ComputeService
+        from polemica_agent.compute_mcp.tools import ComputeTools
+        store = AuditStore(Path(_required("POLEMICA_AGENT_DATABASE")))
+        service = ComputeService(
+            store,
+            Path(_required("POLEMICA_RESEARCH_CACHE")),
+            ComputeWorkerClient(Path(_required("POLEMICA_COMPUTE_WORKER_SOCKET"))),
+        )
+        return ComputeTools(service), service, None
     raise MCPConfigError("unknown server kind")
 
 
@@ -71,22 +85,53 @@ def _fantasy_write_allowlist() -> frozenset[str]:
     return names
 
 
+def _acquire_compute_gateway_lock(database_path: Path) -> BinaryIO:
+    if not database_path.is_absolute():
+        raise MCPConfigError("compute gateway database path must be absolute")
+    lock_path = database_path.with_name("compute-gateway.lock")
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(lock_path, flags, 0o600)
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise MCPConfigError("compute gateway lock is not a regular file")
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle = os.fdopen(descriptor, "a+b", buffering=0)
+        descriptor = None
+        return handle
+    except BlockingIOError:
+        raise MCPConfigError("another compute gateway owns the singleton lock") from None
+    except OSError as exc:
+        raise MCPConfigError("cannot acquire compute gateway singleton lock") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run a fixed Polemica MCP server")
-    parser.add_argument("kind", choices=("fantasy", "research", "memory"))
+    parser.add_argument("kind", choices=("fantasy", "research", "compute", "memory"))
     args = parser.parse_args(argv)
     binding = ServerBinding.from_env()
-    handler, closeable, authorizer = _handler(args.kind)
-    write_enabled = os.environ.get("WRITE_ENABLED", "false").lower() == "true"
-    server = build_server(
-        args.kind, handler,
-        policy=ToolPolicy(
-            write_enabled=write_enabled,
-            authorizer=authorizer,
-            allowed_write_tools=_fantasy_write_allowlist() if args.kind == "fantasy" else frozenset(),
-        ),
-    )
+    gateway_lock = None
+    closeable = None
     try:
+        if args.kind == "compute":
+            gateway_lock = _acquire_compute_gateway_lock(Path(_required("POLEMICA_AGENT_DATABASE")))
+        handler, closeable, authorizer = _handler(args.kind)
+        if args.kind == "compute":
+            closeable.recover_interrupted_after_singleton_lease()
+        write_enabled = os.environ.get("WRITE_ENABLED", "false").lower() == "true"
+        server = build_server(
+            args.kind, handler,
+            policy=ToolPolicy(
+                write_enabled=write_enabled,
+                authorizer=authorizer,
+                allowed_write_tools=(
+                    _fantasy_write_allowlist() if args.kind == "fantasy" else frozenset()
+                ),
+            ),
+        )
         server.run(
             transport="streamable-http", host=binding.host, port=binding.port,
             streamable_http_path="/mcp", json_response=True, stateless_http=True,
@@ -94,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if closeable is not None:
             closeable.close()
+        if gateway_lock is not None:
+            gateway_lock.close()
     return 0
 
 
