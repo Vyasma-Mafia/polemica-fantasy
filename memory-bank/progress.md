@@ -6,11 +6,13 @@
 - [x] Backend V83: opaque Bearer credentials с hash/expiry/revoke/audit, internal agent marker без публичного DTO, TMA manual-login guard, Telegram recipient suppression и pack-purchase `Idempotency-Key` replay для INSTANT/CHOOSE.
 - [x] Agent runtime: закрытые Fantasy/Research/Memory MCP tools, trusted immutable Research snapshots, sealed-decision ACT authorization, single-attempt durable intents/reconciliation, SQLite WAL/blob memory, prompt/version audit, flock и fail-closed runner.
 - [x] Проверки: Python 3.10 runtime `106 passed`; backend focused compile/unit green; изолированный remote Testcontainers прогон Bearer + pack idempotency/concurrency на PostgreSQL 16 green с Docker API 1.44.
-- [x] На `codex@51.250.97.185` установлен только disabled no-secret runtime в `/home/codex/.local/share/polemica-agent-runtime`; MCP services/timer/cron отсутствуют, production run/write не выполнялся.
+- [x] На `codex@51.250.97.185` установлен изолированный system runtime; Fantasy/Research/Memory MCP запущены на loopback и остаются disabled, timer/runner inactive+disabled.
 - [x] Commits `c4d2533`/`4910104` отправлены в public `master`; production workflow success, VPS SHA совпадает, backend healthy, Flyway V83 физически подтверждён, credentials count = 0.
 - [x] Подготовлен root-only `install-system-disabled.sh`: dedicated broker user, `/opt` runtime, root-owned empty env files, SQLite migration и activation-ready systemd units без start/enable/credentials.
 - [x] Исправлена первая activation-ошибка `226/NAMESPACE`: optional-path syntax в `InaccessiblePaths` сохраняет hardening и допускает отсутствующий `/root/.ssh`; 106 runtime tests green.
-- [ ] Runtime system install blocked: root SSH запрещён, `codex` sudo требует интерактивный пароль; безопасная broker/runner изоляция не заменяется user-service компромиссом.
+- [x] Runtime system install выполнен через интерактивный sudo с dedicated broker/runner ownership; credential env остаются root-only.
+- [x] Live read-only MCP gate: exact registries healthy, Fantasy profile read, Memory zero open intents, Research 1200 competitions sealed with zero errors; write call fail-closed; production DB confirms no economy/team mutation.
+- [ ] Manual read-only Codex runner canary и проверка его audit/logs.
 - [ ] Activation gate: production account/credential, read-only Polemica credential, model/reasoning, expert cohort/stop rule/retention/alerts, live contract smoke и staged read-only→team→economy→marketplace enablement.
 
 - [x] **2026-09-04 — Polemica Grand Slam 2026 card skin:** Flyway V82 seeds `polemica_grand_slam_2026`; the TMA applies its electric-blue/cyan frame, `GRAND SLAM` badge, glow/sweep, name, and perk-chip treatment on every existing card surface without changing component geometry. Reduced-motion is supported. Backend/test compilation, TMA production build, and browser CSS verification passed. Not deployed yet.
