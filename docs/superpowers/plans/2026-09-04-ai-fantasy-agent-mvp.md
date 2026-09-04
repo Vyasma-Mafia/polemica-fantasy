@@ -328,7 +328,7 @@ Implemented on 2026-09-04:
 - durable sealed research evidence, decision lineage, operation journal, reconciliation, and persistent ACT authorization;
 - hourly Codex runner with ignored user configuration, required MCPs, read-only sandbox, scrubbed environment, and fail-closed write controls;
 - hardened systemd deployment assets and operator runbooks;
-- disabled runtime staged at `/home/codex/.local/share/polemica-agent-runtime` on `codex@51.250.97.185` without production secrets, enabled units, timers, or writes.
+- system runtime installed at `/opt/polemica-ai-agent` on `51.250.97.185`; four loopback MCP gateways are active but disabled, while the hourly timer and writes remain off.
 
 Verification completed:
 
@@ -338,4 +338,4 @@ Verification completed:
 - negative-capability, fixture-health, compile, preflight, and disabled-install checks passed locally/remotely;
 - independent backend and runtime reviews found no remaining P0/P1 issues after correction waves.
 
-The original runtime and credentials are installed, but the Compute slice remains intentionally inactive until its reviewed commit is staged and the privileged disabled installer is rerun. Writes and the hourly timer remain off pending a clean manual read-only canary and later explicit activation gates.
+The Compute slice is installed and its live contract/isolation checks pass. Manual run `bc387600-b00d-4539-b496-f7e65d7dab6e` completed `SUCCEEDED` with strategy `hourly-compute-v1`, one sealed no-op decision/outcome, and zero computations or operation intents because the account owns no cards. Independent Fantasy read-back remained 1000 fantiki, zero cards, and zero teams. Writes and the hourly timer remain off pending later explicit gameplay activation gates.
