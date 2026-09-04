@@ -295,7 +295,9 @@ def test_deterministic_4xx_is_resolved_by_readback_without_retry(
         assert sends == 1
         assert reads == (2 if expected_state is IntentState.UNKNOWN else 1)
         assert first.result == {
-            "upstreamError": {"errorCode": "HTTP_409", "message": "conflict"},
+            "upstreamError": {
+                "errorType": "DeterministicUpstreamError", "errorCode": "HTTP_409",
+            },
             "readBack": {"observed": readback_state.value},
         }
         assert first.verification["readBackCompleted"] is True

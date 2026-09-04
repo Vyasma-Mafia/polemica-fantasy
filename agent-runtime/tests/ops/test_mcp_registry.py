@@ -4,6 +4,8 @@ import anyio
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
+from polemica_agent.common.operations import DeterministicUpstreamError
+from polemica_agent.fantasy_mcp.client import FantasyApiError
 from polemica_agent.fantasy_mcp.registry import build_tool_registry
 from polemica_agent.mcp_runtime.fantasy_adapter import FantasyRegistryAdapter
 from polemica_agent.mcp_runtime.cli import _fantasy_write_allowlist, _handler
@@ -90,6 +92,54 @@ def test_official_sdk_adapts_exact_fantasy_domain_registry() -> None:
     assert set(create.input_schema["required"]) == {
         "run_id", "operation_id", "decision_id", "series_id", "league_code", "user_card_ids"
     }
+
+
+def test_fantasy_adapter_omits_sdk_materialized_optional_nulls() -> None:
+    seen = None
+    class Registry:
+        def list_tools(self):
+            return [{
+                "name": "fantasy_read",
+                "description": "read",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"optional_id": {"type": "integer"}},
+                    "required": [],
+                },
+            }]
+        def names(self): return ("fantasy_read",)
+        def call(self, _name, arguments):
+            nonlocal seen
+            seen = arguments
+            return {"ok": True}
+
+    adapter = FantasyRegistryAdapter(Registry())
+    assert adapter.fantasy_read() == {"ok": True}
+    assert seen == {}
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (DeterministicUpstreamError("HTTP_403", "sensitive upstream body"), "HTTP_403"),
+        (FantasyApiError(503, "HTTP_503", "sensitive upstream body", uncertain=True), "HTTP_503"),
+    ],
+)
+def test_fantasy_adapter_exposes_only_sanitized_error_code(error, expected) -> None:
+    class Registry:
+        def list_tools(self):
+            return [{
+                "name": "fantasy_read",
+                "description": "read",
+                "inputSchema": {"type": "object", "properties": {}, "required": []},
+            }]
+        def names(self): return ("fantasy_read",)
+        def call(self, _name, _arguments): raise error
+
+    adapter = FantasyRegistryAdapter(Registry())
+    with pytest.raises(ToolError, match=expected) as raised:
+        adapter.fantasy_read()
+    assert "sensitive upstream body" not in str(raised.value)
 
 
 def test_production_factories_use_persistent_broker_adapters(tmp_path, monkeypatch) -> None:

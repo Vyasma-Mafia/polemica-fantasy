@@ -13,7 +13,9 @@ class MemoryGatewayError(RuntimeError):
 class MemoryGateway(Protocol):
     def get_open_intents(self) -> list[dict[str, Any]]: ...
     def start_run(self, **metadata: str) -> str: ...
-    def finish_run(self, run_id: str, status: str, summary: Mapping[str, Any]) -> None: ...
+    def finish_run(
+        self, run_id: str, status: str, summary: Mapping[str, Any], *, require_decision: bool = False,
+    ) -> None: ...
     def close(self) -> None: ...
 
 
@@ -51,8 +53,13 @@ class MCPMemoryGateway:
             raise MemoryGatewayError("Memory MCP returned invalid run id")
         return value
 
-    def finish_run(self, run_id: str, status: str, summary: Mapping[str, Any]) -> None:
-        self._call("finish_run", {"run_id": run_id, "status": status, "summary": dict(summary)})
+    def finish_run(
+        self, run_id: str, status: str, summary: Mapping[str, Any], *, require_decision: bool = False,
+    ) -> None:
+        self._call("finish_run", {
+            "run_id": run_id, "status": status, "summary": dict(summary),
+            "require_decision": require_decision,
+        })
 
     def close(self) -> None:
         return None

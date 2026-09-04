@@ -88,13 +88,13 @@ class OperationCoordinator:
         try:
             send_result = send()
         except DeterministicUpstreamError as exc:
-            upstream_error = {"errorCode": exc.code, "message": str(exc)}
+            upstream_error = _safe_exception(exc)
             try:
                 resolution = read_back()
             except Exception as read_exc:
                 resolution = ReadBackResolution(
                     IntentState.UNKNOWN,
-                    {"errorType": type(read_exc).__name__, "message": str(read_exc)},
+                    _safe_exception(read_exc),
                     {"readBackCompleted": False},
                 )
             row = self.store.resolve_intent(
@@ -108,7 +108,7 @@ class OperationCoordinator:
             self.store.resolve_intent(
                 operation_id,
                 IntentState.UNKNOWN.value,
-                {"errorType": type(exc).__name__, "message": str(exc)},
+                _safe_exception(exc),
             )
             return self.reconcile(operation_id, read_back, write_attempted=True)
 
@@ -120,7 +120,7 @@ class OperationCoordinator:
                 IntentState.UNKNOWN.value,
                 {
                     "upstreamResponse": send_result,
-                    "readBackError": {"errorType": type(exc).__name__, "message": str(exc)},
+                    "readBackError": _safe_exception(exc),
                 },
                 verification={"readBackCompleted": False},
             )
@@ -157,7 +157,7 @@ class OperationCoordinator:
         except Exception as exc:
             resolution = ReadBackResolution(
                 IntentState.UNKNOWN,
-                {"errorType": type(exc).__name__, "message": str(exc)},
+                _safe_exception(exc),
                 {"readBackCompleted": False},
             )
         updated = self.store.resolve_intent(
@@ -182,6 +182,18 @@ class OperationCoordinator:
             verification=verification,
             write_attempted=write_attempted,
         )
+
+
+def _safe_exception(exc: Exception) -> dict[str, Any]:
+    """Return diagnostic metadata without persisting or returning upstream bodies."""
+    result: dict[str, Any] = {"errorType": type(exc).__name__}
+    code = getattr(exc, "code", None)
+    if isinstance(code, str) and code:
+        result["errorCode"] = code
+    uncertain = getattr(exc, "uncertain", None)
+    if isinstance(uncertain, bool):
+        result["uncertain"] = uncertain
+    return result
 
 
 __all__ = [

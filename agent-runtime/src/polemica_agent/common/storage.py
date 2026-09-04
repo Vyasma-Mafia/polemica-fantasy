@@ -203,25 +203,49 @@ class AuditStore:
         prompt_hash: str,
         tools_hash: str,
         config_hash: str,
+        strategy_version: str | None = None,
     ) -> str:
         run_id = run_id or str(uuid.uuid4())
         with self.transaction() as db:
             db.execute(
                 """
-                INSERT INTO runs(id, started_at, status, model, prompt_hash, tools_hash, config_hash)
-                VALUES (?, ?, 'RUNNING', ?, ?, ?, ?)
+                INSERT INTO runs(
+                  id, started_at, status, model, prompt_hash, tools_hash, config_hash,
+                  strategy_version
+                ) VALUES (?, ?, 'RUNNING', ?, ?, ?, ?, ?)
                 """,
-                (run_id, _timestamp(), model, prompt_hash, tools_hash, config_hash),
+                (
+                    run_id, _timestamp(), model, prompt_hash, tools_hash, config_hash,
+                    strategy_version,
+                ),
             )
         return run_id
 
-    def finish_run(self, run_id: str, status: str, summary: Mapping[str, Any] | None = None) -> None:
+    def finish_run(
+        self, run_id: str, status: str, summary: Mapping[str, Any] | None = None,
+        *, require_decision: bool = False,
+    ) -> None:
         if status not in {"SUCCEEDED", "FAILED", "TIMED_OUT"}:
             raise ValueError(f"Invalid terminal run status: {status}")
         summary_hash = summary_path = None
         if summary is not None:
             summary_hash, summary_path = self.store_blob(redact(summary))
         with self.transaction() as db:
+            if require_decision and status == "SUCCEEDED":
+                decision = db.execute(
+                    """
+                    SELECT 1
+                    FROM decisions d
+                    JOIN runs r ON r.id = d.run_id
+                    WHERE d.run_id=?
+                      AND r.strategy_version IS NOT NULL
+                      AND d.strategy_version = r.strategy_version
+                    LIMIT 1
+                    """,
+                    (run_id,),
+                ).fetchone()
+                if decision is None:
+                    raise FailClosedError(f"Run {run_id} cannot succeed without a decision")
             updated = db.execute(
                 """
                 UPDATE runs SET finished_at=?, status=?, summary_hash=?, summary_path=?
@@ -277,6 +301,14 @@ class AuditStore:
     def record_strategy(self, version: str, prompt_hash: str, config: Any) -> None:
         digest, relative = self.store_blob(redact(config))
         with self.transaction() as db:
+            existing = db.execute(
+                "SELECT prompt_hash, config_hash FROM strategy_versions WHERE version=?",
+                (version,),
+            ).fetchone()
+            if existing is not None:
+                if existing["prompt_hash"] != prompt_hash or existing["config_hash"] != digest:
+                    raise FailClosedError(f"Strategy version {version} has different immutable content")
+                return
             db.execute(
                 """
                 INSERT INTO strategy_versions(version, created_at, prompt_hash, config_hash, config_path)
@@ -371,6 +403,14 @@ class AuditStore:
         alternatives_hash, alternatives_path = self.store_blob(redact(alternatives))
         choice_hash, choice_path = self.store_blob(redact(choice))
         with self.transaction() as db:
+            run = db.execute(
+                "SELECT strategy_version FROM runs WHERE id=? AND status='RUNNING'", (run_id,),
+            ).fetchone()
+            if run is None:
+                raise FailClosedError("Decision run is absent or already terminal")
+            trusted_strategy = run["strategy_version"]
+            if trusted_strategy is not None and strategy_version != trusted_strategy:
+                raise FailClosedError("Decision strategy does not match the trusted run strategy")
             placeholders = ",".join("?" for _ in snapshot_ids)
             rows = db.execute(
                 f"SELECT id, run_id, as_of, sealed_at FROM snapshots WHERE id IN ({placeholders})",

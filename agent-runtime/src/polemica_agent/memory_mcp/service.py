@@ -16,8 +16,20 @@ class MemoryService:
     def close(self) -> None:
         self.store.close()
 
-    def start_run(self, **metadata: str) -> str:
-        return self.store.start_run(**metadata)
+    def start_run(
+        self, *, run_id: str, model: str, prompt_hash: str, tools_hash: str, config_hash: str,
+        strategy_version: str, strategy_prompt_hash: str,
+    ) -> str:
+        self.store.record_strategy(
+            strategy_version,
+            strategy_prompt_hash,
+            {"model": model, "toolsHash": tools_hash, "configHash": config_hash},
+        )
+        return self.store.start_run(
+            run_id=run_id, model=model, prompt_hash=prompt_hash,
+            tools_hash=tools_hash, config_hash=config_hash,
+            strategy_version=strategy_version,
+        )
 
     def get_open_intents(self, *, economic_only: bool = False) -> list[dict[str, Any]]:
         rows = self.store.unresolved_intents(is_economic=True if economic_only else None)
@@ -85,5 +97,8 @@ class MemoryService:
     def record_intervention(self, reason: str, details: Any, run_id: str | None = None) -> int:
         return self.store.record_intervention(reason, details, run_id)
 
-    def finish_run(self, run_id: str, status: str, summary: Any | None = None) -> None:
-        self.store.finish_run(run_id, status, summary)
+    def finish_run(
+        self, run_id: str, status: str, summary: Any | None = None,
+        require_decision: bool = False,
+    ) -> None:
+        self.store.finish_run(run_id, status, summary, require_decision=require_decision)

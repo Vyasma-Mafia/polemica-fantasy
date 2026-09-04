@@ -17,6 +17,7 @@ class RuntimeSettings:
     lock_path: Path
     prompt_dir: Path
     model: str
+    strategy_version: str
     timeout_seconds: int
     write_enabled: bool
     mcp_urls: dict[str, str]
@@ -31,6 +32,7 @@ class RuntimeSettings:
             lock_path=Path(os.environ.get("POLEMICA_AGENT_RUN_LOCK", str(root / "run.lock"))),
             prompt_dir=Path(os.environ.get("POLEMICA_AGENT_PROMPT_DIR", "/opt/polemica-ai-agent/prompts")),
             model=os.environ.get("POLEMICA_AGENT_MODEL", "gpt-5.6-sol"),
+            strategy_version=os.environ.get("POLEMICA_AGENT_STRATEGY_VERSION", "hourly-v1"),
             timeout_seconds=int(os.environ.get("POLEMICA_AGENT_RUN_TIMEOUT_SECONDS", "3300")),
             write_enabled=os.environ.get("WRITE_ENABLED", "false").lower() == "true",
             mcp_urls={
@@ -49,6 +51,12 @@ class RuntimeSettings:
                 raise SettingsError("runtime paths must be absolute")
         if not 1 <= self.timeout_seconds <= 3300:
             raise SettingsError("timeout must be in 1..3300 seconds")
+        if (
+            not self.strategy_version
+            or len(self.strategy_version) > 128
+            or any(not (char.isalnum() or char in "._-") for char in self.strategy_version)
+        ):
+            raise SettingsError("strategy version must be 1..128 safe identifier characters")
         if set(self.mcp_urls) != {"fantasy", "research", "memory"}:
             raise SettingsError("all three MCP servers are required")
         for url in self.mcp_urls.values():

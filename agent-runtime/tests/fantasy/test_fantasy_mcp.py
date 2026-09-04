@@ -45,6 +45,7 @@ class FakeFantasyTransport:
         self.cancel_sold_after_timeout = False
         self.choice_timeout_after_commit = False
         self.team_http_status: int | None = None
+        self.team_error_message = "ambiguous proxy response"
 
     def request(
         self,
@@ -69,7 +70,7 @@ class FakeFantasyTransport:
 
         if path.endswith("/fantasy-team"):
             if self.team_http_status is not None:
-                return HttpResponse(self.team_http_status, {"message": "ambiguous proxy response"})
+                return HttpResponse(self.team_http_status, {"message": self.team_error_message})
             if self.team_timeout == "before":
                 raise TimeoutError("before commit")
             self.team = {
@@ -522,5 +523,58 @@ def test_real_mcp_server_concurrent_duplicate_write_uses_worker_threads_safely(t
         writes = [call for call in transport.calls if call["method"] == "POST" and call["path"].endswith("/fantasy-team")]
         assert len(writes) == 1
         assert store.get_intent("concurrent-team")["state"] in {"SUCCEEDED", "UNKNOWN"}
+    finally:
+        store.close()
+
+
+def test_real_mcp_server_accepts_omitted_and_explicit_null_optional_arguments(tmp_path: Path) -> None:
+    service, _, store = service_with_run(tmp_path)
+    server = build_server("fantasy", FantasyRegistryAdapter(build_tool_registry(service)))
+    try:
+        omitted = asyncio.run(server.call_tool("fantasy_get_my_cards", {}))
+        explicit_null = asyncio.run(server.call_tool(
+            "fantasy_get_periodic_rating_rewards", {"reward_id": None},
+        ))
+        assert omitted.is_error is False
+        assert explicit_null.is_error is False
+    finally:
+        store.close()
+
+
+@pytest.mark.parametrize("status", [400, 503])
+def test_real_mcp_write_failure_never_returns_or_persists_upstream_body(
+    tmp_path: Path, status: int,
+) -> None:
+    service, transport, store = service_with_run(tmp_path)
+    secret_body = "upstream-secret-that-must-not-leak"
+    transport.team_http_status = status
+    transport.team_error_message = secret_body
+
+    class AllowWrites:
+        def authorize_write(self, _tool_name: str, _arguments: Mapping[str, Any]) -> None:
+            return None
+
+    server = build_server(
+        "fantasy",
+        FantasyRegistryAdapter(build_tool_registry(service)),
+        policy=ToolPolicy(
+            write_enabled=True,
+            authorizer=AllowWrites(),
+            allowed_write_tools=frozenset({"fantasy_create_team"}),
+        ),
+    )
+    arguments = {
+        "run_id": "run", "decision_id": 1, "operation_id": f"safe-error-{status}",
+        "series_id": 12, "league_code": "MAIN", "user_card_ids": [1],
+    }
+    try:
+        result = asyncio.run(server.call_tool("fantasy_create_team", arguments))
+        rendered = " ".join(item.text for item in result.content if hasattr(item, "text"))
+        row = store.get_intent(f"safe-error-{status}")
+        persisted = store.load_blob(row["result_hash"], row["result_path"])
+        assert secret_body not in rendered
+        assert secret_body not in str(persisted)
+        if status == 400:
+            assert f"HTTP_{status}" in str(persisted)
     finally:
         store.close()

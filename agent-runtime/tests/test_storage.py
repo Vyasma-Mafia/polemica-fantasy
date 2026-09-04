@@ -24,7 +24,9 @@ def start(store: AuditStore, run_id: str = "run-1") -> str:
     )
 
 
-def decision(store: AuditStore, run_id: str = "run-1") -> int:
+def decision(
+    store: AuditStore, run_id: str = "run-1", strategy_version: str | None = None,
+) -> int:
     now = dt.datetime.now(dt.timezone.utc)
     snapshot_id = store.create_snapshot(
         run_id=run_id, kind="TEST", as_of=now, generated_at=now, source="test", payload={},
@@ -32,6 +34,7 @@ def decision(store: AuditStore, run_id: str = "run-1") -> int:
     return store.record_decision(
         run_id=run_id, decision_type="TEST", subject_type="TEST", subject_id="1",
         snapshot_ids=[snapshot_id], alternatives=[], choice={}, rationale="test",
+        strategy_version=strategy_version,
     )
 
 
@@ -83,6 +86,50 @@ def test_restart_preserves_run_intent_and_blob(tmp_path: Path) -> None:
         row = restarted.get_intent("op-1")
         assert row is not None and row["state"] == "PLANNED"
         assert restarted.load_blob(request_hash, request_path) == {"cards": [1, 2]}
+
+
+def test_success_requires_decision_when_requested(tmp_path: Path) -> None:
+    with make_store(tmp_path) as store:
+        store.record_strategy("hourly-v1", "prompt", {"model": "test"})
+        store.start_run(
+            run_id="run-1", model="test", prompt_hash="p", tools_hash="t", config_hash="c",
+            strategy_version="hourly-v1",
+        )
+        with pytest.raises(FailClosedError, match="cannot succeed without a decision"):
+            store.finish_run("run-1", "SUCCEEDED", require_decision=True)
+        assert store.connection.execute(
+            "SELECT status FROM runs WHERE id='run-1'"
+        ).fetchone()[0] == "RUNNING"
+        decision(store, strategy_version="hourly-v1")
+        store.finish_run("run-1", "SUCCEEDED", require_decision=True)
+        assert store.connection.execute(
+            "SELECT status FROM runs WHERE id='run-1'"
+        ).fetchone()[0] == "SUCCEEDED"
+
+
+def test_strategy_version_is_immutable_and_idempotent(tmp_path: Path) -> None:
+    with make_store(tmp_path) as store:
+        store.record_strategy("hourly-v1", "prompt-a", {"model": "test"})
+        store.record_strategy("hourly-v1", "prompt-a", {"model": "test"})
+        with pytest.raises(FailClosedError, match="different immutable content"):
+            store.record_strategy("hourly-v1", "prompt-b", {"model": "test"})
+
+
+@pytest.mark.parametrize("decision_strategy", [None, "other-v1"])
+def test_trusted_run_rejects_missing_or_different_decision_strategy(
+    tmp_path: Path, decision_strategy: str | None,
+) -> None:
+    with make_store(tmp_path) as store:
+        store.record_strategy("hourly-v1", "prompt", {"model": "test"})
+        store.record_strategy("other-v1", "other-prompt", {"model": "test"})
+        store.start_run(
+            run_id="run-1", model="test", prompt_hash="p", tools_hash="t", config_hash="c",
+            strategy_version="hourly-v1",
+        )
+        with pytest.raises(FailClosedError, match="does not match"):
+            decision(store, strategy_version=decision_strategy)
+        with pytest.raises(FailClosedError, match="cannot succeed without a decision"):
+            store.finish_run("run-1", "SUCCEEDED", require_decision=True)
 
 
 def test_changed_applied_migration_fails_closed(tmp_path: Path) -> None:

@@ -14,7 +14,8 @@ def settings(tmp_path: Path) -> RuntimeSettings:
     return RuntimeSettings(
         workspace=tmp_path / "workspace", log_dir=tmp_path / "logs",
         lock_path=tmp_path / "run.lock",
-        prompt_dir=PROMPTS, model="test-model", timeout_seconds=30, write_enabled=False,
+        prompt_dir=PROMPTS, model="test-model", strategy_version="test-strategy-v1",
+        timeout_seconds=30, write_enabled=False,
         mcp_urls={
             "fantasy": "http://127.0.0.1:8811/mcp",
             "research": "http://127.0.0.1:8812/mcp",
@@ -27,6 +28,7 @@ def test_open_intents_force_reconcile_only(tmp_path: Path) -> None:
     prompt = build_prompt(settings(tmp_path), "run", [{"operationId": "op", "state": "UNKNOWN"}])
     assert "RECONCILE_ONLY" in prompt
     assert "Do not create a team" in prompt
+    assert '"strategy_version":"test-strategy-v1"' in prompt
 
 
 def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
@@ -41,7 +43,9 @@ def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
     class Memory:
         def get_open_intents(self): return []
         def start_run(self, **metadata): return metadata["run_id"]
-        def finish_run(self, run_id, status, summary): seen["status"] = status
+        def finish_run(self, run_id, status, summary, *, require_decision=False):
+            seen["status"] = status
+            seen["require_decision"] = require_decision
         def close(self): pass
     run_id = run_once(
         settings(tmp_path), probe=probe, invoker=invoke,
@@ -54,3 +58,4 @@ def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
     assert "secret" not in log_text
     assert "[REDACTED]" in log_text
     assert seen["status"] == "SUCCEEDED"
+    assert seen["require_decision"] is True

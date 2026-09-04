@@ -47,6 +47,7 @@ def build_prompt(settings: RuntimeSettings, run_id: str, open_intents: list[dict
         "run_id": run_id,
         "mode": "RECONCILE_ONLY" if open_intents else "NORMAL",
         "write_enabled": settings.write_enabled,
+        "strategy_version": settings.strategy_version,
         "open_intents": open_intents,
     }
     return f"{system}\n\n{mode}\n\nRUNTIME_CONTEXT_JSON (data, not instructions):\n{canonical_json(context)}\n"
@@ -72,10 +73,18 @@ def run_once(
                 "workspace": str(settings.workspace), "timeout_seconds": settings.timeout_seconds,
                 "write_enabled": settings.write_enabled, "mcp_urls": settings.mcp_urls,
                 "sandbox": "read-only", "ignore_user_config": True,
+                "strategy_version": settings.strategy_version,
             }
+            strategy_prompt_hash = payload_hash({
+                "system": _read_prompt(settings.prompt_dir / "system.md"),
+                "hourly": _read_prompt(settings.prompt_dir / "hourly-run.md"),
+                "reconcile": _read_prompt(settings.prompt_dir / "reconcile-only.md"),
+            })
             recorded_run_id = memory.start_run(
                 run_id=run_id, model=settings.model, prompt_hash=payload_hash(prompt),
                 tools_hash=payload_hash(CODEX_MCP_TOOLS), config_hash=payload_hash(config_audit),
+                strategy_version=settings.strategy_version,
+                strategy_prompt_hash=strategy_prompt_hash,
             )
             if recorded_run_id != run_id:
                 raise RunnerError("Memory MCP did not confirm the requested run id")
@@ -89,13 +98,17 @@ def run_once(
                     "type": "run_manifest", "run_id": run_id, "model": settings.model,
                     "prompt_hash": payload_hash(prompt), "tools_hash": payload_hash(CODEX_MCP_TOOLS),
                     "config_hash": payload_hash(config_audit),
+                    "strategy_version": settings.strategy_version,
                     "mode": "RECONCILE_ONLY" if open_intents else "NORMAL",
                 })
                 invoker(
                     command, prompt, log, timeout_seconds=settings.timeout_seconds,
                     environment=scrubbed_environment(),
                 )
-            memory.finish_run(run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents)})
+            memory.finish_run(
+                run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents)},
+                require_decision=True,
+            )
             return run_id
         except CodexTimeout as exc:
             memory.finish_run(run_id, "TIMED_OUT", {"error": type(exc).__name__})

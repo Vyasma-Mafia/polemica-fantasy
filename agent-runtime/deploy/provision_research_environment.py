@@ -111,7 +111,8 @@ def main() -> int:
             "MEMORY_MCP_URL=http://127.0.0.1:8813/mcp\n"
             "WRITE_ENABLED=false\n"
             "POLEMICA_PRODUCTION_ACTIVATION_APPROVED=false\n"
-            "POLEMICA_AGENT_MODEL=gpt-5.6-sol\n",
+            "POLEMICA_AGENT_MODEL=gpt-5.6-sol\n"
+            "POLEMICA_AGENT_STRATEGY_VERSION=hourly-v1\n",
         )
     except ProvisionError as exc:
         raise SystemExit(str(exc)) from None

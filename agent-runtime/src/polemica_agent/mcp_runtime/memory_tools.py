@@ -21,15 +21,20 @@ class MemoryTools:
         self.service = service
 
     def start_run(
-        self, run_id: str, model: str, prompt_hash: str, tools_hash: str, config_hash: str
+        self, run_id: str, model: str, prompt_hash: str, tools_hash: str, config_hash: str,
+        strategy_version: str, strategy_prompt_hash: str,
     ) -> str:
         return self.service.start_run(
             run_id=run_id, model=model, prompt_hash=prompt_hash,
             tools_hash=tools_hash, config_hash=config_hash,
+            strategy_version=strategy_version, strategy_prompt_hash=strategy_prompt_hash,
         )
 
-    def finish_run(self, run_id: str, status: str, summary: Any | None = None) -> None:
-        self.service.finish_run(run_id, status, summary)
+    def finish_run(
+        self, run_id: str, status: str, summary: Any | None = None,
+        require_decision: bool = False,
+    ) -> None:
+        self.service.finish_run(run_id, status, summary, require_decision=require_decision)
 
     def get_open_intents(self, economic_only: bool = False) -> list[dict[str, Any]]:
         return self.service.get_open_intents(economic_only=economic_only)

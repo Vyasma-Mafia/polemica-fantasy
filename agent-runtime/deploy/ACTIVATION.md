@@ -85,6 +85,7 @@ RESEARCH_MCP_URL=http://127.0.0.1:8812/mcp
 MEMORY_MCP_URL=http://127.0.0.1:8813/mcp
 WRITE_ENABLED=false
 POLEMICA_AGENT_MODEL=gpt-5.6-sol
+POLEMICA_AGENT_STRATEGY_VERSION=hourly-v1
 ```
 
 ## 5. Activate in stages

@@ -3,18 +3,25 @@ from __future__ import annotations
 import inspect
 from typing import Any, Mapping
 
+from mcp.server.mcpserver.exceptions import ToolError
 
-def _annotation(schema: Mapping[str, Any]) -> Any:
+from polemica_agent.common.operations import DeterministicUpstreamError
+from polemica_agent.fantasy_mcp.client import FantasyApiError
+
+
+def _annotation(schema: Mapping[str, Any], *, nullable: bool = False) -> Any:
     kind = schema.get("type")
     if kind == "integer":
-        return int
-    if kind == "string":
-        return str
-    if kind == "boolean":
-        return bool
-    if kind == "array":
-        return list[_annotation(schema.get("items", {}))]
-    return Any
+        result = int
+    elif kind == "string":
+        result = str
+    elif kind == "boolean":
+        result = bool
+    elif kind == "array":
+        result = list[_annotation(schema.get("items", {}))]
+    else:
+        result = Any
+    return result | None if nullable else result
 
 
 class FantasyRegistryAdapter:
@@ -31,7 +38,18 @@ class FantasyRegistryAdapter:
             properties = schema.get("properties", {})
 
             def call(_name=name, **kwargs: Any) -> dict[str, Any]:
-                return registry.call(_name, kwargs)
+                try:
+                    # The SDK materializes optional signature defaults as None. The domain JSON
+                    # schema models omission, not nullable values, so preserve that distinction.
+                    arguments = {key: value for key, value in kwargs.items() if value is not None}
+                    return registry.call(_name, arguments)
+                except DeterministicUpstreamError as exc:
+                    raise ToolError(f"Fantasy API rejected request ({exc.code})") from exc
+                except FantasyApiError as exc:
+                    uncertain = str(exc.uncertain).lower()
+                    raise ToolError(
+                        f"Fantasy API unavailable ({exc.code}; uncertain={uncertain})"
+                    ) from exc
 
             call.__name__ = name
             call.__doc__ = description["description"]
@@ -40,7 +58,7 @@ class FantasyRegistryAdapter:
                 [inspect.Parameter(
                     item, inspect.Parameter.KEYWORD_ONLY,
                     default=inspect.Parameter.empty if item in required else None,
-                    annotation=_annotation(properties[item]),
+                    annotation=_annotation(properties[item], nullable=item not in required),
                 ) for item in ordered],
                 return_annotation=dict[str, Any],
             )
