@@ -29,7 +29,13 @@ create a synthetic user with `POST /api/v1/admin/agent-users`.
 
 ## 3. Issue the one-time Bearer credential
 
-Use Admin Basic Auth:
+After the disabled system installer is present, run the root-only provisioner:
+
+```bash
+sudo /opt/polemica-ai-agent/deploy/provision_fantasy_credential.py <telegramId>
+```
+
+It prompts for Admin Basic Auth without echoing the password, calls:
 
 ```text
 POST /api/v1/admin/users/{telegramId}/api-credentials
@@ -38,10 +44,11 @@ Content-Type: application/json
 {"label":"codex-runtime","expiresAt":"<future ISO-8601 instant>"}
 ```
 
-The response contains `token` exactly once. Store it directly in
-`/etc/polemica-ai-agent/fantasy-mcp.env` as `FANTASY_BEARER_TOKEN`; only its SHA-256
-hash and short hint remain in PostgreSQL. The credential can be listed or revoked
-through the matching admin endpoints, but the full token cannot be recovered.
+The response contains `token` exactly once. The provisioner atomically stores it
+directly in `/etc/polemica-ai-agent/fantasy-mcp.env` as `FANTASY_BEARER_TOKEN`
+without printing it; only its SHA-256 hash and short hint remain in PostgreSQL.
+The credential can be listed or revoked through the matching admin endpoints,
+but the full token cannot be recovered.
 
 ## 4. Configure root-owned service environments
 
