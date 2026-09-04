@@ -21,6 +21,12 @@ class ProvisionError(RuntimeError):
     pass
 
 
+def _env_value(value: str) -> str:
+    if any(character in value for character in ("\n", "\r", "\0")):
+        raise ProvisionError("environment value contains a forbidden control character")
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def _check_target(target: Path, *, replace: bool) -> None:
     if target.is_symlink():
         raise ProvisionError(f"{target.name} must not be a symlink")
@@ -83,7 +89,7 @@ def main() -> int:
     _check_target(RUNNER_TARGET, replace=args.replace)
     username = input("Polemica read-only username: ").strip()
     password = getpass.getpass("Polemica read-only password: ")
-    if not username or not password or "\n" in username or "\n" in password:
+    if not username or not password:
         raise SystemExit("valid Polemica credentials are required")
     try:
         _validate_polemica(username, password)
@@ -91,8 +97,8 @@ def main() -> int:
             RESEARCH_TARGET,
             f"POLEMICA_API_BASE_URL={POLEMICA_API_ORIGIN}\n"
             f"POLEMICA_PROFILE_BASE_URL={POLEMICA_PROFILE_ORIGIN}\n"
-            f"POLEMICA_USERNAME={username}\n"
-            f"POLEMICA_PASSWORD={password}\n",
+            f"POLEMICA_USERNAME={_env_value(username)}\n"
+            f"POLEMICA_PASSWORD={_env_value(password)}\n",
         )
         _atomic_write(
             RUNNER_TARGET,

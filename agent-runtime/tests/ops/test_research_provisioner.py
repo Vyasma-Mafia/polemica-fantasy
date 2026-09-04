@@ -53,6 +53,12 @@ def test_nonempty_target_requires_explicit_replace(tmp_path: Path) -> None:
     module._check_target(target, replace=True)
 
 
+def test_environment_values_are_systemd_quoted() -> None:
+    assert module._env_value('reader # "one" \\ two') == '"reader # \\"one\\" \\\\ two"'
+    with pytest.raises(module.ProvisionError, match="control character"):
+        module._env_value("line-one\nline-two")
+
+
 def test_script_does_not_print_secret_values() -> None:
     text = SCRIPT.read_text()
     assert "print(password" not in text
