@@ -91,6 +91,7 @@ RESEARCH_MCP_URL=http://127.0.0.1:8812/mcp
 COMPUTE_MCP_URL=http://127.0.0.1:8814/mcp
 MEMORY_MCP_URL=http://127.0.0.1:8813/mcp
 WRITE_ENABLED=false
+FANTASY_WRITE_ALLOWLIST=
 POLEMICA_AGENT_MODEL=gpt-5.6-sol
 POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1
 ```
@@ -102,10 +103,12 @@ POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1
    only through `/run/polemica-agent-compute/worker.sock`.
 2. Run one manual Codex turn with both write flags false.
 3. Verify the run journal, sealed evidence, logs, and absence of secrets.
-4. For the team-only canary, set `WRITE_ENABLED=true` and
-   `POLEMICA_PRODUCTION_ACTIVATION_APPROVED=true` in `runner.env`. In
-   `fantasy-mcp.env`, set `WRITE_ENABLED=true` and
-   `FANTASY_WRITE_ALLOWLIST=fantasy_create_team,fantasy_update_team`.
+4. For the team-only canary, set `WRITE_ENABLED=true`,
+   `POLEMICA_PRODUCTION_ACTIVATION_APPROVED=true`, and the exact staged
+   `FANTASY_WRITE_ALLOWLIST` in `runner.env`. Set the same allowlist and
+   `WRITE_ENABLED=true` in `fantasy-mcp.env`. The runner exposes and
+   preapproves only those named MCP writes; the Fantasy broker independently
+   enforces the same list and durable decision lineage.
 5. Run a manual team-only canary and verify exact read-back.
 6. Expand `FANTASY_WRITE_ALLOWLIST` explicitly for each later economy or
    marketplace stage. Unknown names fail MCP startup.

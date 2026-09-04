@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from polemica_agent.mcp_runtime.registry import CODEX_MCP_TOOLS
+from polemica_agent.mcp_runtime.registry import CODEX_MCP_TOOLS, FANTASY_WRITE_TOOLS
 
 from .logging import RedactedJsonlLog
 
@@ -27,8 +27,12 @@ class CodexResult:
 
 
 def build_command(
-    *, binary: str, model: str, workspace: Path, mcp_urls: Mapping[str, str]
+    *, binary: str, model: str, workspace: Path, mcp_urls: Mapping[str, str],
+    fantasy_write_allowlist: Sequence[str] = (),
 ) -> list[str]:
+    unknown_writes = set(fantasy_write_allowlist) - set(FANTASY_WRITE_TOOLS)
+    if unknown_writes:
+        raise ValueError("unknown Fantasy write tool cannot be exposed to Codex")
     command = [
         binary, "exec", "--ignore-user-config", "--strict-config", "--ephemeral",
         "--ignore-rules", "--skip-git-repo-check", "--json", "--color", "never",
@@ -44,12 +48,25 @@ def build_command(
     ]
     for kind in ("fantasy", "research", "compute", "memory"):
         url = mcp_urls[kind]
-        tools = ",".join(f'"{name}"' for name in CODEX_MCP_TOOLS[kind])
+        names = CODEX_MCP_TOOLS[kind]
+        if kind == "fantasy":
+            approved = set(fantasy_write_allowlist)
+            names = tuple(
+                name for name in names
+                if name not in FANTASY_WRITE_TOOLS or name in approved
+            )
+        tools = ",".join(f'"{name}"' for name in names)
         command.extend(("--config", f'mcp_servers.{kind}.url="{url}"'))
         command.extend(("--config", f"mcp_servers.{kind}.required=true"))
         command.extend(("--config", f"mcp_servers.{kind}.startup_timeout_sec=15"))
         command.extend(("--config", f"mcp_servers.{kind}.tool_timeout_sec=60"))
         command.extend(("--config", f"mcp_servers.{kind}.enabled_tools=[{tools}]"))
+        if kind == "fantasy":
+            for name in fantasy_write_allowlist:
+                command.extend((
+                    "--config",
+                    f'mcp_servers.fantasy.tools.{name}.approval_mode="approve"',
+                ))
     command.append("-")
     return command
 

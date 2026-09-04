@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
+from polemica_agent.mcp_runtime.registry import FANTASY_WRITE_TOOLS
+
 
 class SettingsError(RuntimeError):
     pass
@@ -21,6 +23,7 @@ class RuntimeSettings:
     timeout_seconds: int
     write_enabled: bool
     mcp_urls: dict[str, str]
+    fantasy_write_allowlist: tuple[str, ...] = ()
     codex_binary: str = "codex"
 
     @classmethod
@@ -43,6 +46,13 @@ class RuntimeSettings:
                 "compute": os.environ.get("COMPUTE_MCP_URL", "http://127.0.0.1:8814/mcp"),
                 "memory": os.environ.get("MEMORY_MCP_URL", "http://127.0.0.1:8813/mcp"),
             },
+            fantasy_write_allowlist=tuple(
+                dict.fromkeys(
+                    item.strip()
+                    for item in os.environ.get("FANTASY_WRITE_ALLOWLIST", "").split(",")
+                    if item.strip()
+                )
+            ),
             codex_binary=os.environ.get("CODEX_BINARY", "codex"),
         )
         values.validate()
@@ -66,3 +76,8 @@ class RuntimeSettings:
             parsed = urlparse(url)
             if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "::1", "localhost"}:
                 raise SettingsError("MCP URLs must use loopback HTTP")
+        unknown_writes = set(self.fantasy_write_allowlist) - set(FANTASY_WRITE_TOOLS)
+        if unknown_writes:
+            raise SettingsError("Fantasy write allowlist contains an unknown tool")
+        if self.write_enabled and not self.fantasy_write_allowlist:
+            raise SettingsError("write-enabled runner requires an explicit Fantasy write allowlist")

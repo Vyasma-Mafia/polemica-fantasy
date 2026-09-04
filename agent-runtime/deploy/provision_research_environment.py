@@ -111,6 +111,7 @@ def main() -> int:
             "COMPUTE_MCP_URL=http://127.0.0.1:8814/mcp\n"
             "MEMORY_MCP_URL=http://127.0.0.1:8813/mcp\n"
             "WRITE_ENABLED=false\n"
+            "FANTASY_WRITE_ALLOWLIST=\n"
             "POLEMICA_PRODUCTION_ACTIVATION_APPROVED=false\n"
             "POLEMICA_AGENT_MODEL=gpt-5.6-sol\n"
             "POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1\n",

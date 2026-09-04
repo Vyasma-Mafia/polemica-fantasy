@@ -30,6 +30,29 @@ def test_command_is_fresh_read_only_and_has_only_required_mcps(tmp_path: Path) -
         assert f'mcp_servers.{kind}.url="{urls[kind]}"' in command
 
 
+def test_command_exposes_and_preapproves_only_staged_fantasy_writes(tmp_path: Path) -> None:
+    urls = {name: f"http://127.0.0.1:88{index}/mcp" for index, name in enumerate(MCP_SERVERS, 11)}
+    allowed = ("fantasy_buy_pack", "fantasy_create_team")
+    command = build_command(
+        binary="codex", model="test-model", workspace=tmp_path, mcp_urls=urls,
+        fantasy_write_allowlist=allowed,
+    )
+    joined = " ".join(command)
+    for name in allowed:
+        assert f'mcp_servers.fantasy.tools.{name}.approval_mode="approve"' in command
+    assert '"fantasy_update_team"' not in joined
+    assert '"fantasy_create_marketplace_listing"' not in joined
+
+
+def test_command_rejects_unknown_preapproved_write(tmp_path: Path) -> None:
+    urls = {name: f"http://127.0.0.1:88{index}/mcp" for index, name in enumerate(MCP_SERVERS, 11)}
+    with pytest.raises(ValueError, match="unknown Fantasy write tool"):
+        build_command(
+            binary="codex", model="test-model", workspace=tmp_path, mcp_urls=urls,
+            fantasy_write_allowlist=("fantasy_arbitrary_write",),
+        )
+
+
 def test_environment_drops_upstream_secrets() -> None:
     result = scrubbed_environment({
         "PATH": "/bin", "CODEX_HOME": "/safe-auth", "POLEMICA_PASSWORD": "bad",

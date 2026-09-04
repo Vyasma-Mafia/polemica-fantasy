@@ -47,6 +47,7 @@ def build_prompt(settings: RuntimeSettings, run_id: str, open_intents: list[dict
         "run_id": run_id,
         "mode": "RECONCILE_ONLY" if open_intents else "NORMAL",
         "write_enabled": settings.write_enabled,
+        "fantasy_write_allowlist": settings.fantasy_write_allowlist,
         "strategy_version": settings.strategy_version,
         "open_intents": open_intents,
     }
@@ -72,6 +73,7 @@ def run_once(
             config_audit = {
                 "workspace": str(settings.workspace), "timeout_seconds": settings.timeout_seconds,
                 "write_enabled": settings.write_enabled, "mcp_urls": settings.mcp_urls,
+                "fantasy_write_allowlist": settings.fantasy_write_allowlist,
                 "sandbox": "read-only", "ignore_user_config": True,
                 "strategy_version": settings.strategy_version,
             }
@@ -92,6 +94,9 @@ def run_once(
             command = build_command(
                 binary=settings.codex_binary, model=settings.model, workspace=settings.workspace,
                 mcp_urls=settings.mcp_urls,
+                fantasy_write_allowlist=(
+                    settings.fantasy_write_allowlist if settings.write_enabled else ()
+                ),
             )
             with RedactedJsonlLog(log_path) as log:
                 log.write_event({

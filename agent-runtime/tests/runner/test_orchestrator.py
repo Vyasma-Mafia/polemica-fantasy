@@ -32,6 +32,7 @@ def test_open_intents_force_reconcile_only(tmp_path: Path) -> None:
     assert '"strategy_version":"test-strategy-v1"' in prompt
     assert "There is no separate operation-intent tool" in prompt
     assert "Fantasy `tournamentId` is an internal Fantasy identifier" in prompt
+    assert '"fantasy_write_allowlist":[]' in prompt
 
 
 def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
