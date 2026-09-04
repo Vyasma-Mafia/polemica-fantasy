@@ -46,12 +46,15 @@ class ResearchService:
         *,
         page_size: int = 100,
         max_pages: int = 10,
+        minimum_rows: int | None = None,
     ) -> ResearchResult:
         _positive(player_id, "player_id")
         if not 1 <= page_size <= 200:
             raise ContractError("page_size must be in 1..200")
         if not 1 <= max_pages <= 50:
             raise ContractError("max_pages must be in 1..50")
+        if minimum_rows is not None and not 1 <= minimum_rows <= 500:
+            raise ContractError("minimum_rows must be in 1..500")
         self.snapshots.require_collecting(snapshot_id)
         rows_by_id: dict[int, Mapping[str, Any]] = {}
         records: list[RawPayloadRecord] = []
@@ -77,6 +80,8 @@ class ResearchService:
                 for row in raw_rows:
                     if isinstance(row, Mapping) and isinstance(row.get("id"), int):
                         rows_by_id.setdefault(row["id"], row)
+                if minimum_rows is not None and len(rows_by_id) >= minimum_rows:
+                    break
                 if not raw_rows:
                     reached_end = True
                     break
@@ -89,7 +94,11 @@ class ResearchService:
             except ResearchError as error:
                 errors.append(_partial("get_player_games", error, f"player:{player_id}:page:{page}"))
                 break
-        complete = not errors and (reached_end or (total_count is not None and len(rows_by_id) >= total_count))
+        complete = not errors and (
+            reached_end
+            or (total_count is not None and len(rows_by_id) >= total_count)
+            or (minimum_rows is not None and len(rows_by_id) >= minimum_rows)
+        )
         if not complete and not errors:
             errors.append(PartialError("get_player_games", "PAGE_BOUND", "pagination bound reached", f"player:{player_id}"))
         rows = list(rows_by_id.values())
@@ -175,7 +184,9 @@ class ResearchService:
     def get_player_recent_form(
         self, snapshot_id: str, player_id: int, *, window: int = 20, max_pages: int = 10
     ) -> ResearchResult:
-        collected = self.get_player_games(snapshot_id, player_id, max_pages=max_pages)
+        collected = self.get_player_games(
+            snapshot_id, player_id, max_pages=max_pages, minimum_rows=window
+        )
         try:
             data = analytics.recent_form(collected.data["rows"], window, complete=collected.provenance.complete)
         except ValueError as error:

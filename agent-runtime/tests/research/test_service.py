@@ -97,6 +97,14 @@ class ResearchServiceTest(unittest.TestCase):
         form = self.service.get_player_recent_form(self.snapshot_id, 42, window=2, max_pages=3)
         self.assertEqual([101, 100], form.data["gameIds"])
 
+    def test_recent_form_is_complete_when_window_is_filled_before_career_end(self) -> None:
+        self.client.pages[1]["totalCount"] = 999
+        form = self.service.get_player_recent_form(self.snapshot_id, 42, window=2, max_pages=1)
+        self.assertEqual([101, 100], form.data["gameIds"])
+        self.assertTrue(form.data["complete"])
+        self.assertTrue(form.provenance.complete)
+        self.assertEqual((), form.provenance.errors)
+
     def test_perk_rates_and_hostile_name_stay_data(self) -> None:
         result = self.service.get_player_perk_rates(
             self.snapshot_id,

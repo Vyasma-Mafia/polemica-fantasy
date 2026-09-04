@@ -100,7 +100,7 @@ class ResearchTools:
     def get_player_recent_form(
         self, snapshot_id: str, player_id: int, window: int = 20, max_pages: int = 10
     ) -> dict[str, Any]:
-        """Calculate recent form over the newest profile rows."""
+        """Calculate complete bounded recent form without requiring full career history."""
         return self.service.get_player_recent_form(
             snapshot_id, player_id, window=window, max_pages=max_pages
         ).to_dict()

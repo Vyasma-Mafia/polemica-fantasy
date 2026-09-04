@@ -3,7 +3,9 @@ Perform one bounded hourly turn.
 1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
 2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits. Fantasy
    tournamentId is not a Polemica competition_id: resolve the latter by a unique exact name match
-   from list_competitions, and never copy the former into a Research competition call.
+   from list_competitions, and never copy the former into a Research competition call. For lineup
+   ranking, prefer bounded get_player_recent_form windows; full-career get_player_statistics may
+   legitimately return PAGE_BOUND for experienced players and would make the snapshot partial.
 3. SEAL the evidence. Use only SEAL's numeric snapshotId for the decision; the collectionId is not
    evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
 4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.
