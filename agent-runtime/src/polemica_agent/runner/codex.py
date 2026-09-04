@@ -31,10 +31,16 @@ def build_command(
 ) -> list[str]:
     command = [
         binary, "exec", "--ignore-user-config", "--strict-config", "--ephemeral",
-        "--skip-git-repo-check", "--json", "--color", "never", "--sandbox", "read-only",
+        "--ignore-rules", "--skip-git-repo-check", "--json", "--color", "never",
+        "--sandbox", "read-only",
         "--model", model, "--cd", str(workspace),
+        "--disable", "shell_tool", "--disable", "unified_exec",
+        "--disable", "shell_snapshot", "--disable", "skill_mcp_dependency_install",
         "--config", 'approval_policy="never"',
         "--config", 'shell_environment_policy.inherit="none"',
+        "--config", "agents.enabled=false",
+        "--config", 'web_search="disabled"',
+        "--config", 'history.persistence="none"',
     ]
     for kind in ("fantasy", "research", "memory"):
         url = mcp_urls[kind]

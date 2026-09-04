@@ -59,7 +59,11 @@ chmod 0755 "$install_prefix/deploy/preflight.sh"
 
 install -d -m 0700 -o "$broker_user" -g "$broker_user" "$broker_state"
 install -d -m 0700 -o "$broker_user" -g "$broker_user" "$broker_state/blobs" "$broker_state/research-cache"
-install -d -m 0700 -o codex -g codex "$runner_state" "$runner_state/workspace" "$runner_state/logs"
+install -d -m 0700 -o codex -g codex \
+  "$runner_state" "$runner_state/workspace" "$runner_state/logs" "$runner_state/codex-home"
+if [ ! -e "$runner_state/codex-home/auth.json" ]; then
+  install -m 0600 -o codex -g codex /dev/null "$runner_state/codex-home/auth.json"
+fi
 install -d -m 0700 -o root -g root "$config_dir"
 
 for env_file in fantasy-mcp.env research-mcp.env memory-mcp.env runner.env; do

@@ -13,4 +13,7 @@ fi
 grep -R -q 'MCP_BIND_HOST=127.0.0.1' "$root/deploy/systemd"
 grep -q -- '--ignore-user-config' "$root/src/polemica_agent/runner/codex.py"
 grep -q -- 'read-only' "$root/src/polemica_agent/runner/codex.py"
+grep -q -- '"shell_tool"' "$root/src/polemica_agent/runner/codex.py"
+grep -q -- 'agents.enabled=false' "$root/src/polemica_agent/runner/codex.py"
+grep -q -- 'web_search="disabled"' "$root/src/polemica_agent/runner/codex.py"
 printf '%s\n' 'negative capability checks ok'

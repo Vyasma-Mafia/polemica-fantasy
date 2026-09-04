@@ -40,7 +40,10 @@ def test_timer_and_runner_are_inert_by_default() -> None:
     assert "POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock" in runner
     assert "ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run" in runner
     assert "POLEMICA_AGENT_DATABASE" not in runner
+    assert "CODEX_HOME=/var/lib/polemica-ai-agent-runner/codex-home" in runner
     assert "ReadWritePaths=/var/lib/polemica-ai-agent-runner" in runner
+    assert "ReadWritePaths=/var/lib/polemica-ai-agent-runner /home/codex/.codex" not in runner
+    assert "BindPaths=/home/codex/.codex/auth.json:/var/lib/polemica-ai-agent-runner/codex-home/auth.json" in runner
     assert "3300" in runner
 
 
@@ -53,6 +56,7 @@ def test_system_installer_is_root_only_and_leaves_units_disabled() -> None:
     assert "systemctl start" not in source
     assert "systemctl restart" not in source
     assert 'chmod 0755 "$install_prefix/deploy/preflight.sh"' in source
+    assert '"$runner_state/codex-home/auth.json"' in source
     assert "FANTASY_BEARER_TOKEN" not in source
     assert "POLEMICA_PASSWORD" not in source
     subprocess.run(["sh", "-n", str(installer)], check=True)

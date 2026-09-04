@@ -16,8 +16,14 @@ def test_command_is_fresh_read_only_and_has_only_required_mcps(tmp_path: Path) -
     joined = " ".join(command)
     assert command[:2] == ["codex", "exec"]
     assert "--ignore-user-config" in command
+    assert "--ignore-rules" in command
     assert "--ephemeral" in command
     assert "--sandbox read-only" in joined
+    assert "--disable shell_tool" in joined
+    assert "--disable unified_exec" in joined
+    assert "agents.enabled=false" in command
+    assert 'web_search="disabled"' in command
+    assert 'history.persistence="none"' in command
     assert "dangerously-bypass" not in joined
     for kind in MCP_SERVERS:
         assert f"mcp_servers.{kind}.required=true" in command
