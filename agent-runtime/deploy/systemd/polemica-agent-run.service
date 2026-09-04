@@ -34,6 +34,6 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 SystemCallArchitectures=native
 UMask=0077
-InaccessiblePaths=/root/.ssh /home/codex/.ssh /proc/kcore /proc/keys /proc/timer_list
+InaccessiblePaths=-/root/.ssh -/home/codex/.ssh -/proc/kcore -/proc/keys -/proc/timer_list
 
 # The timer owns activation; this oneshot is not enabled directly.

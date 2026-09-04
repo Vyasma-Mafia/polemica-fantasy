@@ -9,6 +9,7 @@
 - [x] На `codex@51.250.97.185` установлен только disabled no-secret runtime в `/home/codex/.local/share/polemica-agent-runtime`; MCP services/timer/cron отсутствуют, production run/write не выполнялся.
 - [x] Commits `c4d2533`/`4910104` отправлены в public `master`; production workflow success, VPS SHA совпадает, backend healthy, Flyway V83 физически подтверждён, credentials count = 0.
 - [x] Подготовлен root-only `install-system-disabled.sh`: dedicated broker user, `/opt` runtime, root-owned empty env files, SQLite migration и activation-ready systemd units без start/enable/credentials.
+- [x] Исправлена первая activation-ошибка `226/NAMESPACE`: optional-path syntax в `InaccessiblePaths` сохраняет hardening и допускает отсутствующий `/root/.ssh`; 106 runtime tests green.
 - [ ] Runtime system install blocked: root SSH запрещён, `codex` sudo требует интерактивный пароль; безопасная broker/runner изоляция не заменяется user-service компромиссом.
 - [ ] Activation gate: production account/credential, read-only Polemica credential, model/reasoning, expert cohort/stop rule/retention/alerts, live contract smoke и staged read-only→team→economy→marketplace enablement.
 

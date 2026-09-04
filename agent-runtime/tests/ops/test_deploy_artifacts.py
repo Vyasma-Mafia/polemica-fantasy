@@ -19,7 +19,7 @@ def test_units_are_disabled_loopback_and_hardened() -> None:
         assert "ProtectSystem=strict" in text
         assert "ProtectProc=invisible" in text
         assert "ProcSubset=pid" in text
-        assert "InaccessiblePaths=" in text and ".ssh" in text and "/proc/" in text
+        assert "InaccessiblePaths=" in text and "-/root/.ssh" in text and "-/proc/" in text
         assert "systemctl" not in text
     assert users == {"User=polemica-agent-broker", "User=codex"}
     assert all("User=polemica-agent-broker" in path.read_text() for path in SYSTEMD.glob("*-mcp.service"))

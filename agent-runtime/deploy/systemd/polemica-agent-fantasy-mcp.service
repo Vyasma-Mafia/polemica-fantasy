@@ -35,7 +35,7 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 SystemCallArchitectures=native
 UMask=0077
-InaccessiblePaths=/root/.ssh /home/codex/.ssh /proc/kcore /proc/keys /proc/timer_list
+InaccessiblePaths=-/root/.ssh -/home/codex/.ssh -/proc/kcore -/proc/keys -/proc/timer_list
 
 [Install]
 WantedBy=multi-user.target
