@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -27,7 +28,8 @@ class StoreController(
     fun buyPack(
         @AuthenticationPrincipal user: TelegramUser,
         @PathVariable id: Long,
-    ): BuyPackResponseDto = userStoreService.buyPack(user, id)
+        @RequestHeader(name = "Idempotency-Key", required = false) idempotencyKey: String?,
+    ): BuyPackResponseDto = userStoreService.buyPack(user, id, idempotencyKey)
 
     @PostMapping("/pack-choices/{choiceId}/select")
     fun selectPackChoice(

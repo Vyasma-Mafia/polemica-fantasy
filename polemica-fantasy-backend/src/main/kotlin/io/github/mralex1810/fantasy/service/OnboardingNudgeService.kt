@@ -81,6 +81,7 @@ class OnboardingNudgeService(
     companion object {
         private const val BASE_GUARD = """
             u.bot_blocked = FALSE
+            AND u.is_automated_agent = FALSE
             AND NOT EXISTS (
               SELECT 1 FROM notification_preference np
               WHERE np.telegram_user_id = u.id

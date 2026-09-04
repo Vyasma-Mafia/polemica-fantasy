@@ -1,0 +1,39 @@
+[Unit]
+Description=Polemica AI hourly Codex run (WRITE_ENABLED=false by default)
+Requires=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
+After=polemica-agent-fantasy-mcp.service polemica-agent-research-mcp.service polemica-agent-memory-mcp.service
+
+[Service]
+Type=oneshot
+User=codex
+Group=codex
+EnvironmentFile=/etc/polemica-ai-agent/runner.env
+Environment=WRITE_ENABLED=false POLEMICA_AGENT_RUNTIME_ROOT=/var/lib/polemica-ai-agent-runner POLEMICA_AGENT_RUN_TIMEOUT_SECONDS=3300 POLEMICA_AGENT_RUN_LOCK=/var/lib/polemica-ai-agent-runner/run.lock
+ExecStartPre=/opt/polemica-ai-agent/deploy/preflight.sh --runtime
+ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-run
+TimeoutStartSec=3400
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/polemica-ai-agent-runner
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0077
+InaccessiblePaths=/root/.ssh /home/codex/.ssh /proc/kcore /proc/keys /proc/timer_list
+
+# Intentionally no [Install]: activation is a separate production gate.

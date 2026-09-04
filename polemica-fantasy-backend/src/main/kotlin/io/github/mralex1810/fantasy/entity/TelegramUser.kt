@@ -47,6 +47,9 @@ class TelegramUser(
     @Column(name = "bot_blocked", nullable = false)
     var botBlocked: Boolean = false,
 
+    @Column(name = "is_automated_agent", nullable = false)
+    var isAutomatedAgent: Boolean = false,
+
     @OneToMany(mappedBy = "telegramUser")
     var userCards: MutableList<UserCard> = mutableListOf(),
 

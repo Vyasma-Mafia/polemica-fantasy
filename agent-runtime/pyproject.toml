@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "polemica-ai-agent-runtime"
+version = "0.1.0"
+description = "Auditable runtime foundation for the Polemica Fantasy Codex agent"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp==2.1.1",
+]
+
+[project.scripts]
+polemica-agent-run = "polemica_agent.runner.cli:main"
+polemica-agent-mcp = "polemica_agent.mcp_runtime.cli:main"
+polemica-agent-migrate = "polemica_agent.mcp_runtime.migrate:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/polemica_agent"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "polemica_agent/migrations"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

@@ -1,5 +1,6 @@
 package io.github.mralex1810.fantasy.service
 
+import io.github.mralex1810.fantasy.auth.AutomatedAgentTelegramAuthenticationException
 import io.github.mralex1810.fantasy.dto.admin.response.FantikiTransactionDto
 import io.github.mralex1810.fantasy.dto.admin.response.PagedFantikiTransactionsDto
 import io.github.mralex1810.fantasy.dto.user.response.UserProfileDto
@@ -26,9 +27,32 @@ class UserService(
 ) {
 
     @Transactional
+    fun getOrCreateAndUpdateProfileFromTelegram(
+        telegramId: Long,
+        username: String?,
+        firstName: String?,
+    ): TelegramUser {
+        val existing = telegramUserRepository.findByTelegramIdForUpdate(telegramId)
+        return updateExistingOrCreate(existing, telegramId, username, firstName, rejectAutomatedAgent = true)
+    }
+
+    @Transactional
     fun getOrCreateAndUpdateProfile(telegramId: Long, username: String?, firstName: String?): TelegramUser {
         val existing = telegramUserRepository.findByTelegramId(telegramId)
+        return updateExistingOrCreate(existing, telegramId, username, firstName, rejectAutomatedAgent = false)
+    }
+
+    private fun updateExistingOrCreate(
+        existing: TelegramUser?,
+        telegramId: Long,
+        username: String?,
+        firstName: String?,
+        rejectAutomatedAgent: Boolean,
+    ): TelegramUser {
         if (existing != null) {
+            if (rejectAutomatedAgent && existing.isAutomatedAgent) {
+                throw AutomatedAgentTelegramAuthenticationException()
+            }
             if (existing.botBlocked) {
                 existing.botBlocked = false
             }
@@ -38,8 +62,15 @@ class UserService(
         return try {
             telegramUserBootstrapService.insertNewUserWithInitialFantiki(telegramId, username, firstName)
         } catch (e: DataIntegrityViolationException) {
-            val afterRace = telegramUserRepository.findByTelegramId(telegramId)
+            val afterRace = if (rejectAutomatedAgent) {
+                telegramUserRepository.findByTelegramIdForUpdate(telegramId)
+            } else {
+                telegramUserRepository.findByTelegramId(telegramId)
+            }
                 ?: throw e
+            if (rejectAutomatedAgent && afterRace.isAutomatedAgent) {
+                throw AutomatedAgentTelegramAuthenticationException()
+            }
             applyTelegramProfileFields(afterRace, username, firstName)
             telegramUserRepository.save(afterRace)
         }

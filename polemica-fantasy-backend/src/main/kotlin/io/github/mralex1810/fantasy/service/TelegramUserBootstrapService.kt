@@ -20,12 +20,20 @@ class TelegramUserBootstrapService(
 ) {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun insertNewUserWithInitialFantiki(telegramId: Long, username: String?, firstName: String?): TelegramUser {
+    fun insertNewUserWithInitialFantiki(
+        telegramId: Long,
+        username: String?,
+        firstName: String?,
+        displayName: String? = null,
+        isAutomatedAgent: Boolean = false,
+    ): TelegramUser {
         val saved = telegramUserRepository.save(
             TelegramUser(
                 telegramId = telegramId,
                 username = username,
                 firstName = firstName,
+                displayName = displayName,
+                isAutomatedAgent = isAutomatedAgent,
             ),
         )
         fantikiTransactionRepository.save(

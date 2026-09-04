@@ -1,0 +1,35 @@
+[Unit]
+Description=Polemica AI broker schema migration (disabled staging artifact)
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+User=polemica-agent-broker
+Group=polemica-agent-broker
+Environment=POLEMICA_AGENT_DATABASE=/var/lib/polemica-ai-agent/agent.sqlite3
+ExecStart=/opt/polemica-ai-agent/venv/bin/polemica-agent-migrate
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/polemica-ai-agent
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+UMask=0077
+InaccessiblePaths=/root/.ssh /home/codex/.ssh /proc/kcore /proc/keys /proc/timer_list
+
+# No [Install]. MCP units require this migration explicitly after activation review.

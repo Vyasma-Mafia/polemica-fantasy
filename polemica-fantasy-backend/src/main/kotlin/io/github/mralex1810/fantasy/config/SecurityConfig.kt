@@ -1,9 +1,13 @@
 package io.github.mralex1810.fantasy.config
 
+import io.github.mralex1810.fantasy.auth.BearerAuthFilter
+import io.github.mralex1810.fantasy.auth.BearerClientAddressResolver
 import io.github.mralex1810.fantasy.auth.TelegramAuthFilter
 import io.github.mralex1810.fantasy.auth.TelegramInitDataValidator
 import io.github.mralex1810.fantasy.auth.UserApiRequestMatcher
 import io.github.mralex1810.fantasy.service.UserService
+import io.github.mralex1810.fantasy.service.ApiCredentialService
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
@@ -69,14 +73,23 @@ class SecurityConfig {
         telegramProperties: TelegramProperties,
         telegramInitDataValidator: TelegramInitDataValidator,
         userService: UserService,
+        apiCredentialService: ApiCredentialService,
+        meterRegistry: MeterRegistry,
+        apiCredentialProperties: ApiCredentialProperties,
     ): SecurityFilterChain {
         // Not a @Bean — Spring Boot auto-registers Filter beans as global servlet filters (breaks admin Basic Auth).
         val telegramAuthFilter = TelegramAuthFilter(telegramProperties, telegramInitDataValidator, userService)
+        val bearerAuthFilter = BearerAuthFilter(
+            apiCredentialService,
+            meterRegistry,
+            clientAddressResolver = BearerClientAddressResolver(apiCredentialProperties.trustXRealIp),
+        )
         http
             .securityMatcher(UserApiRequestMatcher())
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .addFilterBefore(telegramAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(bearerAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterAfter(telegramAuthFilter, BearerAuthFilter::class.java)
             .authorizeHttpRequests { auth -> auth.anyRequest().authenticated() }
         return http.build()
     }

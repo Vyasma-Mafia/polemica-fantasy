@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "id": 100,
+      "type": "match",
+      "date_start": "2026-08-01 20:00:00",
+      "points": -0.5,
+      "role": {"type": "mafia"},
+      "result": {"code": "fail"}
+    },
+    {
+      "id": 99,
+      "type": "match",
+      "date_start": "2026-07-31 20:00:00",
+      "points": 0.5,
+      "role": {"type": "sheriff"},
+      "result": {"code": "win"}
+    }
+  ],
+  "totalCount": 3
+}

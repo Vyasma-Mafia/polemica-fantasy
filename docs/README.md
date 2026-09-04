@@ -10,6 +10,7 @@
 
 ## Фичи (отдельные спеки)
 
+- **[features/DESIGN-AI-FANTASY-AGENT.md](features/DESIGN-AI-FANTASY-AGENT.md)** — скрытый Codex-игрок, Bearer auth, Fantasy/Research/Memory MCP, память и экспериментальные границы.
 - **[features/DESIGN-LEGENDARY-CARDS.md](features/DESIGN-LEGENDARY-CARDS.md)** — дизайн апгрейда EPIC → LEGENDARY.
 - **[features/DESIGN-MARKETPLACE.md](features/DESIGN-MARKETPLACE.md)** — маркетплейс карточек (продажа/покупка за фантики между пользователями).
 

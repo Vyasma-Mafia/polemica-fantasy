@@ -37,6 +37,7 @@ class FantasyMetrics internal constructor(
         BOT_BLOCKED("bot_blocked"),
         PREFERENCE_DISABLED("preference_disabled"),
         GLOBALLY_DISABLED("globally_disabled"),
+        AUTOMATED_AGENT_SKIPPED("automated_agent_skipped"),
         ERROR("error"),
     }
 

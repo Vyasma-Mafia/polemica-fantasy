@@ -16,6 +16,7 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 class NotificationDeliveryServiceTest {
@@ -42,6 +43,28 @@ class NotificationDeliveryServiceTest {
             telegramUserRepository = telegramUserRepository,
             notificationPreferenceRepository = notificationPreferenceRepository,
             fantasyMetrics = FantasyMetrics(registry),
+        )
+    }
+
+    @Test
+    fun `automated agent is never sent a telegram notification`() {
+        val user = TelegramUser(id = 11L, telegramId = 101L, isAutomatedAgent = true)
+        whenever(telegramUserRepository.findByTelegramId(101L)).thenReturn(user)
+
+        val report = service.deliverToMany(
+            recipients = listOf(101L),
+            category = NotificationCategory.ADMIN_BROADCAST,
+            textProvider = { "hidden experiment" },
+        )
+
+        assertEquals(0, report.sent)
+        assertEquals(1, report.skippedAutomatedAgent)
+        verifyNoInteractions(telegramBotApiClient, notificationPreferenceRepository)
+        assertEquals(
+            1.0,
+            registry.get("fantasy.notification.deliveries")
+                .tags("category", "admin_broadcast", "outcome", "automated_agent_skipped")
+                .counter().count(),
         )
     }
 

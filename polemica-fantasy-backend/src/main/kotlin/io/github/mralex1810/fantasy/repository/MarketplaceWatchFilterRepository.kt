@@ -30,6 +30,7 @@ interface MarketplaceWatchFilterRepository : JpaRepository<MarketplaceWatchFilte
             FROM marketplace_watch_filter mwf
             JOIN telegram_user tu ON tu.id = mwf.telegram_user_id
             WHERE tu.bot_blocked = FALSE
+              AND tu.is_automated_agent = FALSE
               AND mwf.telegram_user_id != :sellerId
               AND (mwf.fantasy_player_id IS NULL OR mwf.fantasy_player_id = :fantasyPlayerId)
               AND (mwf.rarity IS NULL OR mwf.rarity = :rarity)

@@ -28,6 +28,8 @@ import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.Base64
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -2960,6 +2962,163 @@ class UserApiIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[?(@.id == $purchasedCardId)].skinCode").value(skinCode))
     }
+
+    @Test
+    fun `instant pack purchase replays by idempotency key and conflicts for another pack`() {
+        val fixture = createIdempotencyPackFixture("instant", 9_810_001L, "INSTANT")
+        val key = "pack-instant-9810001"
+        val first = mockMvc.perform(
+            post("/api/v1/store/packs/${fixture.packId}/buy")
+                .header("Authorization", fixture.tma)
+                .header("Idempotency-Key", key),
+        ).andExpect(status().isOk).andReturn().response.contentAsString
+        val replay = mockMvc.perform(
+            post("/api/v1/store/packs/${fixture.packId}/buy")
+                .header("Authorization", fixture.tma)
+                .header("Idempotency-Key", key),
+        ).andExpect(status().isOk).andReturn().response.contentAsString
+
+        org.assertj.core.api.Assertions.assertThat(replay).isEqualTo(first)
+        val userId = internalUserId(fixture.telegramId)
+        assertSqlCount("SELECT fantiki FROM telegram_user WHERE id=$userId", 900)
+        assertSqlCount("SELECT COUNT(*) FROM user_card WHERE telegram_user_id=$userId", 1)
+        assertSqlCount("SELECT COUNT(*) FROM user_card_pack_open_event WHERE telegram_user_id=$userId", 1)
+        assertSqlCount("SELECT COUNT(*) FROM pack_purchase_idempotency WHERE telegram_user_id=$userId", 1)
+
+        val otherPack = createPackForTournament(fixture.tournamentId, "instant-conflict", "INSTANT")
+        mockMvc.perform(
+            post("/api/v1/store/packs/$otherPack/buy")
+                .header("Authorization", fixture.tma)
+                .header("Idempotency-Key", key),
+        ).andExpect(status().isConflict)
+        assertSqlCount("SELECT fantiki FROM telegram_user WHERE id=$userId", 900)
+    }
+
+    @Test
+    fun `choose pack purchase replays the same pending choice`() {
+        val fixture = createIdempotencyPackFixture("choose", 9_810_002L, "CHOOSE")
+        val key = "pack-choose-9810002"
+        val first = mockMvc.perform(
+            post("/api/v1/store/packs/${fixture.packId}/buy")
+                .header("Authorization", fixture.tma)
+                .header("Idempotency-Key", key),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.kind").value("PENDING_CHOICE"))
+            .andReturn().response.contentAsString
+        val replay = mockMvc.perform(
+            post("/api/v1/store/packs/${fixture.packId}/buy")
+                .header("Authorization", fixture.tma)
+                .header("Idempotency-Key", key),
+        ).andExpect(status().isOk).andReturn().response.contentAsString
+
+        org.assertj.core.api.Assertions.assertThat(replay).isEqualTo(first)
+        val userId = internalUserId(fixture.telegramId)
+        assertSqlCount("SELECT fantiki FROM telegram_user WHERE id=$userId", 900)
+        assertSqlCount("SELECT COUNT(*) FROM user_card_pack_choice WHERE telegram_user_id=$userId", 1)
+        assertSqlCount("SELECT COUNT(*) FROM pack_purchase_idempotency WHERE telegram_user_id=$userId", 1)
+    }
+
+    @Test
+    fun `concurrent duplicate pack requests have one economic effect`() {
+        val fixture = createIdempotencyPackFixture("concurrent", 9_810_003L, "INSTANT")
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val futures = (1..2).map {
+                executor.submit<String> {
+                    ready.countDown()
+                    start.await()
+                    mockMvc.perform(
+                        post("/api/v1/store/packs/${fixture.packId}/buy")
+                            .header("Authorization", fixture.tma)
+                            .header("Idempotency-Key", "pack-concurrent-9810003"),
+                    ).andExpect(status().isOk).andReturn().response.contentAsString
+                }
+            }
+            ready.await()
+            start.countDown()
+            val responses = futures.map { it.get() }
+            org.assertj.core.api.Assertions.assertThat(responses.distinct()).hasSize(1)
+        } finally {
+            executor.shutdownNow()
+        }
+        val userId = internalUserId(fixture.telegramId)
+        assertSqlCount("SELECT fantiki FROM telegram_user WHERE id=$userId", 900)
+        assertSqlCount("SELECT COUNT(*) FROM user_card WHERE telegram_user_id=$userId", 1)
+        assertSqlCount("SELECT COUNT(*) FROM user_card_pack_open_event WHERE telegram_user_id=$userId", 1)
+        assertSqlCount("SELECT COUNT(*) FROM pack_purchase_idempotency WHERE telegram_user_id=$userId", 1)
+    }
+
+    private data class IdempotencyPackFixture(
+        val telegramId: Long,
+        val tournamentId: Long,
+        val packId: Long,
+        val tma: String,
+    )
+
+    private fun createIdempotencyPackFixture(
+        suffix: String,
+        telegramId: Long,
+        openingMode: String,
+    ): IdempotencyPackFixture {
+        val auth = basicAuth("admin", "test-admin-secret")
+        val tournamentJson = mockMvc.perform(
+            post("/api/v1/admin/tournaments")
+                .header("Authorization", auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"name":"Idempotency $suffix","status":"DRAFT"}"""),
+        ).andExpect(status().isOk).andReturn().response.contentAsString
+        val tournamentId = JsonPath.read<Int>(tournamentJson, "$.id").toLong()
+        repeat(3) { index ->
+            val playerJson = mockMvc.perform(
+                post("/api/v1/admin/tournaments/$tournamentId/players")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """{"polemicaUserId":${telegramId * 10 + index},"nickname":"Idem${suffix}$index"}""",
+                    ),
+            ).andExpect(status().isOk).andReturn().response.contentAsString
+            val fantasyPlayerId = JsonPath.read<Int>(playerJson, "$.fantasyPlayerId").toLong()
+            mockMvc.perform(
+                post("/api/v1/admin/card-templates")
+                    .header("Authorization", auth)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"fantasyPlayerId":$fantasyPlayerId,"rarity":"COMMON"}"""),
+            ).andExpect(status().isOk)
+        }
+        val packId = createPackForTournament(tournamentId, suffix, openingMode)
+        val initData = buildSignedInitData(
+            botToken = "test-token",
+            authDate = Instant.now().epochSecond,
+            userJson = """{"id":$telegramId,"first_name":"Idem$suffix"}""",
+        )
+        return IdempotencyPackFixture(telegramId, tournamentId, packId, "tma $initData")
+    }
+
+    private fun createPackForTournament(tournamentId: Long, suffix: String, openingMode: String): Long {
+        val json = mockMvc.perform(
+            post("/api/v1/admin/card-packs")
+                .header("Authorization", basicAuth("admin", "test-admin-secret"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"name":"Idempotent $suffix","tournamentId":$tournamentId,"active":true,
+                    "autoGenerated":true,"openingMode":"$openingMode","priceFantiki":100,
+                    "useAllTournamentPlayers":true,
+                    "rarityConfigs":[{"rarity":"COMMON","cardsCount":1}]}
+                    """.trimIndent(),
+                ),
+        ).andExpect(status().isOk).andReturn().response.contentAsString
+        return JsonPath.read<Int>(json, "$.id").toLong()
+    }
+
+    private fun internalUserId(telegramId: Long): Long = jdbcTemplate.queryForObject(
+        "SELECT id FROM telegram_user WHERE telegram_id=?",
+        Long::class.java,
+        telegramId,
+    )!!
 
     private fun buildSignedInitData(botToken: String, authDate: Long, userJson: String): String {
         val userEncoded = java.net.URLEncoder.encode(userJson, StandardCharsets.UTF_8)

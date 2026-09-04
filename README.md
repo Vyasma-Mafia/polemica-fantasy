@@ -17,6 +17,21 @@
 - **`polemica-fantasy-backend`** — REST API, Flyway, интеграция с Polemica
 - **`polemica-fantasy-webapp`** — пользовательский TMA (Vite + React)
 - **`polemica-fantasy-admin`** — админ-панель (Vite + React + Ant Design)
+- **`agent-runtime`** — экспериментальный Codex-агент с типизированными Fantasy,
+  Polemica Research и Memory MCP-серверами, долговременным журналом решений и
+  изолированным почасовым runner
+
+## Codex fantasy agent и MCP
+
+Экспериментальный агент играет через обычный user API и подчиняется тем же
+доменным ограничениям, что и пользователь. Fantasy MCP предоставляет закрытый
+набор игровых операций, Research MCP собирает доступную историю Polemica, а
+Memory MCP хранит запечатанные снимки данных, решения и результаты операций.
+Произвольного HTTP, SQL, shell или доступа к admin API у модели нет.
+
+Архитектура и границы эксперимента описаны в
+[`docs/features/DESIGN-AI-FANTASY-AGENT.md`](docs/features/DESIGN-AI-FANTASY-AGENT.md),
+инструкции runtime — в [`agent-runtime/README.md`](agent-runtime/README.md).
 
 ## Разработка через Codex
 

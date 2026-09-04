@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "id": 101,
+      "type": "match",
+      "date_start": "2026-08-02 20:00:00",
+      "points": 1.5,
+      "mmr": {"value": 1200.0},
+      "role": {"type": "civilian", "title": "Мирный"},
+      "result": {"code": "win", "title": "Победа"}
+    },
+    {
+      "id": 100,
+      "type": "match",
+      "date_start": "2026-08-01 20:00:00",
+      "points": -0.5,
+      "mmr": 1190.0,
+      "role": {"type": "mafia", "title": "Мафия"},
+      "result": {"code": "fail", "title": "Поражение"}
+    }
+  ],
+  "totalCount": 3
+}

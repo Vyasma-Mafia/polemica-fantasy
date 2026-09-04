@@ -17,17 +17,21 @@ import io.github.mralex1810.fantasy.entity.CardPack
 import io.github.mralex1810.fantasy.entity.CardPackOpeningMode
 import io.github.mralex1810.fantasy.entity.FantikiTransactionReason
 import io.github.mralex1810.fantasy.entity.OnboardingStep
+import io.github.mralex1810.fantasy.entity.PackPurchaseIdempotency
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.entity.UserCardPackChoice
 import io.github.mralex1810.fantasy.repository.CardPackRepository
 import io.github.mralex1810.fantasy.repository.CardTemplateRepository
 import io.github.mralex1810.fantasy.repository.PerkRepository
+import io.github.mralex1810.fantasy.repository.PackPurchaseIdempotencyRepository
 import io.github.mralex1810.fantasy.repository.TelegramUserRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackChoiceRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackFreeUsageRepository
 import io.github.mralex1810.fantasy.repository.UserCardPackOpenCountRepository
 import io.github.mralex1810.fantasy.repository.UserCardRepository
 import kotlin.math.max
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -52,6 +56,7 @@ class UserStoreService(
     private val economyConfigService: EconomyConfigService,
     private val easterEggProperties: EasterEggProperties,
     private val onboardingService: OnboardingService,
+    private val packPurchaseIdempotencyRepository: PackPurchaseIdempotencyRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -108,7 +113,22 @@ class UserStoreService(
     }
 
     @Transactional
-    fun buyPack(user: TelegramUser, packId: Long): BuyPackResponseDto {
+    fun buyPack(user: TelegramUser, packId: Long, idempotencyKey: String? = null): BuyPackResponseDto {
+        val internalId = user.id!!
+        val managedUser = telegramUserRepository.findByIdForUpdate(internalId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalId not found")
+        val normalizedKey = normalizeIdempotencyKey(idempotencyKey)
+        val keyHash = normalizedKey?.let(::sha256)
+        val canonicalRequestHash = canonicalPackPurchaseHash(packId)
+        if (keyHash != null) {
+            val existing = packPurchaseIdempotencyRepository.findByTelegramUser_IdAndKeyHash(internalId, keyHash)
+            if (existing != null) {
+                if (existing.canonicalRequestHash != canonicalRequestHash) {
+                    throw ResponseStatusException(HttpStatus.CONFLICT, "Idempotency-Key was used for another pack purchase")
+                }
+                return objectMapper.readValue(existing.responseJson, BuyPackResponseDto::class.java)
+            }
+        }
         val pack =
             cardPackRepository.findByIdWithRarityConfigs(packId) ?: throw ResponseStatusException(
                 HttpStatus.NOT_FOUND,
@@ -117,10 +137,27 @@ class UserStoreService(
         if (!pack.active) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Card pack is not active")
         }
-        return when (pack.openingMode) {
-            CardPackOpeningMode.INSTANT -> buyInstantPack(user, pack.id!!)
-            CardPackOpeningMode.CHOOSE -> buyChoosePack(user, pack)
+        val response = when (pack.openingMode) {
+            CardPackOpeningMode.INSTANT -> buyInstantPack(managedUser, pack.id!!)
+            CardPackOpeningMode.CHOOSE -> buyChoosePack(managedUser, pack)
         }
+        if (keyHash != null) {
+            packPurchaseIdempotencyRepository.save(
+                PackPurchaseIdempotency(
+                    telegramUser = managedUser,
+                    keyHash = keyHash,
+                    canonicalRequestHash = canonicalRequestHash,
+                    cardPack = pack,
+                    responseKind = response.kind.name,
+                    balanceAfter = response.fantiki,
+                    packChoiceId = response.choice?.id,
+                    userCardIds = objectMapper.writeValueAsString(response.cards.map { it.id }),
+                    responseJson = objectMapper.writeValueAsString(response),
+                    createdAt = cardPackService.currentDbInstant(),
+                ),
+            )
+        }
+        return response
     }
 
     @Transactional
@@ -161,8 +198,6 @@ class UserStoreService(
 
     private fun buyInstantPack(user: TelegramUser, packId: Long): BuyPackResponseDto {
         val internalId = user.id!!
-        telegramUserRepository.findByIdForUpdate(internalId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalId not found")
         validatePackLimitForNewPurchase(internalId, packId)
         reservePayment(internalId, cardPackRepository.findById(packId).orElseThrow {
                 ResponseStatusException(HttpStatus.NOT_FOUND, "Card pack $packId not found")
@@ -175,8 +210,6 @@ class UserStoreService(
 
     private fun buyChoosePack(user: TelegramUser, pack: CardPack): BuyPackResponseDto {
         val internalId = user.id!!
-        val managedUser = telegramUserRepository.findByIdForUpdate(internalId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User $internalId not found")
         val existing = userCardPackChoiceRepository.findByTelegramUser_IdAndCardPack_IdAndSelectedAtIsNull(
             internalId,
             pack.id!!,
@@ -190,7 +223,7 @@ class UserStoreService(
         val now = cardPackService.currentDbInstant()
         val choice = userCardPackChoiceRepository.save(
             UserCardPackChoice(
-                telegramUser = managedUser,
+                telegramUser = user,
                 cardPack = pack,
                 options = objectMapper.writeValueAsString(options),
                 paymentKind = payment.kind,
@@ -375,5 +408,26 @@ class UserStoreService(
     private companion object {
         const val CHOOSE_OPTION_COUNT = 3
         const val CHOOSE_REQUIRED_COUNT = 1
+        const val MAX_IDEMPOTENCY_KEY_LENGTH = 200
+        val IDEMPOTENCY_KEY_PATTERN = Regex("^[A-Za-z0-9._:-]+$")
     }
+
+    private fun normalizeIdempotencyKey(value: String?): String? {
+        if (value == null) return null
+        val normalized = value.trim()
+        if (
+            normalized.isEmpty() ||
+            normalized.length > MAX_IDEMPOTENCY_KEY_LENGTH ||
+            !IDEMPOTENCY_KEY_PATTERN.matches(normalized)
+        ) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Idempotency-Key")
+        }
+        return normalized
+    }
+
+    private fun canonicalPackPurchaseHash(packId: Long): String = sha256("PACK_PURCHASE\n$packId")
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 }

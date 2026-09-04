@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly Polemica AI runner (must be explicitly activated later)
+
+[Timer]
+OnCalendar=hourly
+Persistent=false
+AccuracySec=1min
+Unit=polemica-agent-run.service
+
+# No installation target. The staging installer never enables or starts this timer.

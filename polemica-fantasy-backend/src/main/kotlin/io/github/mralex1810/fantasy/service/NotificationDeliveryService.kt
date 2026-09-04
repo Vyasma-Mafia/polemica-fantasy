@@ -65,6 +65,7 @@ class NotificationDeliveryService(
 
         var sent = 0
         var skippedBlocked = 0
+        var skippedAutomatedAgent = 0
         var skippedPreference = 0
         var failed = 0
         for ((index, chatId) in recipients.withIndex()) {
@@ -81,6 +82,11 @@ class NotificationDeliveryService(
                 val userId = user.id ?: run {
                     failed++
                     fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.ERROR)
+                    continue
+                }
+                if (user.isAutomatedAgent) {
+                    skippedAutomatedAgent++
+                    fantasyMetrics.recordNotificationDeliveries(category, NotificationOutcome.AUTOMATED_AGENT_SKIPPED)
                     continue
                 }
                 if (user.botBlocked) {
@@ -175,6 +181,7 @@ class NotificationDeliveryService(
         return DeliveryReport(
             sent = sent,
             skippedBlocked = skippedBlocked,
+            skippedAutomatedAgent = skippedAutomatedAgent,
             skippedPreference = skippedPreference,
             failed = failed,
         )
@@ -210,6 +217,7 @@ class NotificationDeliveryService(
 data class DeliveryReport(
     val sent: Int = 0,
     val skippedBlocked: Int = 0,
+    val skippedAutomatedAgent: Int = 0,
     val skippedPreference: Int = 0,
     val failed: Int = 0,
 )

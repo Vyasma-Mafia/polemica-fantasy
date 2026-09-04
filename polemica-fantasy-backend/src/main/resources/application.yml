@@ -107,6 +107,8 @@ polemica:
 
 app:
   webapp-base-url: ${WEBAPP_BASE_URL:https://fantasy.maftourbot.ru}
+  api-credentials:
+    trust-x-real-ip: ${APP_API_CREDENTIALS_TRUST_X_REAL_IP:false}
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:defaultPassword123}

@@ -23,6 +23,10 @@ class TelegramAuthFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
+        if (SecurityContextHolder.getContext().authentication?.isAuthenticated == true) {
+            filterChain.doFilter(request, response)
+            return
+        }
         val header = request.getHeader("Authorization")
         if (header == null || !header.startsWith(PREFIX)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid Authorization header")
@@ -44,11 +48,16 @@ class TelegramAuthFilter(
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.message ?: "Invalid initData")
             return
         }
-        val user = userService.getOrCreateAndUpdateProfile(
-            parsed.telegramUserId,
-            parsed.username,
-            parsed.firstName,
-        )
+        val user = try {
+            userService.getOrCreateAndUpdateProfileFromTelegram(
+                parsed.telegramUserId,
+                parsed.username,
+                parsed.firstName,
+            )
+        } catch (_: AutomatedAgentTelegramAuthenticationException) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid initData")
+            return
+        }
         val auth = TelegramAuthentication(user)
         val context = SecurityContextHolder.createEmptyContext()
         context.authentication = auth
@@ -64,3 +73,5 @@ class TelegramAuthFilter(
         private const val PREFIX = "tma "
     }
 }
+
+class AutomatedAgentTelegramAuthenticationException : RuntimeException()

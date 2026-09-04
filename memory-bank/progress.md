@@ -1,5 +1,14 @@
 # Progress
 
+## Hidden Codex fantasy player MVP (сентябрь 2026, не активирован)
+
+- [x] Согласованы design и implementation plan скрытого AI-managed пользователя с обычной экономикой, marketplace, полной исторической Polemica-аналитикой, persistent memory и почасовым расписанием.
+- [x] Backend V83: opaque Bearer credentials с hash/expiry/revoke/audit, internal agent marker без публичного DTO, TMA manual-login guard, Telegram recipient suppression и pack-purchase `Idempotency-Key` replay для INSTANT/CHOOSE.
+- [x] Agent runtime: закрытые Fantasy/Research/Memory MCP tools, trusted immutable Research snapshots, sealed-decision ACT authorization, single-attempt durable intents/reconciliation, SQLite WAL/blob memory, prompt/version audit, flock и fail-closed runner.
+- [x] Проверки: Python 3.10 runtime `93 passed`; backend focused compile/unit green; изолированный remote Testcontainers прогон Bearer + pack idempotency/concurrency на PostgreSQL 16 green с Docker API 1.44.
+- [x] На `codex@51.250.97.185` установлен только disabled no-secret runtime в `/home/codex/.local/share/polemica-agent-runtime`; MCP services/timer/cron отсутствуют, production run/write не выполнялся.
+- [ ] Activation gate: приватный способ backend release (репозиторий публичный), root-created broker user/units/env files, production account/credential, read-only Polemica credential, model/reasoning, expert cohort/stop rule/retention/alerts, live contract smoke и staged read-only→team→economy→marketplace enablement.
+
 - [x] **2026-09-04 — Polemica Grand Slam 2026 card skin:** Flyway V82 seeds `polemica_grand_slam_2026`; the TMA applies its electric-blue/cyan frame, `GRAND SLAM` badge, glow/sweep, name, and perk-chip treatment on every existing card surface without changing component geometry. Reduced-motion is supported. Backend/test compilation, TMA production build, and browser CSS verification passed. Not deployed yet.
 - [x] **2026-08-28 — Opt-out игрока `41582`:** production tournament `39` очищен до 19 игроков, FK-связей с историей нет. Flyway V81 сохраняет отдельный opt-out, условно удаляет orphan-профиль и вместе с backend import policy блокирует прямой Polemica ID и алиасы при добавлении в любой tournament; unit tests и Kotlin/test compilation прошли, Testcontainers scenario blocked без Docker. Изменения ещё не развёрнуты.
 - [x] **2026-08-28 — RESULT identity aliases:** matcher canonicalizes `фокс/fox` and mixed-script `ОloF/olof` in sheriff and mafia evidence; focused test passed. Production backend image `2b92632099c8...` is healthy with rollback `rollback-pre-identity-aliases-20260828`; ЗЛ №28 is READY, while ЛП №41 was separately operator-confirmed and finalized by the normal queued flow after readiness recovered.

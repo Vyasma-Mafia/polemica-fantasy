@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
-    @Query("SELECT u.telegramId FROM TelegramUser u ORDER BY u.id")
+    @Query("SELECT u.telegramId FROM TelegramUser u WHERE u.isAutomatedAgent = false ORDER BY u.id")
     fun findAllTelegramIds(): List<Long>
 
     fun findByTelegramId(telegramId: Long): TelegramUser?
@@ -69,7 +69,8 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
         value =
             """
             SELECT u.id, u.telegram_id, u.username, u.first_name, u.display_name, u.created_at, u.fantiki,
-              u.pack_opens_count, u.marketplace_banned, u.marketplace_banned_until, u.bot_blocked
+              u.pack_opens_count, u.marketplace_banned, u.marketplace_banned_until, u.bot_blocked,
+              u.is_automated_agent
             FROM telegram_user u
             WHERE
               (u.username IS NOT NULL AND u.username ILIKE :pattern ESCAPE '!')
@@ -115,6 +116,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
             SELECT tu.*
             FROM telegram_user tu
             WHERE tu.bot_blocked = FALSE
+              AND tu.is_automated_agent = FALSE
               AND NOT EXISTS (
                   SELECT 1 FROM notification_preference np
                   WHERE np.telegram_user_id = tu.id
@@ -142,6 +144,7 @@ interface TelegramUserRepository : JpaRepository<TelegramUser, Long> {
             SELECT tu.telegram_id
             FROM telegram_user tu
             WHERE tu.bot_blocked = FALSE
+              AND tu.is_automated_agent = FALSE
               AND NOT EXISTS (
                   SELECT 1 FROM notification_preference np
                   WHERE np.telegram_user_id = tu.id
