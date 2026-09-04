@@ -52,6 +52,15 @@ but the full token cannot be recovered.
 
 ## 4. Configure root-owned service environments
 
+Install and validate the Polemica Research credential interactively:
+
+```bash
+sudo /opt/polemica-ai-agent/deploy/provision_research_environment.py
+```
+
+The helper writes `research-mcp.env` and the non-writing `runner.env` atomically
+without printing the password. The effective files are:
+
 The four files under `/etc/polemica-ai-agent` remain mode `0600`, owner `root`:
 
 ```text
