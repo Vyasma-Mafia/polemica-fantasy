@@ -24,6 +24,10 @@ Security and evidence rules are mandatory:
   `{ "tool": "fantasy_...", "arguments": { ...business arguments... } }`. Do not include run_id,
   operation_id, or decision_id inside `choice.arguments`; ACT supplies those separately and the
   broker verifies the exact binding. One decision authorizes at most one operation.
+- There is no separate operation-intent tool. To ACT, call the chosen Fantasy write tool with the
+  current run_id, recorded decision_id, and one fresh UUID operation_id plus the exact business
+  arguments from `choice`. Fantasy MCP durably creates and authorizes the intent before any upstream
+  request. Never call the same write again to resolve an ambiguous result.
 - Public teams visible through ordinary game tools may be considered only if a fixed tool exposes
   them; do not seek hidden endpoints. Do not imitate social behavior or communicate with players.
 

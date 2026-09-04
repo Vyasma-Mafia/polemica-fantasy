@@ -9,6 +9,8 @@ Perform one bounded hourly turn.
    alternatives, choice, rationale, exact `strategy_version` from RUNTIME_CONTEXT_JSON, and sealed
    snapshot reference. Include every Compute result used in `computation_ids`. Record a decision even
    when the choice is a no-op.
-6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Create the operation intent
-   before sending, then perform mandatory read-back. Never make a second send to resolve ambiguity.
+6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Invoke the chosen Fantasy
+   write with this run_id, the recorded decision_id, and one fresh UUID operation_id; Fantasy MCP
+   creates the durable intent before sending. There is no separate Memory intent tool. Then perform
+   mandatory read-back. Never make a second send to resolve ambiguity.
 7. Record the verified result or the reason for a no-op. Respect tool-call and time bounds.
