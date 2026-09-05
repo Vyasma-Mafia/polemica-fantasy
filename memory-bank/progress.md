@@ -1,5 +1,9 @@
 # Progress
 
+- [x] **2026-09-06 — Research version follow-up deployed:** v17 resolves omitted versions from the exact live competition listing. Both formerly failing completed/unfinished game reads now succeed on installed client; 258 runtime tests green, registries healthy, no open intents, timer active.
+
+- [x] **2026-09-06 — Control run complete:** v16 run SUCCEEDED, reward fully received. Investigating/fixing its additional Research feedback: omitted Polemica competition-game version returns HTTP 500, explicit listed version succeeds; automatic metadata resolution and completed-game guidance added.
+
 - [x] **2026-09-06 — Reward-selection production canary:** agent autonomously claimed the two pending COMMON cards (Чаплин / ГМЖ, 153926/153927); exact selected receipt and ownership verified independently, zero unresolved intents. Whole v16 run still in progress at this checkpoint.
 
 - [x] **2026-09-06 — MCP recovery deployed:** `ae2a97c`, strategy v16; backend health, schema, exact registries and preserved permissions verified. Old achievement intent recovered without repeating its write; zero unresolved intents before control run, hourly timer restored. Control run started; its reward selection is not yet verified.

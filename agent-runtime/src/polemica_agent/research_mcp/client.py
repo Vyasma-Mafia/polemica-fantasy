@@ -109,6 +109,20 @@ class HttpPolemicaClient:
     ) -> Mapping[str, Any]:
         _positive(competition_id, "competition_id")
         _positive(game_id, "game_id")
+        if version is None:
+            # This endpoint does not reliably select a version on its own. Resolve
+            # the exact game's advertised version with one fresh bounded read;
+            # never guess a version or silently request an unversioned payload.
+            matches = [
+                game for game in self.get_competition_games(competition_id)
+                if type(game.get("id")) is int and game["id"] == game_id
+            ]
+            if len(matches) != 1:
+                raise UpstreamError("get_competition_game_version")
+            discovered_version = matches[0].get("version")
+            if type(discovered_version) is not int or discovered_version <= 0:
+                raise UpstreamError("get_competition_game_version")
+            version = discovered_version
         value = self._get_api(
             f"/v1/competitions/{competition_id}/games/{game_id}",
             _version_query(version),

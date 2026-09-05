@@ -7,13 +7,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[2] / "src"))
 
 from polemica_agent.research_mcp.client import HttpClientConfig, HttpPolemicaClient, RequestGate
-from polemica_agent.research_mcp.errors import ContractError
+from polemica_agent.research_mcp.errors import ContractError, UpstreamError
 
 
 class RecordingClient(HttpPolemicaClient):
     def __init__(self) -> None:
         super().__init__(HttpClientConfig("https://api.example", username="u", password="p"), gate=RequestGate(min_interval_seconds=0))
         self.requests = []
+        self.competition_games = [{"id": 7, "version": 2}]
 
     def _auth_token(self) -> str:
         return "secret"
@@ -22,6 +23,8 @@ class RecordingClient(HttpPolemicaClient):
         self.requests.append((method, base, path, query, operation, token is not None))
         if path.endswith("/metrics"):
             return []
+        if path.endswith("/games"):
+            return self.competition_games
         return {"id": 7, "version": 2}
 
 
@@ -64,6 +67,47 @@ class ClientContractTest(unittest.TestCase):
             client.get_player_games(1, 1, 201)
         with self.assertRaises(ContractError):
             RequestGate(max_concurrency=100)
+
+    def test_competition_game_resolves_advertised_version_when_omitted(self) -> None:
+        client = RecordingClient()
+        client.competition_games = [{"id": 8, "version": 99}, {"id": 7, "version": 4}]
+        client.get_competition_game(9, 7)
+        self.assertEqual(
+            [
+                ("GET", "https://api.example", "/v1/competitions/9/games", {}, "get_competition_games", True),
+                ("GET", "https://api.example", "/v1/competitions/9/games/7", {"version": 4}, "get_competition_game", True),
+            ], client.requests,
+        )
+        # Do not cache or reuse another request's discovered version.
+        client.competition_games = [{"id": 7, "version": 5}]
+        client.get_competition_game(9, 7)
+        self.assertEqual({"version": 5}, client.requests[-1][3])
+
+    def test_explicit_competition_version_does_not_lookup_or_override(self) -> None:
+        client = RecordingClient()
+        client.get_competition_game(9, 7, 3)
+        self.assertEqual(1, len(client.requests))
+        self.assertEqual("/v1/competitions/9/games/7", client.requests[0][2])
+        self.assertEqual({"version": 3}, client.requests[0][3])
+
+    def test_missing_ambiguous_or_invalid_version_never_fetches_game(self) -> None:
+        for metadata in [[], [{"id": 8, "version": 4}], [{"id": 7}],
+                         [{"id": 7, "version": None}], [{"id": 7, "version": True}],
+                         [{"id": 7, "version": 0}], [{"id": 7, "version": "4"}],
+                         [{"id": 7, "version": 4}, {"id": 7, "version": 5}]]:
+            with self.subTest(metadata=metadata):
+                client = RecordingClient()
+                client.competition_games = metadata
+                with self.assertRaises(UpstreamError):
+                    client.get_competition_game(9, 7)
+                self.assertEqual(1, len(client.requests))
+                self.assertEqual("/v1/competitions/9/games", client.requests[0][2])
+
+    def test_match_without_version_keeps_existing_semantics(self) -> None:
+        client = RecordingClient()
+        client.get_match(7)
+        self.assertEqual(1, len(client.requests))
+        self.assertEqual({}, client.requests[0][3])
 
 
 if __name__ == "__main__":

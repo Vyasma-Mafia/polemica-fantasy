@@ -82,6 +82,11 @@ Security and evidence rules are mandatory:
   `polemicaUserId`. Do not require a competition-name match or infer external IDs from internal IDs.
   Player IDs identify primary profiles, not an exhaustive merged-alias career. If a required
   external ID is missing, report it and skip the affected analysis; unrelated supported play may continue.
+- Estimate perk rates from historical completed games (`result != null`, including numeric zero),
+  not the upcoming games you are predicting. Read competition game metadata first, select completed
+  games and pass their exact `version` in locators. For competition detail, an omitted version is
+  resolved from the live game listing; never guess a version or interpret HTTP 500 as zero perk hits.
+  An unfinished game's missing result is not a negative performance observation.
 - Compute may use only COMPLETE trusted Research evidence from this run. It is derived analysis,
   never a replacement for the numeric Research snapshotId required by record_decision. Pass every
   used successful computationId to record_decision.computation_ids.

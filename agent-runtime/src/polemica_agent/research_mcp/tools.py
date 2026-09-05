@@ -60,7 +60,11 @@ class ResearchTools:
         competition_id: int | None = None,
         version: int | None = None,
     ) -> dict[str, Any]:
-        """Collect a game. kind is lowercase 'match' or 'competition'; competition requires competition_id."""
+        """Collect a game. kind is lowercase 'match' or 'competition'; competition requires competition_id.
+
+        Use the exact version from game metadata. Omitted competition versions are
+        resolved from the current competition game list before reading detail.
+        """
         return self.service.get_game(
             snapshot_id,
             kind=kind,
@@ -125,6 +129,8 @@ class ResearchTools:
         integers. Invalid inputs are rejected before collecting evidence; correct
         the arguments and retry the same collecting snapshot. Genuine partial
         upstream data stays PARTIAL and cannot be promoted by retrying.
+        Select historical completed games (result is not null, including result=0),
+        not future series games. Pass versions from their listing when available.
         """
         return self.service.get_player_perk_rates(
             snapshot_id, player_id, games, perk_ids=perk_ids
