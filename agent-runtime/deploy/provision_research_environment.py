@@ -114,7 +114,7 @@ def main() -> int:
             "FANTASY_WRITE_ALLOWLIST=\n"
             "POLEMICA_PRODUCTION_ACTIVATION_APPROVED=false\n"
             "POLEMICA_AGENT_MODEL=gpt-5.6-sol\n"
-            "POLEMICA_AGENT_STRATEGY_VERSION=hourly-compute-v1\n",
+            "POLEMICA_AGENT_STRATEGY_VERSION=hourly-card-score-v8\n",
         )
     except ProvisionError as exc:
         raise SystemExit(str(exc)) from None

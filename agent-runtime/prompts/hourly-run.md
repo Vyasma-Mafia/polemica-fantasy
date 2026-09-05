@@ -6,6 +6,12 @@ Perform one bounded hourly turn.
    from list_competitions, and never copy the former into a Research competition call. For lineup
    ranking, prefer bounded get_player_recent_form windows; full-career get_player_statistics may
    legitimately return PAGE_BOUND for experienced players and would make the snapshot partial.
+   Rank legal card instances, not players alone. Estimate each card's Fantasy points as
+   `(expected base points + sum(card perk bonusPoints * matching ratePerGame)) * rarity modifier`,
+   using COMMON=1.0, RARE=1.1, EPIC=1.15, and LEGENDARY=1.25. For cards with perks, collect
+   `get_player_perk_rates` for exactly the perk IDs present on those cards over a bounded recent
+   game window before sealing; do not treat an unavailable or partial perk rate as zero. Respect
+   the one-card-per-player rule, remaining uses, league eligibility, and the BUDGET value cap.
 3. SEAL the evidence. Use only SEAL's numeric snapshotId for the decision; the collectionId is not
    evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
 4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.

@@ -85,11 +85,18 @@ def perk_rates(
     games: Sequence[Mapping[str, Any]],
     player_id: int,
     *,
+    perk_ids: Sequence[str] | None = None,
     base_points_by_game_id: Mapping[int, float] | None = None,
     complete: bool = True,
 ) -> dict[str, Any]:
-    totals = Counter({perk_id: 0 for perk_id in PERK_IDS})
-    matched_games = Counter({perk_id: 0 for perk_id in PERK_IDS})
+    selected_perks = tuple(PERK_IDS if perk_ids is None else perk_ids)
+    if not selected_perks or len(set(selected_perks)) != len(selected_perks):
+        raise ValueError("perk_ids must be non-empty and unique")
+    unknown = sorted(set(selected_perks) - set(PERK_IDS))
+    if unknown:
+        raise ValueError(f"unknown perk_ids: {', '.join(unknown)}")
+    totals = Counter({perk_id: 0 for perk_id in selected_perks})
+    matched_games = Counter({perk_id: 0 for perk_id in selected_perks})
     eligible = 0
     skipped: list[dict[str, Any]] = []
     for game in games:
@@ -103,7 +110,8 @@ def perk_rates(
             if base_points_by_game_id is not None and game_id is not None:
                 base_points = base_points_by_game_id.get(game_id)
             matches = _perk_matches(game, player, base_points)
-            for perk_id, count in matches.items():
+            for perk_id in selected_perks:
+                count = matches[perk_id]
                 totals[perk_id] += count
                 if count > 0:
                     matched_games[perk_id] += 1
@@ -116,20 +124,24 @@ def perk_rates(
             "ratePerGame": totals[perk_id] / eligible if eligible else None,
             "gameHitRate": matched_games[perk_id] / eligible if eligible else None,
         }
-        for perk_id in PERK_IDS
+        for perk_id in selected_perks
     }
     # Ninja requires the external base-points calculation, which full game JSON does not carry.
     ninja_sample = 0 if base_points_by_game_id is None else sum(
         1 for game in games if _int(game.get("id")) in base_points_by_game_id
     )
-    rates["ninja"]["sampleSize"] = ninja_sample
+    if "ninja" in rates:
+        rates["ninja"]["sampleSize"] = ninja_sample
+    ninja_is_complete = "ninja" not in selected_perks or base_points_by_game_id is not None
     return {
         "playerId": player_id,
         "sampleSize": eligible,
         "perks": rates,
         "skippedGames": skipped,
-        "complete": complete and not skipped and (base_points_by_game_id is not None),
-        "limitations": [] if base_points_by_game_id is not None else ["ninja requires base points by game id"],
+        "complete": complete and not skipped and ninja_is_complete,
+        "limitations": (
+            [] if ninja_is_complete else ["ninja requires base points by game id"]
+        ),
     }
 
 

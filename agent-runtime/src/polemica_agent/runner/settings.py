@@ -36,7 +36,7 @@ class RuntimeSettings:
             prompt_dir=Path(os.environ.get("POLEMICA_AGENT_PROMPT_DIR", "/opt/polemica-ai-agent/prompts")),
             model=os.environ.get("POLEMICA_AGENT_MODEL", "gpt-5.6-sol"),
             strategy_version=os.environ.get(
-                "POLEMICA_AGENT_STRATEGY_VERSION", "hourly-compute-v1"
+                "POLEMICA_AGENT_STRATEGY_VERSION", "hourly-card-score-v8"
             ),
             timeout_seconds=int(os.environ.get("POLEMICA_AGENT_RUN_TIMEOUT_SECONDS", "3300")),
             write_enabled=os.environ.get("WRITE_ENABLED", "false").lower() == "true",

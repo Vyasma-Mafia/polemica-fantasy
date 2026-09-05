@@ -116,9 +116,12 @@ class ResearchTools:
         snapshot_id: str,
         player_id: int,
         games: Sequence[Mapping[str, Any]],
+        perk_ids: Sequence[str] | None = None,
     ) -> dict[str, Any]:
-        """Calculate perk rates from explicit typed game locators."""
-        return self.service.get_player_perk_rates(snapshot_id, player_id, games).to_dict()
+        """Calculate selected perk rates from explicit typed game locators."""
+        return self.service.get_player_perk_rates(
+            snapshot_id, player_id, games, perk_ids=perk_ids
+        ).to_dict()
 
     def compare_players(
         self, snapshot_id: str, player_ids: Sequence[int], max_pages: int = 10

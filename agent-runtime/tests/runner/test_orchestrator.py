@@ -35,6 +35,13 @@ def test_open_intents_force_reconcile_only(tmp_path: Path) -> None:
     assert '"fantasy_write_allowlist":[]' in prompt
 
 
+def test_normal_prompt_ranks_card_scores_with_rarity_and_perks(tmp_path: Path) -> None:
+    prompt = build_prompt(settings(tmp_path), "run", [])
+    assert "Rank legal card instances, not players alone" in prompt
+    assert "EPIC=1.15" in prompt
+    assert "get_player_perk_rates" in prompt
+
+
 def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
     def probe(urls: dict[str, str]) -> None:

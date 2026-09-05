@@ -205,6 +205,7 @@ class ResearchService:
         snapshot_id: str,
         player_id: int,
         games: Sequence[Mapping[str, Any]],
+        perk_ids: Sequence[str] | None = None,
     ) -> ResearchResult:
         _positive(player_id, "player_id")
         if not 1 <= len(games) <= 100:
@@ -239,12 +240,16 @@ class ResearchService:
                     errors.extend(result.provenance.errors)
                 except ResearchError as error:
                     errors.append(_partial("get_player_perk_rates", error, f"game:{locator.get('game_id')}"))
-        data = analytics.perk_rates(
-            payloads,
-            player_id,
-            base_points_by_game_id=None,
-            complete=not errors and len(payloads) == len(games),
-        )
+        try:
+            data = analytics.perk_rates(
+                payloads,
+                player_id,
+                perk_ids=perk_ids,
+                base_points_by_game_id=None,
+                complete=not errors and len(payloads) == len(games),
+            )
+        except ValueError as error:
+            raise ContractError(str(error)) from None
         # Records were attached by get_game; create provenance directly to avoid duplicate cache writes.
         complete = data["complete"] and not errors
         self.snapshots.observe_result(
