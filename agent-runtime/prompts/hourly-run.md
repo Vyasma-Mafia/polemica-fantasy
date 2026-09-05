@@ -1,7 +1,16 @@
 Perform one bounded hourly turn.
 
 1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
-2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits. Fantasy
+2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
+   Start with fantasy_get_periodic_rating_current and fantasy_get_periodic_rating_me(period_id).
+   Read prior decisions/outcomes to keep a plan across runs. Record the period's dates, status,
+   league, entry.rank/totalScore/seriesCount, and contributions. A null entry means unranked,
+   not a failed tool. If there is no actionable OPEN period (absent, SETTLING, or FINALIZED),
+   do not invent dates or force spending: prepare for the next period using confirmed opportunities.
+   Identify upcoming MAIN submissions/improvements that may contribute to the current period;
+   final inclusion depends on finalization and the last actual game date, not submission date.
+   Mark uncertain boundary-series inclusion as uncertain rather than guaranteeing credit.
+   Fantasy
    tournamentId is not a Polemica competition_id: use the series' explicit polemicaCompetitionId
    for POLEMICA_COMPETITION. For STANDALONE use roster polemicaUserId values directly in player
    research; no matching competition is required. Never guess an external ID. For lineup
@@ -18,19 +27,25 @@ Perform one bounded hourly turn.
    already-retained cards in the target league need no additional reservation. Call
    fantasy_validate_team for a proposed lineup before sealing/deciding. Fix reported issues and
    resolve required facts listed as unchecked; passesObservedChecks alone is not full eligibility.
-   the preview is advisory and does not reserve cards or replace the backend's final validation.
+   The preview is advisory and does not reserve cards or replace the backend's final validation.
 3. SEAL the evidence. Use only SEAL's numeric snapshotId for the decision; the collectionId is not
    evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
 4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.
 5. DECIDE the best legal action using only the sealed evidence, derived Compute results, and relevant prior memory. Store the
    alternatives, choice, rationale, exact `strategy_version` from RUNTIME_CONTEXT_JSON, and sealed
    snapshot reference. Include every Compute result used in `computation_ids`. Record a decision even
-   when the choice is a no-op.
+   when the choice is a no-op. Explain how the choice advances final periodic rank, using expected
+   eligible points as a proxy where rank impact is unknown. Compare it against the best available
+   MAIN lineup opportunity and the opportunity cost of spending currency or reserving card uses.
+   If a useful MAIN submission is deferred, state the reason and next deadline explicitly.
 6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Invoke the chosen Fantasy
    write with this run_id, the recorded decision_id, and one fresh UUID operation_id; Fantasy MCP
    creates the durable intent before sending. There is no separate Memory intent tool. Then perform
    mandatory read-back. Never make a second send to resolve ambiguity.
-7. Record the verified result or the reason for a no-op. Respect tool-call and time bounds.
+7. Record the verified result or the reason for a no-op, the period ID and observed rating baseline,
+   and the next useful opportunity/deadline. Preserve this in durable decision/outcome memory,
+   not just final chat text. Rating contributions can lag until series finalization; do not claim
+   a rank improvement from a pack purchase or team submission. Respect tool-call and time bounds.
 
 When marketplace writes are in the runtime allowlist, actively consider buying, listing, repricing,
 and cancelling listings using the ordinary game rules. Compare buying a known card, opening a pack,

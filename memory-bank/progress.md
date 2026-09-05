@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-05 — Explicit agent sporting objective:** periodic final rank is primary; MAIN points/participation and goal-linked economy decisions replace aimless accumulation. Versioned persistent prompts deployed, 210 runtime tests pass.
+
 - [x] **2026-09-05 — Developer feedback deployed:** `7c9acba`, strategy v10, healthy production contracts and successful free-pack STANDALONE canary; 209 runtime tests green, no open intents, hourly timer active.
 
 - [x] **2026-09-05 — Developer feedback implementation:** safe team rejection diagnostics, reservation-aware advisory validation, explicit analytics modes, and canonical external research identity fields implemented with tests; full 7/30-day sales metrics intentionally deferred (latest-ten sales already available).
