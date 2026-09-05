@@ -61,8 +61,9 @@ COMPUTE_READ_TOOLS = ("compute_list_operations", "compute_get_result")
 MEMORY_TOOLS = (
     "start_run", "finish_run", "get_open_intents", "get_relevant_memory", "record_decision",
     "record_outcome", "store_raw_payload", "store_derived_features", "record_intervention",
+    "read_developer_notes", "append_developer_note",
 )
-MEMORY_READ_TOOLS = ("get_open_intents", "get_relevant_memory")
+MEMORY_READ_TOOLS = ("get_open_intents", "get_relevant_memory", "read_developer_notes")
 
 # Kept in one auditable registry. Names are resolved against the Fantasy handler at startup.
 FANTASY_READ_TOOLS = (

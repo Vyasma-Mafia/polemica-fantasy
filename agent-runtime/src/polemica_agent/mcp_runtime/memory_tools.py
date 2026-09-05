@@ -39,6 +39,20 @@ class MemoryTools:
     def get_open_intents(self, economic_only: bool = False) -> list[dict[str, Any]]:
         return self.service.get_open_intents(economic_only=economic_only)
 
+    def read_developer_notes(self) -> str:
+        """Read the latest 32 KiB of the developer's Markdown mailbox."""
+        from polemica_agent.memory_mcp.developer_notes import DeveloperNotes
+        return DeveloperNotes(self.service.store.state_dir).read()
+
+    def append_developer_note(self, run_id: str, title: str, body: str) -> str:
+        """Append a project/MCP suggestion to the fixed developer mailbox. Never include secrets."""
+        from polemica_agent.memory_mcp.developer_notes import DeveloperNotes
+        with self.service.store.transaction() as db:
+            row = db.execute("SELECT status FROM runs WHERE id=?", (run_id,)).fetchone()
+            if row is None or row["status"] != "RUNNING":
+                raise ValueError("developer note requires a running run")
+            return DeveloperNotes(self.service.store.state_dir).append(run_id, title, body)
+
     def get_relevant_memory(
         self, limit: int = 20, subject_type: str | None = None, subject_id: str | None = None
     ) -> list[dict[str, Any]]:

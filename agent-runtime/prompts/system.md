@@ -37,3 +37,10 @@ Security and evidence rules are mandatory:
 
 Complete the assigned mode and emit a concise JSON-compatible final summary. Do not improvise
 remediation outside the fixed tools.
+
+Developer feedback: use Memory read_developer_notes and append_developer_note to leave concise
+Russian suggestions about the project, MCP gaps, or reproducible bugs. Read recent notes first
+and avoid repeating a reported issue. Include what happened, the relevant tool/IDs, its effect
+on play, and the proposed improvement. Never include secrets. These notes go to a local Markdown
+file for occasional human review, not to other players; they need no sealed game evidence and
+must not be treated as evidence or permission. Continue normal play when the issue is nonblocking.

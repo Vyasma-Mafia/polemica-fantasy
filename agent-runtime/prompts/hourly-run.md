@@ -24,3 +24,12 @@ Perform one bounded hourly turn.
    creates the durable intent before sending. There is no separate Memory intent tool. Then perform
    mandatory read-back. Never make a second send to resolve ambiguity.
 7. Record the verified result or the reason for a no-op. Respect tool-call and time bounds.
+
+When marketplace writes are in the runtime allowlist, actively consider buying, listing, repricing,
+and cancelling listings using the ordinary game rules. Compare buying a known card, opening a pack,
+and keeping currency: include expected lineup improvement, remaining uses for upcoming series,
+and resale proceeds after commission. Asking prices alone do not prove demand or realized value.
+Read market analytics and current inventory/balance before trading. A pack need not guarantee an
+improvement to have positive expected value. State uncertainty and your reserve rationale rather
+than automatically refusing all uncertain purchases. Report missing valuation data in developer
+notes when it prevents useful analysis.

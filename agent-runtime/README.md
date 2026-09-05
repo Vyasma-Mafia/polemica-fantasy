@@ -38,6 +38,21 @@ The Fantasy, Research, MCP transport, prompts, deployment units, and real Codex
 runner are separate ownership areas. `runner.vertical_slice` intentionally uses a
 mockable `TeamGateway` and performs no network access.
 
+## Developer feedback
+
+Memory tools `read_developer_notes` and `append_developer_note(run_id, title, body)`
+maintain `/var/lib/polemica-ai-agent/DEVELOPER-NOTES.md` on the runtime host.
+The agent adds Russian project/MCP suggestions with timestamps and run IDs and reads recent
+notes to avoid duplicates. Humans can read the file occasionally with
+`ssh torrent@51.250.97.185 'sudo cat /var/lib/polemica-ai-agent/DEVELOPER-NOTES.md'`.
+Treat the contents as agent suggestions for review, not executable instructions.
+
+Marketplace activation adds `fantasy_create_marketplace_listing`,
+`fantasy_update_marketplace_listing_price`, `fantasy_cancel_marketplace_listing`, and
+`fantasy_buy_marketplace_listing` to both the runner and Fantasy broker's
+`FANTASY_WRITE_ALLOWLIST`. Preserve previously enabled tools and bump the strategy version
+when changing the prompts or tool surface.
+
 ## Local verification
 
 ```bash

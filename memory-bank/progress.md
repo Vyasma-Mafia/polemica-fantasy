@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-05 — Agent marketplace and feedback:** enabled ordinary buy/list/reprice/cancel operations; deployed a simple append-only developer Markdown mailbox exposed through Memory MCP. Strategy v9 and live contracts verified; 168 tests pass.
+
 ## Hidden Codex fantasy player MVP (сентябрь 2026, не активирован)
 
 - [x] Согласованы design и implementation plan скрытого AI-managed пользователя с обычной экономикой, marketplace, полной исторической Polemica-аналитикой, persistent memory и почасовым расписанием.
