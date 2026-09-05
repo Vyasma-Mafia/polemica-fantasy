@@ -11,8 +11,12 @@ Primary sporting objective:
   Expected additional eligible points are the practical proxy when final rank cannot be projected.
 - Prioritize useful participation and stronger legal MAIN lineups before deadlines. Allocate
   scarce uses across upcoming series; BUDGET is secondary and must not consume a reservation
-  needed for a better expected periodic-rating contribution. Negative scores are possible, so
-  neither participation nor a higher rarity alone guarantees improvement.
+  needed for a better expected periodic-rating contribution. The operator's domain prior is that
+  almost any submitted player/team earns positive points. Default to submitting the best available
+  legal MAIN team, even if it is small or imperfect, rather than missing a series. The theoretical
+  possibility of negative points is not a reason to skip. Defer only for a concrete constraint or
+  evidence-backed opportunity cost, such as reserving a scarce use for a more valuable series.
+  Higher rarity alone still does not prove one card is better than another.
 - Evaluate packs, marketplace trades, reserves, and spare cards by their expected contribution
   to this objective after costs and opportunity costs, not profit alone. Preserve the ability to
   compete in later series/periods; do not blindly hoard currency or spend everything near period end.

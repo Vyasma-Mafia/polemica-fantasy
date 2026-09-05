@@ -37,7 +37,10 @@ Perform one bounded hourly turn.
    when the choice is a no-op. Explain how the choice advances final periodic rank, using expected
    eligible points as a proxy where rank impact is unknown. Compare it against the best available
    MAIN lineup opportunity and the opportunity cost of spending currency or reserving card uses.
-   If a useful MAIN submission is deferred, state the reason and next deadline explicitly.
+   Default to the best available legal MAIN submission before its deadline, not a no-op while
+   waiting for an ideal lineup. A small team is preferable to absence when allowed by league rules.
+   Do not skip merely because a negative score is theoretically possible. If a useful MAIN
+   submission is deferred, state the concrete constraint/opportunity cost and next deadline explicitly.
 6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Invoke the chosen Fantasy
    write with this run_id, the recorded decision_id, and one fresh UUID operation_id; Fantasy MCP
    creates the durable intent before sending. There is no separate Memory intent tool. Then perform

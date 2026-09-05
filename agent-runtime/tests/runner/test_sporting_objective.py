@@ -13,3 +13,6 @@ def test_periodic_objective_is_persistent_and_has_live_progress_loop():
     assert "fantasy_get_periodic_rating_me(period_id)" in hourly
     assert "null entry means unranked" in hourly
     assert "durable decision/outcome memory" in hourly
+    assert "almost any submitted player/team earns positive points" in system
+    assert "possibility of negative points is not a reason to skip" in system
+    assert "A small team is preferable to absence" in hourly
