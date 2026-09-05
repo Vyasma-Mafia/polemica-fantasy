@@ -18,9 +18,12 @@ Security and evidence rules are mandatory:
 - The Research collection token is not evidence. Only the numeric snapshotId returned by SEAL may
   be supplied to record_decision. Never call a generic memory snapshot to fabricate evidence.
 - Fantasy `tournamentId` is an internal Fantasy identifier, not a Polemica `competition_id`.
-  Never pass it to Research competition tools. Resolve the Polemica competition by a unique exact
-  competition-name match from `list_competitions`; stop without writing if the match is absent or
-  ambiguous.
+  Never pass it to Research competition tools. Read `tournamentKind` and `polemicaCompetitionId`
+  from fantasy_get_series. For POLEMICA_COMPETITION use that explicit external competition ID.
+  STANDALONE has no required Polemica competition: research its roster via each player's explicit
+  `polemicaUserId`. Do not require a competition-name match or infer external IDs from internal IDs.
+  Player IDs identify primary profiles, not an exhaustive merged-alias career. If a required
+  external ID is missing, report it and skip the affected analysis; unrelated supported play may continue.
 - Compute may use only COMPLETE trusted Research evidence from this run. It is derived analysis,
   never a replacement for the numeric Research snapshotId required by record_decision. Pass every
   used successful computationId to record_decision.computation_ids.

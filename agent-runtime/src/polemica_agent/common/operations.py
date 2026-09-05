@@ -19,9 +19,34 @@ class IntentState(str, enum.Enum):
 class DeterministicUpstreamError(RuntimeError):
     """An upstream rejection known not to have committed the requested write."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self, code: str, message: str, *, business_error_code: str | None = None,
+        details: dict[str, int] | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
+        self.business_error_code = business_error_code
+        self.details = details or {}
+
+
+# Only these fixed templates may cross the audit/MCP error boundary.
+BUSINESS_ERROR_MESSAGES = {
+    "CARD_USES_RESERVED": "Card uses are already reserved by other active leagues.",
+    "CARD_USES_EXHAUSTED": "Card has no remaining uses.",
+    "TEAM_VALUE_CAP_EXCEEDED": "Team value exceeds the league cap.",
+    "TEAM_SIZE_INVALID": "Team size is outside the league limits.",
+    "TEAM_DUPLICATE_CARD": "Duplicate cards are not allowed in a team.",
+    "TEAM_DUPLICATE_PLAYER": "Only one card per player is allowed in a team.",
+    "CARD_NOT_OWNED": "One or more cards are invalid or not owned by this user.",
+    "CARD_NOT_FOUND": "User card was not found.",
+    "CARD_LISTED_ON_MARKETPLACE": "A selected card is listed on the marketplace.",
+    "CARD_NOT_IN_ROSTER": "A selected card's player is absent from the series roster.",
+    "TEAM_LEGENDARY_LIMIT_EXCEEDED": "Team exceeds the legendary card limit.",
+    "TEAM_DEADLINE_PASSED": "The team submission deadline has passed.",
+    "SERIES_FINALIZED": "The series is finalized.",
+    "TEAM_ALREADY_EXISTS": "A team has already been submitted for this series league.",
+    "TEAM_NOT_FOUND": "No team exists for this series league.",
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -190,6 +215,14 @@ def _safe_exception(exc: Exception) -> dict[str, Any]:
     code = getattr(exc, "code", None)
     if isinstance(code, str) and code:
         result["errorCode"] = code
+    if isinstance(exc, DeterministicUpstreamError) and exc.business_error_code in BUSINESS_ERROR_MESSAGES:
+        result["businessErrorCode"] = exc.business_error_code
+        result["businessErrorMessage"] = BUSINESS_ERROR_MESSAGES[exc.business_error_code]
+        allowed_keys = {"userCardId", "usesRemaining", "reservedLeagueCount", "teamValue", "valueCap", "minTeamSize", "maxTeamSize", "maxLegendary"}
+        result["details"] = {
+            key: value for key, value in exc.details.items()
+            if key in allowed_keys and type(value) is int and 0 <= value <= 2**63 - 1
+        }
     uncertain = getattr(exc, "uncertain", None)
     if isinstance(uncertain, bool):
         result["uncertain"] = uncertain

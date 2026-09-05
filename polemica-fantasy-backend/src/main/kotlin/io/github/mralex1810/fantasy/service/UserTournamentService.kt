@@ -150,6 +150,7 @@ class UserTournamentService(
             SeriesPlayerEntryDto(
                 tournamentPlayerId = tp.id!!,
                 fantasyPlayerId = fp.id!!,
+                polemicaUserId = fp.polemicaUserId,
                 nickname = fp.nickname,
                 photoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             )

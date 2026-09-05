@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-05 — Developer feedback implementation:** safe team rejection diagnostics, reservation-aware advisory validation, explicit analytics modes, and canonical external research identity fields implemented with tests; full 7/30-day sales metrics intentionally deferred (latest-ten sales already available).
+
 - [x] **2026-09-05 — Agent marketplace and feedback:** enabled ordinary buy/list/reprice/cancel operations; deployed a simple append-only developer Markdown mailbox exposed through Memory MCP. Strategy v9 and live contracts verified; 168 tests pass.
 
 ## Hidden Codex fantasy player MVP (сентябрь 2026, не активирован)

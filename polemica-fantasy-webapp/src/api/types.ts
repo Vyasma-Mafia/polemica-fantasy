@@ -356,6 +356,8 @@ export interface ActiveSeries {
 export interface SeriesPlayerEntry {
   tournamentPlayerId: number
   fantasyPlayerId: number
+  /** Canonical primary Polemica profile ID, distinct from Fantasy IDs. */
+  polemicaUserId: number
   nickname: string
   photoUrl: string | null
 }
@@ -363,6 +365,8 @@ export interface SeriesPlayerEntry {
 export interface UserSeriesDetail {
   id: number
   tournamentId: number
+  tournamentKind: TournamentKind
+  polemicaCompetitionId: number | null
   name: string
   publicNumber: number
   namePrefix: string | null

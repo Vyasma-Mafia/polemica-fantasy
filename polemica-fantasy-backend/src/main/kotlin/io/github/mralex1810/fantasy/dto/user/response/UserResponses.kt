@@ -88,6 +88,8 @@ data class ActiveSeriesDto(
 data class SeriesPlayerEntryDto(
     val tournamentPlayerId: Long,
     val fantasyPlayerId: Long,
+    /** Canonical primary Polemica profile ID, distinct from Fantasy IDs. */
+    val polemicaUserId: Long,
     val nickname: String,
     val photoUrl: String?,
 )
@@ -108,6 +110,8 @@ data class SeriesGameEntryDto(
 data class UserSeriesDetailDto(
     val id: Long,
     val tournamentId: Long,
+    val tournamentKind: TournamentKind,
+    val polemicaCompetitionId: Long?,
     val name: String,
     val publicNumber: Long,
     val namePrefix: String?,

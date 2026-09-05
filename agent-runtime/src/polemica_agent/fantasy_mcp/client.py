@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import re
 import socket
 import urllib.error
 import urllib.parse
@@ -162,7 +163,10 @@ class FantasyHttpClient:
         if response.status in AMBIGUOUS_HTTP_STATUSES:
             raise FantasyApiError(response.status, code, message, uncertain=True)
         if 400 <= response.status < 500:
-            raise DeterministicUpstreamError(code, message)
+            business_code, details = _team_business_error(message) if (
+                response.status in {400, 404, 409} and path.endswith("/fantasy-team")
+            ) else (None, {})
+            raise DeterministicUpstreamError(code, message, business_error_code=business_code, details=details)
         raise FantasyApiError(response.status, code, message, uncertain=True)
 
 
@@ -212,3 +216,37 @@ def _error_message(body: Any, status: int) -> str:
     if isinstance(body, str):
         return body[:MAX_ERROR_LENGTH]
     return f"Fantasy API returned HTTP {status}"
+
+
+_TEAM_ERROR_PATTERNS = (
+    (r"Card (?P<userCardId>[0-9]{1,19}) has only (?P<usesRemaining>[0-9]{1,19}) uses and is already reserved in (?P<reservedLeagueCount>[0-9]{1,19}) active league\(s\)", "CARD_USES_RESERVED"),
+    (r"Card (?P<userCardId>[0-9]{1,19}) has no remaining uses", "CARD_USES_EXHAUSTED"),
+    (r"Team value (?P<teamValue>[0-9]{1,19}) exceeds league cap (?P<valueCap>[0-9]{1,19})", "TEAM_VALUE_CAP_EXCEEDED"),
+    (r"Team size must be between (?P<minTeamSize>[0-9]{1,19}) and (?P<maxTeamSize>[0-9]{1,19}) cards", "TEAM_SIZE_INVALID"),
+    (r"Maximum (?P<maxLegendary>[0-9]{1,19}) LEGENDARY card\(s\) allowed per fantasy team", "TEAM_LEGENDARY_LIMIT_EXCEEDED"),
+    (r"Unknown user card id (?P<userCardId>[0-9]{1,19})", "CARD_NOT_FOUND"),
+    (r"Card (?P<userCardId>[0-9]{1,19}) is for a player who is not in this series roster", "CARD_NOT_IN_ROSTER"),
+)
+_TEAM_EXACT_ERRORS = {
+    "Team submission deadline has passed": "TEAM_DEADLINE_PASSED",
+    "Duplicate user cards in team are not allowed": "TEAM_DUPLICATE_CARD",
+    "Invalid or foreign user cards": "CARD_NOT_OWNED",
+    "Cannot use a card that is listed on the marketplace": "CARD_LISTED_ON_MARKETPLACE",
+    "Team cannot include more than one card per player": "TEAM_DUPLICATE_PLAYER",
+    "Series is finalized": "SERIES_FINALIZED",
+    "Fantasy team already submitted for this series": "TEAM_ALREADY_EXISTS",
+    "No fantasy team for this series": "TEAM_NOT_FOUND",
+}
+
+
+def _team_business_error(message: str) -> tuple[str | None, dict[str, int]]:
+    """Match backend team validation only; never forward free-form upstream text."""
+    if message in _TEAM_EXACT_ERRORS:
+        return _TEAM_EXACT_ERRORS[message], {}
+    for pattern, code in _TEAM_ERROR_PATTERNS:
+        match = re.fullmatch(pattern, message)
+        if match:
+            details = {key: int(value) for key, value in match.groupdict().items()}
+            if all(value <= 2**63 - 1 for value in details.values()):
+                return code, details
+    return None, {}

@@ -105,6 +105,16 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
             read_only=True,
         ),
         spec("fantasy_get_my_teams", "Read teams owned by the authenticated player.", service.get_my_teams, read_only=True),
+        spec(
+            "fantasy_validate_team",
+            "Advisory read-only checks of proposed cards for a series and league: global uses reservations, "
+            "ownership/roster, duplicates, remaining uses, marketplace listings, size/value/legendary limits "
+            "and deadline where data is available. Returns issues and unchecked fields. Retained cards in "
+            "the current league need no new reservation. Reads are non-atomic; submission remains authoritative.",
+            service.validate_team,
+            {"series_id": integer, "user_card_ids": ids, "league_code": string},
+            ("series_id", "user_card_ids"), read_only=True,
+        ),
         spec("fantasy_list_open_series", "List series currently open for team submission.", service.list_open_series, read_only=True),
         spec("fantasy_get_series", "Read one series.", service.get_series, {"series_id": integer}, ("series_id",), read_only=True),
         spec("fantasy_list_series_leagues", "List leagues for one series.", service.list_series_leagues, {"series_id": integer}, ("series_id",), read_only=True),
@@ -137,7 +147,12 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
         ),
         spec(
             "fantasy_get_marketplace_analytics",
-            "Read marketplace summary or player-rarity detail analytics.",
+            'Use exactly one mode: {"fantasy_player_ids":[123]} returns active listing counts '
+            'and minimum asking prices only; {"fantasy_player_id":123,"rarity":"EPIC"} '
+            'returns active price range, recentSales (up to 10 latest completed sales with price '
+            'and soldAt), and avgSalePrice for that player and rarity. No fixed time window or '
+            'total sales volume is provided. Empty arguments and mixed modes are invalid. '
+            'Use detail to assess realized resale prices; asking prices alone do not prove demand.',
             service.get_marketplace_analytics,
             {"fantasy_player_ids": ids, "fantasy_player_id": integer, "rarity": string},
             read_only=True,

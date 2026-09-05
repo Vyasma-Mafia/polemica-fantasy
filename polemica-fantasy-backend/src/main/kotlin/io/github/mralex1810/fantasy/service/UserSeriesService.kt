@@ -44,6 +44,7 @@ class UserSeriesService(
             SeriesPlayerEntryDto(
                 tournamentPlayerId = tp.id!!,
                 fantasyPlayerId = fp.id!!,
+                polemicaUserId = fp.polemicaUserId,
                 nickname = fp.nickname,
                 photoUrl = imageStorageService.publicObjectUrl(fp.photoUrl),
             )
@@ -59,6 +60,8 @@ class UserSeriesService(
         return UserSeriesDetailDto(
             id = s.id!!,
             tournamentId = s.tournament!!.id!!,
+            tournamentKind = s.tournament!!.kind,
+            polemicaCompetitionId = s.tournament!!.polemicaCompetitionId,
             name = s.name,
             publicNumber = s.publicNumber,
             namePrefix = s.namePrefix,

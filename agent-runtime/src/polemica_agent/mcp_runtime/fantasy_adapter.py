@@ -50,6 +50,17 @@ class FantasyRegistryAdapter:
                     raise ToolError(
                         f"Fantasy API unavailable ({exc.code}; uncertain={uncertain})"
                     ) from exc
+                except ValueError as exc:
+                    if _name == "fantasy_get_marketplace_analytics":
+                        # Constant guidance only: never surface arbitrary upstream exception text.
+                        raise ToolError(
+                            'Invalid analytics arguments. Use exactly one mode: '
+                            '{"fantasy_player_ids":[123]} for active asks, or '
+                            '{"fantasy_player_id":123,"rarity":"EPIC"} for recent completed sales. '
+                            'IDs must be positive; rarity is COMMON, RARE, EPIC, or LEGENDARY. '
+                            'Do not mix modes or omit both.'
+                        ) from exc
+                    raise
 
             call.__name__ = name
             call.__doc__ = description["description"]

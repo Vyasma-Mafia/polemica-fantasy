@@ -56,6 +56,93 @@ class FantasyService:
     def list_store_packs(self) -> ReadEnvelope:
         return self._read("/api/v1/store/packs")
 
+    def validate_team(self, series_id: int, user_card_ids: Sequence[int], league_code: str = "MAIN") -> ReadEnvelope:
+        """Advisory checks from fresh user API reads; never reserves cards or submits a team."""
+        import datetime as dt
+
+        series_id = _positive_id(series_id, "series_id")
+        league_code = _league(league_code)
+        ids = [_positive_id(value, "user_card_ids") for value in user_card_ids]
+        cards = self.get_my_cards(series_id=series_id).data
+        teams = self.get_my_teams().data
+        leagues = self.list_series_leagues(series_id).data
+        series = self.get_series(series_id).data
+        issues: list[dict[str, Any]] = []
+        unchecked: list[str] = []
+        if not isinstance(cards, list) or not isinstance(teams, list) or not isinstance(leagues, list) or not isinstance(series, dict):
+            raise ValueError("Team validation requires complete card, team, league, and series responses")
+        current = next((team for team in teams if team.get("seriesId") == series_id and team.get("leagueCode") == league_code), None)
+        retained = {slot.get("userCardId") for slot in (current or {}).get("slots", [])}
+        league = next((item for item in leagues if item.get("code") == league_code), None)
+        if league is None:
+            issues.append({"code": "LEAGUE_NOT_FOUND"})
+            league = {}
+        if len(set(ids)) != len(ids):
+            issues.append({"code": "DUPLICATE_CARD"})
+        for field, violates in (("minTeamSize", lambda limit: len(ids) < limit), ("maxTeamSize", lambda limit: len(ids) > limit)):
+            if isinstance(league.get(field), int):
+                if violates(league[field]):
+                    issues.append({"code": "TEAM_SIZE", "constraint": field, "limit": league[field]})
+            else:
+                unchecked.append(field)
+        by_id = {card.get("id"): card for card in cards}
+        selected = [by_id[card_id] for card_id in ids if card_id in by_id]
+        roster = series.get("players")
+        roster_ids = {player.get("fantasyPlayerId") for player in roster} if isinstance(roster, list) else None
+        if roster_ids is None:
+            unchecked.append("seriesRoster")
+        player_ids = []
+        for card_id in ids:
+            card = by_id.get(card_id)
+            if card is None:
+                issues.append({"code": "CARD_NOT_OWNED_OR_NOT_IN_SERIES", "userCardId": card_id})
+                continue
+            player_id = card.get("fantasyPlayerId")
+            if player_id is None:
+                unchecked.append(f"fantasyPlayerId:{card_id}")
+            else:
+                player_ids.append(player_id)
+                if roster_ids is not None and player_id not in roster_ids:
+                    issues.append({"code": "PLAYER_NOT_IN_SERIES", "userCardId": card_id})
+            if isinstance(card.get("usesRemaining"), int):
+                if card["usesRemaining"] <= 0:
+                    issues.append({"code": "NO_REMAINING_USES", "userCardId": card_id})
+            else:
+                unchecked.append(f"usesRemaining:{card_id}")
+            if card.get("activeMarketplaceListing") is not None:
+                issues.append({"code": "CARD_LISTED_FOR_SALE", "userCardId": card_id})
+            elif "activeMarketplaceListing" not in card:
+                unchecked.append(f"marketplaceListing:{card_id}")
+            if card_id not in retained:
+                if card.get("canJoinMoreLeagues") is False:
+                    issues.append({"code": "CARD_USES_ALREADY_RESERVED", "userCardId": card_id})
+                elif card.get("canJoinMoreLeagues") is not True:
+                    unchecked.append(f"globalReservations:{card_id}")
+        if len(set(player_ids)) != len(player_ids):
+            issues.append({"code": "DUPLICATE_PLAYER"})
+        total_value = sum(card["value"] for card in selected) if len(selected) == len(ids) and all(isinstance(card.get("value"), int) for card in selected) else None
+        if "valueCap" not in league or total_value is None:
+            unchecked.append("valueCap")
+        elif league["valueCap"] is not None and total_value > league["valueCap"]:
+            issues.append({"code": "VALUE_CAP_EXCEEDED", "totalValue": total_value, "valueCap": league["valueCap"]})
+        if "maxLegendaryCount" not in league or any("rarity" not in card for card in selected):
+            unchecked.append("maxLegendaryCount")
+        elif league["maxLegendaryCount"] is not None and sum(card.get("rarity") == "LEGENDARY" for card in selected) > league["maxLegendaryCount"]:
+            issues.append({"code": "LEGENDARY_LIMIT_EXCEEDED", "limit": league["maxLegendaryCount"]})
+        try:
+            deadline = dt.datetime.fromisoformat(series["teamDeadline"].replace("Z", "+00:00"))
+            if dt.datetime.now(dt.timezone.utc) > deadline:
+                issues.append({"code": "DEADLINE_PASSED"})
+        except (KeyError, TypeError, ValueError):
+            unchecked.append("teamDeadline")
+        return ReadEnvelope(observed_now(), "fantasy_validate_team", {
+            "seriesId": series_id, "leagueCode": league_code, "userCardIds": ids,
+            "advisory": True, "atomic": False, "issues": issues,
+            "unchecked": sorted(set(unchecked)), "passesObservedChecks": not issues,
+            "totalValue": total_value,
+            "limitations": "Fresh reads are not atomic and do not reserve uses. Retained cards do not require a new league reservation. Backend validation at submission remains authoritative.",
+        })
+
     def list_marketplace(
         self,
         *,
@@ -96,17 +183,27 @@ class FantasyService:
         rarity: str | None = None,
     ) -> ReadEnvelope:
         if fantasy_player_ids is not None:
+            if fantasy_player_id is not None or rarity is not None:
+                raise ValueError(
+                    "Use exactly one analytics mode: fantasy_player_ids for active summary, "
+                    "or fantasy_player_id plus rarity for completed sales detail"
+                )
             if not fantasy_player_ids or len(fantasy_player_ids) > 100:
                 raise ValueError("fantasy_player_ids must contain 1..100 ids")
             return self._read(
                 "/api/v1/marketplace/analytics/summary",
-                {"fantasyPlayerIds": list(fantasy_player_ids)},
+                {"fantasyPlayerIds": [_positive_id(value, "fantasy_player_ids") for value in fantasy_player_ids]},
             )
         if fantasy_player_id is None or rarity is None:
-            raise ValueError("detail analytics requires fantasy_player_id and rarity")
+            raise ValueError(
+                "Provide fantasy_player_ids for active summary, "
+                "or both fantasy_player_id and rarity for completed sales detail"
+            )
+        if rarity not in ("COMMON", "RARE", "EPIC", "LEGENDARY"):
+            raise ValueError("rarity must be COMMON, RARE, EPIC, or LEGENDARY")
         return self._read(
             "/api/v1/marketplace/analytics/detail",
-            {"fantasyPlayerId": fantasy_player_id, "rarity": rarity},
+            {"fantasyPlayerId": _positive_id(fantasy_player_id, "fantasy_player_id"), "rarity": rarity},
         )
 
     def get_my_listings(self) -> ReadEnvelope:
