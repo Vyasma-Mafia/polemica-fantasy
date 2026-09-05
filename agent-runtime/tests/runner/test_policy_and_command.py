@@ -28,6 +28,7 @@ def test_command_is_fresh_read_only_and_has_only_required_mcps(tmp_path: Path) -
     for kind in MCP_SERVERS:
         assert f"mcp_servers.{kind}.required=true" in command
         assert f'mcp_servers.{kind}.url="{urls[kind]}"' in command
+    assert 'mcp_servers.fantasy.tools.fantasy_reconcile_operation.approval_mode="approve"' in command
 
 
 def test_command_exposes_and_preapproves_only_staged_fantasy_writes(tmp_path: Path) -> None:

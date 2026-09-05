@@ -86,9 +86,10 @@ FANTASY_WRITE_TOOLS = (
     "fantasy_select_achievement_reward", "fantasy_save_periodic_reward_draft",
     "fantasy_submit_periodic_reward",
 )
+FANTASY_RECOVERY_TOOLS = ("fantasy_reconcile_operation",)
 
 MCP_SERVERS = {
-    "fantasy": FANTASY_READ_TOOLS + FANTASY_WRITE_TOOLS,
+    "fantasy": FANTASY_READ_TOOLS + FANTASY_RECOVERY_TOOLS + FANTASY_WRITE_TOOLS,
     "research": RESEARCH_TOOLS,
     "compute": COMPUTE_TOOLS,
     "memory": MEMORY_TOOLS,
@@ -139,7 +140,9 @@ def build_server(
         annotations = ToolAnnotations(
             readOnlyHint=is_read,
             destructiveHint=(kind == "fantasy" and name in FANTASY_WRITE_TOOLS),
-            idempotentHint=(name == "fantasy_buy_pack" or kind == "compute"),
+            idempotentHint=(
+                name == "fantasy_buy_pack" or name in FANTASY_RECOVERY_TOOLS or kind == "compute"
+            ),
             openWorldHint=(kind == "fantasy" and name in FANTASY_WRITE_TOOLS),
         )
         server.tool(name=name, annotations=annotations)(method)

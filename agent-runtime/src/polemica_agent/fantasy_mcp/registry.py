@@ -87,8 +87,11 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
         required: tuple[str, ...] = (),
         *,
         read_only: bool,
+        requires_write_context: bool | None = None,
     ) -> ToolSpec:
-        if not read_only:
+        if requires_write_context is None:
+            requires_write_context = not read_only
+        if requires_write_context:
             required = tuple(dict.fromkeys(("run_id", "decision_id", "operation_id", *required)))
         return ToolSpec(name, description, schema(properties, required), read_only, handler)
 
@@ -189,6 +192,15 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
             {**write_common, "series_id": integer, "league_code": string, "user_card_ids": card_ids},
             ("run_id", "operation_id", "series_id", "league_code", "user_card_ids"),
             read_only=False,
+        ),
+        spec(
+            "fantasy_reconcile_operation",
+            "Read back and durably resolve an existing ambiguous operation without resending it.",
+            service.reconcile_operation,
+            {"operation_id": string},
+            ("operation_id",),
+            read_only=False,
+            requires_write_context=False,
         ),
         spec("fantasy_buy_pack", "Buy a pack with the operation id as its idempotency key.", service.buy_pack, {**write_common, "pack_id": integer}, ("run_id", "operation_id", "pack_id"), read_only=False),
         spec(

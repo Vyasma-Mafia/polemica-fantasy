@@ -162,6 +162,34 @@ class FantasyService:
     def update_team(self, *, run_id: str, decision_id: int, operation_id: str, series_id: int, league_code: str, user_card_ids: Sequence[int]) -> OperationEnvelope:
         return self._team_write("PUT", run_id, decision_id, operation_id, series_id, league_code, user_card_ids)
 
+    def reconcile_operation(self, *, operation_id: str) -> OperationEnvelope:
+        """Resolve an existing ambiguous operation by typed read-back only; never resend."""
+        operation_id = _operation_id(operation_id)
+        intent = self.store.get_intent(operation_id)
+        if intent is None:
+            raise KeyError(operation_id)
+        kind = intent["kind"]
+        if kind != "TEAM_WRITE":
+            raise ValueError(f"reconciliation is not implemented for operation kind {kind}")
+        try:
+            series_text, league = str(intent["target_id"]).split(":", 1)
+            series_id = _positive_id(int(series_text), "series_id")
+            league = _league(league)
+            request = self.store.load_blob(intent["request_hash"], intent["request_path"])
+            expected = [
+                _positive_id(card, "user_card_id")
+                for card in _mapping(request).get("userCardIds", [])
+            ]
+        except (TypeError, ValueError) as exc:
+            raise ValueError("stored TEAM_WRITE intent is malformed") from exc
+        if not expected:
+            raise ValueError("stored TEAM_WRITE intent has no cards")
+        result = self.operations.reconcile(
+            operation_id,
+            lambda: self._team_reconciliation_readback(series_id, league, expected),
+        )
+        return OperationEnvelope.from_result(result)
+
     def _team_write(self, method: str, run_id: str, decision_id: int, operation_id: str, series_id: int, league_code: str, user_card_ids: Sequence[int]) -> OperationEnvelope:
         sid, league = _positive_id(series_id, "series_id"), _league(league_code)
         cards = [_positive_id(card, "user_card_id") for card in user_card_ids]
@@ -365,6 +393,25 @@ class FantasyService:
         actual = [slot.get("userCardId") for slot in _list(_mapping(team).get("slots"))]
         exact = actual == expected
         return _resolution(exact, {"team": team}, "EXACT_TEAM" if exact else "TEAM_MISMATCH")
+
+    def _team_reconciliation_readback(
+        self, series_id: int, league: str, expected: list[int]
+    ) -> ReadBackResolution:
+        team = self._get_or_none(
+            f"/api/v1/me/fantasy-teams/{series_id}", {"leagueCode": league}
+        )
+        if team is None:
+            return ReadBackResolution(
+                IntentState.FAILED,
+                {"team": None},
+                {"readBackCompleted": True, "matchesExpectedState": False, "reason": "TEAM_ABSENT"},
+            )
+        actual = [slot.get("userCardId") for slot in _list(_mapping(team).get("slots"))]
+        return _resolution(
+            actual == expected,
+            {"team": team},
+            "EXACT_TEAM" if actual == expected else "TEAM_MISMATCH",
+        )
 
     def _pack_readback(self, pack_id: int, before_pack: Mapping[str, Any] | None, before_cards: list[Mapping[str, Any]]) -> ReadBackResolution:
         current = _find(_list(self.list_store_packs().data), "id", pack_id)

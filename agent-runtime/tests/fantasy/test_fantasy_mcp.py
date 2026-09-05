@@ -314,6 +314,31 @@ def test_timeout_is_reconciled_and_duplicate_never_resends(tmp_path: Path, commi
         store.close()
 
 
+def test_recovery_tool_resolves_absent_timed_out_team_without_resend(tmp_path: Path) -> None:
+    service, transport, store = service_with_run(tmp_path)
+    transport.team_timeout = "before"
+    try:
+        first = service.create_team(
+            run_id="run", decision_id=1, operation_id="recover-team",
+            series_id=12, league_code="MAIN", user_card_ids=[1],
+        )
+        assert first.outcome == "UNKNOWN"
+        posts_before = len([
+            call for call in transport.calls
+            if call["method"] == "POST" and call["path"].endswith("/fantasy-team")
+        ])
+        recovered = service.reconcile_operation(operation_id="recover-team")
+        assert recovered.outcome == "FAILED"
+        assert recovered.verification["reason"] == "TEAM_ABSENT"
+        assert recovered.write_attempted is False
+        assert len([
+            call for call in transport.calls
+            if call["method"] == "POST" and call["path"].endswith("/fantasy-team")
+        ]) == posts_before
+    finally:
+        store.close()
+
+
 def test_unknown_economic_write_blocks_following_economic_send(tmp_path: Path) -> None:
     service, transport, store = service_with_run(tmp_path)
     transport.pack_timeout_before_commit = True
@@ -343,7 +368,7 @@ def test_registry_is_closed_typed_and_has_no_generic_or_foreign_tools(tmp_path: 
         assert not any(hasattr(service.client, name) for name in ("get", "post", "put", "patch", "delete", "request"))
         registry = build_tool_registry(service)
         names = registry.names()
-        assert len(names) == 37
+        assert len(names) == 38
         assert len(names) == len(set(names))
         assert all(name.startswith("fantasy_") for name in names)
         forbidden = ("request", "http", "url", "admin", "telegram", "foreign", "other_user")

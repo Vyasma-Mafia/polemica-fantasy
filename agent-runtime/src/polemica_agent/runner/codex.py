@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from polemica_agent.mcp_runtime.registry import CODEX_MCP_TOOLS, FANTASY_WRITE_TOOLS
+from polemica_agent.mcp_runtime.registry import (
+    CODEX_MCP_TOOLS, FANTASY_RECOVERY_TOOLS, FANTASY_WRITE_TOOLS,
+)
 
 from .logging import RedactedJsonlLog
 
@@ -63,6 +65,11 @@ def build_command(
         command.extend(("--config", f"mcp_servers.{kind}.enabled_tools=[{tools}]"))
         if kind == "fantasy":
             for name in fantasy_write_allowlist:
+                command.extend((
+                    "--config",
+                    f'mcp_servers.fantasy.tools.{name}.approval_mode="approve"',
+                ))
+            for name in FANTASY_RECOVERY_TOOLS:
                 command.extend((
                     "--config",
                     f'mcp_servers.fantasy.tools.{name}.approval_mode="approve"',
