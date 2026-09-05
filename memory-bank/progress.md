@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-05 — Developer feedback deployed:** `7c9acba`, strategy v10, healthy production contracts and successful free-pack STANDALONE canary; 209 runtime tests green, no open intents, hourly timer active.
+
 - [x] **2026-09-05 — Developer feedback implementation:** safe team rejection diagnostics, reservation-aware advisory validation, explicit analytics modes, and canonical external research identity fields implemented with tests; full 7/30-day sales metrics intentionally deferred (latest-ten sales already available).
 
 - [x] **2026-09-05 — Agent marketplace and feedback:** enabled ordinary buy/list/reprice/cancel operations; deployed a simple append-only developer Markdown mailbox exposed through Memory MCP. Strategy v9 and live contracts verified; 168 tests pass.
