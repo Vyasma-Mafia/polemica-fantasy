@@ -1,5 +1,9 @@
 # Progress
 
+- [x] **2026-09-06 — Reward-selection production canary:** agent autonomously claimed the two pending COMMON cards (Чаплин / ГМЖ, 153926/153927); exact selected receipt and ownership verified independently, zero unresolved intents. Whole v16 run still in progress at this checkpoint.
+
+- [x] **2026-09-06 — MCP recovery deployed:** `ae2a97c`, strategy v16; backend health, schema, exact registries and preserved permissions verified. Old achievement intent recovered without repeating its write; zero unresolved intents before control run, hourly timer restored. Control run started; its reward selection is not yet verified.
+
 - [x] **2026-09-06 — MCP recovery implementation:** claim-state API, pending/selected achievement recovery, durable response/context evidence, all 17 write dispatch paths, exact pack/merge selection proof, honest failed-run status, and Research prevalidation. 254 runtime tests pass; backend unit/compile and TMA build pass. Full Testcontainers execution is blocked by unavailable Docker; production verification pending.
 
 - [x] **2026-09-05 — Explicit agent sporting objective:** periodic final rank is primary; MAIN points/participation and goal-linked economy decisions replace aimless accumulation. Versioned persistent prompts deployed, 210 runtime tests pass.
