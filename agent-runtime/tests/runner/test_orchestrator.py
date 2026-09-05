@@ -63,3 +63,28 @@ def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
     assert "[REDACTED]" in log_text
     assert seen["status"] == "SUCCEEDED"
     assert seen["require_decision"] is True
+
+
+def test_reconciliation_run_does_not_require_a_new_decision(tmp_path: Path) -> None:
+    seen: dict[str, object] = {}
+
+    class Memory:
+        def get_open_intents(self):
+            return [{"operationId": "op", "state": "UNKNOWN"}]
+        def start_run(self, **metadata):
+            return metadata["run_id"]
+        def finish_run(self, run_id, status, summary, *, require_decision=False):
+            seen["status"] = status
+            seen["require_decision"] = require_decision
+        def close(self):
+            pass
+
+    def invoke(_command, _prompt, _log, **_kwargs):
+        return None
+
+    run_once(
+        settings(tmp_path), probe=lambda _urls: None, invoker=invoke,
+        memory_factory=lambda _url: Memory(),
+    )
+    assert seen["status"] == "SUCCEEDED"
+    assert seen["require_decision"] is False

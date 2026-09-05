@@ -112,7 +112,7 @@ def run_once(
                 )
             memory.finish_run(
                 run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents)},
-                require_decision=True,
+                require_decision=not open_intents,
             )
             return run_id
         except CodexTimeout as exc:
