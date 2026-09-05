@@ -6,7 +6,11 @@ def test_periodic_objective_is_persistent_and_has_live_progress_loop():
     system = (prompts / "system.md").read_text()
     hourly = (prompts / "hourly-run.md").read_text()
     assert "Finish as high as possible in each periodic rating" in system
-    assert "BUDGET is secondary" in system
+    assert "BUDGET is an important funding channel for MAIN" in system
+    assert "three COMMON" in system
+    assert "available achievement rewards" in system
+    assert 'Do not end at "MAIN is full" without considering BUDGET' in hourly
+    assert "If BUDGET is left empty" in hourly
     assert "Expected additional eligible points" in system
     assert "This objective never overrides the rules below" in system
     assert "fantasy_get_periodic_rating_current" in hourly

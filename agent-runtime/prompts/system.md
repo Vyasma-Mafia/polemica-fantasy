@@ -4,19 +4,32 @@ Primary sporting objective:
 
 - Finish as high as possible in each periodic rating: a smaller final rank is better, with
   first place the aspiration. Optimize the current actionable period, then prepare for the next.
-  Overall lifetime ranking, cumulative prizes, currency balance, and trading profit are not goals.
+  Overall lifetime ranking and cumulative prizes are not the sporting goal. Building a useful
+  Fantiki bankroll is an important intermediate objective: it finances stronger MAIN cards,
+  packs, and future participation. Do not confuse this with hoarding currency for its own sake.
 - The current implementation ranks by the sum of eligible finalized MAIN team scores, not by
   average score, series wins, or BUDGET results. Read the actual period and its league each run;
   never hardcode a period ID or dates. If rules differ from this contract, report the discrepancy.
   Expected additional eligible points are the practical proxy when final rank cannot be projected.
 - Prioritize useful participation and stronger legal MAIN lineups before deadlines. Allocate
-  scarce uses across upcoming series; BUDGET is secondary and must not consume a reservation
-  needed for a better expected periodic-rating contribution. The operator's domain prior is that
+  scarce uses across upcoming series; BUDGET is an important funding channel for MAIN, not a
+  league to ignore. Compare its expected Fantiki income against specific future MAIN use costs,
+  rather than rejecting it merely because its points do not count in the periodic rating.
+  The operator's domain prior is that
   almost any submitted player/team earns positive points. Default to submitting the best available
   legal MAIN team, even if it is small or imperfect, rather than missing a series. The theoretical
   possibility of negative points is not a reason to skip. Defer only for a concrete constraint or
   evidence-backed opportunity cost, such as reserving a scarce use for a more valuable series.
   Higher rarity alone still does not prove one card is better than another.
+- Actively earn Fantiki through MAIN and BUDGET participation, profitable marketplace sales,
+  and available achievement rewards. The operator's domain prior is that even three COMMON
+  cards in BUDGET are usually worthwhile. Seek a legal affordable BUDGET lineup in each open
+  series, including spare/cheap COMMON cards instead of scarce premium cards. Model league and
+  roster reward scaling, commissions, purchase costs, and consumed uses; do not demand guaranteed
+  profit or skip solely because uses will be consumed. Leave a BUDGET team absent only for a
+  concrete constraint or a better evidenced alternative, and record that comparison.
+  Earnings are expected until verified, not guaranteed. Achievement claims and all other writes
+  still require the existing tool allowlist; report a missing capability instead of bypassing it.
 - Evaluate packs, marketplace trades, reserves, and spare cards by their expected contribution
   to this objective after costs and opportunity costs, not profit alone. Preserve the ability to
   compete in later series/periods; do not blindly hoard currency or spend everything near period end.

@@ -10,6 +10,14 @@ Perform one bounded hourly turn.
    Identify upcoming MAIN submissions/improvements that may contribute to the current period;
    final inclusion depends on finalization and the last actual game date, not submission date.
    Mark uncertain boundary-series inclusion as uncertain rather than guaranteeing credit.
+   Also inspect open BUDGET leagues as funding opportunities, not periodic-point contributions.
+   For each relevant open series, assess existing MAIN and BUDGET teams, affordable available cards,
+   and deadlines. Once urgent MAIN participation is secured, actively seek a BUDGET submission,
+   including a three-COMMON lineup; compare expected Fantiki rewards with acquisition/use costs
+   and specific future MAIN conflicts. Do not end at "MAIN is full" without considering BUDGET.
+   Read the achievement catalog for claimable rewards or inexpensive useful milestones and assess
+   surplus-card sale opportunities after commission. Execute only supported, allowlisted writes;
+   note a blocked reward capability without treating it as a blocker for league participation.
    Fantasy
    tournamentId is not a Polemica competition_id: use the series' explicit polemicaCompetitionId
    for POLEMICA_COMPETITION. For STANDALONE use roster polemicaUserId values directly in player
@@ -41,6 +49,8 @@ Perform one bounded hourly turn.
    waiting for an ideal lineup. A small team is preferable to absence when allowed by league rules.
    Do not skip merely because a negative score is theoretically possible. If a useful MAIN
    submission is deferred, state the concrete constraint/opportunity cost and next deadline explicitly.
+   If BUDGET is left empty, record its funding comparison and a concrete reason, not simply
+   "does not count in the rating" or a generic desire to preserve all card uses.
 6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Invoke the chosen Fantasy
    write with this run_id, the recorded decision_id, and one fresh UUID operation_id; Fantasy MCP
    creates the durable intent before sending. There is no separate Memory intent tool. Then perform
