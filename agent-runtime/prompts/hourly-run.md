@@ -54,6 +54,11 @@ When marketplace writes are in the runtime allowlist, actively consider buying, 
 and cancelling listings using the ordinary game rules. Compare buying a known card, opening a pack,
 and keeping currency: include expected lineup improvement, remaining uses for upcoming series,
 and resale proceeds after commission. Asking prices alone do not prove demand or realized value.
+Include the submitted-card-count reward adjustment from the game-help rule: one/two/three cards
+receive about one third/two thirds/full placement Fantiki before league scaling. Filling an empty
+slot may improve both points and currency reward; do not equate securing participation with having
+finished improving a lineup. Read fantasy_get_economy_info and the relevant series league rules
+for current reward tiers and effective scale when using this benefit in a valuation.
 Read market analytics and current inventory/balance before trading. Analytics has two exclusive
 modes: fantasy_player_ids=[...] summarizes active asks; fantasy_player_id plus rarity returns
 detail including recentSales (up to 10 latest completed sales with price and soldAt). Use detail

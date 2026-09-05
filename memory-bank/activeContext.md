@@ -1,5 +1,7 @@
 # Active Context
 
+- **2026-09-05 (agent help / roster rewards):** Confirmed TMA HelpPage explains reduced Fantiki rewards for incomplete teams, but the closed MCP offers only partial structured help (economy/card values/league rules), not the full page. Persistent prompts now include the backend's exact roster-ceiling then league-floor formula, distinguish currency from periodic points, and require accounting for incremental reward when valuing additional cards. No backend/economy rules changed. Review found 14:00/15:00 UTC turns had not queried market listings; the subsequent user-triggered run did and selected a 20-Fantiki COMMON purchase for series 275.
+
 - **2026-09-05 (participation prior corrected):** User clarified that almost any submitted player/team earns positive points. Strategy instructions now default to submitting the best legal MAIN team (including small/imperfect teams) rather than skipping for theoretical negative-score risk. Deferral requires a concrete constraint or evidence-backed scarce-use opportunity cost; existing evidence/security gates remain unchanged.
 
 - **2026-09-05 (periodic objective canary boundary):** Run `d40a7fd3-3cb3-468f-8fb0-5b1e51df671c` did call current-period/me under v11, but FAILED without a recorded decision or any write intent after a malformed perk locator contaminated the Research snapshot. The goal is deployed; this is not a successful gameplay canary. Existing partial-evidence/no-op handling needs separate diagnosis. Timer remains active and there are zero SENT/UNKNOWN intents.

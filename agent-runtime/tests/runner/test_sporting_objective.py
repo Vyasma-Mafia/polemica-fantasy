@@ -16,3 +16,7 @@ def test_periodic_objective_is_persistent_and_has_live_progress_loop():
     assert "almost any submitted player/team earns positive points" in system
     assert "possibility of negative points is not a reason to skip" in system
     assert "A small team is preferable to absence" in hourly
+    assert "rosterReward=ceil(B*n/3)" in system
+    assert "floor(rosterReward * effectiveLeagueRewardScalePercent / 100)" in system
+    assert "NOT Fantasy points or periodic-rating" in system
+    assert "submitted-card-count reward adjustment" in hourly
