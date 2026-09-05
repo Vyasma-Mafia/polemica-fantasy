@@ -55,6 +55,25 @@ when changing the prompts or tool surface.
 
 ## Local verification
 
+### Recovery contracts
+
+All 17 Fantasy write tools have read-only reconciliation dispatch. The journal
+persists pre-write context and the acknowledged response separately before
+read-back, so retries and process restarts never resend the write. Migration 005
+adds these immutable evidence references; existing response blobs remain readable.
+
+`fantasy_get_achievement_claim_state` exposes the ordinary user's existing pending
+options and selected-card receipts without generating rewards. A claim with pending
+options is successful preparation; each choice is a separate operation. Merge
+preview is also preparation, not card consumption. Selection checks exact options
+and issued cards, not merely that a pending choice disappeared.
+
+Missing evidence is not success: lost responses for recycling, merge confirmation,
+or pack selection can still remain `UNKNOWN` and need developer investigation.
+Never clear these intents or repeat their writes blindly. Runs with unresolved
+intents are reported as failed, not successful. Invalid Research locator/perk
+arguments are rejected before modifying the run's snapshot.
+
 ```bash
 uv sync --extra dev
 uv run pytest

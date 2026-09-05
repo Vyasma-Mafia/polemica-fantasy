@@ -72,7 +72,7 @@ FANTASY_READ_TOOLS = (
     "fantasy_get_my_team", "fantasy_validate_team", "fantasy_list_store_packs", "fantasy_list_marketplace",
     "fantasy_get_marketplace_analytics", "fantasy_get_my_listings",
     "fantasy_get_economy_info", "fantasy_get_card_value_info",
-    "fantasy_get_achievement_catalog", "fantasy_get_periodic_rating_current",
+    "fantasy_get_achievement_catalog", "fantasy_get_achievement_claim_state", "fantasy_get_periodic_rating_current",
     "fantasy_get_periodic_rating_me", "fantasy_get_periodic_rating_rewards",
     "fantasy_get_merge_options", "fantasy_get_legendary_upgrade_info",
     "fantasy_search_periodic_reward_players",

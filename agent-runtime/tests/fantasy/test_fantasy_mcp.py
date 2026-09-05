@@ -29,7 +29,9 @@ class FakeFantasyTransport:
             {"listingId": 10, "price": 70, "card": {"userCardId": 99}}
         ]
         self.transactions: dict[int, dict[str, Any]] = {}
-        self.achievement_state = "COMPLETED"
+        self.achievement_state = "COMPLETED_UNCLAIMED"
+        self.pending_choices = [self.achievement_choice()]
+        self.selected_choices = []
         self.reward = {
             "id": 20,
             "status": "PENDING",
@@ -85,12 +87,14 @@ class FakeFantasyTransport:
             if self.pack_timeout_before_commit:
                 raise TimeoutError("pack not committed")
             self.packs[0]["packOpensUsed"] += 1
-            self.cards.append(self._new_card())
-            return HttpResponse(200, {"opened": True})
+            card = self._new_card()
+            self.cards.append(card)
+            return HttpResponse(200, {"kind": "OPENED", "cards": [card], "fantiki": self.profile["fantiki"]})
         if method == "POST" and path == "/api/v1/store/pack-choices/50/select":
             self.packs[0]["pendingChoice"] = None
-            self.cards.append(self._new_card())
-            return HttpResponse(200, {"selected": True})
+            card = self._new_card()
+            self.cards.append(card)
+            return HttpResponse(200, {"kind": "OPENED", "cards": [card], "fantiki": self.profile["fantiki"]})
         if method == "POST" and path == "/api/v1/marketplace/listings":
             listing = {"listingId": self.next_listing, "price": json_body["price"], "card": {"userCardId": json_body["userCardId"]}}
             self.next_listing += 1
@@ -125,7 +129,10 @@ class FakeFantasyTransport:
                 raise TimeoutError("recycle committed but acknowledgement lost")
             return HttpResponse(200, {"fantikiEarned": 25, "newBalance": self.profile["fantiki"]})
         if method == "POST" and path == "/api/v1/cards/merge/preview":
-            return HttpResponse(200, {"previewId": 80})
+            return HttpResponse(200, {"previewId": 80, "operation": json_body["operation"],
+                "expiresAt": "2099-01-01T00:00:00Z", "requiredSelections": 0,
+                "result": {"fantasyPlayerId": 1, "rarity": "COMMON", "usesRemaining": 2},
+                "materials": [{"userCard": copy.deepcopy(self._card(i))} for i in json_body["inputUserCardIds"]]})
         if method == "POST" and path == "/api/v1/cards/merge/confirm":
             inputs = set(json_body["inputUserCardIds"])
             self.cards = [card for card in self.cards if card["id"] not in inputs]
@@ -138,10 +145,17 @@ class FakeFantasyTransport:
             card["perks"].append({"perkId": json_body["perkId"]})
             return HttpResponse(200, {"card": card})
         if method == "POST" and path == "/api/v1/achievements/ace/claim":
-            self.achievement_state = "CLAIMED"
-            return HttpResponse(200, {"claimed": True})
+            return HttpResponse(200, {"achievementCode": "ace", "pendingChoices": self.pending_choices})
         if method == "POST" and path == "/api/v1/achievements/ace/choices/30/select":
-            self.achievement_state = "CLAIMED"
+            pending = next(c for c in self.pending_choices if c["rewardId"] == 30)
+            card = self._new_card()
+            self.cards.append(card)
+            self.pending_choices = [c for c in self.pending_choices if c["rewardId"] != 30]
+            self.selected_choices.append({"rewardId": 30, "requiredCount": pending["requiredCount"],
+                "selectedOptionIds": json_body["optionIds"], "selectedUserCardIds": [card["id"]],
+                "claimedAt": "2026-09-06T00:00:00Z"})
+            if not self.pending_choices:
+                self.achievement_state = "CLAIMED"
             if self.choice_timeout_after_commit:
                 raise TimeoutError("choice committed but acknowledgement lost")
             return HttpResponse(200, {"selected": True})
@@ -171,6 +185,10 @@ class FakeFantasyTransport:
             "/api/v1/cards/merge/options": {"operations": []},
             "/api/v1/legendary-upgrade/info": {"cards": []},
             "/api/v1/achievements": {"categories": [{"achievements": [{"code": "ace", "state": self.achievement_state}]}]},
+            "/api/v1/achievements/ace/claim-state": {"achievementCode": "ace",
+                "completedAt": "2026-09-05T00:00:00Z",
+                "claimedAt": "2026-09-06T00:00:00Z" if self.achievement_state == "CLAIMED" else None,
+                "pendingChoices": self.pending_choices, "selectedChoices": self.selected_choices},
             "/api/v1/periodic-ratings/current": {"id": 15},
             "/api/v1/periodic-ratings/periods/15/me": {"rank": 1},
             "/api/v1/periodic-ratings/rewards": [self.reward],
@@ -190,6 +208,16 @@ class FakeFantasyTransport:
         card = {"id": self.next_card, "rarity": "COMMON", "usesRemaining": 2, "timesRenewed": 0, "perks": []}
         self.next_card += 1
         return card
+
+    @staticmethod
+    def achievement_choice(reward_id=30):
+        return {"rewardId": reward_id, "requiredCount": 1,
+                "options": [{"optionId": "x"}, {"optionId": "y"}]}
+
+    @staticmethod
+    def pack_choice():
+        return {"id": 50, "requiredCount": 1, "options": [{"optionId": "a", "cards": [
+            {"rarity": "COMMON", "perks": []}]}]}
 
     def _card(self, card_id: int) -> dict[str, Any]:
         return next(card for card in self.cards if card["id"] == card_id)
@@ -267,7 +295,7 @@ def test_all_write_route_families_are_one_attempt_and_exactly_read_back(tmp_path
         pack_write = next(call for call in transport.calls if call["path"] == "/api/v1/store/packs/9/buy")
         assert pack_write["headers"]["Idempotency-Key"] == "pack-buy"
 
-        transport.packs[0]["pendingChoice"] = {"id": 50, "requiredCount": 1}
+        transport.packs[0]["pendingChoice"] = transport.pack_choice()
         assert service.select_pack_choice(run_id="run", decision_id=1, operation_id="pack-choice", choice_id=50, option_id="a").outcome == "SUCCEEDED"
         assert service.create_marketplace_listing(run_id="run", decision_id=1, operation_id="listing-create", user_card_id=1, price=80).outcome == "SUCCEEDED"
         assert service.update_marketplace_listing_price(run_id="run", decision_id=1, operation_id="listing-price", listing_id=11, price=90).outcome == "SUCCEEDED"
@@ -277,10 +305,10 @@ def test_all_write_route_families_are_one_attempt_and_exactly_read_back(tmp_path
         assert service.recycle_card(run_id="run", decision_id=1, operation_id="recycle", user_card_id=3).outcome == "SUCCEEDED"
 
         preview = service.merge_cards_preview(run_id="run", decision_id=1, operation_id="merge-preview", operation="RARITY_UPGRADE", input_user_card_ids=[4, 5])
-        assert preview.outcome == "UNKNOWN"
-        assert preview.verification["readBackCompleted"] is False
+        assert preview.outcome == "SUCCEEDED"
+        assert preview.verification["readBackCompleted"] is True
         repeated_preview = service.merge_cards_preview(run_id="run", decision_id=1, operation_id="merge-preview", operation="RARITY_UPGRADE", input_user_card_ids=[4, 5])
-        assert repeated_preview.outcome == "UNKNOWN"
+        assert repeated_preview.outcome == "SUCCEEDED"
         assert repeated_preview.write_attempted is False
         assert service.merge_cards_confirm(run_id="run", decision_id=1, operation_id="merge-confirm", operation="RARITY_UPGRADE", input_user_card_ids=[4, 5], preview_id=80).outcome == "SUCCEEDED"
         assert service.legendary_upgrade(run_id="run", decision_id=1, operation_id="legendary", user_card_id=6, perk_id="ninja").outcome == "SUCCEEDED"
@@ -328,8 +356,8 @@ def test_recovery_tool_resolves_absent_timed_out_team_without_resend(tmp_path: P
             if call["method"] == "POST" and call["path"].endswith("/fantasy-team")
         ])
         recovered = service.reconcile_operation(operation_id="recover-team")
-        assert recovered.outcome == "FAILED"
-        assert recovered.verification["reason"] == "TEAM_ABSENT"
+        assert recovered.outcome == "UNKNOWN"
+        assert recovered.verification["reason"] == "TEAM_MISMATCH"
         assert recovered.write_attempted is False
         assert len([
             call for call in transport.calls
@@ -368,7 +396,7 @@ def test_registry_is_closed_typed_and_has_no_generic_or_foreign_tools(tmp_path: 
         assert not any(hasattr(service.client, name) for name in ("get", "post", "put", "patch", "delete", "request"))
         registry = build_tool_registry(service)
         names = registry.names()
-        assert len(names) == 39
+        assert len(names) == 40
         assert "fantasy_validate_team" in names
         assert len(names) == len(set(names))
         assert all(name.startswith("fantasy_") for name in names)
@@ -470,12 +498,12 @@ def test_recycle_absence_after_lost_acknowledgement_remains_unknown(tmp_path: Pa
             run_id="run", decision_id=1, operation_id="recycle-timeout", user_card_id=3,
         )
         assert result.outcome == "UNKNOWN"
-        assert result.verification["reason"] == "RECYCLE_NOT_PROVED"
+        assert result.verification["reason"] == "RECYCLE_RECEIPT_OR_BASELINE_UNAVAILABLE"
     finally:
         store.close()
 
 
-def test_achievement_choice_transition_without_ack_remains_unknown(tmp_path: Path) -> None:
+def test_achievement_choice_with_persisted_exact_receipt_recovers_lost_ack(tmp_path: Path) -> None:
     service, transport, store = service_with_run(tmp_path)
     transport.choice_timeout_after_commit = True
     try:
@@ -483,7 +511,8 @@ def test_achievement_choice_transition_without_ack_remains_unknown(tmp_path: Pat
             run_id="run", decision_id=1, operation_id="choice-timeout",
             code="ace", reward_id=30, option_ids=["x"],
         )
-        assert result.outcome == "UNKNOWN"
+        assert result.outcome == "SUCCEEDED"
+        assert result.verification["reason"] == "EXACT_ACHIEVEMENT_SELECTION"
     finally:
         store.close()
 

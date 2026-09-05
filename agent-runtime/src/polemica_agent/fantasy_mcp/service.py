@@ -51,7 +51,7 @@ class FantasyService:
 
     def get_my_team(self, series_id: int, league_code: str = "MAIN") -> ReadEnvelope:
         path = f"/api/v1/me/fantasy-teams/{_positive_id(series_id, 'series_id')}"
-        return self._read(path, {"leagueCode": _league(league_code)})
+        return ReadEnvelope(observed_now(), path, self._get_or_none(path, {"leagueCode": _league(league_code)}))
 
     def list_store_packs(self) -> ReadEnvelope:
         return self._read("/api/v1/store/packs")
@@ -224,6 +224,9 @@ class FantasyService:
     def get_achievement_catalog(self) -> ReadEnvelope:
         return self._read("/api/v1/achievements")
 
+    def get_achievement_claim_state(self, code: str) -> ReadEnvelope:
+        return self._read(f"/api/v1/achievements/{_path_label(code, 'code')}/claim-state")
+
     def get_periodic_rating_current(self) -> ReadEnvelope:
         return self._read("/api/v1/periodic-ratings/current")
 
@@ -265,25 +268,9 @@ class FantasyService:
         intent = self.store.get_intent(operation_id)
         if intent is None:
             raise KeyError(operation_id)
-        kind = intent["kind"]
-        if kind != "TEAM_WRITE":
-            raise ValueError(f"reconciliation is not implemented for operation kind {kind}")
-        try:
-            series_text, league = str(intent["target_id"]).split(":", 1)
-            series_id = _positive_id(int(series_text), "series_id")
-            league = _league(league)
-            request = self.store.load_blob(intent["request_hash"], intent["request_path"])
-            expected = [
-                _positive_id(card, "user_card_id")
-                for card in _mapping(request).get("userCardIds", [])
-            ]
-        except (TypeError, ValueError) as exc:
-            raise ValueError("stored TEAM_WRITE intent is malformed") from exc
-        if not expected:
-            raise ValueError("stored TEAM_WRITE intent has no cards")
         result = self.operations.reconcile(
             operation_id,
-            lambda: self._team_reconciliation_readback(series_id, league, expected),
+            lambda: self._operation_readback(operation_id),
         )
         return OperationEnvelope.from_result(result)
 
@@ -302,26 +289,39 @@ class FantasyService:
 
     def buy_pack(self, *, run_id: str, decision_id: int, operation_id: str, pack_id: int) -> OperationEnvelope:
         pack_id = _positive_id(pack_id, "pack_id")
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "BUY_PACK", str(pack_id), {"packId": pack_id}, True)
+        if resumed is not None:
+            return resumed
         before_packs = _list(self.list_store_packs().data)
         before_pack = _find(before_packs, "id", pack_id)
+        if _mapping(before_pack).get("pendingChoice") is not None:
+            raise ValueError("Pack has a pending choice; use fantasy_select_pack_choice before opening again")
         before_cards = _list(self.get_my_cards().data)
         path = f"/api/v1/store/packs/{pack_id}/buy"
         return self._execute(
             run_id, decision_id, operation_id, "BUY_PACK", str(pack_id), {"packId": pack_id}, True,
             lambda: self.client._post(path, idempotency_key=operation_id),
             lambda: self._pack_readback(pack_id, before_pack, before_cards),
+            recovery_context={"beforePack": before_pack, "beforeCards": before_cards},
         )
 
     def select_pack_choice(self, *, run_id: str, decision_id: int, operation_id: str, choice_id: int, option_id: str) -> OperationEnvelope:
         cid, option = _positive_id(choice_id, "choice_id"), _nonempty(option_id, "option_id")
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "SELECT_PACK_CHOICE", str(cid), {"optionId": option}, True)
+        if resumed is not None:
+            return resumed
         before_cards = _list(self.get_my_cards().data)
         packs = _list(self.list_store_packs().data)
         containing_pack = next((p for p in packs if _mapping(p.get("pendingChoice")).get("id") == cid), None)
+        selected = _find(_list(_mapping(_mapping(containing_pack).get("pendingChoice")).get("options")), "optionId", option)
+        if selected is None:
+            raise ValueError("Selected pack option must exist in the current pending choice")
         body = {"optionId": option}
         return self._execute(
             run_id, decision_id, operation_id, "SELECT_PACK_CHOICE", str(cid), body, True,
             lambda: self.client._post(f"/api/v1/store/pack-choices/{cid}/select", body),
             lambda: self._choice_readback(cid, containing_pack, before_cards),
+            recovery_context={"beforeCards": before_cards, "pack": containing_pack, "selectedOption": selected},
         )
 
     def create_marketplace_listing(self, *, run_id: str, decision_id: int, operation_id: str, user_card_id: int, price: int) -> OperationEnvelope:
@@ -344,6 +344,9 @@ class FantasyService:
 
     def cancel_marketplace_listing(self, *, run_id: str, decision_id: int, operation_id: str, listing_id: int) -> OperationEnvelope:
         listing = _positive_id(listing_id, "listing_id")
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "CANCEL_LISTING", str(listing), {"listingId": listing}, True)
+        if resumed is not None:
+            return resumed
         before = _find(_list(self.get_my_listings().data), "listingId", listing)
         if before is None:
             raise ValueError("owned active listing must exist before cancellation")
@@ -358,6 +361,7 @@ class FantasyService:
             run_id, decision_id, operation_id, "CANCEL_LISTING", str(listing), {"listingId": listing}, True,
             send,
             lambda: self._listing_absent_readback(listing, before, acknowledged["value"]),
+            recovery_context={"before": before},
         )
 
     def buy_marketplace_listing(self, *, run_id: str, decision_id: int, operation_id: str, listing_id: int) -> OperationEnvelope:
@@ -368,21 +372,29 @@ class FantasyService:
             run_id, decision_id, operation_id, "BUY_LISTING", str(listing), {"listingId": listing}, True,
             lambda: self.client._post(f"/api/v1/marketplace/listings/{listing}/buy"),
             lambda: self._transaction_readback(listing, telegram_id),
+            recovery_context={"telegramId": telegram_id},
         )
 
     def renew_card(self, *, run_id: str, decision_id: int, operation_id: str, user_card_id: int) -> OperationEnvelope:
         card = _positive_id(user_card_id, "user_card_id")
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "RENEW_CARD", str(card), {"userCardId": card}, True)
+        if resumed is not None:
+            return resumed
         before = _find(_list(self.get_my_cards().data), "id", card)
         if before is None:
-            raise ValueError("owned card must exist before recycling")
+            raise ValueError("owned card must exist before renewal")
         return self._execute(
             run_id, decision_id, operation_id, "RENEW_CARD", str(card), {"userCardId": card}, True,
             lambda: self.client._post(f"/api/v1/me/cards/{card}/renew"),
             lambda: self._card_change_readback(card, before, mode="renew"),
+            recovery_context={"before": before},
         )
 
     def recycle_card(self, *, run_id: str, decision_id: int, operation_id: str, user_card_id: int) -> OperationEnvelope:
         card = _positive_id(user_card_id, "user_card_id")
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "RECYCLE_CARD", str(card), {"userCardId": card}, True)
+        if resumed is not None:
+            return resumed
         before = _find(_list(self.get_my_cards().data), "id", card)
         before_profile = _mapping(self.get_my_profile().data)
         acknowledged: dict[str, Any] = {"response": None}
@@ -396,6 +408,7 @@ class FantasyService:
             run_id, decision_id, operation_id, "RECYCLE_CARD", str(card), {"userCardId": card}, True,
             send,
             lambda: self._recycle_readback(card, before, before_profile, acknowledged["response"]),
+            recovery_context={"before": before, "beforeProfile": before_profile},
         )
 
     def merge_cards_preview(self, *, run_id: str, decision_id: int, operation_id: str, operation: str, input_user_card_ids: Sequence[int], selected_skin_source_user_card_id: int | None = None) -> OperationEnvelope:
@@ -415,6 +428,7 @@ class FantasyService:
             run_id, decision_id, operation_id, "MERGE_CONFIRM", str(preview_id), body, True,
             lambda: self.client._post("/api/v1/cards/merge/confirm", body),
             lambda: self._merge_confirm_readback(inputs, before_ids),
+            recovery_context={"beforeIds": list(before_ids)},
         )
 
     def legendary_upgrade(self, *, run_id: str, decision_id: int, operation_id: str, user_card_id: int, perk_id: str) -> OperationEnvelope:
@@ -428,19 +442,30 @@ class FantasyService:
 
     def claim_achievement(self, *, run_id: str, decision_id: int, operation_id: str, code: str) -> OperationEnvelope:
         code = _path_label(code, "code")
-        before_state = self._achievement_state(code)
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "CLAIM_ACHIEVEMENT", code, {"code": code}, True)
+        if resumed is not None:
+            return resumed
+        before_state = self.get_achievement_claim_state(code).data
         return self._execute(
             run_id, decision_id, operation_id, "CLAIM_ACHIEVEMENT", code, {"code": code}, True,
             lambda: self.client._post(f"/api/v1/achievements/{code}/claim"),
             lambda: self._achievement_readback(code, before_state=before_state),
+            recovery_context={"beforeClaim": before_state},
         )
 
     def select_achievement_reward(self, *, run_id: str, decision_id: int, operation_id: str, code: str, reward_id: int, option_ids: Sequence[str]) -> OperationEnvelope:
         code, reward = _path_label(code, "code"), _positive_id(reward_id, "reward_id")
-        before_state = self._achievement_state(code)
-        if before_state is None or before_state == "CLAIMED":
-            raise ValueError("achievement must have an unresolved reward before selection")
         body = {"optionIds": [_nonempty(item, "option_id") for item in option_ids]}
+        resumed = self._resume_existing(run_id, decision_id, operation_id, "SELECT_ACHIEVEMENT_REWARD", f"{code}:{reward}", body, True)
+        if resumed is not None:
+            return resumed
+        before_state = _mapping(self.get_achievement_claim_state(code).data)
+        pending = _find(_list(before_state.get("pendingChoices")), "rewardId", reward)
+        if pending is None:
+            raise ValueError("achievement must have this pending reward before selection")
+        body = {"optionIds": [_nonempty(item, "option_id") for item in option_ids]}
+        if len(set(body["optionIds"])) != len(body["optionIds"]) or len(body["optionIds"]) != pending.get("requiredCount") or not set(body["optionIds"]).issubset({x.get("optionId") for x in _list(pending.get("options"))}):
+            raise ValueError("Select the required number of distinct current achievement options")
         acknowledged = {"value": False}
 
         def send() -> Any:
@@ -457,6 +482,7 @@ class FantasyService:
                 acknowledgement_required=True,
                 acknowledged=acknowledged["value"],
             ),
+            recovery_context={"beforeClaim": before_state},
         )
 
     def save_periodic_reward_draft(self, *, run_id: str, decision_id: int, operation_id: str, reward_id: int, player_id: int, perk_ids: Sequence[str], skin_code: str, version: int) -> OperationEnvelope:
@@ -477,13 +503,26 @@ class FantasyService:
             lambda: self._periodic_submit_readback(reward),
         )
 
-    def _execute(self, run_id: str, decision_id: int, operation_id: str, kind: str, target: str, request: Any, economic: bool, send: Callable[[], Any], read_back: Callable[[], ReadBackResolution]) -> OperationEnvelope:
+    def _resume_existing(self, run_id: str, decision_id: int, operation_id: str, kind: str, target: str, request: Any, economic: bool) -> OperationEnvelope | None:
+        intent = self.store.get_intent(_operation_id(operation_id))
+        if intent is None or intent["state"] == "PLANNED":
+            return None
+        def never_send() -> Any:
+            raise RuntimeError("Existing operation must never be resent")
+        return self._execute(run_id, decision_id, operation_id, kind, target, request, economic, never_send)
+
+    def _execute(self, run_id: str, decision_id: int, operation_id: str, kind: str, target: str, request: Any, economic: bool, send: Callable[[], Any], read_back: Callable[[], ReadBackResolution] | None = None, *, recovery_context: Any = None) -> OperationEnvelope:
         result = self.operations.execute(
             operation_id=_operation_id(operation_id), run_id=_nonempty(run_id, "run_id"), kind=kind,
-            target_id=target, request=request, is_economic=economic, send=send, read_back=read_back,
+            target_id=target, request=request, is_economic=economic, send=send,
+            read_back=lambda: self._operation_readback(operation_id), recovery_context=recovery_context,
             decision_id=_positive_id(decision_id, "decision_id"),
         )
         return OperationEnvelope.from_result(result)
+
+    def _operation_readback(self, operation_id: str) -> ReadBackResolution:
+        from .recovery import read_back_operation
+        return read_back_operation(self, operation_id)
 
     def _team_readback(self, series_id: int, league: str, expected: list[int]) -> ReadBackResolution:
         team = self._get_or_none(f"/api/v1/me/fantasy-teams/{series_id}", {"leagueCode": league})

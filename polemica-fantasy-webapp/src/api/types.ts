@@ -69,6 +69,22 @@ export interface AchievementGrantedCard {
   skinCode: string | null
 }
 
+export interface AchievementClaimState {
+  achievementCode: string
+  completedAt: string | null
+  claimedAt: string | null
+  pendingChoices: AchievementPendingCardChoice[]
+  selectedChoices: AchievementSelectedCardChoice[]
+}
+
+export interface AchievementSelectedCardChoice {
+  rewardId: number
+  requiredCount: number
+  selectedOptionIds: string[]
+  selectedUserCardIds: number[]
+  claimedAt: string
+}
+
 export interface AchievementPendingCardChoice {
   rewardId: number
   requiredCount: number
@@ -78,6 +94,7 @@ export interface AchievementPendingCardChoice {
 export interface AchievementCardChoiceOption {
   optionId: string
   fantasyPlayerId: number
+  polemicaUserId: number | null
   playerName: string
   playerPhotoUrl: string | null
   rarity: Rarity

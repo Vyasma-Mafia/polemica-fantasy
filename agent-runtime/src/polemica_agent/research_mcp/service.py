@@ -122,15 +122,18 @@ class ResearchService:
         version: int | None = None,
     ) -> ResearchResult:
         _positive(game_id, "game_id")
-        if kind not in {"match", "competition"}:
+        if not isinstance(kind, str) or kind not in {"match", "competition"}:
             raise ContractError("kind must be 'match' or 'competition'")
+        if competition_id is not None or kind == "competition":
+            _positive(competition_id, "competition_id")
+        if version is not None:
+            _positive(version, "version")
         self.snapshots.require_collecting(snapshot_id)
         try:
             if kind == "match":
                 payload = self.client.get_match(game_id, version)
                 source, object_id = "match", str(game_id)
             else:
-                _positive(competition_id, "competition_id")
                 payload = self.client.get_competition_game(competition_id, game_id, version)  # type: ignore[arg-type]
                 source, object_id = "competition-game", f"{competition_id}:{game_id}"
             record = self._record(snapshot_id, source, object_id, payload, source_version=version or payload.get("version"))
@@ -210,6 +213,26 @@ class ResearchService:
         _positive(player_id, "player_id")
         if not 1 <= len(games) <= 100:
             raise ContractError("games must contain 1..100 typed game locators")
+        # Validate the entire request before concurrent reads can attach evidence.
+        # A typo is not a failed upstream observation and must not poison COLLECT.
+        for locator in games:
+            if not isinstance(locator, Mapping):
+                raise ContractError("games must contain typed game locator objects")
+            if not isinstance(locator.get("kind"), str) or locator["kind"] not in {"match", "competition"}:
+                raise ContractError("kind must be 'match' or 'competition'")
+            _required_int(locator, "game_id")
+            if locator["kind"] == "competition":
+                _required_int(locator, "competition_id")
+            else:
+                _optional_int(locator, "competition_id")
+            _optional_int(locator, "version")
+        if perk_ids is not None:
+            if not perk_ids or any(not isinstance(item, str) for item in perk_ids):
+                raise ContractError("perk_ids must be non-empty strings")
+            if len(set(perk_ids)) != len(perk_ids):
+                raise ContractError("perk_ids must be non-empty and unique")
+            if set(perk_ids) - set(analytics.PERK_IDS):
+                raise ContractError("unknown perk_ids; use supported perk identifiers")
         payloads: list[Mapping[str, Any]] = []
         hashes: set[str] = set()
         manifests: list[Mapping[str, Any]] = []

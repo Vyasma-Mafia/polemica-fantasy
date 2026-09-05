@@ -84,7 +84,18 @@ class AchievementCardRewardServiceTest {
     }
 
     @Test
+    fun `choice option remains available when external identity no longer resolves`() {
+        val dto = service.optionDto(AchievementCardRewardOptionInternal(
+            optionId = "retained", fantasyPlayerId = 999L, playerName = "Retained player",
+            playerPhotoUrl = null, rarity = "COMMON", skinCode = null, perkIds = emptyList(),
+        ))
+        assertThat(dto.optionId).isEqualTo("retained")
+        assertThat(dto.polemicaUserId).isNull()
+    }
+
+    @Test
     fun `choice option dto includes perks in persisted option order`() {
+        whenever(fantasyPlayerRepository.findById(42L)).thenReturn(java.util.Optional.of(FantasyPlayer(id = 42L, polemicaUserId = 10042L)))
         whenever(perkRepository.findAllByIdIn(listOf("voteForBlack", "sniper"))).thenReturn(
             listOf(
                 Perk(id = "sniper", name = "Снайпер", bonusPoints = 1.5),
@@ -105,6 +116,7 @@ class AchievementCardRewardServiceTest {
         )
 
         assertThat(dto.perks.map { it.perkId }).containsExactly("voteForBlack", "sniper")
+        assertThat(dto.polemicaUserId).isEqualTo(10042L)
         assertThat(dto.perks.map { it.perkName }).containsExactly("Голос в черного", "Снайпер")
         assertThat(dto.perks.map { it.bonusPoints }).containsExactly(1.0, 1.5)
     }

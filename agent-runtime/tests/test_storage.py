@@ -43,6 +43,21 @@ def test_database_path_must_be_absolute(tmp_path: Path) -> None:
         AuditStore(Path("relative.sqlite3"))
 
 
+@pytest.mark.parametrize("state", ["SENT", "UNKNOWN"])
+def test_successful_finish_rejects_unresolved_intents_even_without_decision_requirement(tmp_path: Path, state: str) -> None:
+    with make_store(tmp_path) as store:
+        start(store)
+        store.plan_intent(operation_id="pending", run_id="run-1", kind="TEST",
+                          target_id="1", request={}, is_economic=True,
+                          decision_id=decision(store))
+        with store.transaction() as db:
+            db.execute("UPDATE operation_intents SET state=? WHERE operation_id='pending'", (state,))
+        with pytest.raises(FailClosedError, match="unresolved operations"):
+            store.finish_run("run-1", "SUCCEEDED")
+        assert store.connection.execute("SELECT status FROM runs WHERE id='run-1'").fetchone()[0] == "RUNNING"
+        store.finish_run("run-1", "FAILED", {"reason": "UNRESOLVED_OPERATIONS"})
+
+
 def test_initializes_wal_schema_and_private_permissions(tmp_path: Path) -> None:
     with make_store(tmp_path) as store:
         assert store.connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"

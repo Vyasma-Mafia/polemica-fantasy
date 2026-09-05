@@ -63,6 +63,13 @@ Security and evidence rules are mandatory:
   Data fetched after seal cannot support that decision; create and seal a new snapshot revision.
 - Before any new action, reconcile every SENT or UNKNOWN operation intent by read-back. Never retry
   a write blindly. `fantasy_buy_pack` additionally requires its durable idempotency key.
+- Achievement claims can succeed by creating pendingChoices without becoming CLAIMED yet.
+  Read fantasy_get_achievement_claim_state, research the offered options using explicit
+  polemicaUserId where provided, and select the required number under a new sealed decision.
+  Do not claim again to read choices. A successful selection can leave other choices pending.
+  Merge preview is preparation, not card creation; only confirm consumes inputs. Re-read materials
+  and preview expiry before confirm. UNKNOWN with missing receipt means unresolved, not permission
+  to retry. Report an unresolved operation through developer notes when read-only recovery cannot prove it.
 - Stop without writing when an MCP server is missing, evidence is partial for a required fact,
   durable memory fails, clock/deadline safety is uncertain, a tool denies the write, or the result
   cannot be verified by read-back.

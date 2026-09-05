@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.core.type.TypeReference
 import io.github.mralex1810.fantasy.dto.user.response.AchievementCardChoiceOptionDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementClaimResultDto
+import io.github.mralex1810.fantasy.dto.user.response.AchievementClaimStateDto
+import io.github.mralex1810.fantasy.dto.user.response.AchievementSelectedCardChoiceDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementCosmeticUnlockDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementGrantedCardDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementPendingCardChoiceDto
@@ -36,6 +38,33 @@ class AchievementClaimService(
     private val objectMapper: ObjectMapper,
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
+    @Transactional(readOnly = true)
+    fun claimState(user: TelegramUser, code: String): AchievementClaimStateDto {
+        val definition = achievementDefinitionRepository.findByCodeWithRewards(code)
+            ?.takeIf { it.enabled && it.visibility == "PUBLIC" }
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Achievement $code not found")
+        val internalUserId = user.id!!
+        val row = userAchievementRepository.findByTelegramUser_IdAndAchievement_Id(internalUserId, definition.id!!)
+        val pending = mutableListOf<AchievementPendingCardChoiceDto>()
+        val selected = mutableListOf<AchievementSelectedCardChoiceDto>()
+        definition.rewards.sortedWith(compareBy({ it.displayOrder }, { it.id ?: 0L }))
+            .filter { it.rewardType == "CARD_CHOICE_ROLL" }.forEach { reward ->
+                val rewardId = reward.id ?: return@forEach
+                val choice = loadChoiceRow(internalUserId, definition.id!!, rewardId) ?: return@forEach
+                val claimedAt = choice.claimedAt
+                if (claimedAt == null) {
+                    pending += AchievementPendingCardChoiceDto(
+                        rewardId, choice.requiredCount, choice.options.map { achievementCardRewardService.optionDto(it) },
+                    )
+                } else {
+                    selected += AchievementSelectedCardChoiceDto(
+                        rewardId, choice.requiredCount, choice.selectedOptionIds, choice.selectedUserCardIds, claimedAt,
+                    )
+                }
+            }
+        return AchievementClaimStateDto(definition.code, row?.completedAt, row?.claimedAt, pending, selected)
+    }
+
     @Transactional
     fun claim(user: TelegramUser, code: String): AchievementClaimResultDto {
         // `user.id` is the internal telegram_user.id. `user.telegramId` is the Telegram platform id.

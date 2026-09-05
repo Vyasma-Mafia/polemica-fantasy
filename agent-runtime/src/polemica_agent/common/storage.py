@@ -231,6 +231,10 @@ class AuditStore:
         if summary is not None:
             summary_hash, summary_path = self.store_blob(redact(summary))
         with self.transaction() as db:
+            if status == "SUCCEEDED" and db.execute(
+                "SELECT 1 FROM operation_intents WHERE state IN ('SENT', 'UNKNOWN') LIMIT 1"
+            ).fetchone() is not None:
+                raise FailClosedError("Run cannot succeed with unresolved operations; reconcile first")
             if require_decision and status == "SUCCEEDED":
                 decision = db.execute(
                     """
@@ -616,6 +620,54 @@ class AuditStore:
         ).fetchone()
         if invalid_computation is not None:
             raise FailClosedError("Operation decision has invalid computation lineage")
+
+    def record_operation_context(self, operation_id: str, context: Any) -> None:
+        """Persist immutable observations before sending; never replace them on a retry."""
+        self._record_operation_evidence(operation_id, "context", context, "PLANNED")
+
+    def record_operation_receipt(self, operation_id: str, receipt: Any) -> None:
+        """Persist an acknowledged response, including JSON null, before read-back."""
+        self._record_operation_evidence(operation_id, "receipt", receipt, "SENT")
+
+    def _record_operation_evidence(self, operation_id: str, column: str, value: Any, allowed_state: str) -> None:
+        if column not in {"context", "receipt"}:
+            raise ValueError("Invalid evidence column")
+        digest, path = self.store_blob(redact(value))
+        with self.transaction() as db:
+            row = db.execute("SELECT * FROM operation_intents WHERE operation_id=?", (operation_id,)).fetchone()
+            if row is None:
+                raise FailClosedError("Unknown operation evidence target")
+            if row[f"{column}_hash"] is not None:
+                if row[f"{column}_hash"] != digest:
+                    raise FailClosedError("Operation evidence is immutable")
+                return
+            if row["state"] != allowed_state:
+                raise FailClosedError("Operation evidence cannot be recorded in this state")
+            db.execute(
+                f"UPDATE operation_intents SET {column}_hash=?, {column}_path=? WHERE operation_id=?",
+                (digest, path, operation_id),
+            )
+
+    def get_operation_evidence(self, operation_id: str) -> dict[str, Any]:
+        row = self.get_intent(operation_id)
+        if row is None:
+            raise FailClosedError("Unknown operation evidence target")
+        result: dict[str, Any] = {"context": None, "receipt": None, "receiptRecorded": False}
+        for column in ("context", "receipt"):
+            digest, path = row[f"{column}_hash"], row[f"{column}_path"]
+            if (digest is None) != (path is None):
+                raise FailClosedError("Incomplete operation evidence reference")
+            if digest is not None:
+                result[column] = self.load_blob(digest, path)
+                if column == "receipt":
+                    result["receiptRecorded"] = True
+        # Pre-migration operations stored acknowledgements only inside the result.
+        if not result["receiptRecorded"] and row["result_hash"] and row["result_path"]:
+            legacy = self.load_blob(row["result_hash"], row["result_path"])
+            if isinstance(legacy, dict) and "upstreamResponse" in legacy:
+                result["receipt"] = legacy["upstreamResponse"]
+                result["receiptRecorded"] = True
+        return result
 
     def mark_intent_sent(self, operation_id: str) -> sqlite3.Row:
         with self.transaction() as db:

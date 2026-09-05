@@ -57,6 +57,23 @@ data class AchievementClaimResultDto(
     val pendingChoices: List<AchievementPendingCardChoiceDto> = emptyList(),
 )
 
+/** Persisted receipts only; reading this does not evaluate eligibility or initiate a claim. */
+data class AchievementClaimStateDto(
+    val achievementCode: String,
+    val completedAt: Instant?,
+    val claimedAt: Instant?,
+    val pendingChoices: List<AchievementPendingCardChoiceDto>,
+    val selectedChoices: List<AchievementSelectedCardChoiceDto>,
+)
+
+data class AchievementSelectedCardChoiceDto(
+    val rewardId: Long,
+    val requiredCount: Int,
+    val selectedOptionIds: List<String>,
+    val selectedUserCardIds: List<Long>,
+    val claimedAt: Instant,
+)
+
 data class AchievementCosmeticUnlockDto(
     val type: String,
     val code: String,
@@ -85,4 +102,5 @@ data class AchievementCardChoiceOptionDto(
     val rarity: String,
     val skinCode: String?,
     val perks: List<CardPerkBriefDto>,
+    val polemicaUserId: Long? = null,
 )

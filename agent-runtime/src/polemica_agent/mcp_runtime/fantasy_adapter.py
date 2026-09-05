@@ -60,7 +60,11 @@ class FantasyRegistryAdapter:
                             'IDs must be positive; rarity is COMMON, RARE, EPIC, or LEGENDARY. '
                             'Do not mix modes or omit both.'
                         ) from exc
-                    raise
+                    raise ToolError(
+                        f"INVALID_ARGUMENTS_OR_STATE for {_name}. Check the tool schema and fresh "
+                        "read state. For pending rewards use the existing choice, not another claim/open. "
+                        "Never retry an uncertain write; use fantasy_reconcile_operation."
+                    ) from exc
 
             call.__name__ = name
             call.__doc__ = description["description"]

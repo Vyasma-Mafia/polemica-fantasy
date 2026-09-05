@@ -243,12 +243,12 @@ def test_restart_from_sent_state_reconciles_without_send(tmp_path: Path) -> None
 @pytest.mark.parametrize(
     "readback_state,expected_state",
     [
-        (IntentState.SUCCEEDED, IntentState.SUCCEEDED),
+        (IntentState.SUCCEEDED, IntentState.FAILED),
         (IntentState.FAILED, IntentState.FAILED),
-        (IntentState.UNKNOWN, IntentState.UNKNOWN),
+        (IntentState.UNKNOWN, IntentState.FAILED),
     ],
 )
-def test_deterministic_4xx_is_resolved_by_readback_without_retry(
+def test_deterministic_4xx_is_failed_regardless_of_observed_state_without_retry(
     tmp_path: Path,
     readback_state: IntentState,
     expected_state: IntentState,

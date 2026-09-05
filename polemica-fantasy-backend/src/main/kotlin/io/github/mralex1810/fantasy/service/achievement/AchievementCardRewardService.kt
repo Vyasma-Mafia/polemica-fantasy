@@ -166,6 +166,7 @@ class AchievementCardRewardService(
             rarity = option.rarity,
             skinCode = option.skinCode,
             perks = perks,
+            polemicaUserId = fantasyPlayerRepository.findById(option.fantasyPlayerId).orElse(null)?.polemicaUserId,
         )
     }
 

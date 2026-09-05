@@ -120,7 +120,7 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
         spec("fantasy_list_series_leagues", "List leagues for one series.", service.list_series_leagues, {"series_id": integer}, ("series_id",), read_only=True),
         spec(
             "fantasy_get_my_team",
-            "Read the authenticated player's team for one series and league.",
+            "Read the authenticated player's team for one series and league; data is null when no team exists.",
             service.get_my_team,
             {"series_id": integer, "league_code": string},
             ("series_id",),
@@ -163,6 +163,7 @@ def build_tool_registry(service: FantasyService) -> FantasyToolRegistry:
         spec("fantasy_get_merge_options", "Read eligible cards and current merge options.", service.get_merge_options, read_only=True),
         spec("fantasy_get_legendary_upgrade_info", "Read legendary-upgrade candidates, rules, and costs.", service.get_legendary_upgrade_info, read_only=True),
         spec("fantasy_get_achievement_catalog", "Read achievement catalog and authenticated claim state.", service.get_achievement_catalog, read_only=True),
+        spec("fantasy_get_achievement_claim_state", "Read persisted achievement claim progress, pending card choices and exact selected option/card receipts. Does not generate rewards. A successful claim may await selection; use this state to continue without claiming again.", service.get_achievement_claim_state, {"code": string}, ("code",), read_only=True),
         spec("fantasy_get_periodic_rating_current", "Read the current periodic rating.", service.get_periodic_rating_current, read_only=True),
         spec(
             "fantasy_get_periodic_rating_me",

@@ -11,7 +11,7 @@ from typing import Any, Mapping
 sys.path.insert(0, str(Path(__file__).parents[2] / "src"))
 
 from polemica_agent.research_mcp.cache import RawPayloadCache
-from polemica_agent.research_mcp.errors import SnapshotSealedError, UpstreamError
+from polemica_agent.research_mcp.errors import ContractError, SnapshotSealedError, UpstreamError
 from polemica_agent.research_mcp.service import ResearchService
 from polemica_agent.research_mcp.snapshots import InMemorySnapshotJournal, SnapshotCoordinator
 from polemica_agent.research_mcp.tools import ResearchTools, tool_names
@@ -80,6 +80,39 @@ class ResearchServiceTest(unittest.TestCase):
              "fetchedAt", "parserVersion", "correctionIndex", "isCorrection", "completeness"},
             set(result.provenance.evidence_manifest[0]),
         )
+
+    def test_invalid_perk_locators_do_not_fetch_or_poison_collection(self) -> None:
+        valid = {"kind": "match", "game_id": 501}
+        invalid = [
+            {"kind": "MATCH", "game_id": 502},
+            {"kind": "competition", "game_id": 502},
+            {"kind": "match", "game_id": True},
+            {"kind": "match", "game_id": 502, "version": 0},
+            "not a locator",
+        ]
+        for locator in invalid:
+            with self.subTest(locator=locator), self.assertRaises(ContractError):
+                self.service.get_player_perk_rates(self.snapshot_id, 42, [valid, locator])
+            snapshot = self.journal.get(self.snapshot_id)
+            self.assertEqual("COMPLETE", snapshot.completeness)
+            self.assertEqual((), snapshot.records)
+            self.assertEqual(0, snapshot.error_count)
+        result = self.service.get_player_perk_rates(
+            self.snapshot_id, 42, [valid], perk_ids=["crowned"]
+        )
+        self.assertTrue(result.provenance.complete)
+        self.assertEqual("COMPLETE", self.journal.get(self.snapshot_id).completeness)
+
+    def test_invalid_game_and_perk_parameters_leave_collection_untouched(self) -> None:
+        with self.assertRaises(ContractError):
+            self.service.get_game(self.snapshot_id, kind="competition", game_id=501)
+        for perks in [[], ["unknown"], ["crowned", "crowned"]]:
+            with self.assertRaises(ContractError):
+                self.service.get_player_perk_rates(
+                    self.snapshot_id, 42, [{"kind": "match", "game_id": 501}], perk_ids=perks
+                )
+        self.assertEqual("COMPLETE", self.journal.get(self.snapshot_id).completeness)
+        self.assertEqual((), self.journal.get(self.snapshot_id).records)
 
     def test_partial_page_failure_is_not_zero_or_complete(self) -> None:
         self.client.fail_page = 2

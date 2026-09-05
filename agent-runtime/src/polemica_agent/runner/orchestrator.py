@@ -22,6 +22,12 @@ class RunnerError(RuntimeError):
     pass
 
 
+class UnresolvedOperationsError(RunnerError):
+    def __init__(self, intents: list[dict]) -> None:
+        super().__init__("Run ended with unresolved Fantasy operations; reconciliation required")
+        self.operation_ids = [item.get("operationId", item.get("operation_id")) for item in intents]
+
+
 def _read_prompt(path: Path) -> str:
     try:
         value = path.read_text(encoding="utf-8")
@@ -110,8 +116,15 @@ def run_once(
                     command, prompt, log, timeout_seconds=settings.timeout_seconds,
                     environment=scrubbed_environment(),
                 )
+                remaining_intents = memory.get_open_intents()
+                if remaining_intents:
+                    log.write_event({
+                        "type": "run_blocked", "reason": "UNRESOLVED_OPERATIONS",
+                        "open_intents_at_end": len(remaining_intents),
+                    })
+                    raise UnresolvedOperationsError(remaining_intents)
             memory.finish_run(
-                run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents)},
+                run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents), "open_intents_at_end": 0},
                 require_decision=not open_intents,
             )
             return run_id
@@ -121,7 +134,10 @@ def run_once(
         except Exception as exc:
             # If start_run itself failed, finish also fails; retain the original error.
             try:
-                memory.finish_run(run_id, "FAILED", {"error": type(exc).__name__})
+                summary = {"error": type(exc).__name__}
+                if isinstance(exc, UnresolvedOperationsError):
+                    summary.update({"reason": "UNRESOLVED_OPERATIONS", "operation_ids": exc.operation_ids})
+                memory.finish_run(run_id, "FAILED", summary)
             except Exception:
                 pass
             raise

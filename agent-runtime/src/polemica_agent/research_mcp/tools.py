@@ -60,7 +60,7 @@ class ResearchTools:
         competition_id: int | None = None,
         version: int | None = None,
     ) -> dict[str, Any]:
-        """Collect one match or competition-game payload by typed locator."""
+        """Collect a game. kind is lowercase 'match' or 'competition'; competition requires competition_id."""
         return self.service.get_game(
             snapshot_id,
             kind=kind,
@@ -118,7 +118,14 @@ class ResearchTools:
         games: Sequence[Mapping[str, Any]],
         perk_ids: Sequence[str] | None = None,
     ) -> dict[str, Any]:
-        """Calculate selected perk rates from explicit typed game locators."""
+        """Calculate selected perk rates. games example: [{"kind":"match","game_id":501}].
+
+        kind is lowercase 'match' or 'competition'; competition locators also require
+        competition_id. game_id, competition_id and optional version are positive
+        integers. Invalid inputs are rejected before collecting evidence; correct
+        the arguments and retry the same collecting snapshot. Genuine partial
+        upstream data stays PARTIAL and cannot be promoted by retrying.
+        """
         return self.service.get_player_perk_rates(
             snapshot_id, player_id, games, perk_ids=perk_ids
         ).to_dict()

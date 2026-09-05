@@ -3,6 +3,7 @@ package io.github.mralex1810.fantasy.controller.user
 import io.github.mralex1810.fantasy.dto.user.request.AchievementCardChoiceRequest
 import io.github.mralex1810.fantasy.dto.user.response.AchievementCatalogDto
 import io.github.mralex1810.fantasy.dto.user.response.AchievementClaimResultDto
+import io.github.mralex1810.fantasy.dto.user.response.AchievementClaimStateDto
 import io.github.mralex1810.fantasy.entity.TelegramUser
 import io.github.mralex1810.fantasy.service.achievement.AchievementCatalogService
 import io.github.mralex1810.fantasy.service.achievement.AchievementClaimService
@@ -29,6 +30,12 @@ class AchievementController(
         @AuthenticationPrincipal user: TelegramUser,
         @PathVariable code: String,
     ): AchievementClaimResultDto = achievementClaimService.claim(user, code)
+
+    @GetMapping("/{code}/claim-state")
+    fun claimState(
+        @AuthenticationPrincipal user: TelegramUser,
+        @PathVariable code: String,
+    ): AchievementClaimStateDto = achievementClaimService.claimState(user, code)
 
     @PostMapping("/{code}/choices/{rewardId}/select")
     fun selectChoice(

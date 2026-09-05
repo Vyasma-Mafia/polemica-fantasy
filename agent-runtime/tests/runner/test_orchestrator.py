@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pytest
 
-from polemica_agent.runner.orchestrator import build_prompt, run_once
+from polemica_agent.runner.orchestrator import UnresolvedOperationsError, build_prompt, run_once
 from polemica_agent.runner.settings import RuntimeSettings
 
 
@@ -76,8 +77,10 @@ def test_reconciliation_run_does_not_require_a_new_decision(tmp_path: Path) -> N
     seen: dict[str, object] = {}
 
     class Memory:
+        reads = 0
         def get_open_intents(self):
-            return [{"operationId": "op", "state": "UNKNOWN"}]
+            self.reads += 1
+            return [{"operationId": "op", "state": "UNKNOWN"}] if self.reads == 1 else []
         def start_run(self, **metadata):
             return metadata["run_id"]
         def finish_run(self, run_id, status, summary, *, require_decision=False):
@@ -95,3 +98,32 @@ def test_reconciliation_run_does_not_require_a_new_decision(tmp_path: Path) -> N
     )
     assert seen["status"] == "SUCCEEDED"
     assert seen["require_decision"] is False
+
+
+@pytest.mark.parametrize("blocked_at_start", [False, True])
+def test_unresolved_operations_cannot_report_run_success(tmp_path: Path, blocked_at_start: bool) -> None:
+    seen = {}
+
+    class Memory:
+        reads = 0
+        def get_open_intents(self):
+            self.reads += 1
+            if self.reads == 1 and not blocked_at_start:
+                return []
+            return [{"operation_id": "pending-op", "state": "UNKNOWN"}]
+        def start_run(self, **metadata):
+            seen["run_id"] = metadata["run_id"]
+            return metadata["run_id"]
+        def finish_run(self, run_id, status, summary, **kwargs):
+            seen.update(status=status, summary=summary)
+        def close(self):
+            seen["closed"] = True
+
+    with pytest.raises(UnresolvedOperationsError):
+        run_once(settings(tmp_path), probe=lambda _: None, invoker=lambda *a, **kw: None,
+                 memory_factory=lambda _: Memory())
+    assert seen["status"] == "FAILED"
+    assert seen["summary"]["reason"] == "UNRESOLVED_OPERATIONS"
+    assert seen["summary"]["operation_ids"] == ["pending-op"]
+    assert seen["closed"]
+    assert "run_blocked" in (tmp_path / "logs" / f"{seen['run_id']}.jsonl").read_text()

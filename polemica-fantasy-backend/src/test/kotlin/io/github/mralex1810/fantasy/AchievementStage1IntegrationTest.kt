@@ -773,6 +773,13 @@ class AchievementStage1IntegrationTest {
         val tma = tmaAuth(fixture.telegramPlatformId, "ChoiceLifecycle")
         createFantasyTeam(tma, fixture.seriesId, "MAIN", fixture.userCardIds.take(1))
 
+        mockMvc.perform(get("/api/v1/achievements/team_submit_5/claim-state"))
+            .andExpect(status().isUnauthorized)
+        mockMvc.perform(get("/api/v1/achievements/team_submit_5/claim-state").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.selectedChoices", hasSize<Any>(0)))
+
         val firstClaim = mockMvc.perform(post("/api/v1/achievements/team_submit_5/claim").header("Authorization", tma))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.claimedAt").doesNotExist())
@@ -785,6 +792,18 @@ class AchievementStage1IntegrationTest {
         val rewardId = firstJson.read<Number>("$.pendingChoices[0].rewardId").toLong()
         val firstOptionIds = firstJson.read<List<String>>("$.pendingChoices[0].options[*].optionId")
         assertSqlLong("SELECT COUNT(*) FROM user_achievement_card_choice WHERE reward_id = $rewardId", 1)
+        val readState = mockMvc.perform(get("/api/v1/achievements/team_submit_5/claim-state").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.claimedAt").doesNotExist())
+            .andExpect(jsonPath("$.selectedChoices", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.pendingChoices[0].options[0].polemicaUserId").isNumber)
+            .andReturn().response.contentAsString
+        assertThat(JsonPath.parse(readState).read<List<String>>("$.pendingChoices[0].options[*].optionId"))
+            .containsExactlyElementsOf(firstOptionIds)
+        mockMvc.perform(get("/api/v1/achievements/team_submit_5/claim-state").header("Authorization", tmaAuth(fixture.telegramPlatformId + 999999, "Other")))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.selectedChoices", hasSize<Any>(0)))
 
         val repeatClaim = mockMvc.perform(post("/api/v1/achievements/team_submit_5/claim").header("Authorization", tma))
             .andExpect(status().isOk)
@@ -811,6 +830,13 @@ class AchievementStage1IntegrationTest {
             .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(0)))
             .andReturn().response.contentAsString
         val grantedCardId = JsonPath.parse(selectResponse).read<Number>("$.grantedCards[0].userCardId").toLong()
+        mockMvc.perform(get("/api/v1/achievements/team_submit_5/claim-state").header("Authorization", tma))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.claimedAt").isString)
+            .andExpect(jsonPath("$.pendingChoices", hasSize<Any>(0)))
+            .andExpect(jsonPath("$.selectedChoices[0].rewardId").value(rewardId))
+            .andExpect(jsonPath("$.selectedChoices[0].selectedOptionIds[0]").value(selectedOptionId))
+            .andExpect(jsonPath("$.selectedChoices[0].selectedUserCardIds[0]").value(grantedCardId))
         assertThat(achievementRewardCardCount(fixture.telegramPlatformId)).isEqualTo(beforeCards + 1)
         assertSqlLong(
             """

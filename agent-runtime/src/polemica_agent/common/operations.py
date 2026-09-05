@@ -87,6 +87,7 @@ class OperationCoordinator:
         send: Callable[[], Any],
         read_back: Callable[[], ReadBackResolution],
         decision_id: int,
+        recovery_context: Any = None,
     ) -> OperationResult:
         intent = self.store.plan_intent(
             operation_id=operation_id,
@@ -103,6 +104,7 @@ class OperationCoordinator:
         if state in {IntentState.SENT, IntentState.UNKNOWN}:
             return self.reconcile(operation_id, read_back)
 
+        self.store.record_operation_context(operation_id, recovery_context)
         try:
             self.store.mark_intent_sent(operation_id)
         except FailClosedError:
@@ -124,9 +126,14 @@ class OperationCoordinator:
                 )
             row = self.store.resolve_intent(
                 operation_id,
-                resolution.state.value,
+                IntentState.FAILED.value,
                 {"upstreamError": upstream_error, "readBack": resolution.result},
-                verification=resolution.verification,
+                verification={
+                    "reason": "DETERMINISTIC_UPSTREAM_REJECTION",
+                    "requestRejected": True,
+                    "readBackCompleted": isinstance(resolution.verification, dict) and resolution.verification.get("readBackCompleted", False),
+                    "observedState": resolution.verification,
+                },
             )
             return self._stored_result(row, write_attempted=True)
         except Exception as exc:
@@ -137,6 +144,9 @@ class OperationCoordinator:
             )
             return self.reconcile(operation_id, read_back, write_attempted=True)
 
+        # Failure here deliberately leaves SENT: never lose an acknowledgement by
+        # proceeding to a read-back which cannot later be recovered safely.
+        self.store.record_operation_receipt(operation_id, send_result)
         try:
             resolution = read_back()
         except Exception as exc:
@@ -177,6 +187,8 @@ class OperationCoordinator:
             return self._stored_result(row, write_attempted=False)
         if state not in {IntentState.SENT, IntentState.UNKNOWN}:
             raise RuntimeError(f"Operation {operation_id} is not ready for reconciliation")
+        evidence = self.store.get_operation_evidence(operation_id)
+        previous = self._stored_result(row, write_attempted=False).result
         try:
             resolution = read_back()
         except Exception as exc:
@@ -185,10 +197,15 @@ class OperationCoordinator:
                 _safe_exception(exc),
                 {"readBackCompleted": False},
             )
+        result = resolution.result
+        if evidence["receiptRecorded"]:
+            result = {"upstreamResponse": evidence["receipt"], "readBack": resolution.result}
+        if isinstance(previous, dict) and "upstreamError" in previous:
+            result = {**(result if isinstance(result, dict) else {"readBack": result}), "upstreamError": previous["upstreamError"]}
         updated = self.store.resolve_intent(
             operation_id,
             resolution.state.value,
-            resolution.result,
+            result,
             verification=resolution.verification,
         )
         return self._stored_result(updated, write_attempted=write_attempted)
