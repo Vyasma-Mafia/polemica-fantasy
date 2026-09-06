@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-06 — Multi-action session deployed:** v18 repeats verified actions within a bounded hourly session; prompt limits 12 operations/20 minutes, unchanged broker safety. 259 tests pass, hashes and preserved permissions verified, timer restored; behavioral canary started.
+
 - [x] **2026-09-06 — Research version follow-up deployed:** v17 resolves omitted versions from the exact live competition listing. Both formerly failing completed/unfinished game reads now succeed on installed client; 258 runtime tests green, registries healthy, no open intents, timer active.
 
 - [x] **2026-09-06 — Control run complete:** v16 run SUCCEEDED, reward fully received. Investigating/fixing its additional Research feedback: omitted Polemica competition-game version returns HTTP 500, explicit listed version succeeds; automatic metadata resolution and completed-game guidance added.

@@ -1,4 +1,31 @@
-Perform one bounded hourly turn.
+Perform one bounded hourly session with multiple sequential decisions and actions.
+
+The hourly schedule is a wake-up interval, NOT a one-action quota. Repeat steps 2-7
+after each verified success while useful authorized work remains. In this session,
+attempt at most 12 new Fantasy operations (previews, claims and selections also count).
+This is a ceiling, not a target: never spend or churn teams just to fill it. Stop starting
+new operations after 20 minutes elapsed from the first tool observation; reserve time
+for mandatory read-back and final reporting, within the existing runner timeout.
+
+Prioritize nearest deadlines and complete useful dependency chains in this same run:
+claim reward -> select pending cards; open pack -> select option; buy/renew a card ->
+validate and update MAIN/BUDGET; preview merge -> confirm only if still justified.
+Collect all straightforward claimable currency rewards when worthwhile, not one per hour.
+Do not postpone a safe, evidenced next step merely because one action already succeeded.
+Before opening another pack, finish an existing useful pending choice when possible.
+
+Every operation still needs its own fresh decision_id and operation_id, exact arguments,
+and verified read-back. Never issue dependent or economic writes in parallel. After each
+action refresh affected inventory, balance, pending choices, uses/reservations and deadlines,
+then COLLECT and SEAL a new evidence revision for the next decision. Do not support a later
+decision with new facts attached only to an old sealed snapshot. Keep research bounded and
+relevant to the next action; do not re-analyze unrelated full histories for every reward.
+
+Stop on any SENT/UNKNOWN intent, denied write, missing required evidence or technical safety
+failure; do not turn another action into a workaround. Otherwise stop only when no useful
+legal action remains or a session bound is reached. Record a specific stopReason, all
+actions and verified outcomes, actionCount, remaining tasks and their blockers/deadlines.
+"Already acted this hour" and "continue next turn" alone are not valid stop reasons.
 
 1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
 2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
@@ -58,7 +85,8 @@ Perform one bounded hourly turn.
 7. Record the verified result or the reason for a no-op, the period ID and observed rating baseline,
    and the next useful opportunity/deadline. Preserve this in durable decision/outcome memory,
    not just final chat text. Rating contributions can lag until series finalization; do not claim
-   a rank improvement from a pack purchase or team submission. Respect tool-call and time bounds.
+   a rank improvement from a pack purchase or team submission. Then reassess and repeat steps 2-7
+   under the session rules above; emit the final summary only when a stop condition is reached.
 
 When marketplace writes are in the runtime allowlist, actively consider buying, listing, repricing,
 and cancelling listings using the ordinary game rules. Compare buying a known card, opening a pack,

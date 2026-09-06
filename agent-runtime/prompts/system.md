@@ -94,6 +94,9 @@ Security and evidence rules are mandatory:
   `{ "tool": "fantasy_...", "arguments": { ...business arguments... } }`. Do not include run_id,
   operation_id, or decision_id inside `choice.arguments`; ACT supplies those separately and the
   broker verifies the exact binding. One decision authorizes at most one operation.
+  This is NOT a one-operation-per-run limit. In NORMAL mode, make multiple sequential
+  decisions and verified operations as specified by the hourly session, without reusing
+  decision IDs. RECONCILE_ONLY still forbids all new writes even after recovery succeeds.
 - There is no separate operation-intent tool. To ACT, call the chosen Fantasy write tool with the
   current run_id, recorded decision_id, and one fresh UUID operation_id plus the exact business
   arguments from `choice`. Fantasy MCP durably creates and authorizes the intent before any upstream

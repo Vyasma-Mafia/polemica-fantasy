@@ -43,6 +43,21 @@ def test_normal_prompt_ranks_card_scores_with_rarity_and_perks(tmp_path: Path) -
     assert "get_player_perk_rates" in prompt
 
 
+def test_normal_session_continues_verified_chains_with_bounded_safety(tmp_path: Path) -> None:
+    prompt = build_prompt(settings(tmp_path), "run", [])
+    for contract in (
+        "NOT a one-action quota", "at most 12 new Fantasy operations",
+        "20 minutes", "its own fresh decision_id and operation_id",
+        "Never issue dependent or economic writes in parallel",
+        "SEAL a new evidence revision", "Stop on any SENT/UNKNOWN intent",
+        "stopReason", "repeat steps 2-7",
+    ):
+        assert contract in prompt
+    recovery = build_prompt(settings(tmp_path), "run", [{"operationId": "op", "state": "UNKNOWN"}])
+    assert "NOT a one-action quota" not in recovery
+    assert "RECONCILE_ONLY still forbids all new writes" in recovery
+
+
 def test_run_once_probes_and_mocks_codex_invocation(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
     def probe(urls: dict[str, str]) -> None:
