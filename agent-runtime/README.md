@@ -57,6 +57,21 @@ when changing the prompts or tool surface.
 
 ### Recovery contracts
 
+For Fantasy-only actions, BEGIN a collection and call `fantasy_collect_evidence`
+with its `run_id` and `collection_id` before SEAL. The broker fetches a fixed bounded
+bundle (optional achievement codes and series IDs), validates the full response
+batch and attaches immutable, redacted `fantasy-user-api` records atomically.
+It accepts no caller-provided evidence or URLs. Ordinary Fantasy reads remain
+non-collecting. Failed batches attach no subset and mark the collection PARTIAL;
+use a fresh collection after resolving the required source failure.
+
+The historical `TRUSTED_RESEARCH` marker identifies the sealed broker collection;
+its manifest explicitly distinguishes Fantasy observations from Polemica research.
+Fantasy-only evidence does not provide form/perk statistics, and Compute continues
+to require `profile-games-page` records. Empty collections remain rejected with
+actionable `EMPTY_EVIDENCE` guidance. No trust/auth gates or gameplay permissions
+are bypassed, and no database migration is required.
+
 All 17 Fantasy write tools have read-only reconciliation dispatch. The journal
 persists pre-write context and the acknowledged response separately before
 read-back, so retries and process restarts never resend the write. Migration 005

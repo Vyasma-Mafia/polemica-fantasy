@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-07 — Fantasy-only evidence implementation:** controlled broker collector makes reward-only COLLECT/SEAL/DECIDE/ACT possible without unrelated Polemica research; empty and partial evidence remain forbidden. Independent risk review approved scoped no-migration solution; runtime verification/deployment pending.
+
 - [x] **2026-09-06 — Multi-action session deployed:** v18 repeats verified actions within a bounded hourly session; prompt limits 12 operations/20 minutes, unchanged broker safety. 259 tests pass, hashes and preserved permissions verified, timer restored; behavioral canary started.
 
 - [x] **2026-09-06 — Research version follow-up deployed:** v17 resolves omitted versions from the exact live competition listing. Both formerly failing completed/unfinished game reads now succeed on installed client; 258 runtime tests green, registries healthy, no open intents, timer active.

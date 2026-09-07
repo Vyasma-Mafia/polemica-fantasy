@@ -32,6 +32,25 @@ def start_run(database: Path) -> str:
     return run_id
 
 
+def test_empty_seal_has_actionable_safe_error_and_remains_untrusted(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+    from mcp.server.mcpserver.exceptions import ToolError
+    from polemica_agent.research_mcp.tools import ResearchTools
+    database = tmp_path / "agent.sqlite3"
+    run_id = start_run(database)
+    journal = DurableResearchSnapshotJournal(database)
+    collection = journal.create_collecting(run_id, "empty", dt.datetime.now(UTC).isoformat())
+    tools = ResearchTools(SimpleNamespace(seal_snapshot=lambda sid: journal.seal(sid, dt.datetime.now(UTC).isoformat())))
+    try:
+        with pytest.raises(ToolError, match="EMPTY_EVIDENCE.*fantasy_collect_evidence"):
+            tools.seal_research_snapshot(collection.snapshot_id)
+        assert journal.get("empty").state == "COLLECTING"
+        with journal.store.transaction() as db:
+            assert db.execute("SELECT COUNT(*) FROM snapshot_trust").fetchone()[0] == 0
+    finally:
+        journal.close()
+
+
 def seal_evidence(database: Path, cache_dir: Path, run_id: str) -> int:
     journal = DurableResearchSnapshotJournal(database, clock=lambda: NOW)
     coordinator = SnapshotCoordinator(journal, clock=lambda: NOW)

@@ -29,6 +29,14 @@ actions and verified outcomes, actionCount, remaining tasks and their blockers/d
 
 1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
 2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
+   BEGIN a fresh collection with begin_research_snapshot(run_id), then explicitly call
+   fantasy_collect_evidence(run_id, collection_id, achievement_codes=[relevant codes],
+   series_ids=[relevant series]). This broker fetches and attaches real Fantasy observations;
+   ordinary fantasy_get_* calls alone do NOT populate a collection. Use the returned observations.
+   For currency claims and other decisions based only on Fantasy state, this batch is sufficient
+   evidence to SEAL; do not fetch unrelated Polemica games just to satisfy the evidence gate.
+   For player performance comparisons, add the relevant completed-game Research to the same
+   collection before SEAL. Fantasy evidence does not establish player form or perk rates.
    Start with fantasy_get_periodic_rating_current and fantasy_get_periodic_rating_me(period_id).
    Read prior decisions/outcomes to keep a plan across runs. Record the period's dates, status,
    league, entry.rank/totalScore/seriesCount, and contributions. A null entry means unranked,
@@ -63,7 +71,11 @@ actions and verified outcomes, actionCount, remaining tasks and their blockers/d
    fantasy_validate_team for a proposed lineup before sealing/deciding. Fix reported issues and
    resolve required facts listed as unchecked; passesObservedChecks alone is not full eligibility.
    The preview is advisory and does not reserve cards or replace the backend's final validation.
-3. SEAL the evidence. Use only SEAL's numeric snapshotId for the decision; the collectionId is not
+3. SEAL the evidence. On EMPTY_EVIDENCE collect real broker observations into that still-collecting
+   collection and then SEAL; repeating SEAL alone cannot fix an empty collection. If a collection
+   became PARTIAL after a failed fetch, start a new collection and recollect the required facts;
+   do not mask the failed required source with a successful unrelated read.
+   Use only SEAL's numeric snapshotId for the decision; the collectionId is not
    evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
 4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.
 5. DECIDE the best legal action using only the sealed evidence, derived Compute results, and relevant prior memory. Store the

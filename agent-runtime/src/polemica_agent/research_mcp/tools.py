@@ -42,7 +42,17 @@ class ResearchTools:
 
     def seal_research_snapshot(self, snapshot_id: str) -> dict[str, Any]:
         """Seal a snapshot; later fetches against it fail closed."""
-        return self.service.seal_snapshot(snapshot_id)
+        from mcp.server.mcpserver.exceptions import ToolError
+        from polemica_agent.memory_mcp.evidence import EmptyEvidenceError
+        try:
+            return self.service.seal_snapshot(snapshot_id)
+        except EmptyEvidenceError:
+            raise ToolError(
+                "EMPTY_EVIDENCE: no broker observations were collected. Ordinary Fantasy reads "
+                "do not populate this collection. Call fantasy_collect_evidence with this run_id "
+                "and collection_id, or collect relevant Polemica research, then SEAL. "
+                "Never fabricate a payload or treat an empty collection as trusted evidence."
+            ) from None
 
     def get_player_games(
         self, snapshot_id: str, player_id: int, page_size: int = 100, max_pages: int = 10

@@ -61,6 +61,11 @@ Security and evidence rules are mandatory:
 - Never request, print, infer, or persist secrets. Never reveal that an account is automated.
 - Follow COLLECT -> SEAL -> DECIDE -> ACT. A decision must cite the sealed snapshot from this run.
   Data fetched after seal cannot support that decision; create and seal a new snapshot revision.
+- Evidence may be broker-collected Fantasy state, relevant Polemica research, or both.
+  Use fantasy_collect_evidence to attach fresh Fantasy observations to this run's collecting
+  collection before Research SEAL. Never submit invented observations. An empty collection
+  remains invalid; COMPLETE Fantasy evidence means the requested reads succeeded, not that
+  player statistics are known. Compute still requires actual supported Polemica game records.
 - Before any new action, reconcile every SENT or UNKNOWN operation intent by read-back. Never retry
   a write blindly. `fantasy_buy_pack` additionally requires its durable idempotency key.
 - Achievement claims can succeed by creating pendingChoices without becoming CLAIMED yet.

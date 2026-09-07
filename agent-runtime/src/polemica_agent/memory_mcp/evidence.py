@@ -16,6 +16,21 @@ from polemica_agent.research_mcp.types import PartialError, isoformat, utc_now
 from .sql_read import fetchall, fetchone
 
 
+class EmptyEvidenceError(FailClosedError):
+    """No broker observations exist; an empty collection is never trusted."""
+
+
+def _assert_collection_run(db: Any, collection_id: str, run_id: str) -> None:
+    row = db.execute(
+        "SELECT c.run_id, c.state, r.status FROM research_collections c "
+        "JOIN runs r ON r.id=c.run_id WHERE c.collection_id=?", (collection_id,),
+    ).fetchone()
+    if row is None or row["run_id"] != run_id or row["status"] != "RUNNING":
+        raise FailClosedError("collection requires its own RUNNING run")
+    if row["state"] != "COLLECTING":
+        raise SnapshotSealedError("sealed collection cannot accept evidence")
+
+
 class DurableResearchSnapshotJournal(SnapshotJournal):
     """Single-broker durable COLLECT/SEAL journal.
 
@@ -29,6 +44,37 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
 
     def close(self) -> None:
         self.store.close()
+
+    def assert_collecting_run(self, collection_id: str, run_id: str) -> None:
+        with self.store.transaction() as db:
+            _assert_collection_run(db, collection_id, run_id)
+
+    def fail_collection(self, collection_id: str, run_id: str) -> None:
+        """A failed broker batch cannot leave apparently complete older evidence."""
+        with self.store.transaction() as db:
+            _assert_collection_run(db, collection_id, run_id)
+            db.execute(
+                "UPDATE research_collections SET completeness='PARTIAL', "
+                "error_count=error_count+1 WHERE collection_id=?", (collection_id,),
+            )
+
+    def attach_many(self, collection_id: str, run_id: str, records: Sequence[RawPayloadRecord]) -> Snapshot:
+        """Commit a whole broker-fetched Fantasy batch, never a partial prefix."""
+        if not records or any(record.source != "fantasy-user-api" for record in records):
+            raise FailClosedError("Fantasy batch requires nonempty Fantasy observations")
+        with self.store.transaction() as db:
+            _assert_collection_run(db, collection_id, run_id)
+            for record in records:
+                db.execute(
+                    "INSERT OR IGNORE INTO research_collection_records("
+                    "collection_id, source, object_id, source_version, payload_hash, blob_path, "
+                    "first_seen_at, fetched_at, parser_version, correction_index) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (collection_id, record.source, record.object_id, record.source_version,
+                     record.payload_hash, record.blob_path, record.first_seen_at,
+                     record.fetched_at, record.parser_version, record.correction_index),
+                )
+        return self.get(collection_id)
 
     def create_collecting(self, run_id: str, snapshot_id: str, created_at: str) -> Snapshot:
         with self.store.transaction() as db:
@@ -113,6 +159,7 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
             ).fetchone()
             if current is None or current["state"] != "COLLECTING":
                 raise SnapshotSealedError("snapshot was sealed concurrently")
+            _assert_collection_run(db, snapshot_id, current["run_id"])
             record_rows = db.execute(
                 "SELECT * FROM research_collection_records WHERE collection_id=? "
                 "ORDER BY fetched_at, source, object_id, payload_hash",
@@ -120,7 +167,7 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
             ).fetchall()
             records = _records_from_rows(record_rows)
             if not records:
-                raise FailClosedError("an empty research collection cannot become trusted evidence")
+                raise EmptyEvidenceError("an empty research collection cannot become trusted evidence")
             for record in records:
                 try:
                     raw = Path(record.blob_path).read_bytes()

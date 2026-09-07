@@ -396,7 +396,7 @@ def test_registry_is_closed_typed_and_has_no_generic_or_foreign_tools(tmp_path: 
         assert not any(hasattr(service.client, name) for name in ("get", "post", "put", "patch", "delete", "request"))
         registry = build_tool_registry(service)
         names = registry.names()
-        assert len(names) == 40
+        assert len(names) == 41
         assert "fantasy_validate_team" in names
         assert len(names) == len(set(names))
         assert all(name.startswith("fantasy_") for name in names)

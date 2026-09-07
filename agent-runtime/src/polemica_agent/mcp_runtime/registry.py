@@ -67,6 +67,7 @@ MEMORY_READ_TOOLS = ("get_open_intents", "get_relevant_memory", "read_developer_
 
 # Kept in one auditable registry. Names are resolved against the Fantasy handler at startup.
 FANTASY_READ_TOOLS = (
+    "fantasy_collect_evidence",
     "fantasy_get_my_profile", "fantasy_get_my_cards", "fantasy_get_my_teams",
     "fantasy_list_open_series", "fantasy_get_series", "fantasy_list_series_leagues",
     "fantasy_get_my_team", "fantasy_validate_team", "fantasy_list_store_packs", "fantasy_list_marketplace",

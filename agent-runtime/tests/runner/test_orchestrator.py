@@ -43,6 +43,15 @@ def test_normal_prompt_ranks_card_scores_with_rarity_and_perks(tmp_path: Path) -
     assert "get_player_perk_rates" in prompt
 
 
+def test_fantasy_only_evidence_is_explicit_not_empty_research(tmp_path: Path) -> None:
+    prompt = build_prompt(settings(tmp_path), "run", [])
+    assert "fantasy_collect_evidence(run_id, collection_id" in prompt
+    assert "ordinary fantasy_get_* calls alone do NOT populate a collection" in prompt
+    assert "do not fetch unrelated Polemica games" in prompt
+    assert "repeating SEAL alone cannot fix an empty collection" in prompt
+    assert "Fantasy evidence does not establish player form or perk rates" in prompt
+
+
 def test_normal_session_continues_verified_chains_with_bounded_safety(tmp_path: Path) -> None:
     prompt = build_prompt(settings(tmp_path), "run", [])
     for contract in (

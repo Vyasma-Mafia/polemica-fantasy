@@ -24,6 +24,14 @@ class FantasyService:
     def get_my_profile(self) -> ReadEnvelope:
         return self._read("/api/v1/me")
 
+    def collect_evidence(
+        self, *, run_id: str, collection_id: str,
+        achievement_codes: list[str] | None = None, series_ids: list[int] | None = None,
+    ) -> ReadEnvelope:
+        from .evidence import collect_evidence
+        return collect_evidence(self, run_id=run_id, collection_id=collection_id,
+                                achievement_codes=achievement_codes, series_ids=series_ids)
+
     def get_my_cards(
         self,
         *,
