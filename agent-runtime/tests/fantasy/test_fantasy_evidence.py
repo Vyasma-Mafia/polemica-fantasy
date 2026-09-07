@@ -222,3 +222,60 @@ def test_real_http_client_keeps_other_player_paths_and_methods_closed(method, pa
     client = FantasyHttpClient("https://fantasy.example", "test", transport=Transport())
     with pytest.raises(ValueError):
         client._request(method, path)
+
+
+def market_page(content=None):
+    return {"content": content if content is not None else [{"listingId": 50402, "price": 45,
+            "canBuy": True, "card": {"userCardId": 72, "fantasyPlayerId": 12, "rarity": "RARE",
+            "perks": [{"perkId": "lastHeroGuess", "bonusPoints": 1.3}]}}],
+            "page": 0, "size": 100, "totalPages": 1, "totalElements": 1}
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_market_listings_real_client_are_sealed_with_exact_details(context, empty):
+    store, journal, coordinator, collection, fixture, _ = context
+    from urllib.parse import parse_qs
+    class Transport:
+        def request(self, *, method, url, **_kwargs):
+            assert method == "GET"
+            parsed = urlsplit(url)
+            if parsed.path == "/api/v1/marketplace/listings":
+                assert parse_qs(parsed.query) == {"fantasyPlayerId": ["12"], "rarity": ["RARE"],
+                    "page": ["0"], "size": ["100"], "sortBy": ["price_asc"]}
+                return HttpResponse(200, market_page([] if empty else None))
+            return HttpResponse(200, fixture._get(parsed.path))
+    service = FantasyService(FantasyHttpClient("https://fantasy.example", "test", transport=Transport()), store)
+    result = service.collect_evidence(run_id="run", collection_id=collection,
+        marketplace_searches=[{"fantasy_player_id": 12, "rarity": "RARE"}])
+    observation = next(i for i in result.data["observations"] if "/marketplace/listings?" in i["objectId"])
+    assert observation["data"]["content"] == market_page([] if empty else None)["content"]
+    assert "fantasyPlayerId=12&page=0&rarity=RARE&size=100&sortBy=price_asc" in observation["objectId"]
+    assert coordinator.seal(collection).snapshot_id > 0
+    record = next(r for r in journal.get(collection).records if "/marketplace/listings?" in r.object_id)
+    assert json.loads(Path(record.blob_path).read_text())["data"] == observation["data"]
+
+
+@pytest.mark.parametrize("selector", [
+    [{"fantasy_player_id": True, "rarity": "RARE"}], [{"fantasy_player_id": 12, "rarity": "RARE", "page": -1}],
+    [{"fantasy_player_id": 12, "rarity": "RARE", "url": "https://evil"}],
+    [{"fantasy_player_id": 12, "rarity": "bad"}],
+    [{"fantasy_player_id": 12, "rarity": "RARE"}] * 6,
+    [{"fantasy_player_id": 12, "rarity": "RARE"}, {"fantasy_player_id": 12, "rarity": "RARE", "page": 0}],
+])
+def test_market_search_bad_selectors_do_not_fetch(context, selector):
+    _, _, _, collection, client, service = context
+    with pytest.raises(ValueError):
+        service.collect_evidence(run_id="run", collection_id=collection, marketplace_searches=selector)
+    assert client.calls == []
+
+
+@pytest.mark.parametrize("bad", [{}, market_page([{"listingId": 50402}]), TimeoutError("private detail")])
+def test_market_search_failure_is_atomic(context, bad):
+    _, journal, _, collection, client, service = context
+    client.bad_path = "/api/v1/marketplace/listings"
+    client.bad_value = bad
+    with pytest.raises(ToolError, match="FANTASY_EVIDENCE_FAILED"):
+        service.collect_evidence(run_id="run", collection_id=collection,
+            marketplace_searches=[{"fantasy_player_id": 12, "rarity": "RARE"}])
+    assert journal.get(collection).records == ()
+    assert journal.get(collection).completeness == "PARTIAL"

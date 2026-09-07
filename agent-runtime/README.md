@@ -40,6 +40,13 @@ mockable `TeamGateway` and performs no network access.
 
 ## Developer feedback
 
+`fantasy_collect_evidence` accepts `marketplace_searches` (max5 unique objects with required
+`fantasy_player_id`, `rarity` and optional `page` 0..100). Broker-owned reads capture the full
+public listing page (size100, price ascending), including listing IDs, exact price, card/perks,
+buyability and pagination. Only returned entries support a purchase decision. Empty pages are
+valid observations, not proof of global absence. Invalid/failed responses leave the collection
+PARTIAL without attaching a subset of the batch. Evidence does not reserve a lot or lock its price.
+
 Strategy v21 requires a paid-pack versus concrete marketplace-card assessment before an
 economic no-op (or an explicit missing-data/deadline/affordability blocker). It treats the
 operator's pack-profit observation as a testable prior, accounts for reserves and unsold

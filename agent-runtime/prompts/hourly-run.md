@@ -36,6 +36,13 @@ assessment means "not assessed", not "no useful opportunity"; carry the exact ne
    fantasy_collect_evidence(run_id, collection_id, achievement_codes=[relevant codes],
    series_ids=[relevant series], fantasy_player_ids=[relevant Fantasy IDs],
    marketplace_analytics=[{"fantasy_player_id":123,"rarity":"EPIC"}]) with only relevant selectors.
+   For a proposed marketplace purchase also pass marketplace_searches=[{"fantasy_player_id":123,
+   "rarity":"EPIC","page":0}]. This saves exact listings, prices, card/perks and canBuy through
+   the existing user API, not just aggregate analytics. It returns up to100 listings per page,
+   max5 searches per call. Select a listing actually present and buyable in the sealed page;
+   inspect totalPages and collect the needed page if the target is not returned. Do not infer
+   global absence from one page. If the price/card/availability changed, reassess before deciding;
+   a snapshot is an observation, not a reservation or a server-enforced price guarantee.
    Player mappings are capped at 20 and market pairs at 10. This broker attaches real Fantasy observations;
    ordinary fantasy_get_* calls alone do NOT populate a collection. Use the returned observations.
    For currency claims and other decisions based only on Fantasy state, this batch is sufficient

@@ -32,11 +32,13 @@ class FantasyService:
         achievement_codes: list[str] | None = None, series_ids: list[int] | None = None,
         fantasy_player_ids: list[int] | None = None,
         marketplace_analytics: list[dict[str, Any]] | None = None,
+        marketplace_searches: list[dict[str, Any]] | None = None,
     ) -> ReadEnvelope:
         from .evidence import collect_evidence
         return collect_evidence(self, run_id=run_id, collection_id=collection_id,
                                 achievement_codes=achievement_codes, series_ids=series_ids,
-                                fantasy_player_ids=fantasy_player_ids, marketplace_analytics=marketplace_analytics)
+                                fantasy_player_ids=fantasy_player_ids, marketplace_analytics=marketplace_analytics,
+                                marketplace_searches=marketplace_searches)
 
     def get_my_cards(
         self,

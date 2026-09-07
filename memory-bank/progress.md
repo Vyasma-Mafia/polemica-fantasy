@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-07 — Marketplace listing evidence v22 deployed:** exact public listing pages can be sealed for purchase decisions;328 tests and live GET→persist→seal in isolated audit DB pass. Kaya50402 observed, not purchased; permissions unchanged and timer active.
+
 - [x] **2026-09-07 — Acquisition v21 deployed:** pack/card investigation before economic no-op, justified reserve and bounded cross-run learning experiment policy;317 runtime tests, live prompt hashes and unchanged17-write permissions verified. Actual behavior awaits next scheduled run.
 
 - [x] **2026-09-07 — Player/market v20 live:** primary-ID lookup and complete7/30day market windows verified through deployed MCP and independent DB reads; empty/unknown/auth cases checked.316 runtime tests; exact42 Fantasy tools, unchanged17writes, timer restored and developer notes updated. Runtime path-gate regression fixed in eb3965f.
