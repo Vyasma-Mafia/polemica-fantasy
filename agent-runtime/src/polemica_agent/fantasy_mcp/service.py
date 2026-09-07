@@ -24,13 +24,19 @@ class FantasyService:
     def get_my_profile(self) -> ReadEnvelope:
         return self._read("/api/v1/me")
 
+    def get_player(self, fantasy_player_id: int) -> ReadEnvelope:
+        return self._read(f"/api/v1/players/{_positive_id(fantasy_player_id, 'fantasy_player_id')}")
+
     def collect_evidence(
         self, *, run_id: str, collection_id: str,
         achievement_codes: list[str] | None = None, series_ids: list[int] | None = None,
+        fantasy_player_ids: list[int] | None = None,
+        marketplace_analytics: list[dict[str, Any]] | None = None,
     ) -> ReadEnvelope:
         from .evidence import collect_evidence
         return collect_evidence(self, run_id=run_id, collection_id=collection_id,
-                                achievement_codes=achievement_codes, series_ids=series_ids)
+                                achievement_codes=achievement_codes, series_ids=series_ids,
+                                fantasy_player_ids=fantasy_player_ids, marketplace_analytics=marketplace_analytics)
 
     def get_my_cards(
         self,

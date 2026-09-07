@@ -12,6 +12,7 @@ import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingCardDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingEntryDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceListingsPageDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceRecentSaleDto
+import io.github.mralex1810.fantasy.dto.user.response.MarketplaceSalesWindowDto
 import io.github.mralex1810.fantasy.dto.user.response.MarketplaceSellerBriefDto
 import io.github.mralex1810.fantasy.entity.CardAcquisitionType
 import io.github.mralex1810.fantasy.entity.CardTemplate
@@ -41,6 +42,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Service
 class MarketplaceService(
@@ -547,6 +549,7 @@ class MarketplaceService(
 
     @Transactional(readOnly = true)
     fun getAnalyticsDetail(fantasyPlayerId: Long, rarity: Rarity): MarketplaceAnalyticsDetailDto {
+        val asOf = Instant.now()
         val activeStatsRaw = marketplaceListingRepository.findActiveListingStatsForPlayerAndRarity(
             MarketplaceListingStatus.ACTIVE, fantasyPlayerId, rarity,
         )
@@ -573,6 +576,19 @@ class MarketplaceService(
             activeMaxPrice = activeMaxPrice,
             recentSales = recentSales,
             avgSalePrice = avgSalePrice,
+            asOf = asOf,
+            salesWindows = listOf(7, 30).map { days ->
+                val from = asOf.minus(days.toLong(), ChronoUnit.DAYS)
+                val stats = marketplaceListingRepository.aggregateSalesWindow(fantasyPlayerId, rarity.name, from, asOf)
+                MarketplaceSalesWindowDto(
+                    windowDays = days, from = from, to = asOf,
+                    completedSalesCount = stats.completedSalesCount,
+                    minSalePrice = stats.minSalePrice, maxSalePrice = stats.maxSalePrice,
+                    medianSalePrice = stats.medianSalePrice,
+                    medianTimeToSaleSeconds = stats.medianTimeToSaleSeconds,
+                    timeToSaleSampleSize = stats.timeToSaleSampleSize,
+                )
+            },
         )
     }
 

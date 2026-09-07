@@ -59,11 +59,25 @@ when changing the prompts or tool surface.
 
 For Fantasy-only actions, BEGIN a collection and call `fantasy_collect_evidence`
 with its `run_id` and `collection_id` before SEAL. The broker fetches a fixed bounded
-bundle (optional achievement codes and series IDs), validates the full response
+bundle (optional achievement codes, series IDs, up to 20 `fantasy_player_ids`, and
+up to 10 `marketplace_analytics` pairs of `fantasy_player_id` and `rarity`), validates the full response
 batch and attaches immutable, redacted `fantasy-user-api` records atomically.
 It accepts no caller-provided evidence or URLs. Ordinary Fantasy reads remain
 non-collecting. Failed batches attach no subset and mark the collection PARTIAL;
 use a fresh collection after resolving the required source failure.
+
+`fantasy_get_player(fantasy_player_id)` resolves any real player's internal Fantasy ID
+to `polemicaUserId`, `playerNickname` and `playerPhotoUrl`, including choose-pack options.
+Use the Polemica ID for Research. This ordinary authenticated API exposes no user accounts.
+`fantasy_get_marketplace_analytics(fantasy_player_id=..., rarity=...)` includes `asOf`
+and `salesWindows` for 7/30-day `[from,to)` completed sales, counts, gross min/max/median
+prices, median time-to-sale in seconds and its sample size. Existing recent10 sales and
+their average remain available; these are separate from full-window aggregates.
+Sanctioned trades are included. Time-to-sale includes only sold listings since creation,
+not sell-through probability or cancelled/relisted history; invalid negative durations
+are excluded from the duration sample. Legacy sales without a saved template use current
+rarity. Empty windows have zero count and null price/duration statistics. Collect relevant
+identity and analytics selectors before SEAL to persist the observations used for a decision.
 
 The historical `TRUSTED_RESEARCH` marker identifies the sealed broker collection;
 its manifest explicitly distinguishes Fantasy observations from Polemica research.

@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-07 — Player lookup and market analytics implemented:** primary Polemica identity lookup, all-sales7/30day medians/counts/durations, MCP and trusted evidence integration. Runtime302 tests, focused backend tests and builds pass; independent review passed, live deployment verification pending.
+
 - [x] **2026-09-07 — Pure Fantasy evidence live proof:** snapshots76/77 contain only broker Fantasy observations; BUDGET279 and free pack26 opening both verified SUCCEEDED, zero unresolved operations. No unrelated research required; session continues.
 
 - [x] **2026-09-07 — Fantasy evidence deployed:** v19/521973e, 282 tests, independent review, exact MCP registries/permissions and timer verified. Real collector→SEAL→decision→verified MAIN submission passed in canary; separate historical-research PAGE_BOUND stayed PARTIAL and was not promoted. Whole canary still running at checkpoint.

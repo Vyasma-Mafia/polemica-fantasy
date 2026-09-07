@@ -58,6 +58,12 @@ class UserApiIntegrationTest {
     }
 
     @Test
+    fun `GET mafia player identity without Authorization returns 401`() {
+        mockMvc.perform(get("/api/v1/players/1"))
+            .andExpect(status().isUnauthorized)
+    }
+
+    @Test
     fun `GET me cards with seriesId returns only cards for players on series roster`() {
         val auth = basicAuth("admin", "test-admin-secret")
         val tJson = mockMvc.perform(

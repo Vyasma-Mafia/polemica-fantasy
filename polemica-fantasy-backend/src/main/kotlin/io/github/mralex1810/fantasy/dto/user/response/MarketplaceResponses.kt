@@ -90,6 +90,20 @@ data class MarketplaceAnalyticsDetailDto(
     val activeMaxPrice: Long?,
     val recentSales: List<MarketplaceRecentSaleDto>,
     val avgSalePrice: Long?,
+    val asOf: Instant,
+    val salesWindows: List<MarketplaceSalesWindowDto>,
+)
+
+data class MarketplaceSalesWindowDto(
+    val windowDays: Int,
+    val from: Instant,
+    val to: Instant,
+    val completedSalesCount: Long,
+    val minSalePrice: Long?,
+    val maxSalePrice: Long?,
+    val medianSalePrice: Double?,
+    val medianTimeToSaleSeconds: Double?,
+    val timeToSaleSampleSize: Long,
 )
 
 data class MarketplaceRecentSaleDto(

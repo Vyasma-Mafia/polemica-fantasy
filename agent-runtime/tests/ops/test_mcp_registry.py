@@ -97,6 +97,19 @@ def test_official_sdk_adapts_exact_fantasy_domain_registry() -> None:
     }
 
 
+def test_sdk_collection_description_preserves_nested_market_selector_guide() -> None:
+    class Service:
+        def __getattr__(self, _name):
+            return lambda **_kwargs: None
+    server = build_server("fantasy", FantasyRegistryAdapter(build_tool_registry(Service())))
+    listed = anyio.run(server.list_tools)
+    collect = next(tool for tool in listed if tool.name == "fantasy_collect_evidence")
+    assert '[{"fantasy_player_id":123,"rarity":"EPIC"}]' in collect.description
+    assert "requires exactly fantasy_player_id (positive integer) and rarity" in collect.description
+    assert "COMMON, RARE, EPIC, or LEGENDARY" in collect.description
+    assert "no extra keys, duplicate pairs, payloads or URLs" in collect.description
+
+
 def test_fantasy_adapter_omits_sdk_materialized_optional_nulls() -> None:
     seen = None
     class Registry:

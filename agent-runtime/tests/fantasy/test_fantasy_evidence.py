@@ -99,6 +99,14 @@ def test_failure_does_not_attach_subset_and_cannot_authorize(context, bad):
     {"achievement_codes": ["x"] * 21}, {"achievement_codes": [1]},
     {"series_ids": [True]}, {"series_ids": [-1]}, {"series_ids": list(range(1, 12))},
     {"series_ids": [1, 1]}, {"achievement_codes": "x"}, {"series_ids": "1"},
+    {"fantasy_player_ids": [True]}, {"fantasy_player_ids": [0]},
+    {"fantasy_player_ids": [1, 1]}, {"fantasy_player_ids": list(range(1, 22))},
+    {"marketplace_analytics": [{"fantasy_player_id": 1}]},
+    {"marketplace_analytics": [{"fantasy_player_id": True, "rarity": "EPIC"}]},
+    {"marketplace_analytics": [{"fantasy_player_id": 1, "rarity": "invalid"}]},
+    {"marketplace_analytics": [{"fantasy_player_id": 1, "rarity": "EPIC", "url": "/admin"}]},
+    {"marketplace_analytics": [{"fantasy_player_id": 1, "rarity": "EPIC"}] * 2},
+    {"marketplace_analytics": [{"fantasy_player_id": n, "rarity": "EPIC"} for n in range(1, 12)]},
 ])
 def test_selectors_are_bounded_before_any_network(context, arguments):
     _, journal, _, collection, client, service = context
@@ -151,3 +159,31 @@ def test_compute_does_not_treat_fantasy_as_player_games(context, tmp_path):
     records = [dataclasses.asdict(record) for record in journal.get(collection).records]
     with pytest.raises(DatasetError, match="COMPUTE_PLAYER_DATA_MISSING"):
         load_player_game_rows(records, research_cache=tmp_path, player_ids=[1])
+
+
+def test_player_and_market_evidence_is_bound_to_selectors_and_sealable(context):
+    _, journal, coordinator, collection, client, service = context
+    result = build_tool_registry(service).call("fantasy_collect_evidence", {
+        "run_id": "run", "collection_id": collection, "fantasy_player_ids": [12],
+        "marketplace_analytics": [{"fantasy_player_id": 12, "rarity": "EPIC"},
+                                  {"fantasy_player_id": 12, "rarity": "COMMON"}],
+    })
+    assert result["data"]["sourceCount"] == 11
+    assert ("/api/v1/players/12", None) in client.calls
+    objects = {record.object_id for record in journal.get(collection).records}
+    assert "/api/v1/marketplace/analytics/detail?fantasyPlayerId=12&rarity=EPIC" in objects
+    assert "/api/v1/marketplace/analytics/detail?fantasyPlayerId=12&rarity=COMMON" in objects
+    assert coordinator.seal(collection).snapshot_id > 0
+
+
+@pytest.mark.parametrize("path,selectors", [
+    ("/api/v1/players/12", {"fantasy_player_ids": [12]}),
+    ("/api/v1/marketplace/analytics/detail", {"marketplace_analytics": [{"fantasy_player_id": 12, "rarity": "EPIC"}]}),
+])
+def test_optional_read_failure_does_not_attach_base_batch(context, path, selectors):
+    _, journal, _, collection, client, service = context
+    client.bad_path, client.bad_value = path, TimeoutError("secret")
+    with pytest.raises(ToolError, match="FANTASY_EVIDENCE_FAILED"):
+        service.collect_evidence(run_id="run", collection_id=collection, **selectors)
+    assert journal.get(collection).records == ()
+    assert journal.get(collection).completeness == "PARTIAL"

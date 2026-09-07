@@ -816,6 +816,30 @@ export interface MarketplaceAnalyticsDetail {
   activeMaxPrice: number | null
   recentSales: MarketplaceRecentSale[]
   avgSalePrice: number | null
+  asOf: string
+  salesWindows: MarketplaceSalesWindow[]
+}
+
+/** All completed sales in [from, to), grouped by sale-time player and rarity. */
+export interface MarketplaceSalesWindow {
+  windowDays: number
+  from: string
+  to: string
+  completedSalesCount: number
+  minSalePrice: number | null
+  maxSalePrice: number | null
+  medianSalePrice: number | null
+  /** Sold listings only; seconds since listing creation, not sell-through probability. */
+  medianTimeToSaleSeconds: number | null
+  timeToSaleSampleSize: number
+}
+
+/** Real Mafia player identity, NOT a Telegram user's profile. */
+export interface FantasyPlayerIdentity {
+  fantasyPlayerId: number
+  polemicaUserId: number
+  playerNickname: string
+  playerPhotoUrl: string | null
 }
 
 export type CardAcquisitionType = 'PACK_OPENING' | 'ADMIN_GRANT' | 'MARKETPLACE_PURCHASE' | 'ACHIEVEMENT_REWARD' | 'CARD_MERGE' | 'PERIODIC_RATING_REWARD'

@@ -15,6 +15,31 @@ import java.time.Instant
 
 interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long> {
 
+    /** Gross realized prices in [from, to); rarity and player use the sale-time template. */
+    @Query(
+        value = """
+            SELECT COUNT(*) AS "completedSalesCount",
+                   MIN(ml.price) AS "minSalePrice", MAX(ml.price) AS "maxSalePrice",
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY ml.price) AS "medianSalePrice",
+                   percentile_cont(0.5) WITHIN GROUP (
+                       ORDER BY EXTRACT(EPOCH FROM (ml.sold_at - ml.created_at))
+                   ) FILTER (WHERE ml.sold_at >= ml.created_at) AS "medianTimeToSaleSeconds",
+                   COUNT(*) FILTER (WHERE ml.sold_at >= ml.created_at) AS "timeToSaleSampleSize"
+            FROM marketplace_listing ml
+            JOIN user_card uc ON uc.id = ml.user_card_id
+            JOIN card_template ct ON ct.id = COALESCE(ml.sold_card_template_id, uc.card_template_id)
+            WHERE ml.status = 'SOLD' AND ml.sold_at >= :from AND ml.sold_at < :to
+              AND ct.fantasy_player_id = :fantasyPlayerId AND ct.rarity = :rarity
+        """,
+        nativeQuery = true,
+    )
+    fun aggregateSalesWindow(
+        @Param("fantasyPlayerId") fantasyPlayerId: Long,
+        @Param("rarity") rarity: String,
+        @Param("from") from: Instant,
+        @Param("to") to: Instant,
+    ): MarketplaceSalesWindowStats
+
     fun deleteAllByUserCard_Id(userCardId: Long)
 
     fun existsByUserCard_IdAndStatus(userCardId: Long, status: MarketplaceListingStatus): Boolean
@@ -398,4 +423,13 @@ interface MarketplaceListingRepository : JpaRepository<MarketplaceListing, Long>
         @Param("partnerId") partnerId: Long,
         @Param("buyerId") buyerId: Long,
     ): List<MarketplaceListing>
+}
+
+interface MarketplaceSalesWindowStats {
+    val completedSalesCount: Long
+    val minSalePrice: Long?
+    val maxSalePrice: Long?
+    val medianSalePrice: Double?
+    val medianTimeToSaleSeconds: Double?
+    val timeToSaleSampleSize: Long
 }

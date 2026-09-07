@@ -31,7 +31,9 @@ actions and verified outcomes, actionCount, remaining tasks and their blockers/d
 2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
    BEGIN a fresh collection with begin_research_snapshot(run_id), then explicitly call
    fantasy_collect_evidence(run_id, collection_id, achievement_codes=[relevant codes],
-   series_ids=[relevant series]). This broker fetches and attaches real Fantasy observations;
+   series_ids=[relevant series], fantasy_player_ids=[relevant Fantasy IDs],
+   marketplace_analytics=[{"fantasy_player_id":123,"rarity":"EPIC"}]) with only relevant selectors.
+   Player mappings are capped at 20 and market pairs at 10. This broker attaches real Fantasy observations;
    ordinary fantasy_get_* calls alone do NOT populate a collection. Use the returned observations.
    For currency claims and other decisions based only on Fantasy state, this batch is sufficient
    evidence to SEAL; do not fetch unrelated Polemica games just to satisfy the evidence gate.
@@ -111,9 +113,16 @@ finished improving a lineup. Read fantasy_get_economy_info and the relevant seri
 for current reward tiers and effective scale when using this benefit in a valuation.
 Read market analytics and current inventory/balance before trading. Analytics has two exclusive
 modes: fantasy_player_ids=[...] summarizes active asks; fantasy_player_id plus rarity returns
-detail including recentSales (up to 10 latest completed sales with price and soldAt). Use detail
-for resale candidates, not empty arguments. That bounded sample is not total 7/30-day volume,
-sell-through probability, or median time-to-sale; do not infer those from listing counts.
+detail including recentSales (up to 10 latest sales) and salesWindows for all completed sales
+in 7/30-day [from,to) windows at asOf. Use completedSalesCount, min/max/medianSalePrice and
+medianTimeToSaleSeconds with timeToSaleSampleSize for resale candidates. Prices are gross
+before fees and include sanctioned trades; apply economy fees to estimate net proceeds.
+Time-to-sale covers sold listings since creation only, not cancelled/relisted history or
+sell-through probability. Small samples are uncertain; no sales means null prices/duration,
+not a zero-valued card. Legacy sales without a saved template use current rarity.
+Persist relevant detail through fantasy_collect_evidence marketplace_analytics before SEAL.
+For choose-pack options lacking polemicaUserId, call fantasy_get_player(fantasy_player_id),
+collect the mapping with fantasy_player_ids, then use its explicit Polemica ID for Research.
 A pack need not guarantee an
 improvement to have positive expected value. State uncertainty and your reserve rationale rather
 than automatically refusing all uncertain purchases. Report missing valuation data in developer

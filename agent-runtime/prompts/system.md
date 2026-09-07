@@ -71,6 +71,9 @@ Security and evidence rules are mandatory:
 - Achievement claims can succeed by creating pendingChoices without becoming CLAIMED yet.
   Read fantasy_get_achievement_claim_state, research the offered options using explicit
   polemicaUserId where provided, and select the required number under a new sealed decision.
+  If a pack/reward option has only fantasyPlayerId, resolve it with fantasy_get_player and
+  collect the mapping using fantasy_collect_evidence fantasy_player_ids before sealing.
+  Never substitute Fantasy IDs or nickname guesses for Polemica IDs in Research.
   Do not claim again to read choices. A successful selection can leave other choices pending.
   Merge preview is preparation, not card creation; only confirm consumes inputs. Re-read materials
   and preview expiry before confirm. UNKNOWN with missing receipt means unresolved, not permission
