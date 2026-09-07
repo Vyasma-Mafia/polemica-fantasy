@@ -40,6 +40,15 @@ mockable `TeamGateway` and performs no network access.
 
 ## Developer feedback
 
+Strategy v21 requires a paid-pack versus concrete marketplace-card assessment before an
+economic no-op (or an explicit missing-data/deadline/affordability blocker). It treats the
+operator's pack-profit observation as a testable prior, accounts for reserves and unsold
+inventory, and permits a bounded learning purchase: one unresolved speculative pack across
+runs, with cost at most 25% of liquid balance and within unreserved funds. These are prompt
+instructions, not broker-enforced spending limits; normal evidenced purchases and all existing
+technical gates remain unchanged. Results must be tracked without treating listing asks as
+realized proceeds. Prompt-presence tests do not establish actual agent behavior.
+
 Memory tools `read_developer_notes` and `append_developer_note(run_id, title, body)`
 maintain `/var/lib/polemica-ai-agent/DEVELOPER-NOTES.md` on the runtime host.
 The agent adds Russian project/MCP suggestions with timestamps and run IDs and reads recent

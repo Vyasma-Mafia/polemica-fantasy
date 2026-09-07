@@ -24,3 +24,26 @@ def test_periodic_objective_is_persistent_and_has_live_progress_loop():
     assert "floor(rosterReward * effectiveLeagueRewardScalePercent / 100)" in system
     assert "NOT Fantasy points or periodic-rating" in system
     assert "submitted-card-count reward adjustment" in hourly
+
+
+def test_acquisition_policy_requires_research_and_bounded_learning_without_relaxing_gates():
+    prompts = Path(__file__).resolve().parents[2] / "prompts"
+    system = (prompts / "system.md").read_text()
+    hourly = (prompts / "hourly-run.md").read_text()
+    assert "testable prior, not a guaranteed return" in system
+    for requirement in (
+        'assessment means "not assessed"',
+        "at least one relevant affordable paid pack",
+        "fantasy_list_marketplace",
+        "numeric reserve tied to named near-term",
+        "25% of the current liquid Fantiki balance",
+        "one unresolved speculative pack experiment across runs",
+        "Listing a",
+        "reserve breakdown, and experiment decision",
+        "Do not invent pack pools",
+        "Never buy more merely to recover an earlier loss",
+    ):
+        assert requirement in hourly
+    assert "Stop on any SENT/UNKNOWN intent" in hourly
+    assert "fresh sealed evidence and normal operation/read-back gates" in hourly
+    assert "missing required evidence or technical safety" in hourly

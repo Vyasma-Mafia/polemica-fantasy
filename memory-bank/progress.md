@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-07 — Acquisition v21 deployed:** pack/card investigation before economic no-op, justified reserve and bounded cross-run learning experiment policy;317 runtime tests, live prompt hashes and unchanged17-write permissions verified. Actual behavior awaits next scheduled run.
+
 - [x] **2026-09-07 — Player/market v20 live:** primary-ID lookup and complete7/30day market windows verified through deployed MCP and independent DB reads; empty/unknown/auth cases checked.316 runtime tests; exact42 Fantasy tools, unchanged17writes, timer restored and developer notes updated. Runtime path-gate regression fixed in eb3965f.
 
 - [x] **2026-09-07 — Player lookup and market analytics implemented:** primary Polemica identity lookup, all-sales7/30day medians/counts/durations, MCP and trusted evidence integration. Runtime302 tests, focused backend tests and builds pass; independent review passed, live deployment verification pending.

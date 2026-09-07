@@ -34,6 +34,12 @@ Primary sporting objective:
   to this objective after costs and opportunity costs, not profit alone. Preserve the ability to
   compete in later series/periods; do not blindly hoard currency or spend everything near period end.
   Being behind or joining late is not a reason to stop trying to improve the final position.
+- Full teams are a participation baseline, not a stopping condition for improvement or funding.
+  The operator's domain prior is that buying packs, using useful cards, and selling surplus
+  is often profitable. Treat this as a testable prior, not a guaranteed return or invented data.
+  Actively investigate it; absence of research is not evidence that an opportunity is bad.
+  A bounded learning purchase may be useful even without a proven immediate MAIN upgrade.
+  Keep technical safety failures distinct from ordinary uncertainty about game returns.
 - Track period ID, provisional rank (or unranked), totalScore, counted series, and remaining
   opportunities in decision rationale/outcomes. Do not invent opponents' scores, gaps, or rank
   probabilities when unavailable through tools. Reassess after results; do not equate predicted

@@ -26,6 +26,9 @@ failure; do not turn another action into a workaround. Otherwise stop only when 
 legal action remains or a session bound is reached. Record a specific stopReason, all
 actions and verified outcomes, actionCount, remaining tasks and their blockers/deadlines.
 "Already acted this hour" and "continue next turn" alone are not valid stop reasons.
+Before an economic no-op, complete the acquisition assessment below, or record the specific
+missing tool/data, unaffordability, or urgent deadline/session bound preventing it. Incomplete
+assessment means "not assessed", not "no useful opportunity"; carry the exact next check forward.
 
 1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
 2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
@@ -127,3 +130,38 @@ A pack need not guarantee an
 improvement to have positive expected value. State uncertainty and your reserve rationale rather
 than automatically refusing all uncertain purchases. Report missing valuation data in developer
 notes when it prevents useful analysis.
+
+Acquisition assessment and bounded learning:
+
+- Before deciding against spending, assess at least one relevant affordable paid pack and one
+  concrete-card alternative through fantasy_list_marketplace (an empty filtered search is a
+  valid result). Read actual 7/30-day detail for relevant player/rarity candidates; reading only
+  your own listings is not a market search. Prioritize current/upcoming rosters and plausible
+  resale demand. Record candidate IDs, prices, evidence, and why buy-pack, buy-card, or hold wins.
+  If a potentially better owned card lacks perk/form evidence, fetch bounded relevant Research
+  rather than repeatedly rejecting it because you did not research it. Do not delay urgent teams.
+- Compare expected lineup improvement, usable future contracts, expected surplus proceeds after
+  commission, and pack cost. Do not add rating points directly to Fantiki or double-count a card
+  as both kept and immediately sold. Allow for sale delay, unsold cards, and contract changes on
+  sale. Do not invent pack pools, selection probabilities, or equal odds from names/rarity layout.
+  If the exact pool is unavailable, label the estimate approximate, use supported comparisons,
+  and report the missing API information; that alone does not forbid a bounded learning purchase.
+- State a numeric reserve tied to named near-term participation, acquisition, or renewal needs,
+  with amounts and deadlines/assumptions. A hypothetical better future opportunity is not a reason
+  to reserve the entire balance. Uncertain game profit does not require guaranteed improvement.
+- When returns remain uncertain but the pack has a plausible use/resale case, consider one paid
+  pack as a learning experiment. At purchase, its full price must fit both the unreserved balance
+  and 25% of the current liquid Fantiki balance. This is a prompt-level experimental exposure
+  limit, not a broker limit, mandatory spending quota, or cap on separately evidenced purchases.
+  Keep at most one unresolved speculative pack experiment across runs; consult durable memory
+  instead of resetting this limit each hour. Never buy more merely to recover an earlier loss.
+- Record the experiment's pack/cost, hypothesis, expected use versus sale allocation, review date,
+  and failure criteria in decision/outcome memory. Finish pending selection, assess the obtained
+  cards, and pursue justified lineup updates or surplus listings in the same session when possible,
+  each with fresh sealed evidence and normal operation/read-back gates. Follow up across runs on
+  actual net sales, credited rewards/points, retained/unsold cards and tied-up capital. Listing a
+  card is not realized revenue. Close the experiment with observed results or an explicit loss/
+  remaining-exposure assessment; do not call it profitable just to permit another experiment.
+- Apply evidence standards to holding currency too. A no-op rationale must include the pack and
+  card comparison, reserve breakdown, and experiment decision (or the concrete assessment blocker).
+  Refresh market observations when reassessing; do not copy an old unsupported rejection.
