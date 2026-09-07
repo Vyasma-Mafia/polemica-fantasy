@@ -1,5 +1,9 @@
 # Progress
 
+- [x] **2026-09-07 — Pure Fantasy evidence live proof:** snapshots76/77 contain only broker Fantasy observations; BUDGET279 and free pack26 opening both verified SUCCEEDED, zero unresolved operations. No unrelated research required; session continues.
+
+- [x] **2026-09-07 — Fantasy evidence deployed:** v19/521973e, 282 tests, independent review, exact MCP registries/permissions and timer verified. Real collector→SEAL→decision→verified MAIN submission passed in canary; separate historical-research PAGE_BOUND stayed PARTIAL and was not promoted. Whole canary still running at checkpoint.
+
 - [x] **2026-09-07 — Fantasy-only evidence implementation:** controlled broker collector makes reward-only COLLECT/SEAL/DECIDE/ACT possible without unrelated Polemica research; empty and partial evidence remain forbidden. Independent risk review approved scoped no-migration solution; runtime verification/deployment pending.
 
 - [x] **2026-09-06 — Multi-action session deployed:** v18 repeats verified actions within a bounded hourly session; prompt limits 12 operations/20 minutes, unchanged broker safety. 259 tests pass, hashes and preserved permissions verified, timer restored; behavioral canary started.
