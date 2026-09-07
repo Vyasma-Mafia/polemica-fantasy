@@ -136,7 +136,7 @@ class FantasyHttpClient:
         body: Any | None = None,
         idempotency_key: str | None = None,
     ) -> Any:
-        _validate_path(path)
+        _validate_path(path, method=method)
         encoded_query = urllib.parse.urlencode(_query_items(query or {}), doseq=True)
         url = f"{self._base_url}{path}" + (f"?{encoded_query}" if encoded_query else "")
         token = self._token() if callable(self._token) else self._token
@@ -170,9 +170,15 @@ class FantasyHttpClient:
         raise FantasyApiError(response.status, code, message, uncertain=True)
 
 
-def _validate_path(path: str) -> None:
+def _validate_path(path: str, *, method: str = "GET") -> None:
     if not path.startswith("/api/v1/") or "?" in path or "#" in path or ".." in path or "//" in path:
         raise ValueError("Invalid Fantasy API path")
+    # Players also contains account-profile routes. Expose only the exact real-player
+    # identity read, never a broad /players prefix or a mutation under this route.
+    if re.fullmatch(r"/api/v1/players/[1-9][0-9]*", path):
+        if method != "GET":
+            raise ValueError("Fantasy player identity supports GET only")
+        return
     if not any(path == prefix or path.startswith(prefix + "/") for prefix in ALLOWED_PREFIXES):
         raise ValueError("Fantasy API path is not allowlisted")
     if any(fragment in path for fragment in FORBIDDEN_FRAGMENTS):

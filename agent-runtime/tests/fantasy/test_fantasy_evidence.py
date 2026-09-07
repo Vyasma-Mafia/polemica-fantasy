@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
@@ -10,6 +11,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from polemica_agent.common.storage import AuditStore, FailClosedError
 from polemica_agent.compute_mcp.dataset import DatasetError, load_player_game_rows
 from polemica_agent.fantasy_mcp.service import FantasyService
+from polemica_agent.fantasy_mcp.client import FantasyHttpClient, HttpResponse
 from polemica_agent.fantasy_mcp.registry import build_tool_registry
 from polemica_agent.memory_mcp.evidence import DurableResearchSnapshotJournal
 from polemica_agent.memory_mcp.service import MemoryService
@@ -187,3 +189,36 @@ def test_optional_read_failure_does_not_attach_base_batch(context, path, selecto
         service.collect_evidence(run_id="run", collection_id=collection, **selectors)
     assert journal.get(collection).records == ()
     assert journal.get(collection).completeness == "PARTIAL"
+
+
+def test_real_http_client_allows_identity_service_and_sealed_evidence(context):
+    store, _, coordinator, collection, fixture, _ = context
+    class Transport:
+        def request(self, *, method, url, **_kwargs):
+            assert method == "GET"
+            path = urlsplit(url).path
+            if path == "/api/v1/players/12":
+                return HttpResponse(200, {"fantasyPlayerId": 12, "polemicaUserId": 456,
+                                          "playerNickname": "Player", "playerPhotoUrl": None})
+            return HttpResponse(200, fixture._get(path))
+    service = FantasyService(FantasyHttpClient("https://fantasy.example", "test", transport=Transport()), store)
+    assert service.get_player(12).data["polemicaUserId"] == 456
+    result = service.collect_evidence(run_id="run", collection_id=collection, fantasy_player_ids=[12])
+    identity = next(item for item in result.data["observations"] if item["objectId"] == "/api/v1/players/12")
+    assert identity["data"]["polemicaUserId"] == 456
+    assert coordinator.seal(collection).snapshot_id > 0
+
+
+@pytest.mark.parametrize("method,path", [
+    (method, "/api/v1/players/12") for method in ("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
+] + [("GET", path) for path in (
+    "/api/v1/players", "/api/v1/players/12/profile", "/api/v1/players/12/",
+    "/api/v1/players/0", "/api/v1/players/-1", "/api/v1/players/name", "/api/v1/players/12%2fprofile",
+)])
+def test_real_http_client_keeps_other_player_paths_and_methods_closed(method, path):
+    class Transport:
+        def request(self, **_kwargs):
+            pytest.fail("Rejected player route reached network")
+    client = FantasyHttpClient("https://fantasy.example", "test", transport=Transport())
+    with pytest.raises(ValueError):
+        client._request(method, path)
