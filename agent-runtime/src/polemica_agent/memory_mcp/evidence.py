@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import datetime as dt
 import hashlib
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any, Sequence
@@ -18,6 +19,10 @@ from .sql_read import fetchall, fetchone
 
 class EmptyEvidenceError(FailClosedError):
     """No broker observations exist; an empty collection is never trusted."""
+
+
+class PartialEvidenceError(FailClosedError):
+    """A partial collection cannot authorize a decision."""
 
 
 def _assert_collection_run(db: Any, collection_id: str, run_id: str) -> None:
@@ -53,10 +58,12 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
         """A failed broker batch cannot leave apparently complete older evidence."""
         with self.store.transaction() as db:
             _assert_collection_run(db, collection_id, run_id)
-            db.execute(
-                "UPDATE research_collections SET completeness='PARTIAL', "
-                "error_count=error_count+1 WHERE collection_id=?", (collection_id,),
-            )
+            previous = json.loads(db.execute("SELECT errors_json FROM research_collections WHERE collection_id=?", (collection_id,)).fetchone()[0])
+            error = dataclasses.asdict(PartialError("fantasy_collect_evidence", "BATCH_FAILED", "Fantasy evidence batch failed; inspect collector response"))
+            added = int(error not in previous)
+            if error not in previous:
+                previous.append(error)
+            db.execute("UPDATE research_collections SET completeness='PARTIAL', error_count=error_count+?, errors_json=? WHERE collection_id=?", (added, json.dumps(previous), collection_id))
 
     def attach_many(self, collection_id: str, run_id: str, records: Sequence[RawPayloadRecord]) -> Snapshot:
         """Commit a whole broker-fetched Fantasy batch, never a partial prefix."""
@@ -105,12 +112,13 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
         return Snapshot(
             public_id, row["run_id"], row["state"], row["created_at"], row["as_of"],
             records, row["completeness"], int(row["error_count"]), snapshot_id,
+            tuple(PartialError(**error) for error in json.loads(row["errors_json"])),
         )
 
     def attach(self, snapshot_id: str, record: RawPayloadRecord) -> Snapshot:
         with self.store.transaction() as db:
             row = db.execute(
-                "SELECT state FROM research_collections WHERE collection_id=?", (snapshot_id,)
+                "SELECT state, errors_json FROM research_collections WHERE collection_id=?", (snapshot_id,)
             ).fetchone()
             if row is None:
                 raise ContractError("snapshot collection not found")
@@ -136,16 +144,22 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
         del sample_size
         with self.store.transaction() as db:
             row = db.execute(
-                "SELECT state FROM research_collections WHERE collection_id=?", (snapshot_id,)
+                "SELECT state, errors_json FROM research_collections WHERE collection_id=?", (snapshot_id,)
             ).fetchone()
             if row is None or row["state"] != "COLLECTING":
                 raise SnapshotSealedError("result cannot mutate a sealed or absent snapshot")
             if not complete or errors:
+                previous = json.loads(row["errors_json"])
+                added = []
+                for error in errors or [PartialError("research", "INCOMPLETE_RESULT", "result was incomplete")]:
+                    item = redact(dataclasses.asdict(error))
+                    if item not in previous and item not in added:
+                        added.append(item)
                 db.execute(
                     "UPDATE research_collections SET completeness='PARTIAL', "
-                    "error_count=MAX(error_count, ?) "
+                    "error_count=error_count+?, errors_json=? "
                     "WHERE collection_id=?",
-                    (max(1, len(errors)), snapshot_id),
+                    (len(added), json.dumps(previous + added), snapshot_id),
                 )
 
     def seal(self, snapshot_id: str, as_of: str) -> Snapshot:
@@ -181,6 +195,8 @@ class DurableResearchSnapshotJournal(SnapshotJournal):
                 "asOf": as_of,
                 "completeness": current["completeness"],
                 "errorCount": int(current["error_count"]),
+                "errorDetailsComplete": int(current["error_count"]) == len(json.loads(current["errors_json"])),
+                "errors": json.loads(current["errors_json"]),
                 "records": [dataclasses.asdict(record) for record in records],
             }
             digest, relative = self.store.store_blob(redact(manifest))
@@ -250,6 +266,9 @@ def assert_trusted_research_snapshots(store: AuditStore, run_id: str, snapshot_i
         """,
         tuple(snapshot_ids),
     )
+    if any(row["run_id"] == run_id and row["completeness"] == "PARTIAL" for row in rows):
+        raise PartialEvidenceError("PARTIAL_EVIDENCE: inspect SEAL errors (operation/code/subject). "
+                                   "Begin a new collection and recollect required facts; partial evidence cannot authorize decisions, including no-op.")
     if len(rows) != len(set(snapshot_ids)) or any(
         row["run_id"] != run_id or row["sealed_at"] is None or
         row["completeness"] != "COMPLETE" or row["trust_kind"] != "TRUSTED_RESEARCH" or

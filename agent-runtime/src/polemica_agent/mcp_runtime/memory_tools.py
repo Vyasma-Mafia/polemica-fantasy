@@ -81,7 +81,12 @@ class MemoryTools:
         snapshot_ids: Sequence[int], alternatives: Any, choice: Any, rationale: str,
         strategy_version: str | None = None, computation_ids: Sequence[str] = (),
     ) -> int:
-        assert_trusted_research_snapshots(self.service.store, run_id, snapshot_ids)
+        from mcp.server.mcpserver.exceptions import ToolError
+        from polemica_agent.memory_mcp.evidence import PartialEvidenceError
+        try:
+            assert_trusted_research_snapshots(self.service.store, run_id, snapshot_ids)
+        except PartialEvidenceError as error:
+            raise ToolError(str(error)) from None
         return self.service.record_decision(
             run_id=run_id, decision_type=decision_type, subject_type=subject_type,
             subject_id=subject_id, snapshot_ids=snapshot_ids, alternatives=alternatives,

@@ -55,11 +55,16 @@ class ResearchTools:
             ) from None
 
     def get_player_games(
-        self, snapshot_id: str, player_id: int, page_size: int = 100, max_pages: int = 10
+        self, snapshot_id: str, player_id: int, page_size: int = 100, max_pages: int = 10,
+        limit: int | None = None,
     ) -> dict[str, Any]:
-        """Collect a player's deduplicated profile game rows."""
+        """Collect deduplicated profile games in upstream order. Set limit=1..500 for
+        a bounded window (e.g. limit=20, page_size=20, max_pages=1). COMPLETE then
+        describes that window, not the entire career. Without limit, all history
+        is requested and hitting max_pages before exhaustion yields PAGE_BOUND.
+        """
         return self.service.get_player_games(
-            snapshot_id, player_id, page_size=page_size, max_pages=max_pages
+            snapshot_id, player_id, page_size=page_size, max_pages=max_pages, minimum_rows=limit
         ).to_dict()
 
     def get_game(

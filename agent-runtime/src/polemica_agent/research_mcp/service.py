@@ -53,7 +53,7 @@ class ResearchService:
             raise ContractError("page_size must be in 1..200")
         if not 1 <= max_pages <= 50:
             raise ContractError("max_pages must be in 1..50")
-        if minimum_rows is not None and not 1 <= minimum_rows <= 500:
+        if minimum_rows is not None and (type(minimum_rows) is not int or not 1 <= minimum_rows <= 500):
             raise ContractError("minimum_rows must be in 1..500")
         self.snapshots.require_collecting(snapshot_id)
         rows_by_id: dict[int, Mapping[str, Any]] = {}
@@ -102,8 +102,11 @@ class ResearchService:
         if not complete and not errors:
             errors.append(PartialError("get_player_games", "PAGE_BOUND", "pagination bound reached", f"player:{player_id}"))
         rows = list(rows_by_id.values())
+        if minimum_rows is not None:
+            rows = rows[:minimum_rows]
         return self._result(
-            data={"playerId": player_id, "rows": rows, "reportedTotalCount": total_count},
+            data={"playerId": player_id, "rows": rows, "reportedTotalCount": total_count,
+                  "requestedLimit": minimum_rows, "coverage": "WINDOW" if minimum_rows else "FULL_HISTORY"},
             snapshot_id=snapshot_id,
             source="profile/default/get-games",
             records=records,
@@ -448,6 +451,9 @@ def _snapshot_dict(snapshot: Any) -> dict[str, Any]:
         "payloadHashes": [record.payload_hash for record in snapshot.records],
         "completeness": snapshot.completeness,
         "errorCount": snapshot.error_count,
+        "errorDetailsComplete": snapshot.error_count == len(snapshot.errors),
+        "errors": [dict(operation=e.operation, code=e.code, message=e.message, subject=e.subject)
+                   for e in snapshot.errors],
         "evidenceManifest": [{
             "source": record.source,
             "objectId": record.object_id,

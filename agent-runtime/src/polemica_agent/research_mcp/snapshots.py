@@ -25,6 +25,7 @@ class Snapshot:
     completeness: str = "COMPLETE"
     error_count: int = 0
     collection_id: str | None = None
+    errors: tuple[PartialError, ...] = ()
 
 
 class SnapshotJournal(Protocol):
@@ -94,9 +95,13 @@ class InMemorySnapshotJournal:
             if current.state != "COLLECTING":
                 raise SnapshotSealedError("result cannot mutate sealed snapshot")
             if not complete or errors:
+                added = tuple(e for e in dict.fromkeys(errors or [PartialError(
+                    "research", "INCOMPLETE_RESULT", "result was incomplete"
+                )]) if e not in current.errors)
                 self._items[snapshot_id] = replace(
                     current, completeness="PARTIAL",
-                    error_count=current.error_count + max(1, len(errors)),
+                    error_count=current.error_count + len(added),
+                    errors=current.errors + added,
                 )
 
 

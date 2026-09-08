@@ -942,3 +942,7 @@
 - TMA SDK: npm предупреждает о deprecated пакетах `@telegram-apps/*` в пользу `@tma.js/*` — миграция по желанию
 - GitHub Actions: cosign может требовать доп. настройку OIDC — шаг помечен `continue-on-error`
 - Docker Compose: переменная `POSTGRES_HOST_PORT` (по умолчанию 5433), если порт занят
+# 2026-09-08 — Agent runtime v23
+
+Bounded profile-game windows and persisted PARTIAL diagnostics implemented and
+covered by restart/seal/authorization regression tests (332 runtime tests).

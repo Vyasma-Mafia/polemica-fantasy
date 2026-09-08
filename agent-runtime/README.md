@@ -160,3 +160,16 @@ runs as `polemica-agent-compute`, has no broker state or home access, and accept
 work only through its AF_UNIX socket. Both Compute units are inert until the
 reviewed activation procedure starts the gateway, which in turn requires the
 worker.
+# Research window and PARTIAL diagnostics (v23)
+
+`get_player_games(limit=20, page_size=20, max_pages=1)` requests a bounded
+window in upstream profile order. Omitting `limit` still requests full history;
+`max_pages` alone is a safety bound, not a sample size. Window responses expose
+`coverage=WINDOW` and `requestedLimit`; COMPLETE does not mean full-career coverage.
+SEAL returns durable `errors` with operation/code/subject/message, also included
+in the hashed manifest. `errorCount` counts distinct diagnostic causes (repeated
+and derived observations are deduplicated), not failed request attempts.
+Older collections may have `errorDetailsComplete=false`: lost historical details
+cannot be recovered by migration. Existing sealed evidence is never rewritten.
+PARTIAL evidence remains ineligible for decisions and game writes; start a new
+collection and recollect required facts after resolving the cause.

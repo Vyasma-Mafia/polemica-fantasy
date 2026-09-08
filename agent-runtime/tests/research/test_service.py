@@ -68,6 +68,31 @@ class ResearchServiceTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
+    def test_explicit_window_is_complete_without_fetching_whole_career(self) -> None:
+        self.client.pages[1]["totalCount"] = 1818
+        result = ResearchTools(self.service).get_player_games(self.snapshot_id, 42, page_size=2, max_pages=1, limit=1)
+        self.assertTrue(result["provenance"]["complete"])
+        self.assertEqual(1, len(result["data"]["rows"]))
+        self.assertEqual("WINDOW", result["data"]["coverage"])
+        self.assertEqual("COMPLETE", self.service.seal_snapshot(self.snapshot_id)["completeness"])
+
+    def test_page_bound_survives_successful_read_and_is_in_seal(self) -> None:
+        self.client.pages[1]["totalCount"] = 1818
+        self.service.get_player_games(self.snapshot_id, 42, page_size=2, max_pages=1)
+        self.service.get_player_games(self.snapshot_id, 42, page_size=2, max_pages=1, minimum_rows=2)
+        sealed = self.service.seal_snapshot(self.snapshot_id)
+        self.assertEqual("PARTIAL", sealed["completeness"])
+        self.assertEqual("PAGE_BOUND", sealed["errors"][0]["code"])
+        self.assertEqual("player:42", sealed["errors"][0]["subject"])
+
+    def test_window_short_history_and_unreachable_window(self) -> None:
+        result = self.service.get_player_games(self.snapshot_id, 42, minimum_rows=20)
+        self.assertTrue(result.provenance.complete)
+        self.assertEqual(3, len(result.data["rows"]))
+        self.client.pages[1]["totalCount"] = 1818
+        result = self.service.get_player_games(self.snapshot_id, 42, max_pages=1, minimum_rows=20)
+        self.assertFalse(result.provenance.complete)
+
     def test_pagination_deduplicates_rows_and_reports_complete(self) -> None:
         result = self.service.get_player_games(self.snapshot_id, 42, page_size=2, max_pages=3)
         self.assertEqual([101, 100, 99], [row["id"] for row in result.data["rows"]])

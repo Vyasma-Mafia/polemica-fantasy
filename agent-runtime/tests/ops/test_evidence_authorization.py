@@ -32,6 +32,37 @@ def start_run(database: Path) -> str:
     return run_id
 
 
+def test_partial_diagnostics_survive_restart_seal_and_block_decision(tmp_path: Path) -> None:
+    import json
+    from mcp.server.mcpserver.exceptions import ToolError
+    from polemica_agent.research_mcp.types import PartialError
+    database = tmp_path / "agent.sqlite3"
+    run_id = start_run(database)
+    journal = DurableResearchSnapshotJournal(database)
+    collection = SnapshotCoordinator(journal).begin(run_id)
+    sid = str(collection.snapshot_id)
+    record = RawPayloadCache(tmp_path / "cache").store(source="profile-games-page", object_id="42:1:20", payload={"rows": []})
+    journal.attach(sid, record)
+    for player in (42, 42, 43):
+        journal.observe_result(sid, complete=False, sample_size=20, errors=[PartialError("get_player_games", "PAGE_BOUND", "pagination bound reached", f"player:{player}")])
+    journal.observe_result(sid, complete=True, sample_size=20, errors=[])
+    journal.close()
+    journal = DurableResearchSnapshotJournal(database)
+    sealed = SnapshotCoordinator(journal).seal(sid)
+    assert sealed.error_count == 2
+    assert [e.subject for e in sealed.errors] == ["player:42", "player:43"]
+    row = journal.store.connection.execute("SELECT payload_path FROM snapshots WHERE id=?", (sealed.snapshot_id,)).fetchone()
+    manifest = json.loads((journal.store.state_dir / "blobs" / row[0]).read_text())
+    assert manifest["errors"][0]["code"] == "PAGE_BOUND"
+    with pytest.raises(SnapshotSealedError):
+        journal.observe_result(sid, complete=True, sample_size=1, errors=[])
+    journal.close()
+    service = MemoryService(database)
+    with pytest.raises(ToolError, match="PARTIAL_EVIDENCE"):
+        MemoryTools(service).record_decision(run_id=run_id, decision_type="NOOP", subject_type="run", subject_id=run_id, snapshot_ids=[sealed.snapshot_id], alternatives=[], choice={}, rationale="test")
+    service.close()
+
+
 def test_empty_seal_has_actionable_safe_error_and_remains_untrusted(tmp_path: Path) -> None:
     from types import SimpleNamespace
     from mcp.server.mcpserver.exceptions import ToolError

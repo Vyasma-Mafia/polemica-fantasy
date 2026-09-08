@@ -71,6 +71,9 @@ assessment means "not assessed", not "no useful opportunity"; carry the exact ne
    research; no matching competition is required. Never guess an external ID. For lineup
    ranking, prefer bounded get_player_recent_form windows; full-career get_player_statistics may
    legitimately return PAGE_BOUND for experienced players and would make the snapshot partial.
+   For bounded game locators use get_player_games(limit=20, page_size=20, max_pages=1)
+   (or another explicit limit up to 500). Without limit this requests FULL_HISTORY, not
+   a recent window. COMPLETE with coverage=WINDOW covers only the requested window.
    Rank legal card instances, not players alone. Estimate each card's Fantasy points as
    `(expected base points + sum(card perk bonusPoints * matching ratePerGame)) * rarity modifier`,
    using COMMON=1.0, RARE=1.1, EPIC=1.15, and LEGENDARY=1.25. For cards with perks, collect
@@ -87,6 +90,11 @@ assessment means "not assessed", not "no useful opportunity"; carry the exact ne
    collection and then SEAL; repeating SEAL alone cannot fix an empty collection. If a collection
    became PARTIAL after a failed fetch, start a new collection and recollect the required facts;
    do not mask the failed required source with a successful unrelated read.
+   Inspect SEAL's errors list (operation, code, subject, message), not just individual page
+   completeness: successful pages do not prove the requested history was fully collected.
+   errorCount counts distinct diagnostic causes, not failed HTTP attempts. Repeating SEAL
+   cannot repair a sealed collection. For PAGE_BOUND choose an explicit bounded window if
+   appropriate to the decision, then recollect all required evidence in a new collection.
    Use only SEAL's numeric snapshotId for the decision; the collectionId is not
    evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
 4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.
