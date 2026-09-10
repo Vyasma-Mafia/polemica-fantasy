@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ from typing import Any, Mapping
 sys.path.insert(0, str(Path(__file__).parents[2] / "src"))
 
 from polemica_agent.research_mcp.cache import RawPayloadCache
+from polemica_agent.research_mcp import analytics
 from polemica_agent.research_mcp.errors import ContractError, SnapshotSealedError, UpstreamError
 from polemica_agent.research_mcp.service import ResearchService
 from polemica_agent.research_mcp.snapshots import InMemorySnapshotJournal, SnapshotCoordinator
@@ -67,6 +69,103 @@ class ResearchServiceTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp.cleanup()
+
+    def profile_points(self, rows, player_id=42):
+        rows = [dict({"result": {"code": "win"}}, **row) for row in rows]
+        self.client.pages = {1: {"rows": rows, "totalCount": len(rows)}}
+        return self.service.get_player_games(self.snapshot_id, player_id)
+
+    def ninja(self, games=None):
+        return self.service.get_player_perk_rates(self.snapshot_id, 42,
+            games or [{"kind": "match", "game_id": 501}], perk_ids=["ninja"])
+
+    def test_ninja_trusted_zero_and_provenance(self):
+        source = self.profile_points([{"id": 501, "type": "match", "points": 0}])
+        result = self.ninja()
+        self.assertTrue(result.provenance.complete)
+        self.assertEqual(1, result.data["perks"]["ninja"]["matchCount"])
+        self.assertTrue(set(source.provenance.payload_hashes) <= set(result.provenance.payload_hashes))
+        self.assertTrue(any(m["source"] == "profile-games-page" for m in result.provenance.evidence_manifest))
+
+    def test_ninja_missing_wrong_player_wrong_kind_and_invalid_points(self):
+        for row, owner in [({"id": 501, "type": "match", "points": 0}, 43),
+                           ({"id": 501, "type": "competition", "points": 0}, 42),
+                           ({"id": 501, "type": "match", "points": None}, 42),
+                           ({"id": 501, "type": "match", "points": True}, 42)]:
+            with self.subTest(row=row, owner=owner):
+                self.snapshot_id = self.service.begin_snapshot(str(uuid.uuid4()))["snapshotId"]
+                self.profile_points([row], owner)
+                result = self.ninja()
+                self.assertFalse(result.provenance.complete)
+                self.assertEqual(0, result.data["perks"]["ninja"]["sampleSize"])
+                self.assertIsNone(result.data["perks"]["ninja"]["ratePerGame"])
+                self.assertTrue(result.provenance.errors)
+
+    def test_ninja_conflict_hash_corruption_and_cross_snapshot(self):
+        source = self.profile_points([{"id": 501, "type": "match", "points": 0}])
+        self.profile_points([{"id": 501, "type": "match", "points": 1}])
+        self.assertFalse(self.ninja().provenance.complete)
+        self.snapshot_id = self.service.begin_snapshot(str(uuid.uuid4()))["snapshotId"]
+        self.assertFalse(self.ninja().provenance.complete)
+        self.profile_points([{"id": 501, "type": "match", "points": 0}])
+        (Path(self.temp.name) / "blobs" / (source.provenance.payload_hashes[0] + ".json")).write_text("{}")
+        result = self.ninja()
+        self.assertFalse(result.provenance.complete)
+        self.assertIn("POINTS_SOURCE_INVALID", [e.code for e in result.provenance.errors])
+
+    def test_ninja_deduplicates_locators_and_keeps_kind_identity(self):
+        self.profile_points([{"id": 501, "type": "match", "points": 0},
+                             {"id": 501, "type": "competition", "competition_id": 9, "points": 1}])
+        match = {"kind": "match", "game_id": 501}
+        result = self.ninja([match, match, {"kind": "competition", "competition_id": 9, "game_id": 501}])
+        self.assertTrue(result.provenance.complete)
+        self.assertEqual(2, result.data["sampleSize"])
+        self.assertEqual(1, result.data["duplicateLocatorCount"])
+        self.assertEqual(0.5, result.data["perks"]["ninja"]["ratePerGame"])
+
+    def test_perk_exclusions_are_explicit(self):
+        self.client.game["result"] = None
+        result = self.ninja()
+        self.assertEqual(0, result.data["sampleSize"])
+        self.assertEqual("UNFINISHED", result.data["excludedGames"][0]["reason"])
+
+    def test_ninja_denominator_only_finite_points_for_eligible_games(self):
+        games = [copy.deepcopy(self.client.game) for _ in range(4)]
+        for i, game in enumerate(games):
+            game["id"] = i + 1
+        games[2]["result"] = None
+        games[3]["players"] = []
+        result = analytics.perk_rates(games, 42, perk_ids=["ninja"],
+            base_points_by_game_id={1: 0, 2: float("nan"), 3: 0, 4: 0})
+        self.assertEqual(2, result["sampleSize"])
+        self.assertEqual(1, result["perks"]["ninja"]["sampleSize"])
+        self.assertEqual(1, result["perks"]["ninja"]["ratePerGame"])
+        self.assertFalse(result["complete"])
+        self.assertEqual(2, len(result["excludedGames"]))
+
+    def test_ninja_aligned_points_requires_exact_length(self):
+        for values in ([], [0, 1]):
+            with self.assertRaisesRegex(ValueError, "must align with every game"):
+                analytics.perk_rates([self.client.game], 42, base_points_by_index=values)
+
+    def test_ninja_competition_requires_exact_competition_id(self):
+        self.profile_points([{"id": 501, "type": "competition", "competition_id": 8, "points": 0}])
+        result = self.ninja([{"kind": "competition", "competition_id": 9, "game_id": 501}])
+        self.assertFalse(result.provenance.complete)
+
+    def test_mismatched_game_payload_rejected(self):
+        self.client.game["id"] = 999
+        result = self.ninja()
+        self.assertFalse(result.provenance.complete)
+        self.assertEqual("GAME_IDENTITY_MISMATCH", result.provenance.errors[0].code)
+
+    def test_unfinished_profile_points_and_malformed_game_are_partial(self):
+        self.profile_points([{"id": 501, "type": "match", "points": 0, "result": None}])
+        self.assertFalse(self.ninja().provenance.complete)
+        self.client.game["players"] = ["malformed"]
+        result = self.ninja()
+        self.assertFalse(result.provenance.complete)
+        self.assertEqual("GAME_PARSE_ERROR", result.provenance.errors[0].code)
 
     def test_explicit_window_is_complete_without_fetching_whole_career(self) -> None:
         self.client.pages[1]["totalCount"] = 1818

@@ -40,6 +40,9 @@ class ToolPolicy:
         except WriteDenied:
             raise
         except Exception as exc:
+            from polemica_agent.memory_mcp.authorization import ActPolicyError
+            if isinstance(exc, ActPolicyError):
+                raise WriteDenied(str(exc)) from None
             raise WriteDenied("persistent ACT policy denied the write") from exc
 
 

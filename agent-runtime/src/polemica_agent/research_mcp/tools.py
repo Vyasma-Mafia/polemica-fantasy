@@ -59,9 +59,11 @@ class ResearchTools:
         limit: int | None = None,
     ) -> dict[str, Any]:
         """Collect deduplicated profile games in upstream order. Set limit=1..500 for
-        a bounded window (e.g. limit=20, page_size=20, max_pages=1). COMPLETE then
+        a bounded window (e.g. limit=20, page_size=40, max_pages=2). COMPLETE then
         describes that window, not the entire career. Without limit, all history
         is requested and hitting max_pages before exhaustion yields PAGE_BOUND.
+        Allow spare rows/pages for duplicates; diagnostics explain raw, invalid,
+        duplicate and unique row counts without treating 19 unique rows as 20.
         """
         return self.service.get_player_games(
             snapshot_id, player_id, page_size=page_size, max_pages=max_pages, minimum_rows=limit
@@ -146,6 +148,12 @@ class ResearchTools:
         upstream data stays PARTIAL and cannot be promoted by retrying.
         Select historical completed games (result is not null, including result=0),
         not future series games. Pass versions from their listing when available.
+        For ninja (included by default), first collect this player's profile games
+        in the SAME collecting snapshot. Broker-verified finite profile points are
+        required for every eligible game, matched by kind and game ID and, for
+        competition games, explicit competition_id. Missing/conflicting points
+        remain PARTIAL; caller-provided base_points are never trusted. Duplicate
+        locators are counted once; exclusions and ninja sample size are reported.
         """
         return self.service.get_player_perk_rates(
             snapshot_id, player_id, games, perk_ids=perk_ids

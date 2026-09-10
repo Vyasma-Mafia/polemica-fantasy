@@ -14,6 +14,36 @@ UTC = dt.timezone.utc
 TEAM_WRITE_TOOLS = {"fantasy_create_team", "fantasy_update_team"}
 META_ARGUMENTS = {"run_id", "operation_id", "decision_id"}
 
+# Only fixed runtime messages cross the MCP boundary; never forward arbitrary
+# exceptions from a reader, blob store, SQLite, or remote upstream.
+_POLICY_ERRORS = {
+    "decision references invalid computation lineage": "ACT_COMPUTATION_LINEAGE_INVALID",
+    "ACT requires this RUNNING run's decision": "ACT_RUN_DECISION_INVALID",
+    "decision is future-dated or stale": "ACT_DECISION_STALE",
+    "ACT requires complete trusted evidence sealed before decision": "ACT_EVIDENCE_INVALID",
+    "decision choice is not bound to the requested tool": "ACT_TOOL_MISMATCH",
+    "decision choice arguments do not match ACT arguments": "ACT_ARGUMENTS_MISMATCH",
+    "operation id is linked to another run or decision": "ACT_OPERATION_BINDING_INVALID",
+    "series deadline observation is stale": "ACT_DEADLINE_OBSERVATION_STALE",
+    "team deadline safety margin has elapsed": "ACT_DEADLINE_MARGIN",
+    "open intents must be reconciled before a new ACT": "ACT_UNRESOLVED_INTENT",
+    "another ACT authorization is not terminal": "ACT_PENDING_AUTHORIZATION",
+    "one decision cannot authorize a second operation": "ACT_DECISION_ALREADY_USED",
+    "existing intent has no persistent ACT authorization": "ACT_AUTHORIZATION_MISSING",
+    "ACT authorization is already bound to different parameters": "ACT_AUTHORIZATION_CONFLICT",
+    "series response has no parseable team deadline": "ACT_DEADLINE_UNAVAILABLE",
+}
+
+
+class ActPolicyError(FailClosedError):
+    """Sanitized denial suitable for both the MCP response and audit journal."""
+
+    def __init__(self, error: Exception) -> None:
+        message = str(error) if isinstance(error, FailClosedError) else ""
+        self.code = _POLICY_ERRORS.get(message, "ACT_AUTHORIZATION_FAILED")
+        self.safe_message = message if message in _POLICY_ERRORS else "authorization could not be verified"
+        super().__init__(f"{self.code}: {self.safe_message}")
+
 
 class PersistentActAuthorizer:
     """Authorize one Fantasy call from durable broker-owned evidence and intent state."""
@@ -39,6 +69,7 @@ class PersistentActAuthorizer:
         try:
             self._authorize_write(tool_name, arguments)
         except Exception as exc:
+            denial = ActPolicyError(exc)
             self.store.record_intervention(
                 "ACT_DENIED",
                 {
@@ -47,10 +78,11 @@ class PersistentActAuthorizer:
                     "decisionId": arguments.get("decision_id"),
                     "runId": arguments.get("run_id"),
                     "reason": type(exc).__name__,
+                    "policyErrorCode": denial.code,
                 },
                 run_id=None,
             )
-            raise
+            raise denial from exc
 
     def _authorize_write(self, tool_name: str, arguments: Mapping[str, Any]) -> None:
         run_id = _required_str(arguments, "run_id")

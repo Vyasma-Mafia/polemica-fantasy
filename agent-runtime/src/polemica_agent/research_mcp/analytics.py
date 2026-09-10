@@ -87,9 +87,12 @@ def perk_rates(
     *,
     perk_ids: Sequence[str] | None = None,
     base_points_by_game_id: Mapping[int, float] | None = None,
+    base_points_by_index: Sequence[float | None] | None = None,
     complete: bool = True,
 ) -> dict[str, Any]:
     selected_perks = tuple(PERK_IDS if perk_ids is None else perk_ids)
+    if base_points_by_index is not None and len(base_points_by_index) != len(games):
+        raise ValueError("base_points_by_index must align with every game")
     if not selected_perks or len(set(selected_perks)) != len(selected_perks):
         raise ValueError("perk_ids must be non-empty and unique")
     unknown = sorted(set(selected_perks) - set(PERK_IDS))
@@ -99,23 +102,30 @@ def perk_rates(
     matched_games = Counter({perk_id: 0 for perk_id in selected_perks})
     eligible = 0
     skipped: list[dict[str, Any]] = []
-    for game in games:
+    excluded: list[dict[str, Any]] = []
+    ninja_sample = 0
+    for index, game in enumerate(games):
         try:
             player = _find_player(game, player_id)
             if player is None or game.get("result") is None:
+                excluded.append({"gameId": game.get("id"), "reason": "PLAYER_ABSENT" if player is None else "UNFINISHED"})
                 continue
-            eligible += 1
             base_points = None
             game_id = _int(game.get("id"))
             if base_points_by_game_id is not None and game_id is not None:
                 base_points = base_points_by_game_id.get(game_id)
+            if base_points_by_index is not None:
+                base_points = base_points_by_index[index]
+            base_points = _number(base_points)
             matches = _perk_matches(game, player, base_points)
+            eligible += 1
+            ninja_sample += int(base_points is not None)
             for perk_id in selected_perks:
                 count = matches[perk_id]
                 totals[perk_id] += count
                 if count > 0:
                     matched_games[perk_id] += 1
-        except (KeyError, TypeError, ValueError, ArithmeticError) as error:
+        except (KeyError, TypeError, ValueError, ArithmeticError, AttributeError) as error:
             skipped.append({"gameId": game.get("id"), "reason": type(error).__name__})
     rates = {
         perk_id: {
@@ -127,17 +137,18 @@ def perk_rates(
         for perk_id in selected_perks
     }
     # Ninja requires the external base-points calculation, which full game JSON does not carry.
-    ninja_sample = 0 if base_points_by_game_id is None else sum(
-        1 for game in games if _int(game.get("id")) in base_points_by_game_id
-    )
     if "ninja" in rates:
         rates["ninja"]["sampleSize"] = ninja_sample
-    ninja_is_complete = "ninja" not in selected_perks or base_points_by_game_id is not None
+        rates["ninja"]["ratePerGame"] = totals["ninja"] / ninja_sample if ninja_sample else None
+        rates["ninja"]["gameHitRate"] = matched_games["ninja"] / ninja_sample if ninja_sample else None
+    ninja_is_complete = "ninja" not in selected_perks or ninja_sample == eligible
     return {
         "playerId": player_id,
         "sampleSize": eligible,
         "perks": rates,
         "skippedGames": skipped,
+        "excludedGames": excluded,
+        "requestedGameCount": len(games),
         "complete": complete and not skipped and ninja_is_complete,
         "limitations": (
             [] if ninja_is_complete else ["ninja requires base points by game id"]
@@ -452,7 +463,10 @@ def _mmr(value: Any) -> float | None:
 def _number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    result = float(value)
+    try:
+        result = float(value)
+    except OverflowError:
+        return None
     return result if math.isfinite(result) else None
 
 

@@ -14,6 +14,14 @@ from .snapshots import SnapshotCoordinator
 from .types import PartialError, Provenance, ResearchResult, isoformat, utc_now
 
 
+def _record_manifest(record: RawPayloadRecord) -> dict[str, Any]:
+    return {"source": record.source, "objectId": record.object_id, "sourceVersion": record.source_version,
+            "payloadHash": record.payload_hash, "firstSeenAt": record.first_seen_at,
+            "fetchedAt": record.fetched_at, "parserVersion": record.parser_version,
+            "correctionIndex": record.correction_index, "isCorrection": record.correction_index > 1,
+            "completeness": "COMPLETE"}
+
+
 class ResearchService:
     def __init__(
         self,
@@ -56,7 +64,9 @@ class ResearchService:
         if minimum_rows is not None and (type(minimum_rows) is not int or not 1 <= minimum_rows <= 500):
             raise ContractError("minimum_rows must be in 1..500")
         self.snapshots.require_collecting(snapshot_id)
-        rows_by_id: dict[int, Mapping[str, Any]] = {}
+        rows_by_id: dict[tuple[Any, ...], Mapping[str, Any]] = {}
+        raw_row_count = 0
+        invalid_row_count = 0
         records: list[RawPayloadRecord] = []
         errors: list[PartialError] = []
         total_count: int | None = None
@@ -78,8 +88,11 @@ class ResearchService:
                 if isinstance(payload.get("totalCount"), int):
                     total_count = payload["totalCount"]
                 for row in raw_rows:
-                    if isinstance(row, Mapping) and isinstance(row.get("id"), int):
-                        rows_by_id.setdefault(row["id"], row)
+                    raw_row_count += 1
+                    if isinstance(row, Mapping) and type(row.get("id")) is int:
+                        rows_by_id.setdefault((str(row.get("type")), str(row.get("competition_id")), row["id"]), row)
+                    else:
+                        invalid_row_count += 1
                 if minimum_rows is not None and len(rows_by_id) >= minimum_rows:
                     break
                 if not raw_rows:
@@ -106,6 +119,9 @@ class ResearchService:
             rows = rows[:minimum_rows]
         return self._result(
             data={"playerId": player_id, "rows": rows, "reportedTotalCount": total_count,
+                  "rawRowCount": raw_row_count, "invalidRowCount": invalid_row_count,
+                  "duplicateRowCount": raw_row_count - invalid_row_count - len(rows_by_id),
+                  "uniqueRowCount": len(rows_by_id),
                   "requestedLimit": minimum_rows, "coverage": "WINDOW" if minimum_rows else "FULL_HISTORY"},
             snapshot_id=snapshot_id,
             source="profile/default/get-games",
@@ -242,6 +258,15 @@ class ResearchService:
         errors: list[PartialError] = []
         if any("base_points" in locator for locator in games):
             raise ContractError("base_points is not accepted without trusted source provenance")
+        unique: dict[tuple[Any, ...], Mapping[str, Any]] = {}
+        for locator in games:
+            key = (locator["kind"], locator.get("competition_id") if locator["kind"] == "competition" else None, locator["game_id"])
+            if key in unique and unique[key].get("version") != locator.get("version"):
+                raise ContractError("conflicting versions for the same game locator")
+            unique[key] = locator
+        requested_count = len(games)
+        games = list(unique.values())
+        payload_locators: list[Mapping[str, Any]] = []
 
         def fetch(locator: Mapping[str, Any]) -> ResearchResult:
             return self.get_game(
@@ -260,22 +285,37 @@ class ResearchService:
                 try:
                     result = future.result()
                     if isinstance(result.data, Mapping):
+                        if type(result.data.get("id")) is not int or result.data["id"] != locator["game_id"]:
+                            errors.append(PartialError("get_player_perk_rates", "GAME_IDENTITY_MISMATCH", "game payload does not match requested locator", f"{locator['kind']}:{locator['game_id']}"))
+                            continue
                         payloads.append(result.data)
+                        payload_locators.append(locator)
                         hashes.update(result.provenance.payload_hashes)
                         manifests.extend(result.provenance.evidence_manifest)
                     errors.extend(result.provenance.errors)
                 except ResearchError as error:
                     errors.append(_partial("get_player_perk_rates", error, f"game:{locator.get('game_id')}"))
+        points: list[float | None] = [None] * len(payloads)
+        if perk_ids is None or "ninja" in perk_ids:
+            points, points_records, points_errors = self._trusted_profile_points(snapshot_id, player_id, payloads, payload_locators)
+            errors.extend(points_errors)
+            for record in points_records:
+                hashes.add(record.payload_hash)
+                manifests.append(_record_manifest(record))
         try:
             data = analytics.perk_rates(
                 payloads,
                 player_id,
                 perk_ids=perk_ids,
-                base_points_by_game_id=None,
+                base_points_by_index=points,
                 complete=not errors and len(payloads) == len(games),
             )
         except ValueError as error:
             raise ContractError(str(error)) from None
+        data["requestedLocatorCount"] = requested_count
+        data["duplicateLocatorCount"] = requested_count - len(games)
+        for skipped in data["skippedGames"]:
+            errors.append(PartialError("get_player_perk_rates", "GAME_PARSE_ERROR", "game excluded from perk sample", f"game:{skipped['gameId']}"))
         # Records were attached by get_game; create provenance directly to avoid duplicate cache writes.
         complete = data["complete"] and not errors
         self.snapshots.observe_result(
@@ -295,6 +335,46 @@ class ResearchService:
                 evidence_manifest=tuple(sorted(manifests, key=_manifest_key)),
             ),
         )
+
+    def _trusted_profile_points(
+        self, snapshot_id: str, player_id: int, payloads: Sequence[Mapping[str, Any]],
+        locators: Sequence[Mapping[str, Any]],
+    ) -> tuple[list[float | None], list[RawPayloadRecord], list[PartialError]]:
+        # Only broker-owned records attached to this still-COLLECTING snapshot.
+        records = [r for r in self.snapshots.require_collecting(snapshot_id).records
+                   if r.source == "profile-games-page" and r.object_id.split(":")[0] == str(player_id)]
+        rows: list[Mapping[str, Any]] = []
+        errors: list[PartialError] = []
+        for record in records:
+            try:
+                payload = self.cache.load(record.payload_hash)  # verifies bytes against SHA-256
+                if not isinstance(payload, Mapping) or not isinstance(payload.get("rows"), list):
+                    raise ContractError("invalid profile page")
+                rows.extend(row for row in payload["rows"] if isinstance(row, Mapping))
+            except ResearchError:
+                errors.append(PartialError("get_player_perk_rates", "POINTS_SOURCE_INVALID", "profile points payload missing, corrupt or invalid", f"profile-games-page:{record.object_id}"))
+        values: list[float | None] = []
+        for game, locator in zip(payloads, locators):
+            value = None
+            subject = f"player:{player_id}:{locator['kind']}:{locator.get('competition_id', '-')}:game:{locator['game_id']}"
+            try:
+                eligible = game.get("result") is not None and analytics._find_player(game, player_id) is not None
+            except (TypeError, AttributeError, ValueError):
+                eligible = False  # analytics reports malformed games separately
+            if eligible:
+                candidates = [r for r in rows if type(r.get("id")) is int and r["id"] == locator["game_id"]
+                              and r.get("type") == locator["kind"]
+                              and (locator["kind"] == "match" or
+                                   (type(r.get("competition_id")) is int and r["competition_id"] == locator["competition_id"]))]
+                numeric = [analytics._number(row.get("points")) if row.get("result") is not None else None
+                           for row in candidates]
+                if numeric and all(v is not None for v in numeric) and len(set(numeric)) == 1:
+                    value = numeric[0]
+                else:
+                    code = "POINTS_MISSING" if not candidates else "POINTS_INVALID_OR_CONFLICTING"
+                    errors.append(PartialError("get_player_perk_rates", code, "finite unambiguous profile points required for exact player and game identity", subject))
+            values.append(value)
+        return values, records, errors
 
     def compare_players(self, snapshot_id: str, player_ids: Sequence[int], *, max_pages: int = 10) -> ResearchResult:
         ids = _player_ids(player_ids)

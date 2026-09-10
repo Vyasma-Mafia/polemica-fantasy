@@ -8,6 +8,12 @@ new operations after 20 minutes elapsed from the first tool observation; reserve
 for mandatory read-back and final reporting, within the existing runner timeout.
 
 Prioritize nearest deadlines and complete useful dependency chains in this same run:
+The broker stops team writes when 300 seconds or less remain before team_deadline.
+Use team_deadline minus five minutes as the submission cutoff, and leave additional
+time for research, buying, fresh evidence, validation and both MAIN/BUDGET updates.
+Do not buy a card solely for an immediate lineup upgrade whose chain cannot finish
+before that cutoff. ACT_DEADLINE_MARGIN is this safety rule, not a multi-snapshot bug;
+do not retry or bypass it. An independently justified future-use purchase is different.
 claim reward -> select pending cards; open pack -> select option; buy/renew a card ->
 validate and update MAIN/BUDGET; preview merge -> confirm only if still justified.
 Collect all straightforward claimable currency rewards when worthwhile, not one per hour.
@@ -71,8 +77,10 @@ assessment means "not assessed", not "no useful opportunity"; carry the exact ne
    research; no matching competition is required. Never guess an external ID. For lineup
    ranking, prefer bounded get_player_recent_form windows; full-career get_player_statistics may
    legitimately return PAGE_BOUND for experienced players and would make the snapshot partial.
-   For bounded game locators use get_player_games(limit=20, page_size=20, max_pages=1)
-   (or another explicit limit up to 500). Without limit this requests FULL_HISTORY, not
+   For bounded game locators prefer get_player_games(limit=20, page_size=40, max_pages=2)
+   so duplicate profile rows do not consume the entire pagination budget. Inspect
+   returned completeness; these bounds still do not guarantee 20 unique games.
+   You may choose another explicit limit up to 500. Without limit this requests FULL_HISTORY, not
    a recent window. COMPLETE with coverage=WINDOW covers only the requested window.
    Rank legal card instances, not players alone. Estimate each card's Fantasy points as
    `(expected base points + sum(card perk bonusPoints * matching ratePerGame)) * rarity modifier`,
@@ -90,6 +98,9 @@ assessment means "not assessed", not "no useful opportunity"; carry the exact ne
    collection and then SEAL; repeating SEAL alone cannot fix an empty collection. If a collection
    became PARTIAL after a failed fetch, start a new collection and recollect the required facts;
    do not mask the failed required source with a successful unrelated read.
+   For ninja, first collect profile games for that exact Polemica player in this
+   collection; the broker must link trusted points to the exact completed games.
+   Missing points, ambiguous identity or excluded games are not zero perk events.
    Inspect SEAL's errors list (operation, code, subject, message), not just individual page
    completeness: successful pages do not prove the requested history was fully collected.
    errorCount counts distinct diagnostic causes, not failed HTTP attempts. Repeating SEAL

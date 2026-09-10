@@ -211,6 +211,76 @@ def test_real_memory_mcp_adapter_handles_concurrent_reads(tmp_path: Path) -> Non
     service.close()
 
 
+@pytest.mark.parametrize("remaining,stale,code", [
+    (301, False, None), (300, False, "ACT_DEADLINE_MARGIN"),
+    (299, False, "ACT_DEADLINE_MARGIN"),
+    (301, True, "ACT_DEADLINE_OBSERVATION_STALE"),
+])
+def test_act_safe_codes_boundary_and_terminal_replay(tmp_path: Path, remaining: int, stale: bool, code: str | None) -> None:
+    from polemica_agent.mcp_runtime.registry import ToolPolicy, WriteDenied
+    database = tmp_path / "agent.sqlite3"
+    run_id = start_run(database)
+    first = seal_evidence(database, tmp_path / "cache", run_id)
+    second = seal_evidence(database, tmp_path / "cache2", run_id)
+    service = MemoryService(database)
+    business = {"series_id": 4, "league_code": "MAIN", "user_card_ids": [11]}
+    decision_id = MemoryTools(service).record_decision(
+        run_id=run_id, decision_type="TEAM", subject_type="series", subject_id="4",
+        snapshot_ids=[first, second], alternatives=[],
+        choice={"tool": "fantasy_update_team", "arguments": business}, rationale="two snapshots",
+    )
+    arguments = {"run_id": run_id, "decision_id": decision_id,
+                 "operation_id": str(uuid.uuid4()), **business}
+    now = dt.datetime.now(UTC)
+    clock = [now]
+    authorizer = PersistentActAuthorizer(service.store, clock=lambda: clock[0], series_reader=lambda _: {
+        "observedAt": (now - dt.timedelta(seconds=31 if stale else 0)).isoformat(),
+        "data": {"teamDeadline": (now + dt.timedelta(seconds=remaining)).isoformat()},
+    })
+    policy = ToolPolicy(True, authorizer, frozenset({"fantasy_update_team"}))
+    if code:
+        with pytest.raises(WriteDenied, match=code):
+            policy.guard("fantasy_update_team", arguments)
+        row = service.store.connection.execute("SELECT * FROM interventions ORDER BY id DESC LIMIT 1").fetchone()
+        detail = service.store.load_blob(row["details_hash"], row["details_path"])
+        assert detail["policyErrorCode"] == code
+        assert service.store.get_intent(arguments["operation_id"]) is None
+        assert service.store.connection.execute("SELECT COUNT(*) FROM act_authorizations").fetchone()[0] == 0
+    else:
+        policy.guard("fantasy_update_team", arguments)
+        service.store.plan_intent(operation_id=arguments["operation_id"], run_id=run_id,
+                                 decision_id=decision_id, kind="TEAM_WRITE", target_id="4:MAIN",
+                                 request=business, is_economic=False)
+        service.store.mark_intent_sent(arguments["operation_id"])
+        service.store.resolve_intent(arguments["operation_id"], "SUCCEEDED", {}, verification={"ok": True})
+        clock[0] = now + dt.timedelta(seconds=400)
+        # The same terminal operation is a read-only replay, even after deadline.
+        policy.guard("fantasy_update_team", arguments)
+    service.close()
+
+
+def test_act_unknown_error_does_not_expose_upstream_text(tmp_path: Path) -> None:
+    from polemica_agent.memory_mcp.authorization import ActPolicyError
+    from polemica_agent.mcp_runtime.registry import ToolPolicy, WriteDenied
+    database = tmp_path / "agent.sqlite3"
+    run_id = start_run(database)
+    service = MemoryService(database)
+    authorizer = PersistentActAuthorizer(service.store, series_reader=lambda _: {})
+    secret = "hostile-secret-body-do-not-expose"
+    def fail(*_):
+        raise RuntimeError(secret)
+    authorizer._authorize_write = fail
+    with pytest.raises(WriteDenied) as error:
+        ToolPolicy(True, authorizer, frozenset({"fantasy_update_team"})).guard(
+            "fantasy_update_team", {"run_id": run_id})
+    assert "ACT_AUTHORIZATION_FAILED" in str(error.value)
+    assert secret not in str(error.value)
+    assert secret not in str(ActPolicyError(FailClosedError(secret)))
+    row = service.store.connection.execute("SELECT * FROM interventions ORDER BY id DESC LIMIT 1").fetchone()
+    assert secret not in str(service.store.load_blob(row["details_hash"], row["details_path"]))
+    service.close()
+
+
 def test_open_intent_blocks_new_persistent_act(tmp_path: Path) -> None:
     database = tmp_path / "state" / "agent.sqlite3"
     run_id = start_run(database)

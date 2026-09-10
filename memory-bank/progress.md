@@ -1,5 +1,9 @@
 # Progress
 
+- [x] **2026-09-10 — Agent blocker fixes v24 deployed:** trusted ninja points, observed denominators/exclusion diagnostics, safe ACT and listing errors, unchanged deadline/economy/uncertainty guards.375 runtime tests and independent review passed. Installed-wheel real player43206 profile→ninja20games→COMPLETE seal passed with temporary audit state and no game writes; MCP42/15/11/5 healthy, Astra retained, timer restored. Operator mailbox answered; backup `/var/backups/polemica-ai-agent/blocker-fixes-v24`.
+
+- [x] **2026-09-08 — Astra CLI compatibility restored:** remote standalone Codex updated to `0.153.4`; isolated real Astra turn completed successfully without game tools. Full scheduled gameplay on Astra is not yet verified.
+
 - [x] **2026-09-07 — Marketplace listing evidence v22 deployed:** exact public listing pages can be sealed for purchase decisions;328 tests and live GET→persist→seal in isolated audit DB pass. Kaya50402 observed, not purchased; permissions unchanged and timer active.
 
 - [x] **2026-09-07 — Acquisition v21 deployed:** pack/card investigation before economic no-op, justified reserve and bounded cross-run learning experiment policy;317 runtime tests, live prompt hashes and unchanged17-write permissions verified. Actual behavior awaits next scheduled run.

@@ -173,3 +173,22 @@ Older collections may have `errorDetailsComplete=false`: lost historical details
 cannot be recovered by migration. Existing sealed evidence is never rewritten.
 PARTIAL evidence remains ineligible for decisions and game writes; start a new
 collection and recollect required facts after resolving the cause.
+
+## Research and operation blocker fixes (v24)
+
+For `ninja`, collect profile games for the exact player in the same collection
+before `get_player_perk_rates`. The broker joins hash-verified completed profile
+rows to typed game locators, includes the points source in provenance, and rejects
+missing, ambiguous or conflicting points. Competition points require an explicit
+matching competition identity in the source. Unknown points are not zero events.
+Perk results report excluded games and observed sample sizes; duplicate locators
+are not double-counted. Prefer page_size=40/max_pages=2 for a limit=20 window to
+leave room for duplicate rows; inspect completeness regardless of chosen bounds.
+
+ACT denials expose fixed safe codes in both MCP errors and audit. In particular,
+`ACT_DEADLINE_MARGIN` preserves the existing 300-second team cutoff. Plan complete
+purchase-to-team chains before that cutoff; multiple complete same-run snapshots
+remain supported. Terminal operation replays retain their existing safety rules.
+Exact known listing-creation rejections expose businessErrorCode, including
+`CARD_USES_EXHAUSTED`; minListingPrice is not a sellability guarantee. No backend
+rules, funds, credentials, write allowlists or uncertainty/reconciliation gates change.

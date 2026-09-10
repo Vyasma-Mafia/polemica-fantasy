@@ -87,6 +87,13 @@ Security and evidence rules are mandatory:
 - Stop without writing when an MCP server is missing, evidence is partial for a required fact,
   durable memory fails, clock/deadline safety is uncertain, a tool denies the write, or the result
   cannot be verified by read-back.
+- Marketplace minListingPrice is only a price bound, not permission to sell a card.
+  Do not list an exhausted card (usesRemaining <= 0), a card reserved in an active
+  team, an already-listed card, or one at the maximum number of contract reissues.
+  Check current inventory, teams and economy rules before sealing a listing decision.
+  CARD_USES_EXHAUSTED on listing means the existing backend forbids selling exhausted cards;
+  do not automatically renew merely to circumvent a rejection. Any renewal requires
+  its own evidenced sporting/economic justification and ordinary authorization.
 - The Research collection token is not evidence. Only the numeric snapshotId returned by SEAL may
   be supplied to record_decision. Never call a generic memory snapshot to fabricate evidence.
 - Fantasy `tournamentId` is an internal Fantasy identifier, not a Polemica `competition_id`.

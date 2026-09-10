@@ -166,6 +166,8 @@ class FantasyHttpClient:
             business_code, details = _team_business_error(message) if (
                 response.status in {400, 404, 409} and path.endswith("/fantasy-team")
             ) else (None, {})
+            if method == "POST" and path == "/api/v1/marketplace/listings":
+                business_code = _MARKETPLACE_LISTING_EXACT_ERRORS.get(message)
             raise DeterministicUpstreamError(code, message, business_error_code=business_code, details=details)
         raise FantasyApiError(response.status, code, message, uncertain=True)
 
@@ -242,6 +244,21 @@ _TEAM_EXACT_ERRORS = {
     "Series is finalized": "SERIES_FINALIZED",
     "Fantasy team already submitted for this series": "TEAM_ALREADY_EXISTS",
     "No fantasy team for this series": "TEAM_NOT_FOUND",
+}
+
+# Only exact, static createListing validation messages are recognized. In
+# particular, arbitrary ban reasons/suffixes and other marketplace routes are
+# not treated as trusted business diagnostics.
+_MARKETPLACE_LISTING_EXACT_ERRORS = {
+    "Card not found or not owned": "CARD_NOT_OWNED",
+    "Cannot sell an expired card": "CARD_USES_EXHAUSTED",
+    "Cannot sell a card in an active team": "CARD_IN_ACTIVE_TEAM",
+    "Card is already listed": "CARD_LISTED_ON_MARKETPLACE",
+    "Maximum contract reissues reached for this card": "CARD_MAX_RENEWALS_REACHED",
+    "Marketplace min price exceeds max for this rarity (economy config)": "MARKETPLACE_ECONOMY_CONFIG_INVALID",
+    "Price below minimum for this rarity": "MARKETPLACE_PRICE_BELOW_MINIMUM",
+    "Price above maximum for this rarity": "MARKETPLACE_PRICE_ABOVE_MAXIMUM",
+    "Your marketplace access is suspended": "MARKETPLACE_ACCESS_SUSPENDED",
 }
 
 

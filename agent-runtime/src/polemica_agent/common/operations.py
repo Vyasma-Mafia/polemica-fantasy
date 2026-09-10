@@ -31,6 +31,12 @@ class DeterministicUpstreamError(RuntimeError):
 
 # Only these fixed templates may cross the audit/MCP error boundary.
 BUSINESS_ERROR_MESSAGES = {
+    "CARD_IN_ACTIVE_TEAM": "A card in an active team cannot be listed.",
+    "CARD_MAX_RENEWALS_REACHED": "The card has reached the maximum contract reissues.",
+    "MARKETPLACE_PRICE_BELOW_MINIMUM": "Listing price is below the effective minimum.",
+    "MARKETPLACE_PRICE_ABOVE_MAXIMUM": "Listing price exceeds the maximum.",
+    "MARKETPLACE_ECONOMY_CONFIG_INVALID": "Marketplace price bounds are inconsistent.",
+    "MARKETPLACE_ACCESS_SUSPENDED": "Marketplace access is suspended.",
     "CARD_USES_RESERVED": "Card uses are already reserved by other active leagues.",
     "CARD_USES_EXHAUSTED": "Card has no remaining uses.",
     "TEAM_VALUE_CAP_EXCEEDED": "Team value exceeds the league cap.",
