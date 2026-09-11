@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 from typing import Any, Sequence
 
 from polemica_agent.memory_mcp.service import MemoryService
@@ -39,10 +40,18 @@ class MemoryTools:
     def get_open_intents(self, economic_only: bool = False) -> list[dict[str, Any]]:
         return self.service.get_open_intents(economic_only=economic_only)
 
-    def read_developer_notes(self) -> str:
-        """Read the latest 32 KiB of the developer's Markdown mailbox."""
+    def read_developer_notes(
+        self, compact: bool = True, offset: int = 0, limit: int = 6000,
+        known_hash: str | None = None,
+    ) -> str:
+        """Read bounded head/latest mailbox text; compact=False pages by character offset.
+        Supply the previous mailbox SHA-256 to avoid rereading unchanged text.
+        Omitted text may contain unresolved issues; this is not an issue status summary.
+        """
         from polemica_agent.memory_mcp.developer_notes import DeveloperNotes
-        return DeveloperNotes(self.service.store.state_dir).read()
+        return DeveloperNotes(self.service.store.state_dir).read(
+            compact=compact, offset=offset, limit=limit, known_hash=known_hash
+        )
 
     def append_developer_note(self, run_id: str, title: str, body: str) -> str:
         """Append a project/MCP suggestion to the fixed developer mailbox. Never include secrets."""
@@ -54,11 +63,18 @@ class MemoryTools:
             return DeveloperNotes(self.service.store.state_dir).append(run_id, title, body)
 
     def get_relevant_memory(
-        self, limit: int = 20, subject_type: str | None = None, subject_id: str | None = None
+        self, limit: int = 8, subject_type: str | None = None, subject_id: str | None = None,
+        compact: bool = True,
     ) -> list[dict[str, Any]]:
-        return self.service.get_relevant_memory(
+        """Recent decision summaries; compact=False returns original full records.
+        Use subject filters for older plans; previews are not executable choices or evidence.
+        """
+        rows = self.service.get_relevant_memory(
             limit=limit, subject_type=subject_type, subject_id=subject_id
         )
+        if not compact:
+            return rows
+        return [_compact_decision(row) for row in rows]
 
     def store_snapshot(
         self, run_id: str, kind: str, as_of: str, generated_at: str, source: str,
@@ -117,3 +133,22 @@ class MemoryTools:
 
     def record_intervention(self, reason: str, details: Any, run_id: str | None = None) -> int:
         return self.service.record_intervention(reason, details, run_id)
+
+
+def _compact_decision(row: dict[str, Any]) -> dict[str, Any]:
+    result = {key: value for key, value in row.items()
+              if key not in {"alternatives", "choice", "rationale", "outcome"}}
+    truncated = []
+    for key, budget in (("choice", 1000), ("outcome", 600), ("rationale", 500), ("alternatives", 300)):
+        if key not in row:
+            continue
+        value = row[key]
+        rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+        if len(rendered) > budget:
+            result[key] = {"preview": rendered[:budget], "truncated": True}
+            truncated.append(key)
+        else:
+            result[key] = value
+    result["compact"] = True
+    result["truncatedFields"] = truncated
+    return result

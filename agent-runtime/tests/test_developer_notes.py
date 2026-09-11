@@ -33,3 +33,44 @@ def test_notes_reject_symlink_and_oversized_note(tmp_path):
     with pytest.raises(OSError):
         notes.append("run", "Title", "body")
     assert target.read_text() == "keep"
+
+
+def test_compact_notes_head_tail_cursor_and_complete_pagination(tmp_path):
+    from polemica_agent.memory_mcp.developer_notes import DeveloperNotes
+    notes = DeveloperNotes(tmp_path)
+    for n in range(12):
+        notes.append("run", f"Issue {n}", f"body-{n} " + "я" * 900)
+    original = notes.path.read_text()
+    compact = notes.read()
+    assert "Issue 0" in compact and "Issue 11" in compact
+    assert "truncated: true" in compact and len(compact) < 6500
+    digest = compact.splitlines()[0].split(": ")[1]
+    assert notes.read(known_hash=digest).endswith("unchanged: true")
+    pages = []
+    offset = 0
+    while True:
+        page = notes.read(compact=False, offset=offset, limit=1000)
+        header, body = page.split("\n\n", 1)
+        pages.append(body)
+        following = next(line.split(": ")[1] for line in header.splitlines() if line.startswith("nextOffset:"))
+        if following == "none":
+            break
+        offset = int(following)
+    assert "".join(pages) == original
+    notes.append("run", "New", "fresh")
+    assert "unchanged: true" not in notes.read(known_hash=digest)
+
+
+def test_memory_compact_does_not_change_stored_records():
+    from types import SimpleNamespace
+    row = {"decisionId": 9, "runId": "r", "subjectType": "league", "subjectId": "5",
+           "decidedAt": "time", "choice": {"ids": [1, 2]}, "outcome": {"score": 4},
+           "rationale": "r" * 8000, "alternatives": ["a" * 9000]}
+    service = SimpleNamespace(get_relevant_memory=lambda **kwargs: [row])
+    tools = MemoryTools(service)
+    result = tools.get_relevant_memory()[0]
+    assert result["choice"] == row["choice"] and result["outcome"] == row["outcome"]
+    assert result["truncatedFields"] == ["rationale", "alternatives"]
+    assert len(str(result)) < 1500
+    assert tools.get_relevant_memory(compact=False)[0] is row
+    assert len(row["rationale"]) == 8000

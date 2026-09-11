@@ -1,5 +1,47 @@
 # Polemica AI agent runtime
 
+## Token efficiency (v25)
+
+- `fantasy_collect_evidence(detail="compact")` is the default model view. Full canonical
+  observations, source hashes and ACT authorization are unchanged; `detail="full"`
+  returns full presentation. All card/price/perk/eligibility fields remain available.
+- Memory defaults to eight bounded decision summaries (`compact=False` for full records).
+  Mailbox reads default to head/latest 6,000 characters, with hash-based unchanged checks
+  and `compact=False, offset=..., limit=...` pagination. Omitted text is not assumed resolved.
+  SEAL defaults to counts instead of repeated manifests, keeping every error and snapshot ID;
+  `compact=False` can read the existing immutable full seal.
+- COMPLETE research aggregates use a bounded process-local cache keyed by exact sources,
+  players, typed game versions, points and perks. Fresh reads/attachments still occur:
+  this cache saves calculation, not upstream requests. Restart simply empties it.
+- `POLEMICA_AGENT_REASONING_EFFORT=medium` explicitly configures Codex; supported overrides
+  are low/medium/high/xhigh. The deployed model remains Astra, not a cheaper substitute.
+  Stable instructions precede dynamic runtime context. No claim of guaranteed cross-run
+  prompt caching is made; inspect actual counters.
+- Opt-in `POLEMICA_AGENT_CHANGE_GATE_ENABLED=true` keeps hourly wake checks but avoids
+  model invocation only for unchanged successfully validated state after an explicitly idle
+  successful run. Preflight uses fixed read-only MCP tools (including inventory, teams,
+  rewards, listings, packs, economy, series rosters/leagues and a bounded 100-listing market
+  watch); it supplies no action evidence. Missing/invalid data, errors, pending intents,
+  changed config/prompts, or a deadline within two hours force model invocation. No market
+  page is treated as exhaustive. Exploration runs at least every four hours, configurable
+  with `POLEMICA_AGENT_EXPLORATION_INTERVAL_SECONDS=3600..14400`. This can delay discovery
+  of opportunities outside the watched market page until exploration.
+- Final model JSON includes `idleSafe`; absent/false, technical blockers, deferred chains
+  or exhausted action/time bounds prevent skipping. A pre-run baseline is saved only after
+  success, so actions that changed state cause a fresh assessment next hour. Wake skips are
+  logged separately in `wake-checks.jsonl`, not as fictitious successful game runs.
+- `polemica-agent-run --force` bypasses only the wake filter. All action safety checks remain.
+  Existing systemd environment/isolation must be used for manual production execution.
+- Exact nonnegative integer usage counters survive redaction only under top-level CLI
+  `turn.completed.usage`. Secrets elsewhere remain redacted. Run
+  `sudo python3 /opt/polemica-ai-agent/deploy/usage_report.py --hours 24` for measured usage.
+  Historical redacted counts remain unknown. Input/cached and output/reasoning counters
+  overlap; never add them as independent quantities or infer ChatGPT subscription cost.
+
+The 12-action / 20-minute session, deadline margin, sealed evidence, read-back, unresolved
+intent stop rules and existing 17-operation allowlist are unchanged. Rollout requires full
+runtime tests, an inactive runner, backup, installed MCP/read-only canary and model smoke.
+
 This directory contains the transport-neutral runtime foundation for the hidden
 Polemica Fantasy Codex user. It is Python 3.10 compatible and uses the official
 Python MCP SDK through the pinned dependency set in `uv.lock`.

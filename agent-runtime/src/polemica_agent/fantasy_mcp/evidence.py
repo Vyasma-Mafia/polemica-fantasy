@@ -23,8 +23,11 @@ def collect_evidence(
     fantasy_player_ids: list[int] | None = None,
     marketplace_analytics: list[dict[str, Any]] | None = None,
     marketplace_searches: list[dict[str, Any]] | None = None,
+    detail: str = "compact",
 ) -> ReadEnvelope:
     """Fetch a closed set of authenticated reads; never accept model-authored evidence."""
+    if detail not in ("compact", "full"):
+        raise ValueError("detail must be compact or full")
     for label, value in (("run_id", run_id), ("collection_id", collection_id)):
         if not isinstance(value, str) or not 1 <= len(value) <= 128:
             raise ValueError(f"{label} must contain 1..128 characters")
@@ -119,9 +122,15 @@ def collect_evidence(
             ) from None
         for item, record in zip(observations, records, strict=True):
             item["payloadHash"] = record.payload_hash
+        from .compact import compact_observations
         return ReadEnvelope(observed_now(), "fantasy-user-api", {
             "collectionId": collection_id, "sourceCount": len(records),
-            "observations": observations, "nextAction": "SEAL",
+            "observations": compact_observations(observations) if detail == "compact" else observations,
+            "presentation": detail,
+            "presentationNote": "All sources and cards retained; payloadHash identifies full immutable evidence, "
+                "not this presentation. Compact omits image URLs, card flavour text and claimed achievement "
+                "display text. Existing read tools return full details; detail=full returns full collection.",
+            "nextAction": "SEAL",
         })
     finally:
         journal.close()

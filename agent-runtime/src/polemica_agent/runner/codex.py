@@ -31,7 +31,10 @@ class CodexResult:
 def build_command(
     *, binary: str, model: str, workspace: Path, mcp_urls: Mapping[str, str],
     fantasy_write_allowlist: Sequence[str] = (),
+    reasoning_effort: str = "medium",
 ) -> list[str]:
+    if reasoning_effort not in {"low", "medium", "high", "xhigh"}:
+        raise ValueError("unsupported reasoning effort")
     unknown_writes = set(fantasy_write_allowlist) - set(FANTASY_WRITE_TOOLS)
     if unknown_writes:
         raise ValueError("unknown Fantasy write tool cannot be exposed to Codex")
@@ -47,6 +50,7 @@ def build_command(
         "--config", "agents.enabled=false",
         "--config", 'web_search="disabled"',
         "--config", 'history.persistence="none"',
+        "--config", f'model_reasoning_effort="{reasoning_effort}"',
     ]
     for kind in ("fantasy", "research", "compute", "memory"):
         url = mcp_urls[kind]

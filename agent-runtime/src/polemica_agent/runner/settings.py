@@ -25,6 +25,9 @@ class RuntimeSettings:
     mcp_urls: dict[str, str]
     fantasy_write_allowlist: tuple[str, ...] = ()
     codex_binary: str = "codex"
+    reasoning_effort: str = "medium"
+    change_gate_enabled: bool = False
+    exploration_interval_seconds: int = 14400
 
     @classmethod
     def from_env(cls) -> "RuntimeSettings":
@@ -54,11 +57,18 @@ class RuntimeSettings:
                 )
             ),
             codex_binary=os.environ.get("CODEX_BINARY", "codex"),
+            reasoning_effort=os.environ.get("POLEMICA_AGENT_REASONING_EFFORT", "medium"),
+            change_gate_enabled=os.environ.get("POLEMICA_AGENT_CHANGE_GATE_ENABLED", "false").lower() == "true",
+            exploration_interval_seconds=int(os.environ.get("POLEMICA_AGENT_EXPLORATION_INTERVAL_SECONDS", "14400")),
         )
         values.validate()
         return values
 
     def validate(self) -> None:
+        if self.reasoning_effort not in {"low", "medium", "high", "xhigh"}:
+            raise SettingsError("unsupported reasoning effort")
+        if not 3600 <= self.exploration_interval_seconds <= 14400:
+            raise SettingsError("exploration interval must be in 3600..14400 seconds")
         for path in (self.workspace, self.log_dir, self.lock_path, self.prompt_dir):
             if not path.is_absolute():
                 raise SettingsError("runtime paths must be absolute")

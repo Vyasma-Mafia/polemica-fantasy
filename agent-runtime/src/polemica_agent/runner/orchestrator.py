@@ -16,6 +16,7 @@ from .lock import RunLock
 from .logging import RedactedJsonlLog
 from .memory_gateway import MCPMemoryGateway, MemoryGateway
 from .settings import RuntimeSettings
+from .change_gate import ChangeGate, evaluate, read_state
 
 
 class RunnerError(RuntimeError):
@@ -66,13 +67,22 @@ def run_once(
     probe: Callable[[dict[str, str]], None] = probe_required_servers,
     invoker: Callable[..., object] = invoke_codex,
     memory_factory: Callable[[str], MemoryGateway] = MCPMemoryGateway,
+    state_reader: Callable[[dict[str, str]], dict] = read_state,
+    force: bool = False,
 ) -> str:
     _prepare_workspace(settings.workspace)
     settings.log_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     with RunLock(settings.lock_path, timeout_seconds=0):
-        probe(settings.mcp_urls)
-        memory = memory_factory(settings.mcp_urls["memory"])
+        gate = ChangeGate(settings.log_dir.parent / "wake-baseline.json")
+        try:
+            probe(settings.mcp_urls)
+            memory = memory_factory(settings.mcp_urls["memory"])
+        except Exception:
+            if settings.change_gate_enabled:
+                gate.invalidate()
+            raise
         run_id = str(uuid.uuid4())
+        signature = None
         try:
             open_intents = memory.get_open_intents()
             prompt = build_prompt(settings, run_id, open_intents)
@@ -82,12 +92,37 @@ def run_once(
                 "fantasy_write_allowlist": settings.fantasy_write_allowlist,
                 "sandbox": "read-only", "ignore_user_config": True,
                 "strategy_version": settings.strategy_version,
+                "model": settings.model, "reasoning_effort": settings.reasoning_effort,
+                "change_gate_enabled": settings.change_gate_enabled,
+                "exploration_interval_seconds": settings.exploration_interval_seconds,
             }
             strategy_prompt_hash = payload_hash({
                 "system": _read_prompt(settings.prompt_dir / "system.md"),
                 "hourly": _read_prompt(settings.prompt_dir / "hourly-run.md"),
                 "reconcile": _read_prompt(settings.prompt_dir / "reconcile-only.md"),
             })
+            gate_config = payload_hash({"config": config_audit, "prompts": strategy_prompt_hash,
+                                        "tools": CODEX_MCP_TOOLS})
+            if settings.change_gate_enabled:
+                reason = "FORCED" if force else "OPEN_INTENTS"
+                should_run = True
+                if not force and not open_intents:
+                    try:
+                        state = state_reader(settings.mcp_urls)
+                        should_run, reason, signature = evaluate(
+                            state, gate.load(), gate_config, dt.datetime.now(dt.timezone.utc),
+                            settings.exploration_interval_seconds,
+                        )
+                    except Exception:
+                        reason = "PREFLIGHT_UNAVAILABLE"
+                with RedactedJsonlLog(settings.log_dir / "wake-checks.jsonl") as check_log:
+                    check_log.write_event({"type": "wake_check", "check_id": run_id,
+                        "at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                        "invoke_model": should_run, "reason": reason, "state_hash": signature})
+                if not should_run:
+                    # This is a wake check, not a successful game/model run.
+                    return "SKIPPED_UNCHANGED"
+                gate.invalidate()
             recorded_run_id = memory.start_run(
                 run_id=run_id, model=settings.model, prompt_hash=payload_hash(prompt),
                 tools_hash=payload_hash(CODEX_MCP_TOOLS), config_hash=payload_hash(config_audit),
@@ -100,6 +135,7 @@ def run_once(
             command = build_command(
                 binary=settings.codex_binary, model=settings.model, workspace=settings.workspace,
                 mcp_urls=settings.mcp_urls,
+                reasoning_effort=settings.reasoning_effort,
                 fantasy_write_allowlist=(
                     settings.fantasy_write_allowlist if settings.write_enabled else ()
                 ),
@@ -110,6 +146,7 @@ def run_once(
                     "prompt_hash": payload_hash(prompt), "tools_hash": payload_hash(CODEX_MCP_TOOLS),
                     "config_hash": payload_hash(config_audit),
                     "strategy_version": settings.strategy_version,
+                    "reasoning_effort": settings.reasoning_effort,
                     "mode": "RECONCILE_ONLY" if open_intents else "NORMAL",
                 })
                 invoker(
@@ -124,14 +161,22 @@ def run_once(
                     })
                     raise UnresolvedOperationsError(remaining_intents)
             memory.finish_run(
-                run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents), "open_intents_at_end": 0},
+                run_id, "SUCCEEDED", {"open_intents_at_start": len(open_intents), "open_intents_at_end": 0,
+                                      "usageCounters": {k.removesuffix("_tokens"): v for k, v in log.usage.items()},
+                                      "idleSafe": log.idle_safe},
                 require_decision=not open_intents,
             )
+            if settings.change_gate_enabled and signature is not None:
+                gate.save({"signature": signature, "configHash": gate_config,
+                           "completedAt": dt.datetime.now(dt.timezone.utc).timestamp(),
+                           "idleSafe": log.idle_safe, "runId": run_id})
             return run_id
         except CodexTimeout as exc:
             memory.finish_run(run_id, "TIMED_OUT", {"error": type(exc).__name__})
             raise
         except Exception as exc:
+            if settings.change_gate_enabled:
+                gate.invalidate()
             # If start_run itself failed, finish also fails; retain the original error.
             try:
                 summary = {"error": type(exc).__name__}

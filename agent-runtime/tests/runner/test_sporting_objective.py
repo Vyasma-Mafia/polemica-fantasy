@@ -47,3 +47,22 @@ def test_acquisition_policy_requires_research_and_bounded_learning_without_relax
     assert "Stop on any SENT/UNKNOWN intent" in hourly
     assert "fresh sealed evidence and normal operation/read-back gates" in hourly
     assert "missing required evidence or technical safety" in hourly
+
+
+def test_compact_prompt_preserves_detail_escape_and_fail_open_scheduling():
+    prompts = Path(__file__).resolve().parents[2] / "prompts"
+    system = (prompts / "system.md").read_text()
+    hourly = (prompts / "hourly-run.md").read_text()
+    assert len((system + hourly).split()) < 2700
+    assert "Memory compact=False" in system
+    assert 'detail="full"' in hourly
+    assert "once at session start" in system
+    assert "normally <=150 words of rationale" in system
+    assert "full evidence storage, freshness, sealing or read-back" in system
+    assert "idleSafe:boolean" in hourly
+    assert "Set false for technical" in hourly
+    assert "pending choices, deferred action chains" in hourly
+    assert "session/action bounds" in hourly
+    assert "300 seconds or less" in hourly
+    assert "ACT_DEADLINE_MARGIN" in hourly
+    assert "do not substitute stale snapshots" in hourly

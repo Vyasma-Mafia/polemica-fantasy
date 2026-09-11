@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import OrderedDict
+import copy
+import hashlib
+import threading
 from datetime import datetime
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from . import analytics
-from .cache import RawPayloadCache, RawPayloadRecord
+from .cache import RawPayloadCache, RawPayloadRecord, canonical_json_bytes
 from .client import PolemicaClient
 from .errors import ContractError, ResearchError, UpstreamError
 from .snapshots import SnapshotCoordinator
@@ -39,6 +43,29 @@ class ResearchService:
         self.snapshots = snapshots
         self.clock = clock
         self.max_parallel_reads = max_parallel_reads
+        # Process-local bounded derived cache: never caches an upstream read or a
+        # provenance object. Restart safely loses only this CPU optimization.
+        self._aggregate_cache: OrderedDict[str, Any] = OrderedDict()
+        self._aggregate_lock = threading.RLock()
+
+    def _aggregate(self, name: str, inputs: Any, complete: bool, calculate: Callable[[], Any]) -> Any:
+        key = hashlib.sha256(canonical_json_bytes({
+            "analyticsVersion": "aggregates-v25-1", "parserVersion": self.cache.parser_version,
+            "name": name, "inputs": inputs,
+        })).hexdigest()
+        if complete:
+            with self._aggregate_lock:
+                if key in self._aggregate_cache:
+                    self._aggregate_cache.move_to_end(key)
+                    return copy.deepcopy(self._aggregate_cache[key])
+        data = calculate()
+        if complete and isinstance(data, dict) and data.get("complete") is True:
+            with self._aggregate_lock:
+                self._aggregate_cache[key] = copy.deepcopy(data)
+                self._aggregate_cache.move_to_end(key)
+                while len(self._aggregate_cache) > 256:
+                    self._aggregate_cache.popitem(last=False)
+        return data
 
     def begin_snapshot(self, run_id: str, snapshot_id: str | None = None) -> dict[str, Any]:
         snapshot = self.snapshots.begin(run_id, snapshot_id=snapshot_id)
@@ -201,7 +228,10 @@ class ResearchService:
     def get_player_statistics(self, snapshot_id: str, player_id: int, *, max_pages: int = 10) -> ResearchResult:
         collected = self.get_player_games(snapshot_id, player_id, max_pages=max_pages)
         rows = collected.data["rows"]
-        return self._derived(collected, analytics.player_statistics(rows, complete=collected.provenance.complete), "player-statistics")
+        data = self._aggregate("statistics", [player_id, rows, collected.provenance.payload_hashes],
+            collected.provenance.complete,
+            lambda: analytics.player_statistics(rows, complete=collected.provenance.complete))
+        return self._derived(collected, data, "player-statistics")
 
     def get_player_recent_form(
         self, snapshot_id: str, player_id: int, *, window: int = 20, max_pages: int = 10
@@ -210,7 +240,9 @@ class ResearchService:
             snapshot_id, player_id, max_pages=max_pages, minimum_rows=window
         )
         try:
-            data = analytics.recent_form(collected.data["rows"], window, complete=collected.provenance.complete)
+            data = self._aggregate("recent-form", [player_id, window, collected.data["rows"], collected.provenance.payload_hashes],
+                collected.provenance.complete,
+                lambda: analytics.recent_form(collected.data["rows"], window, complete=collected.provenance.complete))
         except ValueError as error:
             raise ContractError(str(error)) from None
         return self._derived(collected, data, "player-recent-form")
@@ -219,7 +251,9 @@ class ResearchService:
         self, snapshot_id: str, player_id: int, *, max_pages: int = 10
     ) -> ResearchResult:
         collected = self.get_player_games(snapshot_id, player_id, max_pages=max_pages)
-        data = analytics.role_distribution(collected.data["rows"], complete=collected.provenance.complete)
+        data = self._aggregate("role-distribution", [player_id, collected.data["rows"], collected.provenance.payload_hashes],
+            collected.provenance.complete,
+            lambda: analytics.role_distribution(collected.data["rows"], complete=collected.provenance.complete))
         return self._derived(collected, data, "player-role-distribution")
 
     def get_player_perk_rates(
@@ -295,6 +329,10 @@ class ResearchService:
                     errors.extend(result.provenance.errors)
                 except ResearchError as error:
                     errors.append(_partial("get_player_perk_rates", error, f"game:{locator.get('game_id')}"))
+        # Concurrent fetch completion order must not change the deterministic key.
+        ordered = sorted(zip(payload_locators, payloads), key=lambda pair: canonical_json_bytes(pair[0]))
+        payload_locators = [pair[0] for pair in ordered]
+        payloads = [pair[1] for pair in ordered]
         points: list[float | None] = [None] * len(payloads)
         if perk_ids is None or "ninja" in perk_ids:
             points, points_records, points_errors = self._trusted_profile_points(snapshot_id, player_id, payloads, payload_locators)
@@ -303,13 +341,15 @@ class ResearchService:
                 hashes.add(record.payload_hash)
                 manifests.append(_record_manifest(record))
         try:
-            data = analytics.perk_rates(
+            data = self._aggregate("perk-rates",
+                [player_id, payload_locators, payloads, points, perk_ids, sorted(hashes)],
+                not errors and len(payloads) == len(games), lambda: analytics.perk_rates(
                 payloads,
                 player_id,
                 perk_ids=perk_ids,
                 base_points_by_index=points,
                 complete=not errors and len(payloads) == len(games),
-            )
+            ))
         except ValueError as error:
             raise ContractError(str(error)) from None
         data["requestedLocatorCount"] = requested_count

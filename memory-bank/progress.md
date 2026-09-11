@@ -1,5 +1,7 @@
 # Progress
 
+- [x] **2026-09-11 — Agent token efficiency v25:** Compact evidence/memory/notes/seals, bounded exact-source aggregate cache, 33% smaller prompts, explicit Astra medium and safe token counters; conservative hourly change gate with mandatory ≤4h exploration and unchanged action safety. 398 tests, independent review, installed read-only COMPLETE canary and actual model smoke passed. Daily token saving still requires post-rollout measurements.
+
 - [x] **2026-09-10 — Agent blocker fixes v24 deployed:** trusted ninja points, observed denominators/exclusion diagnostics, safe ACT and listing errors, unchanged deadline/economy/uncertainty guards.375 runtime tests and independent review passed. Installed-wheel real player43206 profile→ninja20games→COMPLETE seal passed with temporary audit state and no game writes; MCP42/15/11/5 healthy, Astra retained, timer restored. Operator mailbox answered; backup `/var/backups/polemica-ai-agent/blocker-fixes-v24`.
 
 - [x] **2026-09-08 — Astra CLI compatibility restored:** remote standalone Codex updated to `0.153.4`; isolated real Astra turn completed successfully without game tools. Full scheduled gameplay on Astra is not yet verified.

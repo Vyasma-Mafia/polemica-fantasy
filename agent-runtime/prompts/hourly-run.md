@@ -1,193 +1,146 @@
-Perform one bounded hourly session with multiple sequential decisions and actions.
+Run one bounded multi-action session. The wake-up interval is NOT a one-action quota.
+Attempt at most 12 new Fantasy operations, including previews/claims/selections. Stop starting
+new operations after 20 minutes from the first tool observation; reserve time for read-back
+and reporting within the runner timeout. This ceiling is not a spending/churn target.
 
-The hourly schedule is a wake-up interval, NOT a one-action quota. Repeat steps 2-7
-after each verified success while useful authorized work remains. In this session,
-attempt at most 12 new Fantasy operations (previews, claims and selections also count).
-This is a ceiling, not a target: never spend or churn teams just to fill it. Stop starting
-new operations after 20 minutes elapsed from the first tool observation; reserve time
-for mandatory read-back and final reporting, within the existing runner timeout.
+Prioritize nearest deadlines. Team ACT is denied at 300 seconds or less before team_deadline:
+use deadline minus five minutes as cutoff, allowing extra time for research/purchase/validation
+and MAIN/BUDGET updates. ACT_DEADLINE_MARGIN is not a snapshot bug; never retry/bypass it.
+Do not buy solely for an immediate upgrade whose chain cannot finish before cutoff; separately
+justified future-use purchases differ. Finish useful chains now: claim -> selection,
+pack -> choice, buy/renew -> validate -> teams, merge preview -> justified confirm.
+Collect straightforward useful currency claims together; finish useful pending choices before
+another pack. Do not postpone merely because one action succeeded.
 
-Prioritize nearest deadlines and complete useful dependency chains in this same run:
-The broker stops team writes when 300 seconds or less remain before team_deadline.
-Use team_deadline minus five minutes as the submission cutoff, and leave additional
-time for research, buying, fresh evidence, validation and both MAIN/BUDGET updates.
-Do not buy a card solely for an immediate lineup upgrade whose chain cannot finish
-before that cutoff. ACT_DEADLINE_MARGIN is this safety rule, not a multi-snapshot bug;
-do not retry or bypass it. An independently justified future-use purchase is different.
-claim reward -> select pending cards; open pack -> select option; buy/renew a card ->
-validate and update MAIN/BUDGET; preview merge -> confirm only if still justified.
-Collect all straightforward claimable currency rewards when worthwhile, not one per hour.
-Do not postpone a safe, evidenced next step merely because one action already succeeded.
-Before opening another pack, finish an existing useful pending choice when possible.
+Every operation needs its own fresh decision_id and operation_id and verified read-back.
+Never issue dependent or economic writes in parallel. After success refresh affected state
+(balance, inventory, choices, uses/reservations, deadlines), COLLECT and SEAL a new evidence revision,
+then repeat steps 2-7 while useful authorized work remains. Stop on any SENT/UNKNOWN intent,
+denied write, missing required evidence or technical safety failure; no workaround actions.
+Otherwise stop for no useful legal work or a session bound. Record stopReason, actionCount,
+verified outcomes, remaining tasks/blockers/deadlines. "Already acted" is not a stop reason.
 
-Every operation still needs its own fresh decision_id and operation_id, exact arguments,
-and verified read-back. Never issue dependent or economic writes in parallel. After each
-action refresh affected inventory, balance, pending choices, uses/reservations and deadlines,
-then COLLECT and SEAL a new evidence revision for the next decision. Do not support a later
-decision with new facts attached only to an old sealed snapshot. Keep research bounded and
-relevant to the next action; do not re-analyze unrelated full histories for every reward.
+1. Read open intents; if any exist, reconcile only. Read compact relevant memory and mailbox
+   once, using detail escape only where summaries omit a needed fact. Reuse returned session
+   information instead of repeating identical reads; changed action facts still need refresh.
 
-Stop on any SENT/UNKNOWN intent, denied write, missing required evidence or technical safety
-failure; do not turn another action into a workaround. Otherwise stop only when no useful
-legal action remains or a session bound is reached. Record a specific stopReason, all
-actions and verified outcomes, actionCount, remaining tasks and their blockers/deadlines.
-"Already acted this hour" and "continue next turn" alone are not valid stop reasons.
-Before an economic no-op, complete the acquisition assessment below, or record the specific
-missing tool/data, unaffordability, or urgent deadline/session bound preventing it. Incomplete
-assessment means "not assessed", not "no useful opportunity"; carry the exact next check forward.
-
-1. Read open operation intents. If any exist, switch immediately to reconciliation-only behavior.
-2. COLLECT current Fantasy state and relevant Polemica evidence within bounded tool limits.
-   BEGIN a fresh collection with begin_research_snapshot(run_id), then explicitly call
+2. COLLECT. Begin with begin_research_snapshot(run_id), then
    fantasy_collect_evidence(run_id, collection_id, achievement_codes=[relevant codes],
    series_ids=[relevant series], fantasy_player_ids=[relevant Fantasy IDs],
-   marketplace_analytics=[{"fantasy_player_id":123,"rarity":"EPIC"}]) with only relevant selectors.
-   For a proposed marketplace purchase also pass marketplace_searches=[{"fantasy_player_id":123,
-   "rarity":"EPIC","page":0}]. This saves exact listings, prices, card/perks and canBuy through
-   the existing user API, not just aggregate analytics. It returns up to100 listings per page,
-   max5 searches per call. Select a listing actually present and buyable in the sealed page;
-   inspect totalPages and collect the needed page if the target is not returned. Do not infer
-   global absence from one page. If the price/card/availability changed, reassess before deciding;
-   a snapshot is an observation, not a reservation or a server-enforced price guarantee.
-   Player mappings are capped at 20 and market pairs at 10. This broker attaches real Fantasy observations;
-   ordinary fantasy_get_* calls alone do NOT populate a collection. Use the returned observations.
-   For currency claims and other decisions based only on Fantasy state, this batch is sufficient
-   evidence to SEAL; do not fetch unrelated Polemica games just to satisfy the evidence gate.
-   For player performance comparisons, add the relevant completed-game Research to the same
-   collection before SEAL. Fantasy evidence does not establish player form or perk rates.
-   Start with fantasy_get_periodic_rating_current and fantasy_get_periodic_rating_me(period_id).
-   Read prior decisions/outcomes to keep a plan across runs. Record the period's dates, status,
-   league, entry.rank/totalScore/seriesCount, and contributions. A null entry means unranked,
-   not a failed tool. If there is no actionable OPEN period (absent, SETTLING, or FINALIZED),
-   do not invent dates or force spending: prepare for the next period using confirmed opportunities.
-   Identify upcoming MAIN submissions/improvements that may contribute to the current period;
-   final inclusion depends on finalization and the last actual game date, not submission date.
-   Mark uncertain boundary-series inclusion as uncertain rather than guaranteeing credit.
-   Also inspect open BUDGET leagues as funding opportunities, not periodic-point contributions.
-   For each relevant open series, assess existing MAIN and BUDGET teams, affordable available cards,
-   and deadlines. Once urgent MAIN participation is secured, actively seek a BUDGET submission,
-   including a three-COMMON lineup; compare expected Fantiki rewards with acquisition/use costs
-   and specific future MAIN conflicts. Do not end at "MAIN is full" without considering BUDGET.
-   Read the achievement catalog for claimable rewards or inexpensive useful milestones and assess
-   surplus-card sale opportunities after commission. Execute only supported, allowlisted writes;
-   note a blocked reward capability without treating it as a blocker for league participation.
-   Fantasy
-   tournamentId is not a Polemica competition_id: use the series' explicit polemicaCompetitionId
-   for POLEMICA_COMPETITION. For STANDALONE use roster polemicaUserId values directly in player
-   research; no matching competition is required. Never guess an external ID. For lineup
-   ranking, prefer bounded get_player_recent_form windows; full-career get_player_statistics may
-   legitimately return PAGE_BOUND for experienced players and would make the snapshot partial.
-   For bounded game locators prefer get_player_games(limit=20, page_size=40, max_pages=2)
-   so duplicate profile rows do not consume the entire pagination budget. Inspect
-   returned completeness; these bounds still do not guarantee 20 unique games.
-   You may choose another explicit limit up to 500. Without limit this requests FULL_HISTORY, not
-   a recent window. COMPLETE with coverage=WINDOW covers only the requested window.
-   Rank legal card instances, not players alone. Estimate each card's Fantasy points as
-   `(expected base points + sum(card perk bonusPoints * matching ratePerGame)) * rarity modifier`,
-   using COMMON=1.0, RARE=1.1, EPIC=1.15, and LEGENDARY=1.25. For cards with perks, collect
-   `get_player_perk_rates` for exactly the perk IDs present on those cards over a bounded recent
-   game window before sealing; do not treat an unavailable or partial perk rate as zero. Respect
-   the one-card-per-player rule, remaining uses, league eligibility, and the BUDGET value cap.
-   Read cards with series_id: positive usesRemaining does not mean availability, because uses
-   may be reserved by leagues in other series. Honor canJoinMoreLeagues for newly added cards;
-   already-retained cards in the target league need no additional reservation. Call
-   fantasy_validate_team for a proposed lineup before sealing/deciding. Fix reported issues and
-   resolve required facts listed as unchecked; passesObservedChecks alone is not full eligibility.
-   The preview is advisory and does not reserve cards or replace the backend's final validation.
-3. SEAL the evidence. On EMPTY_EVIDENCE collect real broker observations into that still-collecting
-   collection and then SEAL; repeating SEAL alone cannot fix an empty collection. If a collection
-   became PARTIAL after a failed fetch, start a new collection and recollect the required facts;
-   do not mask the failed required source with a successful unrelated read.
-   For ninja, first collect profile games for that exact Polemica player in this
-   collection; the broker must link trusted points to the exact completed games.
-   Missing points, ambiguous identity or excluded games are not zero perk events.
-   Inspect SEAL's errors list (operation, code, subject, message), not just individual page
-   completeness: successful pages do not prove the requested history was fully collected.
-   errorCount counts distinct diagnostic causes, not failed HTTP attempts. Repeating SEAL
-   cannot repair a sealed collection. For PAGE_BOUND choose an explicit bounded window if
-   appropriate to the decision, then recollect all required evidence in a new collection.
-   Use only SEAL's numeric snapshotId for the decision; the collectionId is not
-   evidence. Check its manifest, as-of, source, sample size, and completeness. Stop if partial.
-4. COMPUTE bounded statistics or simulations when useful, using only that numeric snapshotId.
-5. DECIDE the best legal action using only the sealed evidence, derived Compute results, and relevant prior memory. Store the
-   alternatives, choice, rationale, exact `strategy_version` from RUNTIME_CONTEXT_JSON, and sealed
-   snapshot reference. Include every Compute result used in `computation_ids`. Record a decision even
-   when the choice is a no-op. Explain how the choice advances final periodic rank, using expected
-   eligible points as a proxy where rank impact is unknown. Compare it against the best available
-   MAIN lineup opportunity and the opportunity cost of spending currency or reserving card uses.
-   Default to the best available legal MAIN submission before its deadline, not a no-op while
-   waiting for an ideal lineup. A small team is preferable to absence when allowed by league rules.
-   Do not skip merely because a negative score is theoretically possible. If a useful MAIN
-   submission is deferred, state the concrete constraint/opportunity cost and next deadline explicitly.
-   If BUDGET is left empty, record its funding comparison and a concrete reason, not simply
-   "does not count in the rating" or a generic desire to preserve all card uses.
-6. ACT only when WRITE_ENABLED and every technical gate authorizes it. Invoke the chosen Fantasy
-   write with this run_id, the recorded decision_id, and one fresh UUID operation_id; Fantasy MCP
-   creates the durable intent before sending. There is no separate Memory intent tool. Then perform
-   mandatory read-back. Never make a second send to resolve ambiguity.
-7. Record the verified result or the reason for a no-op, the period ID and observed rating baseline,
-   and the next useful opportunity/deadline. Preserve this in durable decision/outcome memory,
-   not just final chat text. Rating contributions can lag until series finalization; do not claim
-   a rank improvement from a pack purchase or team submission. Then reassess and repeat steps 2-7
-   under the session rules above; emit the final summary only when a stop condition is reached.
+   marketplace_analytics=[{"fantasy_player_id":123,"rarity":"EPIC"}]).
+   ordinary fantasy_get_* calls alone do NOT populate a collection. Compact returned summaries
+   retain full broker evidence behind the seal; use detail="full" only for required omitted
+   details, not reflexively after every collection. For Fantasy-only actions this batch is
+   sufficient: do not fetch unrelated Polemica games. Fantasy evidence does not establish player form or perk rates.
+   Add relevant completed-game Research before sealing when comparing performance.
 
-When marketplace writes are in the runtime allowlist, actively consider buying, listing, repricing,
-and cancelling listings using the ordinary game rules. Compare buying a known card, opening a pack,
-and keeping currency: include expected lineup improvement, remaining uses for upcoming series,
-and resale proceeds after commission. Asking prices alone do not prove demand or realized value.
-Include the submitted-card-count reward adjustment from the game-help rule: one/two/three cards
-receive about one third/two thirds/full placement Fantiki before league scaling. Filling an empty
-slot may improve both points and currency reward; do not equate securing participation with having
-finished improving a lineup. Read fantasy_get_economy_info and the relevant series league rules
-for current reward tiers and effective scale when using this benefit in a valuation.
-Read market analytics and current inventory/balance before trading. Analytics has two exclusive
-modes: fantasy_player_ids=[...] summarizes active asks; fantasy_player_id plus rarity returns
-detail including recentSales (up to 10 latest sales) and salesWindows for all completed sales
-in 7/30-day [from,to) windows at asOf. Use completedSalesCount, min/max/medianSalePrice and
-medianTimeToSaleSeconds with timeToSaleSampleSize for resale candidates. Prices are gross
-before fees and include sanctioned trades; apply economy fees to estimate net proceeds.
-Time-to-sale covers sold listings since creation only, not cancelled/relisted history or
-sell-through probability. Small samples are uncertain; no sales means null prices/duration,
-not a zero-valued card. Legacy sales without a saved template use current rarity.
-Persist relevant detail through fantasy_collect_evidence marketplace_analytics before SEAL.
-For choose-pack options lacking polemicaUserId, call fantasy_get_player(fantasy_player_id),
-collect the mapping with fantasy_player_ids, then use its explicit Polemica ID for Research.
-A pack need not guarantee an
-improvement to have positive expected value. State uncertainty and your reserve rationale rather
-than automatically refusing all uncertain purchases. Report missing valuation data in developer
-notes when it prevents useful analysis.
+   Marketplace purchases additionally need marketplace_searches=[{"fantasy_player_id":123,
+   "rarity":"EPIC","page":0}] to seal exact listing IDs, prices, perks and canBuy, not only
+   aggregates. Select an actually buyable listing in the sealed page; inspect totalPages and
+   collect another needed page instead of inferring global absence. Limits: 100 listings/page,
+   5 searches, 10 analytics pairs, 20 player mappings. A snapshot neither reserves a card nor
+   guarantees price; changed facts require reassessment.
 
-Acquisition assessment and bounded learning:
+   Read fantasy_get_periodic_rating_current and fantasy_get_periodic_rating_me(period_id).
+   Record live period dates/status/league, rank, totalScore, seriesCount and contributions
+   once per session; a null entry means unranked. No actionable OPEN period means prepare
+   using confirmed opportunities, not invented dates or forced spending. Current-period
+   inclusion depends on finalization and last actual game date, not submission date;
+   mark boundary uncertainty. Never invent opponent gaps/rank probabilities. At rollover,
+   assess prior results when available and carry lessons/resources forward.
 
-- Before deciding against spending, assess at least one relevant affordable paid pack and one
-  concrete-card alternative through fantasy_list_marketplace (an empty filtered search is a
-  valid result). Read actual 7/30-day detail for relevant player/rarity candidates; reading only
-  your own listings is not a market search. Prioritize current/upcoming rosters and plausible
-  resale demand. Record candidate IDs, prices, evidence, and why buy-pack, buy-card, or hold wins.
-  If a potentially better owned card lacks perk/form evidence, fetch bounded relevant Research
-  rather than repeatedly rejecting it because you did not research it. Do not delay urgent teams.
-- Compare expected lineup improvement, usable future contracts, expected surplus proceeds after
-  commission, and pack cost. Do not add rating points directly to Fantiki or double-count a card
-  as both kept and immediately sold. Allow for sale delay, unsold cards, and contract changes on
-  sale. Do not invent pack pools, selection probabilities, or equal odds from names/rarity layout.
-  If the exact pool is unavailable, label the estimate approximate, use supported comparisons,
-  and report the missing API information; that alone does not forbid a bounded learning purchase.
-- State a numeric reserve tied to named near-term participation, acquisition, or renewal needs,
-  with amounts and deadlines/assumptions. A hypothetical better future opportunity is not a reason
-  to reserve the entire balance. Uncertain game profit does not require guaranteed improvement.
-- When returns remain uncertain but the pack has a plausible use/resale case, consider one paid
-  pack as a learning experiment. At purchase, its full price must fit both the unreserved balance
-  and 25% of the current liquid Fantiki balance. This is a prompt-level experimental exposure
-  limit, not a broker limit, mandatory spending quota, or cap on separately evidenced purchases.
-  Keep at most one unresolved speculative pack experiment across runs; consult durable memory
-  instead of resetting this limit each hour. Never buy more merely to recover an earlier loss.
-- Record the experiment's pack/cost, hypothesis, expected use versus sale allocation, review date,
-  and failure criteria in decision/outcome memory. Finish pending selection, assess the obtained
-  cards, and pursue justified lineup updates or surplus listings in the same session when possible,
-  each with fresh sealed evidence and normal operation/read-back gates. Follow up across runs on
-  actual net sales, credited rewards/points, retained/unsold cards and tied-up capital. Listing a
-  card is not realized revenue. Close the experiment with observed results or an explicit loss/
-  remaining-exposure assessment; do not call it profitable just to permit another experiment.
-- Apply evidence standards to holding currency too. A no-op rationale must include the pack and
-  card comparison, reserve breakdown, and experiment decision (or the concrete assessment blocker).
-  Refresh market observations when reassessing; do not copy an old unsupported rejection.
+   Inspect relevant MAIN/BUDGET teams, affordable cards, rewards and deadlines.
+   Do not end at "MAIN is full" without considering BUDGET. Seek cheap legal funding teams
+   (including three COMMON cards), surplus sales and claimable rewards/useful milestones.
+   Compare net reward/purchase/use costs with concrete future MAIN conflicts. Missing one
+   write capability need not block other supported play.
+
+   For player ranking use bounded recent form, not repeated full careers. Prefer
+   get_player_games(limit=20, page_size=40, max_pages=2): duplicates can consume page budget;
+   inspect completeness. Explicit limits may reach 500; absent limit requests FULL_HISTORY.
+   COMPLETE with coverage=WINDOW covers only that window. Research caches may reuse exact
+   source-derived aggregates, but do not substitute stale snapshots for current evidence.
+   Rank legal card instances, not players alone.
+   Estimate card points as (expected base + sum(perk bonusPoints * ratePerGame)) * rarity:
+   COMMON=1.0, RARE=1.1, EPIC=1.15, LEGENDARY=1.25. Collect get_player_perk_rates for exactly
+   relevant card perk IDs before SEAL. Unknown/partial rates are not zero. For ninja collect
+   that exact player's profile games first in this collection so the broker verifies points.
+   Respect one card/player, uses, eligibility and BUDGET cap. Read series-specific cards:
+   positive usesRemaining does not prove availability; honor canJoinMoreLeagues for newly
+   added cards. Retained target-team cards need no additional reservation.
+   Call fantasy_validate_team before sealing/deciding, fix issues and resolve unchecked facts.
+   passesObservedChecks is advisory, not full eligibility, reservation or backend approval.
+
+3. SEAL. EMPTY_EVIDENCE needs real observations into the collecting collection;
+   repeating SEAL alone cannot fix an empty collection. A PARTIAL/failed fetch requires a
+   new collection and recollection of required facts, not an unrelated successful read.
+   Inspect errors (operation/code/subject/message), as-of, source/sample information and
+   returned manifest counts. SEAL compact summaries retain immutable full manifests; use
+   seal_research_snapshot(..., compact=False) only to inspect a needed missing source detail,
+   not as a routine second seal. Reading an already sealed manifest does not repair evidence.
+   successful pages alone do not prove a complete request. errorCount counts distinct causes.
+   PAGE_BOUND may warrant a bounded window and new collection. Repeated SEAL cannot repair
+   a sealed collection. Use only numeric snapshotId; stop if required evidence is partial.
+
+4. COMPUTE bounded statistics/simulations when useful from that trusted snapshotId.
+   Prefer deterministic calculations over repeated prose arithmetic; avoid irrelevant analysis.
+
+5. DECIDE from sealed evidence, used Compute results and relevant prior memory. Record
+   alternatives, exact actionable choice (or no-op), rationale, runtime strategy_version,
+   snapshot references and used computation_ids. Explain expected eligible points/final-rank
+   benefit and concrete currency/use opportunity cost. A small team is preferable to absence;
+   do not await perfection or fear merely theoretical negative points. If deferring MAIN,
+   name the constraint and next deadline. If BUDGET is left empty, give its funding comparison
+   and concrete reason, not "does not count" or generic use preservation.
+
+6. ACT only when write_enabled and all technical gates allow. Supply run_id, decision_id,
+   fresh operation_id and exact chosen business arguments; then mandatory read-back.
+   Never resend to resolve ambiguity.
+
+7. Record verified outcomes and next useful opportunity/deadline in durable decision/outcome memory.
+   Predicted points/submitted teams/purchases are not credited rating improvements; contributions
+   may lag finalization. Reassess and repeat steps 2-7, reporting only at a real stop condition.
+   Final JSON must include idleSafe:boolean. Set true only if no actionable tasks remain and
+   the acquisition comparison is complete (or concretely unaffordable). Set false for technical
+   blockers, pending choices, deferred action chains, or stopping at session/action bounds.
+   This is a scheduling hint, never evidence or authorization to bypass runner safety checks.
+
+Trading and acquisition assessment:
+
+- Use only allowlisted ordinary buying/listing/repricing/cancelling actions. Compare known
+  card vs pack vs holding: lineup value, usable contracts, net surplus proceeds and cost.
+  Include the submitted-card-count reward adjustment from game-help and live economy tiers /
+  league scales. Asking prices are not realized demand. Do not mix rating points and Fantiki
+  arithmetically or count one card as both kept and sold. Allow sale delays, unsold inventory
+  and contract changes on sale.
+- Market analytics fantasy_player_ids=[...] gives active asks; fantasy_player_id + rarity
+  gives recentSales (10 latest) and 7/30-day [from,to) salesWindows at asOf. Use counts,
+  min/max/medianSalePrice, medianTimeToSaleSeconds and timeToSaleSampleSize. Prices are gross
+  (including sanctioned trades); subtract commission. Sold-listing age is not sell-through
+  probability or cancelled/relisted history. Small samples are uncertain; no sales gives null,
+  not zero value. Legacy missing templates use current rarity. Seal relevant detail via
+  marketplace_analytics. Choose options need explicit Polemica IDs, resolved/collected first.
+- Before an economic no-op assess at least one relevant affordable paid pack and one concrete
+  card through fantasy_list_marketplace (empty filtered search is valid). Inspect relevant
+  actual 7/30-day detail, not only own listings. Reuse the session's already completed assessment
+  if inputs are unchanged; refresh market observations when reassessing changed facts. Research
+  a potentially better owned card rather than repeatedly rejecting it as unresearched.
+  Do not delay urgent teams. Missing tools/data, unaffordability or deadline/session bounds
+  may prevent assessment: incomplete assessment means "not assessed", not "no opportunity".
+  Carry the exact next check forward rather than duplicate an unsupported rejection.
+- Record candidate IDs/prices/evidence and buy-pack/buy-card/hold comparison, a numeric reserve tied to named near-term
+  needs with amounts/deadlines/assumptions, and uncertainty. Hypothetical future opportunity
+  cannot justify reserving all money. Do not invent pack pools or odds; unavailable exact pools
+  mean approximate supported estimates and developer feedback, not an automatic ban on bounded
+  learning. Uncertain profit need not guarantee immediate improvement.
+- If a pack has a plausible use/resale case but uncertain returns, consider one paid learning
+  pack whose full cost fits unreserved balance AND 25% of the current liquid Fantiki balance.
+  This prompt-level experiment exposure limit is not a broker limit, required spend or cap on
+  separately evidenced purchases. Keep at most one unresolved speculative pack experiment across runs.
+  Consult memory; never reset exposure each hour. Never buy more merely to recover an earlier loss.
+- Store experiment cost/hypothesis, keep-vs-sale allocation, review date and failure criteria.
+  Finish choices and justified teams/listings in this session with fresh sealed evidence and normal operation/read-back gates.
+  Follow actual net sales, credited rewards/points, unsold/retained cards and tied-up capital.
+  Listing a card is not realized revenue. Close with observed results or explicit loss/remaining
+  exposure; do not invent profit to authorize another experiment. A holding rationale includes
+  candidate comparison, reserve breakdown, and experiment decision, or the specific blocker.

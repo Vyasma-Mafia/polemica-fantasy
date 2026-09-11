@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 import uuid
+from unittest.mock import patch
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -78,6 +79,57 @@ class ResearchServiceTest(unittest.TestCase):
     def ninja(self, games=None):
         return self.service.get_player_perk_rates(self.snapshot_id, 42,
             games or [{"kind": "match", "game_id": 501}], perk_ids=["ninja"])
+
+    def test_aggregate_cache_reuses_only_calculation_with_fresh_provenance(self):
+        with patch.object(analytics, "perk_rates", wraps=analytics.perk_rates) as calculate:
+            self.profile_points([{"id": 501, "type": "match", "points": 0}])
+            first = self.ninja()
+            self.snapshot_id = self.service.begin_snapshot(str(uuid.uuid4()))["snapshotId"]
+            with patch.object(self.client, "get_match", wraps=self.client.get_match) as fetch:
+                self.profile_points([{"id": 501, "type": "match", "points": 0}])
+                second = self.ninja()
+                self.assertEqual(1, fetch.call_count)
+            self.assertEqual(1, calculate.call_count)
+            self.assertEqual(first.data, second.data)
+            self.assertNotEqual(first.provenance.snapshot_id, second.provenance.snapshot_id)
+            self.assertTrue(self.service.seal_snapshot(self.snapshot_id)["evidenceManifest"])
+            self.snapshot_id = self.service.begin_snapshot(str(uuid.uuid4()))["snapshotId"]
+            self.profile_points([{"id": 501, "type": "match", "points": 1}])
+            changed = self.ninja()
+            self.assertEqual(2, calculate.call_count)
+            self.assertNotEqual(first.data["perks"], changed.data["perks"])
+
+    def test_aggregate_cache_never_reuses_partial_and_keys_versions_and_inputs(self):
+        with patch.object(analytics, "perk_rates", wraps=analytics.perk_rates) as calculate:
+            self.ninja()
+            self.ninja()
+            self.assertEqual(2, calculate.call_count)
+        calls = []
+        def calculate():
+            calls.append(1)
+            return {"complete": True, "sampleSize": 1}
+        first = self.service._aggregate("test", [42, "match", 1, "hash"], True, calculate)
+        first["sampleSize"] = 999
+        again = self.service._aggregate("test", [42, "match", 1, "hash"], True, calculate)
+        self.assertEqual(1, again["sampleSize"])
+        for inputs in ([43, "match", 1, "hash"], [42, "competition", 1, "hash"],
+                       [42, "match", 2, "hash"], [42, "match", 1, "correction"]):
+            self.service._aggregate("test", inputs, True, calculate)
+        self.service.cache.parser_version = "changed-parser"
+        self.service._aggregate("test", [42, "match", 1, "hash"], True, calculate)
+        self.assertEqual(6, len(calls))
+
+    def test_compact_seal_preserves_complete_errors_and_persisted_manifest(self):
+        self.ninja()  # missing profile-points is partial
+        before = self.service.seal_snapshot(self.snapshot_id)
+        compact = ResearchTools(self.service).seal_research_snapshot(self.snapshot_id)
+        full = ResearchTools(self.service).seal_research_snapshot(self.snapshot_id, compact=False)
+        self.assertEqual(before, full)
+        self.assertEqual(before["errors"], compact["errors"])
+        self.assertEqual(before["snapshotId"], compact["snapshotId"])
+        self.assertEqual(before["completeness"], compact["completeness"])
+        self.assertNotIn("evidenceManifest", compact)
+        self.assertEqual(len(before["evidenceManifest"]), compact["evidenceRecordCount"])
 
     def test_ninja_trusted_zero_and_provenance(self):
         source = self.profile_points([{"id": 501, "type": "match", "points": 0}])

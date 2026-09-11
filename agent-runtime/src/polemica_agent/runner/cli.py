@@ -8,8 +8,9 @@ from .settings import RuntimeSettings
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run one bounded Polemica AI agent turn")
-    parser.parse_args(argv)
-    run_once(RuntimeSettings.from_env())
+    parser.add_argument("--force", action="store_true", help="Bypass unchanged-state gate, never safety checks")
+    args = parser.parse_args(argv)
+    run_once(RuntimeSettings.from_env(), force=args.force)
     return 0
 
 

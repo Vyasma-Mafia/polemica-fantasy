@@ -40,12 +40,30 @@ class ResearchTools:
         """Start a bounded collection snapshot for one run."""
         return self.service.begin_snapshot(run_id, snapshot_id)
 
-    def seal_research_snapshot(self, snapshot_id: str) -> dict[str, Any]:
-        """Seal a snapshot; later fetches against it fail closed."""
+    def seal_research_snapshot(self, snapshot_id: str, compact: bool = True) -> dict[str, Any]:
+        """Seal a snapshot; later fetches fail closed. Compact omits duplicated
+        manifests only from this response; full evidence stays persisted. All errors
+        and snapshot identities remain present. compact=False returns the full manifest.
+        """
         from mcp.server.mcpserver.exceptions import ToolError
         from polemica_agent.memory_mcp.evidence import EmptyEvidenceError
+        from .errors import SnapshotSealedError
+        from .service import _snapshot_dict
         try:
-            return self.service.seal_snapshot(snapshot_id)
+            try:
+                result = self.service.seal_snapshot(snapshot_id)
+            except SnapshotSealedError:
+                # Detail escape hatch reads the already sealed immutable journal;
+                # it never changes asOf or permits new observations.
+                snapshot = self.service.snapshots.journal.get(snapshot_id)
+                if snapshot.state != "SEALED":
+                    raise
+                result = _snapshot_dict(snapshot)
+            if compact:
+                result["evidenceRecordCount"] = len(result.pop("evidenceManifest", []))
+                result["payloadHashCount"] = len(result.pop("payloadHashes", []))
+                result["manifestOmitted"] = True
+            return result
         except EmptyEvidenceError:
             raise ToolError(
                 "EMPTY_EVIDENCE: no broker observations were collected. Ordinary Fantasy reads "
